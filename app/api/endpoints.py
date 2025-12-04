@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_session
 from app.db.models import Game, User, Chat, Signup, SignupStatus, Team, GameStats, GameStatus
-from app.api.schemas import GameCreate, BalanceTeams, GameResult, GameFinishRequest
+from app.api.schemas import GameCreate, BalanceTeams, GameResult, GameFinishRequest, UpdateTeamsRequest
 from app.bot.elo import calculate_new_rating
 from app.bot.main import bot
 from app.bot.utils import format_game_message
@@ -135,6 +135,11 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         voting_time = new_game.date_time + timedelta(hours=2)
         scheduler.add_job(send_voting_message, 'date', run_date=voting_time, args=[new_game.id])
         
+        # Напоминание админу через 2 часа 15 минут
+        from app.scheduler.tasks import remind_admin_to_finish
+        reminder_time = new_game.date_time + timedelta(hours=2, minutes=15)
+        scheduler.add_job(remind_admin_to_finish, 'date', run_date=reminder_time, args=[new_game.id])
+        
     except Exception:
         pass
 
@@ -218,6 +223,88 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
         pass
 
     return {"status": "balanced", "team_a_count": len(team_a), "team_b_count": len(team_b)}
+
+@router.post("/update_teams")
+async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(data.initData, settings.BOT_TOKEN):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+
+    user_id = get_user_from_init_data(data.initData)
+    
+    result = await session.execute(select(Game).where(Game.id == data.game_id))
+    game = result.scalar_one_or_none()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    await check_admin_rights(game.chat_id, user_id)
+
+    # Fetch all active signups for this game
+    result = await session.execute(
+        select(Signup)
+        .where(Signup.game_id == data.game_id, Signup.status == SignupStatus.ACTIVE)
+    )
+    signups = result.scalars().all()
+    
+    # Map user_id to signup
+    signup_map = {s.user_id: s for s in signups}
+    
+    team_a_users = []
+    team_b_users = []
+    
+    # Update teams
+    for uid in data.team_a:
+        if uid in signup_map:
+            signup_map[uid].team = Team.A
+            team_a_users.append(uid)
+            
+    for uid in data.team_b:
+        if uid in signup_map:
+            signup_map[uid].team = Team.B
+            team_b_users.append(uid)
+            
+    # Reset others to None (or handle as "Unassigned")
+    # If a user is in neither list, they are effectively removed from a team but still signed up?
+    # Or should we assume the lists are exhaustive?
+    # Let's assume lists contain ALL assigned players.
+    assigned_ids = set(data.team_a) | set(data.team_b)
+    for uid, signup in signup_map.items():
+        if uid not in assigned_ids:
+            signup.team = None
+
+    await session.commit()
+    
+    # Fetch updated player objects for message
+    result = await session.execute(
+        select(User).where(User.user_id.in_(team_a_users))
+    )
+    team_a_objs = result.scalars().all()
+    
+    result = await session.execute(
+        select(User).where(User.user_id.in_(team_b_users))
+    )
+    team_b_objs = result.scalars().all()
+
+    # Update message in chat
+    text = f"⚖️ <b>Составы команд (Обновлено админом):</b>\n\n"
+    
+    text += "🔴 <b>Команда А:</b>\n"
+    for p in team_a_objs:
+        rating_info = f" ({p.rating})" if settings.SHOW_RATING else ""
+        text += f"- {p.full_name}{rating_info}\n"
+    
+    text += "\n🔵 <b>Команда Б:</b>\n"
+    for p in team_b_objs:
+        rating_info = f" ({p.rating})" if settings.SHOW_RATING else ""
+        text += f"- {p.full_name}{rating_info}\n"
+        
+    if settings.SHOW_RATING:
+        avg_a = sum(p.rating for p in team_a_objs) / len(team_a_objs) if team_a_objs else 0
+        avg_b = sum(p.rating for p in team_b_objs) / len(team_b_objs) if team_b_objs else 0
+        text += f"\n📊 Средний рейтинг: {int(avg_a)} vs {int(avg_b)}"
+
+    await bot.send_message(chat_id=game.chat_id, text=text)
+
+    return {"status": "updated"}
 
 @router.post("/set_game_result")
 async def set_game_result(data: GameResult, session: AsyncSession = Depends(get_session)):

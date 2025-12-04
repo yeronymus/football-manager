@@ -2,6 +2,7 @@ from app.bot.main import bot
 from app.db.database import get_session
 from app.db.models import Game, Signup, User, Vote, SignupStatus, GameStatus, Team, RatingHistory
 from sqlalchemy import select, func
+from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from app.bot.elo import calculate_new_rating
 
@@ -131,3 +132,34 @@ async def calculate_mvp(game_id: int):
             text += f"\n\n📈 Рейтинги обновлены! Победила команда {game.winner_team.value}."
 
         await bot.send_message(chat_id=game.chat_id, text=text)
+
+async def remind_admin_to_finish(game_id: int):
+    async for session in get_session():
+        # 1. Берем игру
+        game = await session.get(Game, game_id)
+        
+        # Если игру уже закрыли - не беспокоим
+        if not game or game.status == GameStatus.FINISHED:
+            return
+
+        # 2. Находим создателя игры (обычно он админ и был на поле)
+        creator_id = game.created_by
+        
+        # 3. Формируем кнопку сразу на экран завершения
+        # Deep Link в Web App, чтобы открыть сразу нужную игру
+        # ВАЖНО: Замените на ваш реальный домен
+        web_app_url = f"https://your-domain.com/web/finish.html?id={game.id}"
+        
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📝 Заполнить протокол", web_app=types.WebAppInfo(url=web_app_url))]
+        ])
+        
+        try:
+            await bot.send_message(
+                chat_id=creator_id,
+                text=f"⏰ Матч в <b>{game.location}</b> уже должен закончиться.\n\nПожалуйста, внесите счет и авторов голов, чтобы обновить статистику!",
+                reply_markup=kb
+            )
+        except Exception:
+            # Админ мог заблочить бота, бывает
+            pass

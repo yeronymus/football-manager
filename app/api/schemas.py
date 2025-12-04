@@ -30,3 +30,9 @@ class GameFinishRequest(BaseModel):
     winner_team: Optional[Team]
     player_stats: list[PlayerStat]
     initData: str
+
+class UpdateTeamsRequest(BaseModel):
+    game_id: int
+    team_a: list[int]
+    team_b: list[int]
+    initData: str
