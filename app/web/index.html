@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: var(--tg-theme-font-family, sans-serif);
+            background-color: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+            padding: 20px;
+            margin: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--tg-theme-hint-color, #ccc);
+            border-radius: 8px;
+            box-sizing: border-box;
+            background-color: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #000);
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #fff);
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:disabled {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <h1>Создать игру</h1>
+    <div class="form-group">
+        <label for="chat_id">Чат</label>
+        <select id="chat_id">
+            <option value="" disabled selected>Выберите чат</option>
+            <!-- Options will be populated via JS or hardcoded for MVP -->
+            <!-- For MVP, user enters Chat ID manually or we fetch from API if possible -->
+            <!-- Since we don't have an endpoint to list chats yet, let's use a text input for ID or hardcode -->
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="date_time">Дата и Время</label>
+        <input type="datetime-local" id="date_time" required>
+    </div>
+    <div class="form-group">
+        <label for="location">Локация</label>
+        <input type="text" id="location" placeholder="Например, Лужники" required>
+    </div>
+    <div class="form-group">
+        <label for="max_players">Кол-во мест</label>
+        <input type="number" id="max_players" value="15" min="5" max="30">
+    </div>
+    <button id="submitBtn" onclick="createGame()">Опубликовать</button>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // For MVP, we'll just let user type Chat ID or assume a fixed one if not provided
+        // Ideally, we should fetch chats where bot is admin.
+        // Let's make Chat ID an input for now to be safe.
+        document.getElementById('chat_id').outerHTML = '<input type="number" id="chat_id" placeholder="Chat ID (e.g. -100...)" required>';
+
+        async function createGame() {
+            const chatId = document.getElementById('chat_id').value;
+            const dateTime = document.getElementById('date_time').value;
+            const location = document.getElementById('location').value;
+            const maxPlayers = document.getElementById('max_players').value;
+
+            if (!chatId || !dateTime || !location) {
+                tg.showAlert("Заполните все поля!");
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = "Публикация...";
+
+            try {
+                const response = await fetch('/api/create_game', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        chat_id: parseInt(chatId),
+                        date_time: new Date(dateTime).toISOString(),
+                        location: location,
+                        max_players: parseInt(maxPlayers),
+                        initData: tg.initData
+                    })
+                });
+
+                if (response.ok) {
+                    tg.showAlert("Игра создана!");
+                    tg.close();
+                } else {
+                    const error = await response.json();
+                    tg.showAlert("Ошибка: " + (error.detail || "Unknown error"));
+                }
+            } catch (e) {
+                tg.showAlert("Ошибка сети: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Опубликовать";
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: football_bot_app
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"  # FastAPI
+    depends_on:
+      - db
+      - redis
+    command: sh -c "uvicorn app.api.main:app --host 0.0.0.0 --port 8000 & python -m app.bot.main"
+    volumes:
+      - .:/app
+
+  db:
+    image: postgres:15-alpine
+    container_name: football_bot_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: football_bot_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
