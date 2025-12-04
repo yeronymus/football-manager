@@ -18,3 +18,15 @@ class GameResult(BaseModel):
     game_id: int
     winner_team: Team
     initData: str
+
+class PlayerStat(BaseModel):
+    user_id: int
+    goals: int
+
+class GameFinishRequest(BaseModel):
+    game_id: int
+    score_a: int
+    score_b: int
+    winner_team: Optional[Team]
+    player_stats: list[PlayerStat]
+    initData: str

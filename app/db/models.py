@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, BigInteger, UniqueConstraint
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -36,6 +37,7 @@ class User(Base):
     stats_mvp = Column(Integer, default=0)
     rating = Column(Integer, default=1200)  # ELO Rating
     games_played = Column(Integer, default=0)
+    alt_positions = Column(ARRAY(String), default=[])
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     games_created = relationship("Game", back_populates="creator")
@@ -62,6 +64,8 @@ class Game(Base):
     max_players = Column(Integer, default=18)
     status = Column(Enum(GameStatus), default=GameStatus.OPEN)
     winner_team = Column(Enum(Team), nullable=True)
+    score_a = Column(Integer, nullable=True)
+    score_b = Column(Integer, nullable=True)
     
     chat = relationship("Chat", back_populates="games")
     creator = relationship("User", back_populates="games_created")
@@ -115,3 +119,16 @@ class RatingHistory(Base):
 
     user = relationship("User", backref="rating_history")
     game = relationship("Game", backref="rating_history")
+
+class GameStats(Base):
+    __tablename__ = "game_stats"
+    
+    id = Column(Integer, primary_key=True)
+    game_id = Column(Integer, ForeignKey("games.id"))
+    user_id = Column(BigInteger, ForeignKey("users.user_id"))
+    
+    goals = Column(Integer, default=0)
+    assists = Column(Integer, default=0)
+    
+    game = relationship("Game", backref="stats")
+    user = relationship("User", backref="match_stats")
