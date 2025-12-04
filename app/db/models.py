@@ -59,7 +59,7 @@ class Game(Base):
     created_by = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
     date_time = Column(DateTime(timezone=True), nullable=False)
     location = Column(String, nullable=False)
-    max_players = Column(Integer, default=15)
+    max_players = Column(Integer, default=18)
     status = Column(Enum(GameStatus), default=GameStatus.OPEN)
     winner_team = Column(Enum(Team), nullable=True)
     

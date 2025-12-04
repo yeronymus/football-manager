@@ -34,6 +34,8 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
         for i, (signup, user) in enumerate(gk, 1):
             text += f"{i}. {user.full_name}\n"
         text += "\n"
+    else:
+        text += "🧤 <b>Вратари:</b> По очереди / Решим на поле\n\n"
 
     field_players = defenders + midfielders + forwards
     if field_players:

@@ -7,7 +7,7 @@ class GameCreate(BaseModel):
     chat_id: int
     date_time: datetime
     location: str
-    max_players: int = 15
+    max_players: int = 18
     initData: str
 
 class BalanceTeams(BaseModel):
