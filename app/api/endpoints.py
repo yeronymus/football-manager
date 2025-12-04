@@ -63,12 +63,14 @@ async def get_chats(initData: str, session: AsyncSession = Depends(get_session))
     all_chats = result.scalars().all()
     
     admin_chats = []
+    import asyncio
     for chat in all_chats:
         try:
             # Check if user is admin in this chat
             member = await bot.get_chat_member(chat.chat_id, user_id)
             if member.status in ["administrator", "creator"]:
                 admin_chats.append({"id": chat.chat_id, "title": chat.title})
+            await asyncio.sleep(0.05) # Prevent FloodWait
         except Exception:
             continue
             
