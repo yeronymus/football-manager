@@ -101,3 +101,17 @@ class Vote(Base):
     __table_args__ = (
         UniqueConstraint('game_id', 'voter_id', name='unique_vote'),
     )
+
+class RatingHistory(Base):
+    __tablename__ = "rating_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
+    game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
+    old_rating = Column(Integer, nullable=False)
+    new_rating = Column(Integer, nullable=False)
+    change = Column(Integer, nullable=False)
+    date = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", backref="rating_history")
+    game = relationship("Game", backref="rating_history")

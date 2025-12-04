@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     REDIS_HOST: str
     REDIS_PORT: int
 
+    # ELO Settings
+    ELO_K_FACTOR_BASE: int = 25
+    ELO_K_FACTOR_PRO: int = 50
+    ELO_PRO_THRESHOLD: int = 5 # Games played
+    ELO_WIN_BONUS: int = 10
+    ELO_LOSS_PENALTY: int = 20
+
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

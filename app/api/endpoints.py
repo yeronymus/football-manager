@@ -51,6 +51,29 @@ async def check_admin_rights(chat_id: int, user_id: int):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Cannot verify user rights: {str(e)}")
 
+@router.get("/chats")
+async def get_chats(initData: str, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(initData, settings.BOT_TOKEN):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+    
+    user_id = get_user_from_init_data(initData)
+    
+    # Get all chats from DB
+    result = await session.execute(select(Chat))
+    all_chats = result.scalars().all()
+    
+    admin_chats = []
+    for chat in all_chats:
+        try:
+            # Check if user is admin in this chat
+            member = await bot.get_chat_member(chat.chat_id, user_id)
+            if member.status in ["administrator", "creator"]:
+                admin_chats.append({"id": chat.chat_id, "title": chat.title})
+        except Exception:
+            continue
+            
+    return admin_chats
+
 @router.post("/create_game")
 async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(game_data.initData, settings.BOT_TOKEN):
@@ -143,10 +166,6 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
 
     # Update DB
     for player in team_a:
-        await session.execute(
-            select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == player.user_id)
-        ) # Ideally update directly
-        # For simplicity in async sqlalchemy:
         signup = (await session.execute(select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == player.user_id))).scalar_one()
         signup.team = Team.A
     

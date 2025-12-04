@@ -1,6 +1,6 @@
 from app.bot.main import bot
 from app.db.database import get_session
-from app.db.models import Game, Signup, User, Vote, SignupStatus, GameStatus, Team
+from app.db.models import Game, Signup, User, Vote, SignupStatus, GameStatus, Team, RatingHistory
 from sqlalchemy import select, func
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from app.bot.elo import calculate_new_rating
@@ -91,21 +91,34 @@ async def calculate_mvp(game_id: int):
             avg_a = sum(p.rating for p in team_a_players) / len(team_a_players) if team_a_players else 1200
             avg_b = sum(p.rating for p in team_b_players) / len(team_b_players) if team_b_players else 1200
             
+            # Helper to update and log
+            def update_player(player, opponent_avg, actual_score):
+                is_mvp = (player.user_id == mvp_id)
+                old_rating = player.rating
+                new_rating = calculate_new_rating(player, int(opponent_avg), actual_score, is_mvp)
+                
+                player.rating = new_rating
+                player.games_played += 1
+                
+                # Log history
+                history = RatingHistory(
+                    user_id=player.user_id,
+                    game_id=game_id,
+                    old_rating=old_rating,
+                    new_rating=new_rating,
+                    change=new_rating - old_rating
+                )
+                session.add(history)
+
             # Calculate for Team A
             actual_score_a = 1 if game.winner_team == Team.A else 0
             for player in team_a_players:
-                is_mvp = (player.user_id == mvp_id)
-                new_rating = calculate_new_rating(player, int(avg_b), actual_score_a, is_mvp)
-                player.rating = new_rating
-                player.games_played += 1
+                update_player(player, avg_b, actual_score_a)
             
             # Calculate for Team B
             actual_score_b = 1 if game.winner_team == Team.B else 0
             for player in team_b_players:
-                is_mvp = (player.user_id == mvp_id)
-                new_rating = calculate_new_rating(player, int(avg_a), actual_score_b, is_mvp)
-                player.rating = new_rating
-                player.games_played += 1
+                update_player(player, avg_a, actual_score_b)
                 
             await session.commit()
             

@@ -20,9 +20,14 @@ dp = Dispatcher()
 from app.bot.handlers import router as registration_router
 from app.bot.game_handlers import router as game_router
 from app.bot.vote_handlers import router as vote_router
+from app.bot.middlewares import DbSessionMiddleware
+from app.db.database import async_session_maker
+
 dp.include_router(registration_router)
 dp.include_router(game_router)
 dp.include_router(vote_router)
+
+dp.update.middleware(DbSessionMiddleware(session_pool=async_session_maker))
 
 async def start_bot():
     """

@@ -17,3 +17,7 @@ COPY . .
 
 # Set python path
 ENV PYTHONPATH=/app
+
+# Create non-root user
+RUN useradd -m appuser
+USER appuser
