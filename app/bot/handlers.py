@@ -1,14 +1,14 @@
 from aiogram import Router, F, types
-from aiogram.filters import CommandStart, CommandObject
+from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.fsm.context import FSMContext
-from sqlalchemy import select
+from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.fsm import Registration
-from app.bot.fsm import Registration
-from app.bot.keyboards import get_multiselect_keyboard, get_primary_select_keyboard
+from app.bot.keyboards import get_multiselect_keyboard, get_primary_select_keyboard, get_main_menu_keyboard
 from app.db.database import get_session
-from app.db.models import User, Position
+from app.db.models import User, Position, Game, Signup, GameStats, RatingHistory, SignupStatus, GameStatus, Team
+from app.config import settings
 
 router = Router()
 
@@ -34,7 +34,7 @@ async def cmd_start_deep_link(message: types.Message, command: CommandObject, st
 
 @router.message(CommandStart())
 async def cmd_start(message: types.Message):
-    await message.answer("Привет! Я футбольный менеджер. Используйте кнопки в чате для записи на игру.")
+    await message.answer("Привет! Я футбольный менеджер. Используйте кнопки в чате для записи на игру.", reply_markup=get_main_menu_keyboard())
 
 @router.message(Registration.waiting_for_name)
 async def process_name(message: types.Message, state: FSMContext):
@@ -95,3 +95,102 @@ async def process_position(callback: types.CallbackQuery, state: FSMContext, ses
     
     await callback.message.edit_text(f"Регистрация успешна!\nИмя: {full_name}\nОсновная: {position_value}\nДоп.: {', '.join(alt_positions)}\n\nТеперь вы можете вернуться в чат и записаться на игру.")
     await state.clear()
+
+@router.message(Command("history"))
+async def cmd_history(message: types.Message):
+    # Мы берем ID текущего чата, где написали команду
+    current_chat_id = message.chat.id
+    
+    # Формируем URL с параметром
+    # ВАЖНО: Замените на ваш реальный домен (HTTPS обязателен)
+    web_app_url = f"https://your-domain.com/web/history.html?chat_id={current_chat_id}"
+    
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(
+            text="📜 Открыть архив игр", 
+            web_app=types.WebAppInfo(url=web_app_url)
+        )]
+    ])
+    
+    await message.answer(
+        "Нажмите кнопку ниже, чтобы посмотреть статистику именно этого чата:",
+        reply_markup=kb
+    )
+
+@router.message(F.text == "📜 Мои матчи")
+@router.message(Command("my_history"))
+async def cmd_my_history(message: types.Message, session: AsyncSession):
+    user_id = message.from_user.id
+
+    # 1. Запрашиваем последние 10 игр, в которых участвовал юзер
+    query = (
+        select(Game, Signup, GameStats, RatingHistory)
+        .join(Signup, Game.id == Signup.game_id)
+        .outerjoin(GameStats, (Game.id == GameStats.game_id) & (GameStats.user_id == user_id))
+        .outerjoin(RatingHistory, (Game.id == RatingHistory.game_id) & (RatingHistory.user_id == user_id))
+        .where(
+            Signup.user_id == user_id,
+            Signup.status == SignupStatus.ACTIVE,
+            Game.status == GameStatus.FINISHED
+        )
+        .order_by(desc(Game.date_time))
+        .limit(10)
+    )
+
+    result = await session.execute(query)
+    matches = result.all()
+
+    if not matches:
+        await message.answer("Вы еще не сыграли ни одного матча. Записывайтесь скорее!")
+        return
+
+    # 2. Формируем красивый текст
+    text = "<b>📜 Ваши последние игры:</b>\n\n"
+
+    for game, signup, stats, rating in matches:
+        # А. Определяем результат (Победа/Поражение)
+        result_icon = "🤝" # Ничья по дефолту
+        if game.winner_team:
+            if game.winner_team == signup.team:
+                result_icon = "🏆" # Победа
+            else:
+                result_icon = "💀" # Поражение
+        
+        # Б. Счет матча
+        score_text = f"{game.score_a or 0}:{game.score_b or 0}"
+        
+        # В. Строка матча
+        date_str = game.date_time.strftime("%d.%m")
+        text += f"{result_icon} <b>{date_str} | {game.location}</b> ({score_text})\n"
+        
+        # Г. Личная статистика (Детали)
+        details = []
+        
+        # Голы
+        if stats and stats.goals > 0:
+            details.append(f"⚽ {stats.goals}")
+            
+        # Рейтинг (Shadow ELO check)
+        if settings.SHOW_RATING and rating:
+            sign = "+" if rating.change > 0 else ""
+            details.append(f"📈 {sign}{rating.change} MMR")
+        
+        # Если были детали, добавляем их
+        if details:
+            text += f"   └ <i>{' • '.join(details)}</i>\n"
+        else:
+            text += "   └ <i>Без результативных действий</i>\n"
+            
+        text += "\n"
+
+    # Добавляем общую стату в подвал
+    user = await session.get(User, user_id)
+    text += f"➖➖➖➖➖➖➖➖\n"
+    text += f"👤 <b>{user.full_name}</b>\n"
+    
+    if settings.SHOW_RATING:
+        text += f"📊 Рейтинг: <b>{user.rating}</b>\n"
+        
+    text += f"🎮 Матчей: <b>{user.games_played}</b>"
+
+    await message.answer(text)

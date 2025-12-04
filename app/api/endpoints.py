@@ -183,17 +183,39 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
     
     text += "🔴 <b>Команда А:</b>\n"
     for p in team_a:
-        text += f"- {p.full_name} ({p.rating})\n"
+        rating_info = f" ({p.rating})" if settings.SHOW_RATING else ""
+        text += f"- {p.full_name}{rating_info}\n"
     
     text += "\n🔵 <b>Команда Б:</b>\n"
     for p in team_b:
-        text += f"- {p.full_name} ({p.rating})\n"
+        rating_info = f" ({p.rating})" if settings.SHOW_RATING else ""
+        text += f"- {p.full_name}{rating_info}\n"
         
-    avg_a = sum(p.rating for p in team_a) / len(team_a)
-    avg_b = sum(p.rating for p in team_b) / len(team_b)
-    text += f"\n📊 Средний рейтинг: {int(avg_a)} vs {int(avg_b)}"
+    if settings.SHOW_RATING:
+        avg_a = sum(p.rating for p in team_a) / len(team_a)
+        avg_b = sum(p.rating for p in team_b) / len(team_b)
+        text += f"\n📊 Средний рейтинг: {int(avg_a)} vs {int(avg_b)}"
 
     await bot.send_message(chat_id=game.chat_id, text=text)
+
+    # OPTIONAL: Отправить админу в личку реальные цифры (God Mode View)
+    try:
+        if not settings.SHOW_RATING:
+            admin_text = f"🕵️‍♂️ <b>Скрытые данные (Видно только вам):</b>\n\n"
+            admin_text += "🔴 <b>Команда А:</b>\n"
+            for p in team_a:
+                admin_text += f"- {p.full_name} ({p.rating})\n"
+            admin_text += "\n🔵 <b>Команда Б:</b>\n"
+            for p in team_b:
+                admin_text += f"- {p.full_name} ({p.rating})\n"
+            
+            avg_a = sum(p.rating for p in team_a) / len(team_a)
+            avg_b = sum(p.rating for p in team_b) / len(team_b)
+            admin_text += f"\n📊 Средний рейтинг: {int(avg_a)} vs {int(avg_b)}"
+            
+            await bot.send_message(chat_id=user_id, text=admin_text)
+    except Exception:
+        pass
 
     return {"status": "balanced", "team_a_count": len(team_a), "team_b_count": len(team_b)}
 
@@ -334,6 +356,9 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
     if game.winner_team:
         text += f"Победила команда {game.winner_team.value}!\n"
     
+    if settings.SHOW_RATING and game.winner_team:
+        text += f"\n📈 Рейтинги обновлены!\n"
+    
     # Show goal scorers
     scorers = [p for p in data.player_stats if p.goals > 0]
     if scorers:
@@ -347,3 +372,51 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
     await bot.send_message(chat_id=game.chat_id, text=text)
 
     return {"status": "finished"}
+
+@router.get("/history/{chat_id}")
+async def get_chat_history(chat_id: int, initData: str, session: AsyncSession = Depends(get_session)):
+    # 1. Валидация WebApp данных
+    if not validate_init_data(initData, settings.BOT_TOKEN):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+    
+    user_id = get_user_from_init_data(initData)
+    
+    # 2. Проверка доступа (Smart Security):
+    # Пользователь должен быть участником этого чата, чтобы видеть его историю.
+    try:
+        member = await bot.get_chat_member(chat_id, user_id)
+        if member.status in ["left", "kicked"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+    except Exception:
+        # Если бот не может проверить (например, его кикнули), лучше отказать
+        raise HTTPException(status_code=400, detail="Chat access error")
+
+    # 3. Выборка завершенных игр
+    result = await session.execute(
+        select(Game)
+        .where(Game.chat_id == chat_id, Game.status == GameStatus.FINISHED)
+        .order_by(Game.date_time.desc())
+        .limit(50) # Не грузим всю историю веков
+    )
+    games = result.scalars().all()
+    
+    # 4. Формирование ответа
+    history = []
+    for game in games:
+        # Небольшая логика для красивого отображения победителя
+        winner_text = "Ничья"
+        if game.winner_team == Team.A:
+            winner_text = "Победа А"
+        elif game.winner_team == Team.B:
+            winner_text = "Победа Б"
+            
+        history.append({
+            "id": game.id,
+            "date": game.date_time.strftime("%d.%m.%Y"),
+            "location": game.location,
+            "score_a": game.score_a if game.score_a is not None else 0,
+            "score_b": game.score_b if game.score_b is not None else 0,
+            "winner": winner_text
+        })
+        
+    return history

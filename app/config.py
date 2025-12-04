@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     ELO_PRO_THRESHOLD: int = 5 # Games played
     ELO_WIN_BONUS: int = 10
     ELO_LOSS_PENALTY: int = 20
+    
+    # NEW: Видимость рейтинга
+    SHOW_RATING: bool = False
 
     @property
     def DATABASE_URL(self) -> str:

@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from app.db.models import Position
 
 def get_position_keyboard() -> InlineKeyboardMarkup:
@@ -37,3 +37,11 @@ def get_game_keyboard(game_id: int) -> InlineKeyboardMarkup:
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def get_main_menu_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📜 Мои матчи"), KeyboardButton(text="👤 Мой профиль")]
+        ],
+        resize_keyboard=True
+    )
