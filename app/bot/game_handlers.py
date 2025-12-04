@@ -27,20 +27,23 @@ async def process_join(callback: types.CallbackQuery):
         # Ideally we want to lock the signups table or use serializable isolation.
         # For MVP, we can just check count. Postgres will handle concurrent inserts with unique constraint.
         
-        # Check if already signed up
+        # Lock the game row for update to handle race conditions
+        # This ensures only one transaction can check count and insert at a time for this game
+        result = await session.execute(
+            select(Game).where(Game.id == game_id).with_for_update()
+        )
+        game = result.scalar_one_or_none()
+        
+        if not game or game.status != GameStatus.OPEN:
+            await callback.answer("Запись закрыта!")
+            return
+
+        # Check if already signed up (after lock to be sure)
         result = await session.execute(select(Signup).where(Signup.game_id == game_id, Signup.user_id == user_id))
         existing_signup = result.scalar_one_or_none()
         
         if existing_signup:
             await callback.answer("Вы уже записаны!")
-            return
-
-        # Get current game state
-        result = await session.execute(select(Game).where(Game.id == game_id))
-        game = result.scalar_one_or_none()
-        
-        if not game or game.status != GameStatus.OPEN:
-            await callback.answer("Запись закрыта!")
             return
 
         # Count current active signups
