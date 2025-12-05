@@ -60,9 +60,18 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
     # Update message
     text = await format_game_message(game, session)
     try:
-        await callback.message.edit_text(text, reply_markup=get_game_keyboard(game_id))
-    except Exception:
-        pass # Message not modified
+        if game.message_id:
+            await callback.bot.edit_message_text(
+                chat_id=game.chat_id,
+                message_id=game.message_id,
+                text=text,
+                reply_markup=get_game_keyboard(game_id),
+                parse_mode="HTML"
+            )
+        else:
+            await callback.message.edit_text(text, reply_markup=get_game_keyboard(game_id))
+    except Exception as e:
+        logging.error(f"Failed to update message: {e}")
 
     await callback.answer("Вы записаны!" if status == SignupStatus.ACTIVE else "Вы в резерве!")
 
@@ -109,8 +118,17 @@ async def process_leave(callback: types.CallbackQuery, session: AsyncSession):
     # Update message
     text = await format_game_message(game, session)
     try:
-        await callback.message.edit_text(text, reply_markup=get_game_keyboard(game_id))
-    except Exception:
-        pass
+        if game.message_id:
+            await callback.bot.edit_message_text(
+                chat_id=game.chat_id,
+                message_id=game.message_id,
+                text=text,
+                reply_markup=get_game_keyboard(game_id),
+                parse_mode="HTML"
+            )
+        else:
+            await callback.message.edit_text(text, reply_markup=get_game_keyboard(game_id))
+    except Exception as e:
+        logging.error(f"Failed to update message: {e}")
 
     await callback.answer("Вы выписались.")

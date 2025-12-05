@@ -125,6 +125,10 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
             text=message_text,
             reply_markup=get_game_keyboard(new_game.id)
         )
+        
+        new_game.message_id = sent_message.message_id
+        await session.commit()
+        
         await bot.pin_chat_message(chat_id=game_data.chat_id, message_id=sent_message.message_id)
         
         # Schedule voting
