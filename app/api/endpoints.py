@@ -14,6 +14,7 @@ import hashlib
 import hmac
 import urllib.parse
 import json
+import time
 
 router = APIRouter()
 
@@ -32,7 +33,15 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
         secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
         
-        return calculated_hash == hash_value
+        if calculated_hash != hash_value:
+            return False
+            
+        # Check auth_date for replay attacks (10 minutes window)
+        auth_date = int(parsed_data.get("auth_date", 0))
+        if time.time() - auth_date > 600:
+            return False
+            
+        return True
     except Exception:
         return False
 

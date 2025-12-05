@@ -4,7 +4,7 @@ from app.db.models import Game, Signup, User, Vote, SignupStatus, GameStatus, Te
 from sqlalchemy import select, func
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from app.bot.elo import calculate_new_rating
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 async def send_voting_message(game_id: int):
     async for session in get_session():
@@ -77,59 +77,13 @@ async def calculate_mvp(game_id: int):
                 mvp_user.stats_mvp += 1
 
         # ELO Calculation
-        if game.winner_team:
-            # Fetch all active players with their teams
-            result = await session.execute(
-                select(User, Signup.team)
-                .join(Signup)
-                .where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
-            )
-            players_data = result.all() # List of (User, Team)
-            
-            team_a_players = [p[0] for p in players_data if p[1] == Team.A]
-            team_b_players = [p[0] for p in players_data if p[1] == Team.B]
-            
-            avg_a = sum(p.rating for p in team_a_players) / len(team_a_players) if team_a_players else 1200
-            avg_b = sum(p.rating for p in team_b_players) / len(team_b_players) if team_b_players else 1200
-            
-            # Helper to update and log
-            def update_player(player, opponent_avg, actual_score):
-                is_mvp = (player.user_id == mvp_id)
-                old_rating = player.rating
-                new_rating = calculate_new_rating(player, int(opponent_avg), actual_score, is_mvp)
-                
-                player.rating = new_rating
-                player.games_played += 1
-                
-                # Log history
-                history = RatingHistory(
-                    user_id=player.user_id,
-                    game_id=game_id,
-                    old_rating=old_rating,
-                    new_rating=new_rating,
-                    change=new_rating - old_rating
-                )
-                session.add(history)
-
-            # Calculate for Team A
-            actual_score_a = 1 if game.winner_team == Team.A else 0
-            for player in team_a_players:
-                update_player(player, avg_b, actual_score_a)
-            
-            # Calculate for Team B
-            actual_score_b = 1 if game.winner_team == Team.B else 0
-            for player in team_b_players:
-                update_player(player, avg_a, actual_score_b)
-                
-            await session.commit()
-            
         game.status = GameStatus.FINISHED
         await session.commit()
         
         text = f"🏆 MVP матча {game.location} признан {mvp_user.full_name} ({votes_count} голосов)!" if mvp_user else "MVP не выбран (нет голосов)."
         
         if game.winner_team:
-            text += f"\n\n📈 Рейтинги обновлены! Победила команда {game.winner_team.value}."
+            text += f"\n\nПобедила команда {game.winner_team.value}."
 
         await bot.send_message(chat_id=game.chat_id, text=text)
 
