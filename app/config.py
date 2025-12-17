@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     USE_POLLING: bool = False
     DEBUG: bool = False
     WEBAPP_URL: str = "https://your-domain.com"
+    
+    # Access Control
+    SYSTEM_OWNER_ID: int = None
 
     @property
     def DATABASE_URL(self) -> str:

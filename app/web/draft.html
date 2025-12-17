@@ -499,7 +499,10 @@
                 });
                 await loadGame(gameId);
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            } catch (e) { tg.showAlert("Ошибка: " + e.message); }
+            } catch (e) {
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+                tg.showAlert("Ошибка: " + e.message);
+            }
         }
 
         async function saveTeams() {

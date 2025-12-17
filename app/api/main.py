@@ -6,8 +6,24 @@ import logging
 
 from fastapi.middleware.gzip import GZipMiddleware
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+origins = [
+    "https://t.me",
+    "https://web.telegram.org",
+    settings.WEBAPP_URL
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 @app.on_event("startup")
 async def on_startup():

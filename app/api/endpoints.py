@@ -23,8 +23,11 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
     Validates Telegram WebApp initData.
     """
     try:
-        if settings.DEBUG:
-            return True
+        # Security: Always validate hash, even in debug mode if possible, 
+        # or rely on local validation. 
+        # Removed simple bypass to enforce signed data usage.
+        if not init_data:
+            return False
         parsed_data = dict(urllib.parse.parse_qsl(init_data))
         if "hash" not in parsed_data:
             return False
