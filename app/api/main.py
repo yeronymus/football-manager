@@ -4,7 +4,10 @@ from app.bot.main import bot, dp, start_bot, stop_bot
 from app.config import settings
 import logging
 
+from fastapi.middleware.gzip import GZipMiddleware
+
 app = FastAPI()
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.on_event("startup")
 async def on_startup():
@@ -12,7 +15,9 @@ async def on_startup():
     from app.scheduler.main import start_scheduler
     await init_models()
     await start_scheduler()
-    await start_bot()
+    
+    if not settings.USE_POLLING:
+        await start_bot()
 
 from fastapi.staticfiles import StaticFiles
 

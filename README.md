@@ -16,7 +16,7 @@
     Создайте файл `.env` на основе примера и заполните его:
     ```bash
     BOT_TOKEN=ваш_токен_от_botfather
-    ADMIN_IDS=[123456789]
+    ADMIN_IDS=[123456789] # Ваш Telegram ID (можно узнать через @userinfobot)
     WEBHOOK_URL=https://ваш-домен.com
     POSTGRES_USER=postgres
     POSTGRES_PASSWORD=secret
@@ -25,7 +25,11 @@
     POSTGRES_PORT=5432
     REDIS_HOST=redis
     REDIS_PORT=6379
+    # Для локальной разработки (обход initData)
+    DEBUG=True 
     ```
+
+    > **Важно:** При `DEBUG=True` WebApp будет работать в браузере без Telegram (откроется от имени админа).
 
 3.  **Запустите:**
     ```bash
@@ -64,3 +68,4 @@
 ## ⚙️ Настройки (config.py)
 
 *   `SHOW_RATING`: `True` — показывать цифры рейтинга всем, `False` — скрытый режим (видит только админ).
+*   `DEBUG`: `True` — разрешает запросы к API без валидации initData (для тестов в браузере).

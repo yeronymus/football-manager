@@ -5,53 +5,61 @@ import random
 class Player:
     def __init__(self, user: User):
         self.user = user
+        self.position = user.player_position
         self.rating = user.rating
-        self.position = user.position
+        self.games_played = user.games_played
         self.id = user.user_id
+        
+    def __repr__(self):
+        return f"Player({self.id}, {self.position}, {self.rating})"
 
-def balance_teams(players: List[User]) -> Tuple[List[User], List[User]]:
-    # 1. Separate Goalkeepers
-    # If 0 GKs, list is empty, code won't break.
+def balance_teams(players: List[Player]) -> Tuple[List[Player], List[Player]]:
+    # 1. Bucket by position
     gks = [p for p in players if p.position == Position.GK]
-    field = [p for p in players if p.position != Position.GK]
+    defs = [p for p in players if p.position == Position.DEF]
+    mids = [p for p in players if p.position == Position.MID]
+    fwds = [p for p in players if p.position == Position.FWD]
     
-    # Sort all by rating (strongest first)
-    gks.sort(key=lambda x: x.rating, reverse=True)
-    field.sort(key=lambda x: x.rating, reverse=True)
+    # Sort all groups by rating (strongest first)
+    for group in [gks, defs, mids, fwds]:
+        group.sort(key=lambda x: x.rating, reverse=True)
 
     team_a = []
     team_b = []
 
-    # Distribute GKs "snake" style so tops don't end up in same team
-    for i, gk in enumerate(gks):
-        if i % 2 == 0:
-            team_a.append(gk)
-        else:
-            team_b.append(gk)
+    def add_to_team(player, t_a, t_b):
+        # Helper to add player to the team that needs them more (balance count, then MMR)
+        len_a, len_b = len(t_a), len(t_b)
+        mmr_a, mmr_b = sum(p.rating for p in t_a), sum(p.rating for p in t_b)
 
-    # 2. Adaptive distribution of field players
-    # Give next strong player to the "weaker" team
-    # (by count first, then by rating)
-    
-    for player in field:
-        len_a = len(team_a)
-        len_b = len(team_b)
-        
-        # Calculate current team strength
-        mmr_a = sum(p.rating for p in team_a)
-        mmr_b = sum(p.rating for p in team_b)
-        
-        # HEURISTIC:
-        # If one team has fewer people - put player there (balance count)
         if len_a < len_b:
-            team_a.append(player)
+            t_a.append(player)
         elif len_b < len_a:
-            team_b.append(player)
+            t_b.append(player)
         else:
-            # If counts equal, put where less MMR
+            # If counts equal, add to weaker team by MMR
             if mmr_a <= mmr_b:
-                team_a.append(player)
+                t_a.append(player)
             else:
-                team_b.append(player)
+                t_b.append(player)
+
+    # 2. Distribute each position group
+    # We distribute group by group to ensure "Mirrored" formation (e.g. 3 DEFs vs 3 DEFs)
+    
+    # GKs first
+    for p in gks:
+        add_to_team(p, team_a, team_b)
+        
+    # DEFs second
+    for p in defs:
+        add_to_team(p, team_a, team_b)
+
+    # MIDs third
+    for p in mids:
+        add_to_team(p, team_a, team_b)
+
+    # FWDs last
+    for p in fwds:
+        add_to_team(p, team_a, team_b)
 
     return team_a, team_b

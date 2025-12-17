@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     
     # NEW: Видимость рейтинга
     SHOW_RATING: bool = False
+    
+    # Local Development
+    USE_POLLING: bool = False
+    DEBUG: bool = False
+    WEBAPP_URL: str = "https://your-domain.com"
 
     @property
     def DATABASE_URL(self) -> str:

@@ -19,7 +19,14 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
     user = result.scalar_one_or_none()
     
     if not user:
-        await callback.answer("Сначала зарегистрируйтесь! (Нажмите /start в ЛС)", show_alert=True, url=f"https://t.me/{callback.bot.username}?start=reg")
+        # Fetch bot username for the link
+        me = await callback.bot.get_me()
+        bot_username = me.username
+        await callback.answer(
+            "Сначала зарегистрируйтесь! (Перейдите в ЛС)", 
+            show_alert=True, 
+            url=f"https://t.me/{bot_username}?start=reg"
+        )
         return
 
     # Lock the game row for update to handle race conditions
@@ -29,7 +36,7 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
     )
     game = result.scalar_one_or_none()
     
-    if not game or game.status != GameStatus.OPEN:
+    if not game or (game.status != GameStatus.OPEN and game.status != GameStatus.ACTIVE):
         await callback.answer("Запись закрыта!")
         return
 
@@ -39,6 +46,21 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
     
     if existing_signup:
         await callback.answer("Вы уже записаны!")
+        # Force refresh message just in case it's stale
+        try:
+            text = await format_game_message(game, session)
+            if game.message_id:
+                await callback.bot.edit_message_text(
+                    chat_id=game.chat_id,
+                    message_id=game.message_id,
+                    text=text,
+                    reply_markup=get_game_keyboard(game_id),
+                    parse_mode="HTML"
+                )
+            else:
+                await callback.message.edit_text(text, reply_markup=get_game_keyboard(game_id))
+        except Exception as e:
+            logging.error(f"Failed to refresh message: {e}")
         return
 
     # Count current active signups
@@ -53,6 +75,7 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
     try:
         await session.commit()
     except Exception as e:
+        logging.error(f"Error saving signup: {e}", exc_info=True)
         await session.rollback()
         await callback.answer("Ошибка записи. Попробуйте снова.")
         return
@@ -73,7 +96,9 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
     except Exception as e:
         logging.error(f"Failed to update message: {e}")
 
-    await callback.answer("Вы записаны!" if status == SignupStatus.ACTIVE else "Вы в резерве!")
+    await callback.answer(
+        "Вы записаны!" if status == SignupStatus.ACTIVE else "Вы в резерве!"
+    )
 
 @router.callback_query(F.data.startswith("leave_"))
 async def process_leave(callback: types.CallbackQuery, session: AsyncSession):

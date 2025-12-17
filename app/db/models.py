@@ -32,7 +32,7 @@ class User(Base):
     user_id = Column(BigInteger, primary_key=True, index=True)
     username = Column(String, nullable=True)
     full_name = Column(String, nullable=False)
-    position = Column(Enum(Position), nullable=False)
+    player_position = Column(Enum(Position, name="user_position"), nullable=False)
     stats_matches = Column(Integer, default=0)
     stats_mvp = Column(Integer, default=0)
     rating = Column(Integer, default=1200)  # ELO Rating
@@ -65,7 +65,10 @@ class Game(Base):
     status = Column(Enum(GameStatus), default=GameStatus.OPEN)
     winner_team = Column(Enum(Team), nullable=True)
     score_a = Column(Integer, nullable=True)
+    winner_team = Column(Enum(Team), nullable=True)
+    score_a = Column(Integer, nullable=True)
     score_b = Column(Integer, nullable=True)
+    message_id = Column(BigInteger, nullable=True)
     
     chat = relationship("Chat", back_populates="games")
     creator = relationship("User", back_populates="games_created")

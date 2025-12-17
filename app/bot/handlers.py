@@ -10,31 +10,121 @@ from app.db.database import get_session
 from app.db.models import User, Position, Game, Signup, GameStats, RatingHistory, SignupStatus, GameStatus, Team
 from app.config import settings
 
+from aiogram.filters import CommandStart, CommandObject, Command, ChatMemberUpdatedFilter
+from aiogram.types import ChatMemberUpdated
+from app.db.models import Chat
+
 router = Router()
 
-@router.message(CommandStart(deep_link=True))
-async def cmd_start_deep_link(message: types.Message, command: CommandObject, state: FSMContext, session: AsyncSession):
-    """
-    Handle deep linking for registration (e.g., t.me/bot?start=reg)
-    """
-    args = command.args
-    if args == "reg":
-        # Check if user already exists
-        result = await session.execute(select(User).where(User.user_id == message.from_user.id))
-        user = result.scalar_one_or_none()
-        
-        if user:
-            await message.answer("Вы уже зарегистрированы!")
-            return
+from app.bot.keyboards import get_game_keyboard
+import re
 
-        await message.answer("Добро пожаловать! Как вас зовут? (Введите Имя Фамилия)")
-        await state.set_state(Registration.waiting_for_name)
+@router.message(F.is_automatic_forward == True)
+async def handle_auto_forward(message: types.Message):
+    # Detect if it's a game message (look for hidden link or specific text)
+    # The hidden link is: <a href="https://t.me/fm_metabot?start=game_{id}">
+    
+    # Extract entities
+    if not message.entities:
+        return
+
+    game_id = None
+    for entity in message.entities:
+        if entity.type == "text_link" and entity.url:
+            match = re.search(r"start=game_(\d+)", entity.url)
+            if match:
+                game_id = int(match.group(1))
+                break
+    
+    if game_id:
+        await message.reply(
+            "👇 **Панель записи:**",
+            reply_markup=get_game_keyboard(game_id)
+        )
+
+# Listen for bot being added to a group or promoted
+@router.my_chat_member(F.new_chat_member.status.in_({"member", "administrator", "creator"}))
+async def on_chat_member_update(event: ChatMemberUpdated, session: AsyncSession):
+    # Save chat to DB if bot is added
+    chat = await session.get(Chat, event.chat.id)
+    if not chat:
+        chat = Chat(chat_id=event.chat.id, title=event.chat.title or "Unknown Chat")
+        session.add(chat)
+        await session.commit()
+
+@router.message(Command("register_chat"))
+@router.channel_post(Command("register_chat"))
+async def cmd_register_chat(message: types.Message, session: AsyncSession):
+    if message.is_automatic_forward:
+        return
+
+    if message.from_user.id not in settings.ADMIN_IDS:
+        return # Silently ignore or answer? Better silent for security.
+
+    if message.chat.type not in ["group", "supergroup", "channel"]:
+        await message.answer("Эту команду нужно использовать в группе или канале.")
+        return
+
+    chat = await session.get(Chat, message.chat.id)
+    if not chat:
+        chat = Chat(chat_id=message.chat.id, title=message.chat.title or "Unknown Chat")
+        session.add(chat)
+        await session.commit()
+        await message.answer("✅ Чат успешно зарегистрирован! Теперь он появится в списке при создании игры.")
     else:
-        await message.answer("Неизвестная команда.")
+        await message.answer("✅ Чат уже зарегистрирован.")
+
+from app.bot.utils import format_game_message
 
 @router.message(CommandStart())
-async def cmd_start(message: types.Message):
-    await message.answer("Привет! Я футбольный менеджер. Используйте кнопки в чате для записи на игру.", reply_markup=get_main_menu_keyboard())
+async def cmd_start(message: types.Message, command: CommandObject, state: FSMContext, session: AsyncSession):
+    """
+    Unified /start handler.
+    Matches both /start and /start <args> (deep links).
+    """
+    args = command.args
+    
+    # 1. Check User Existence
+    result = await session.execute(select(User).where(User.user_id == message.from_user.id))
+    user = result.scalar_one_or_none()
+
+    # 2. Logic for Deep Link "reg" (if used explicitly)
+    if args == "reg":
+        if user:
+            await message.answer("Вы уже зарегистрированы! ✅\nИспользуйте кнопки в чате, чтобы записаться на игру.")
+            return
+        # If not user, fall through to registration
+    
+    # Check for game deep link
+    game_id = None
+    if args and args.startswith("game_"):
+        try:
+            game_id = int(args.split("_")[1])
+        except ValueError:
+            pass
+
+    # 3. If User Exists -> Show Menu OR Game
+    if user:
+        if game_id:
+            # Show Game Interface
+            game_result = await session.execute(select(Game).where(Game.id == game_id))
+            game = game_result.scalar_one_or_none()
+            if game:
+                text = await format_game_message(game, session)
+                await message.answer(text, reply_markup=get_game_keyboard(game_id))
+                return
+            else:
+                await message.answer("Игра не найдена. 🤷‍♂️")
+                
+        await message.answer("Привет! Я футбольный менеджер. ⚽\nИспользуйте команды или кнопки в чате.", reply_markup=get_main_menu_keyboard())
+        return
+
+    # 4. If User NOT Exists -> Registration Flow
+    if game_id:
+        await state.update_data(pending_game_id=game_id)
+        
+    await message.answer("Добро пожаловать в Football Manager! ⚽\n\nДавайте создадим ваш профиль.\nКак вас зовут? (Введите Имя Фамилия)")
+    await state.set_state(Registration.waiting_for_name)
 
 @router.message(Registration.waiting_for_name)
 async def process_name(message: types.Message, state: FSMContext):
@@ -65,7 +155,10 @@ async def process_alt_position_done(callback: types.CallbackQuery, state: FSMCon
     if not selected:
         await callback.answer("Выберите хотя бы одну позицию!", show_alert=True)
         return
-
+    
+    # Check if they only selected one, skipping primary selection? NOT REQUESTED but UX friendly?
+    # No, prompt says "Main role + Alt roles". Always ask Main.
+    
     await callback.message.edit_text("Теперь выберите вашу ОСНОВНУЮ позицию (для балансировки):", reply_markup=get_primary_select_keyboard(selected))
     await state.set_state(Registration.waiting_for_position)
 
@@ -75,10 +168,8 @@ async def process_position(callback: types.CallbackQuery, state: FSMContext, ses
     user_data = await state.get_data()
     full_name = user_data['full_name']
     alt_positions = user_data.get('alt_positions', [])
+    pending_game_id = user_data.get('pending_game_id')
     
-    # Remove primary from alt_positions to avoid redundancy? 
-    # Or keep it? The prompt says "Main role + Alt roles". 
-    # Usually "Alt" implies "Other than Main".
     if position_value in alt_positions:
         alt_positions.remove(position_value)
     
@@ -87,14 +178,24 @@ async def process_position(callback: types.CallbackQuery, state: FSMContext, ses
         user_id=callback.from_user.id,
         username=callback.from_user.username,
         full_name=full_name,
-        position=Position(position_value),
+        player_position=Position(position_value),
         alt_positions=alt_positions
     )
     session.add(new_user)
     await session.commit()
     
-    await callback.message.edit_text(f"Регистрация успешна!\nИмя: {full_name}\nОсновная: {position_value}\nДоп.: {', '.join(alt_positions)}\n\nТеперь вы можете вернуться в чат и записаться на игру.")
+    await callback.message.edit_text(f"Регистрация успешна! ✅\n\n👤 {full_name}\n📍 {position_value}")
     await state.clear()
+    
+    # Redirect to pending game if any
+    if pending_game_id:
+        game_result = await session.execute(select(Game).where(Game.id == pending_game_id))
+        game = game_result.scalar_one_or_none()
+        if game:
+            text = await format_game_message(game, session)
+            await callback.message.answer(text, reply_markup=get_game_keyboard(pending_game_id))
+        else:
+            await callback.message.answer("Игра, которую вы искали, не найдена, но вы теперь зарегистрированы!")
 
 @router.message(Command("history"))
 async def cmd_history(message: types.Message):
@@ -102,8 +203,7 @@ async def cmd_history(message: types.Message):
     current_chat_id = message.chat.id
     
     # Формируем URL с параметром
-    # ВАЖНО: Замените на ваш реальный домен (HTTPS обязателен)
-    web_app_url = f"https://your-domain.com/web/history.html?chat_id={current_chat_id}"
+    web_app_url = f"{settings.WEBAPP_URL}/web/history.html?chat_id={current_chat_id}"
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(
@@ -116,6 +216,42 @@ async def cmd_history(message: types.Message):
         "Нажмите кнопку ниже, чтобы посмотреть статистику именно этого чата:",
         reply_markup=kb
     )
+
+@router.message(F.text == "👤 Мой профиль")
+async def cmd_my_profile(message: types.Message, session: AsyncSession):
+    user_id = message.from_user.id
+    user = await session.get(User, user_id)
+    
+    if not user:
+        await message.answer("Вы еще не зарегистрированы. Нажмите /start")
+        return
+
+    # Calculate total goals
+    try:
+        total_goals = await session.scalar(
+            select(func.sum(GameStats.goals)).where(GameStats.user_id == user_id)
+        ) or 0
+    except Exception as e:
+        print(f"Error calculating goals: {e}")
+        total_goals = 0
+
+    text = f"👤 <b>Профиль игрока</b>\n\n"
+    text += f"<b>{user.full_name}</b> (@{user.username or 'нет'})\n"
+    text += f"📍 Позиция: <b>{user.player_position.value}</b>\n"
+    
+    if user.alt_positions:
+        text += f"🔄 Доп. позиции: {', '.join(user.alt_positions)}\n"
+    
+    text += f"➖➖➖➖➖➖➖➖\n"
+    
+    if settings.SHOW_RATING:
+        text += f"📊 Рейтинг: <b>{user.rating}</b>\n"
+    
+    text += f"🎮 Матчей: <b>{user.games_played}</b>\n"
+    text += f"⭐️ MVP: <b>{user.stats_mvp}</b>\n"
+    text += f"⚽ Голов: <b>{total_goals}</b>"
+    
+    await message.answer(text)
 
 @router.message(F.text == "📜 Мои матчи")
 @router.message(Command("my_history"))

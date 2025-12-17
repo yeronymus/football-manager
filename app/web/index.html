@@ -1,10 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Game</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/ru.js"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/cs.js"></script>
     <style>
         body {
             font-family: var(--tg-theme-font-family, sans-serif);
@@ -13,15 +20,19 @@
             padding: 20px;
             margin: 0;
         }
+
         .form-group {
             margin-bottom: 15px;
         }
+
         label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
         }
-        input, select {
+
+        input,
+        select {
             width: 100%;
             padding: 10px;
             border: 1px solid var(--tg-theme-hint-color, #ccc);
@@ -30,6 +41,7 @@
             background-color: var(--tg-theme-secondary-bg-color, #f5f5f5);
             color: var(--tg-theme-text-color, #000);
         }
+
         button {
             width: 100%;
             padding: 15px;
@@ -41,11 +53,13 @@
             cursor: pointer;
             margin-top: 20px;
         }
+
         button:disabled {
             opacity: 0.5;
         }
     </style>
 </head>
+
 <body>
     <h1>Создать игру</h1>
     <div class="form-group">
@@ -59,32 +73,98 @@
     </div>
     <div class="form-group">
         <label for="date_time">Дата и Время</label>
-        <input type="datetime-local" id="date_time" required>
+        <input type="text" id="date_time" placeholder="Выберите дату и время" required>
     </div>
     <div class="form-group">
         <label for="location">Локация</label>
-        <input type="text" id="location" placeholder="Например, Лужники" required>
+        <input type="text" id="location" placeholder="Например, Strahov" required>
     </div>
     <div class="form-group">
         <label for="max_players">Кол-во мест</label>
-        <input type="number" id="max_players" value="15" min="5" max="30">
+        <input type="number" id="max_players" value="15" min="5" max="30" inputmode="numeric">
     </div>
     <button id="submitBtn" onclick="createGame()">Опубликовать</button>
 
     <script>
         const tg = window.Telegram.WebApp;
+        tg.ready(); // Signal that WebApp is ready
         tg.expand();
 
-        // For MVP, we'll just let user type Chat ID or assume a fixed one if not provided
-        // Ideally, we should fetch chats where bot is admin.
-        // Let's make Chat ID an input for now to be safe.
-        document.getElementById('chat_id').outerHTML = '<input type="number" id="chat_id" placeholder="Chat ID (e.g. -100...)" required>';
+        // DEBUG: Check initData
+        if (!tg.initData) {
+            // Local Debug Mode check
+            // We can't easily check backend DEBUG flag here, but we can warn.
+            // But if backend allows empty initData, we should proceed.
+            // Let's rely on fetch returning 403 if it fails.
+            console.log("No initData found. Assuming Local Debug Mode or Error.");
+        } else {
+            // alert("Debug: initData found. Length: " + tg.initData.length);
+        }
 
+        // Initialize elements
+        const chatSelect = document.getElementById('chat_id');
+        const dateTimeInput = document.getElementById('date_time');
+        const locationInput = document.getElementById('location');
+        const maxPlayersInput = document.getElementById('max_players');
+
+        // 1. Fetch Chats
+        async function loadChats() {
+            try {
+                const response = await fetch('/api/chats?initData=' + encodeURIComponent(tg.initData));
+                if (response.ok) {
+                    const chats = await response.json();
+                    chatSelect.innerHTML = '<option value="" disabled selected>Выберите чат</option>';
+                    if (chats.length === 0) {
+                        const option = document.createElement('option');
+                        option.text = "Нет доступных чатов (добавьте бота в админы)";
+                        option.disabled = true;
+                        chatSelect.add(option);
+                    } else {
+                        chats.forEach(chat => {
+                            const option = document.createElement('option');
+                            option.value = chat.id;
+                            option.text = chat.title;
+                            chatSelect.add(option);
+                        });
+                    }
+                } else {
+                    console.error("Failed to fetch chats");
+                    chatSelect.innerHTML = '<option value="" disabled>Ошибка загрузки чатов</option>';
+                }
+            } catch (e) {
+                console.error(e);
+                chatSelect.innerHTML = '<option value="" disabled>Ошибка сети</option>';
+            }
+        }
+
+        // 2. Set Default Time (Prague/CET) and Init Flatpickr
+        function initDatePicker() {
+            const now = new Date();
+            now.setHours(now.getHours() + 1);
+            now.setMinutes(0);
+
+            flatpickr("#date_time", {
+                enableTime: true,
+                dateFormat: "Y-m-dTH:i", // ISO format for backend
+                altInput: true,
+                altFormat: "d.m.Y H:i", // European display format
+                defaultDate: now,
+                time_24hr: true,
+                locale: "ru", // Or "cs" for Czech
+                minDate: "today"
+            });
+        }
+
+        // Initialize
+        loadChats();
+        initDatePicker();
+
+        // 3. Create Game
         async function createGame() {
-            const chatId = document.getElementById('chat_id').value;
-            const dateTime = document.getElementById('date_time').value;
-            const location = document.getElementById('location').value;
-            const maxPlayers = document.getElementById('max_players').value;
+            const chatId = chatSelect.value;
+            const dateTime = dateTimeInput.value;
+            const location = locationInput.value;
+            const maxPlayers = maxPlayersInput.value;
 
             if (!chatId || !dateTime || !location) {
                 tg.showAlert("Заполните все поля!");
@@ -126,4 +206,5 @@
         }
     </script>
 </body>
+
 </html>

@@ -23,6 +23,8 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
     Validates Telegram WebApp initData.
     """
     try:
+        if settings.DEBUG:
+            return True
         parsed_data = dict(urllib.parse.parse_qsl(init_data))
         if "hash" not in parsed_data:
             return False
@@ -46,6 +48,10 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
         return False
 
 def get_user_from_init_data(init_data: str) -> int:
+    if settings.DEBUG and not init_data:
+        # Default debug user ID (replace with your admin ID for testing)
+        return settings.ADMIN_IDS[0] if settings.ADMIN_IDS else 123456789
+        
     parsed_data = dict(urllib.parse.parse_qsl(init_data))
     user_data = json.loads(parsed_data.get("user", "{}"))
     user_id = user_data.get("id")
@@ -53,12 +59,36 @@ def get_user_from_init_data(init_data: str) -> int:
         raise HTTPException(status_code=400, detail="User ID not found in initData")
     return user_id
 
+# Simple in-memory cache: (chat_id, user_id) -> (timestamp, is_admin)
+admin_rights_cache = {}
+CACHE_TTL = 300  # 5 minutes
+
 async def check_admin_rights(chat_id: int, user_id: int):
+    # 1. Check Cache
+    current_time = time.time()
+    cache_key = (chat_id, user_id)
+    
+    if cache_key in admin_rights_cache:
+        timestamp, is_admin = admin_rights_cache[cache_key]
+        if current_time - timestamp < CACHE_TTL:
+            if not is_admin:
+                raise HTTPException(status_code=403, detail="You must be an admin of the chat (Cached)")
+            return True # Authorized
+
+    # 2. Check Real (if not cached or expired)
     try:
         user_member = await bot.get_chat_member(chat_id, user_id)
-        if user_member.status not in ["administrator", "creator"]:
+        is_admin = user_member.status in ["administrator", "creator"]
+        
+        # Update Cache
+        admin_rights_cache[cache_key] = (current_time, is_admin)
+        
+        if not is_admin:
              raise HTTPException(status_code=403, detail="You must be an admin of the chat")
+             
     except Exception as e:
+        # If API fails, maybe trust cache if strictly needed? 
+        # For now, just fail safe.
         raise HTTPException(status_code=400, detail=f"Cannot verify user rights: {str(e)}")
 
 @router.get("/chats")
@@ -100,7 +130,7 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
     if not user:
         parsed_data = dict(urllib.parse.parse_qsl(game_data.initData))
         user_data = json.loads(parsed_data.get("user", "{}"))
-        user = User(user_id=user_id, full_name=user_data.get("first_name", "Admin"), position="MID")
+        user = User(user_id=user_id, full_name=user_data.get("first_name", "Admin"), player_position="MID")
         session.add(user)
         await session.commit()
 
@@ -210,8 +240,8 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
         text += f"- {p.full_name}{rating_info}\n"
         
     if settings.SHOW_RATING:
-        avg_a = sum(p.rating for p in team_a) / len(team_a)
-        avg_b = sum(p.rating for p in team_b) / len(team_b)
+        avg_a = sum(p.rating for p in team_a) / len(team_a) if team_a else 0
+        avg_b = sum(p.rating for p in team_b) / len(team_b) if team_b else 0
         text += f"\n📊 Средний рейтинг: {int(avg_a)} vs {int(avg_b)}"
 
     await bot.send_message(chat_id=game.chat_id, text=text)
@@ -362,8 +392,9 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
     )
     players_data = result.all()
     
-    team_a = [{"id": p[0].user_id, "name": p[0].full_name} for p in players_data if p[1] == Team.A]
-    team_b = [{"id": p[0].user_id, "name": p[0].full_name} for p in players_data if p[1] == Team.B]
+    team_a = [{"id": p[0].user_id, "name": p[0].full_name, "rating": p[0].rating} for p in players_data if p[1] == Team.A]
+    team_b = [{"id": p[0].user_id, "name": p[0].full_name, "rating": p[0].rating} for p in players_data if p[1] == Team.B]
+    unassigned = [{"id": p[0].user_id, "name": p[0].full_name, "rating": p[0].rating} for p in players_data if not p[1]]
     
     return {
         "id": game.id,
@@ -371,9 +402,47 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
         "date": game.date_time.isoformat(),
         "team_a": team_a,
         "team_b": team_b,
+        "unassigned": unassigned,
         "score_a": game.score_a,
-        "score_b": game.score_b
+        "score_b": game.score_b,
+        "status": game.status.value
     }
+
+@router.post("/publish_teams")
+async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_session)):
+    # Using BalanceTeams (game_id, initData)
+    if not validate_init_data(data.initData, settings.BOT_TOKEN):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+    
+    user_id = get_user_from_init_data(data.initData)
+    
+    result = await session.execute(select(Game).where(Game.id == data.game_id))
+    game = result.scalar_one_or_none()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, user_id)
+    
+    game.status = GameStatus.ACTIVE
+    await session.commit()
+    
+    # Update Public Message
+    from app.bot.main import bot
+    public_text = await format_game_message(game, session)
+    try:
+        if game.message_id:
+            await bot.edit_message_text(
+                chat_id=game.chat_id,
+                message_id=game.message_id,
+                text=public_text,
+                reply_markup=get_game_keyboard(game.id),
+                parse_mode="HTML"
+            )
+            await bot.send_message(game.chat_id, "📢 <b>Составы утверждены!</b> Чекайте закреп.")
+    except Exception as e:
+        print(f"Publish error: {e}")
+        
+    return {"status": "published"}
 
 @router.post("/finish_game")
 async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(get_session)):
