@@ -4,6 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from app.config import settings
+from app.bot.middlewares import DbSessionMiddleware, InstanceAccessMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -23,7 +24,6 @@ from app.bot.handlers import router as valid_router
 from app.bot.game_handlers import router as game_router
 from app.bot.admin_handlers import router as admin_router
 from app.bot.vote_handlers import router as vote_router
-from app.bot.middlewares import DbSessionMiddleware, InstanceAccessMiddleware
 from app.db.database import async_session_maker
 
 dp.include_router(valid_router)
@@ -37,7 +37,9 @@ async def start_bot():
     """
     Function to start the bot (e.g. set webhook).
     This will be called from the FastAPI startup event.
+    This will be called from the FastAPI startup event.
     """
+    webhook_info = await bot.get_webhook_info()
     if webhook_info.url != settings.WEBHOOK_URL:
         await bot.set_webhook(settings.WEBHOOK_URL)
     
