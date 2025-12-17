@@ -122,10 +122,51 @@
             text-align: center;
             color: var(--tg-theme-hint-color, #999);
         }
+
+        /* Selector Styles */
+        #gameSelector {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--tg-theme-bg-color, #fff);
+            z-index: 1000;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #gameList {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .game-card {
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            padding: 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .game-card:hover {
+            border-color: var(--tg-theme-button-color, #3390ec);
+        }
     </style>
 </head>
 
 <body>
+    <div id="gameSelector">
+        <h2 style="margin-bottom:20px;">Выберите матч</h2>
+        <div id="gameList"></div>
+    </div>
+
     <div class="container" id="app">
         <div class="loading">Loading game details...</div>
     </div>
@@ -136,17 +177,61 @@
 
         // Parse URL params
         const urlParams = new URLSearchParams(window.location.search);
-        const gameId = urlParams.get('id');
+        let gameId = urlParams.get('id');
 
         const app = document.getElementById('app');
+        const selector = document.getElementById('gameSelector');
+        const list = document.getElementById('gameList');
+
         let gameData = null;
         let playerGoals = {};
 
+        // --- Game Selector Logic ---
+        async function showGameSelector() {
+            app.style.display = 'none';
+            selector.style.display = 'flex';
+            list.innerHTML = '<div class="loading">Загрузка матчей...</div>';
+
+            try {
+                const response = await fetch(`/api/games/open?initData=${encodeURIComponent(tg.initData)}`);
+                if (!response.ok) throw new Error("Failed to fetch games");
+                const games = await response.json();
+
+                list.innerHTML = '';
+                if (games.length === 0) {
+                    list.innerHTML = '<div style="color:var(--tg-theme-hint-color); text-align:center;">Нет активных матчей.</div>';
+                    return;
+                }
+
+                games.forEach(g => {
+                    const btn = document.createElement('div');
+                    btn.className = 'game-card';
+
+                    const d = new Date(g.date_time);
+                    const dateStr = `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+
+                    btn.innerHTML = `<b>${g.location}</b><br><span style="font-size:14px; color:var(--tg-theme-hint-color);">${dateStr}</span>`;
+
+                    btn.onclick = () => {
+                        gameId = g.id;
+                        selector.style.display = 'none';
+                        app.style.display = 'block';
+                        fetchGameDetails();
+                    };
+                    list.appendChild(btn);
+                });
+            } catch (e) {
+                tg.showAlert("Error: " + e.message);
+            }
+        }
+
         async function fetchGameDetails() {
             if (!gameId) {
-                app.innerHTML = '<div class="loading">No game ID provided.</div>';
+                showGameSelector();
                 return;
             }
+
+            app.innerHTML = '<div class="loading">Loading game details...</div>';
 
             try {
                 const response = await fetch(`/api/game/${gameId}?initData=${encodeURIComponent(tg.initData)}`);
@@ -158,12 +243,24 @@
             }
         }
 
-        function updateGoal(userId, delta) {
+        function updateGoal(userId, delta, team) {
             if (!playerGoals[userId]) playerGoals[userId] = 0;
             playerGoals[userId] = Math.max(0, playerGoals[userId] + delta);
             document.getElementById(`goals-${userId}`).innerText = playerGoals[userId];
 
-            // Auto-update score? Maybe not, let admin set score manually to account for own goals etc.
+            // Auto-update team score
+            calculateTeamScore(team);
+        }
+
+        function calculateTeamScore(team) {
+            let total = 0;
+            const players = team === 'A' ? gameData.team_a : gameData.team_b;
+            players.forEach(p => {
+                total += (playerGoals[p.id] || 0);
+            });
+
+            const scoreInput = document.getElementById(team === 'A' ? 'score-a' : 'score-b');
+            scoreInput.value = total;
         }
 
         async function submitResult() {
@@ -196,7 +293,7 @@
                 });
 
                 if (response.ok) {
-                    tg.showAlert("Game finished successfully!", () => {
+                    tg.showAlert("Матч завершен!", () => {
                         tg.close();
                     });
                 } else {
@@ -215,12 +312,12 @@
                 <h1>${gameData.location}</h1>
                 <div class="score-board">
                     <div class="team-score">
-                        <h3>Team A</h3>
+                        <h3>Команда А</h3>
                         <input type="number" id="score-a" value="${gameData.score_a || 0}" min="0">
                     </div>
                     <div class="vs">:</div>
                     <div class="team-score">
-                        <h3>Team B</h3>
+                        <h3>Команда Б</h3>
                         <input type="number" id="score-b" value="${gameData.score_b || 0}" min="0">
                     </div>
                 </div>
@@ -229,37 +326,37 @@
             html += `<div class="players-list">`;
 
             // Team A
-            html += `<div class="team-header">Team A Players</div>`;
+            html += `<div class="team-header">Игроки Команды А</div>`;
             gameData.team_a.forEach(p => {
                 html += `
                     <div class="player-row">
                         <div class="player-name">${p.name}</div>
                         <div class="goal-controls">
-                            <button class="btn-circle" onclick="updateGoal(${p.id}, -1)">-</button>
+                            <button class="btn-circle" onclick="updateGoal(${p.id}, -1, 'A')">-</button>
                             <span class="goal-count" id="goals-${p.id}">0</span>
-                            <button class="btn-circle" onclick="updateGoal(${p.id}, 1)">+</button>
+                            <button class="btn-circle" onclick="updateGoal(${p.id}, 1, 'A')">+</button>
                         </div>
                     </div>
                 `;
             });
 
             // Team B
-            html += `<div class="team-header" style="margin-top: 20px;">Team B Players</div>`;
+            html += `<div class="team-header" style="margin-top: 20px;">Игроки Команды Б</div>`;
             gameData.team_b.forEach(p => {
                 html += `
                     <div class="player-row">
                         <div class="player-name">${p.name}</div>
                         <div class="goal-controls">
-                            <button class="btn-circle" onclick="updateGoal(${p.id}, -1)">-</button>
+                            <button class="btn-circle" onclick="updateGoal(${p.id}, -1, 'B')">-</button>
                             <span class="goal-count" id="goals-${p.id}">0</span>
-                            <button class="btn-circle" onclick="updateGoal(${p.id}, 1)">+</button>
+                            <button class="btn-circle" onclick="updateGoal(${p.id}, 1, 'B')">+</button>
                         </div>
                     </div>
                 `;
             });
 
             html += `</div>`;
-            html += `<button class="submit-btn" onclick="submitResult()">Finish Match</button>`;
+            html += `<button class="submit-btn" onclick="submitResult()">Завершить матч</button>`;
 
             app.innerHTML = html;
         }

@@ -21,6 +21,9 @@ import re
 
 @router.message(F.is_automatic_forward == True)
 async def handle_auto_forward(message: types.Message):
+    # Ignore if somehow triggered by bot itself (though auto_forward usually implies channel->group)
+    if message.from_user and message.from_user.is_bot:
+        return
     # Detect if it's a game message (look for hidden link or specific text)
     # The hidden link is: <a href="https://t.me/fm_metabot?start=game_{id}">
     
@@ -38,7 +41,7 @@ async def handle_auto_forward(message: types.Message):
     
     if game_id:
         await message.reply(
-            "👇 **Панель записи:**",
+            "ㅤ", # Invisible character U+3164
             reply_markup=get_game_keyboard(game_id)
         )
 
@@ -58,10 +61,16 @@ async def cmd_register_chat(message: types.Message, session: AsyncSession):
     if message.is_automatic_forward:
         return
 
-    if message.from_user.id not in settings.ADMIN_IDS:
-        return # Silently ignore or answer? Better silent for security.
-
-    if message.chat.type not in ["group", "supergroup", "channel"]:
+    # В каналах message.from_user может быть None.
+    # Если это канал, мы считаем, что писать от имени канала может только админ.
+    # Если это группа, проверяем ID юзера.
+    if message.chat.type in ["group", "supergroup"]:
+        if message.from_user.id not in settings.ADMIN_IDS:
+            return 
+    elif message.chat.type == "channel":
+        # В канале просто доверяем, так как постит админ
+        pass
+    else:
         await message.answer("Эту команду нужно использовать в группе или канале.")
         return
 
@@ -73,6 +82,24 @@ async def cmd_register_chat(message: types.Message, session: AsyncSession):
         await message.answer("✅ Чат успешно зарегистрирован! Теперь он появится в списке при создании игры.")
     else:
         await message.answer("✅ Чат уже зарегистрирован.")
+
+@router.message(Command("chats"))
+async def cmd_list_chats(message: types.Message, session: AsyncSession):
+    if message.from_user.id not in settings.ADMIN_IDS:
+        return
+
+    result = await session.execute(select(Chat))
+    chats = result.scalars().all()
+
+    if not chats:
+        await message.answer("Нет зарегистрированных чатов.")
+        return
+
+    text = "📢 **Зарегистрированные чаты:**\n\n"
+    for chat in chats:
+        text += f"▪️ <b>{chat.title}</b> (ID: <code>{chat.chat_id}</code>)\n"
+
+    await message.answer(text)
 
 from app.bot.utils import format_game_message
 
@@ -116,7 +143,9 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
             else:
                 await message.answer("Игра не найдена. 🤷‍♂️")
                 
-        await message.answer("Привет! Я футбольный менеджер. ⚽\nИспользуйте команды или кнопки в чате.", reply_markup=get_main_menu_keyboard())
+        # Check if admin
+        is_admin = message.from_user.id in settings.ADMIN_IDS
+        await message.answer("Привет! Я футбольный менеджер. ⚽\nИспользуйте команды или кнопки в чате.", reply_markup=get_main_menu_keyboard(is_admin))
         return
 
     # 4. If User NOT Exists -> Registration Flow
@@ -128,6 +157,11 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
 
 @router.message(Registration.waiting_for_name)
 async def process_name(message: types.Message, state: FSMContext):
+    # Validation: Latin letters only
+    if not re.match(r"^[a-zA-Z\s]+$", message.text):
+        await message.answer("Пожалуйста, используйте только латинские буквы (Latin letters only).\nПопробуйте еще раз:")
+        return
+
     await state.update_data(full_name=message.text, alt_positions=[])
     await message.answer("Отлично! Выберите ВСЕ позиции, на которых вы можете играть (нажимайте, чтобы выбрать):", reply_markup=get_multiselect_keyboard([]))
     await state.set_state(Registration.waiting_for_alt_positions)
@@ -218,6 +252,7 @@ async def cmd_history(message: types.Message):
     )
 
 @router.message(F.text == "👤 Мой профиль")
+@router.message(Command("my_profile"))
 async def cmd_my_profile(message: types.Message, session: AsyncSession):
     user_id = message.from_user.id
     user = await session.get(User, user_id)

@@ -65,10 +65,10 @@ class Game(Base):
     status = Column(Enum(GameStatus), default=GameStatus.OPEN)
     winner_team = Column(Enum(Team), nullable=True)
     score_a = Column(Integer, nullable=True)
-    winner_team = Column(Enum(Team), nullable=True)
-    score_a = Column(Integer, nullable=True)
     score_b = Column(Integer, nullable=True)
     message_id = Column(BigInteger, nullable=True)
+    has_active_gk_a = Column(Boolean, default=True)
+    has_active_gk_b = Column(Boolean, default=True)
     
     chat = relationship("Chat", back_populates="games")
     creator = relationship("User", back_populates="games_created")

@@ -38,3 +38,26 @@ async def process_vote(callback: types.CallbackQuery, session: AsyncSession):
     await session.commit()
     
     await callback.answer("Ваш голос учтен!")
+
+    # Check if voting is complete (all active players voted)
+    from sqlalchemy import func
+    
+    # Count active players
+    result = await session.execute(
+        select(func.count(Signup.id)).where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
+    )
+    total_players = result.scalar()
+    
+    # Count votes
+    result = await session.execute(
+        select(func.count(Vote.id)).where(Vote.game_id == game_id)
+    )
+    total_votes = result.scalar()
+    
+    if total_votes >= total_players:
+        # Trigger calculation immediately
+        try:
+            from app.scheduler.tasks import calculate_mvp
+            await calculate_mvp(game_id)
+        except Exception as e:
+            print(f"Error triggering early MVP calc: {e}")

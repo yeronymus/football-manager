@@ -22,7 +22,7 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: 16px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
             height: 100vh;
@@ -31,44 +31,60 @@
 
         h1 {
             text-align: center;
-            margin-bottom: 20px;
-            font-size: 20px;
+            margin-bottom: 8px;
+            font-size: 16px;
+            margin-top: 0;
         }
 
-        .columns-container {
+        /* Top Bar */
+        .top-bar {
             display: flex;
-            gap: 10px;
-            overflow-x: auto;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .gk-toggle {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        /* Layout Container */
+        .game-container {
             flex-grow: 1;
-            padding-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        /* 2-Column Grid for Teams */
+        .teams-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            flex-grow: 1;
+            overflow: hidden;
         }
 
         .column {
             background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 10px;
-            min-width: 250px;
-            flex: 1;
+            border-radius: 8px;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #444;
         }
 
         .column-header {
             font-weight: bold;
-            margin-bottom: 10px;
+            font-size: 13px;
             text-align: center;
-            padding: 5px;
-            border-radius: 6px;
+            padding: 6px 4px;
             cursor: pointer;
-            /* Clickable now */
-        }
-
-        .column-header:active {
-            opacity: 0.8;
-        }
-
-        .col-unassigned .column-header {
-            background-color: #444;
         }
 
         .col-a .column-header {
@@ -79,61 +95,158 @@
             background-color: var(--team-b-color);
         }
 
-        .player-list {
+        /* Tactic Sections */
+        .tactic-board {
             flex-grow: 1;
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+        }
+
+        .pos-group {
+            border-bottom: 1px solid #444;
+            min-height: 40px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pos-group.hidden {
+            display: none;
+        }
+
+        .pos-header {
+            font-size: 10px;
+            color: #888;
+            padding: 2px 4px;
+            background: rgba(0, 0, 0, 0.2);
+            text-transform: uppercase;
+        }
+
+        .player-list {
+            flex-grow: 1;
+            padding: 2px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        /* Unassigned Drawer */
+        .unassigned-section {
+            background-color: #333;
+            border-radius: 8px;
+            padding: 6px;
+            max-height: 12vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .unassigned-header {
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+
+        .unassigned-list {
             overflow-y: auto;
-            min-height: 100px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
         }
 
         .player-card {
             background-color: #3d3d3d;
-            padding: 10px;
-            border-radius: 8px;
+            padding: 4px 6px;
+            border-radius: 4px;
             cursor: pointer;
             user-select: none;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: transform 0.1s, border 0.1s, background 0.1s;
+            font-size: 12px;
+            border: 1px solid transparent;
+            width: 100%;
+            box-sizing: border-box;
         }
 
-        .player-card:active {
-            transform: scale(0.98);
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            overflow: hidden;
+        }
+
+        .player-pos {
+            font-size: 9px;
+            font-weight: bold;
+            padding: 1px 2px;
+            border-radius: 3px;
+            background: #555;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .pos-GK {
+            background: #FF9800;
+            color: #000;
+        }
+
+        .pos-DEF {
+            background: #2196F3;
+        }
+
+        .pos-MID {
+            background: #4CAF50;
+        }
+
+        .pos-FWD {
+            background: #f44336;
+        }
+
+        .player-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 80px;
         }
 
         .player-rating {
-            font-size: 12px;
+            font-size: 10px;
             color: #aaa;
             background: #222;
-            padding: 2px 6px;
-            border-radius: 4px;
+            padding: 1px 3px;
+            border-radius: 3px;
+        }
+
+        /* Selection highlight */
+        .selected {
+            border: 1px solid #FFEB3B;
+            background: #505050;
         }
 
         .stats-panel {
-            margin-top: 10px;
-            padding: 10px;
+            padding: 8px;
             background: #252525;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 12px;
             display: flex;
             justify-content: space-between;
+            margin-top: auto;
+            /* Push to bottom if space allows */
         }
 
         .controls {
-            margin-top: 10px;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 8px;
+            padding-top: 4px;
         }
 
         button {
-            padding: 12px;
+            padding: 10px;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
             width: 100%;
@@ -154,38 +267,120 @@
             color: white;
             grid-column: span 2;
         }
+
+        /* Game Selector Modal */
+        #gameSelector {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .game-option {
+            background: #333;
+            width: 100%;
+            padding: 15px;
+            margin: 5px 0;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 16px;
+            cursor: pointer;
+        }
     </style>
 </head>
 
 <body>
-    <h1 id="gameTitle">Загрузка...</h1>
+    <!-- Game Selector Overlay -->
+    <div id="gameSelector">
+        <h2>Выберите игру</h2>
+        <div id="gameList"></div>
+    </div>
 
-    <div class="columns-container">
-        <div class="column col-unassigned">
-            <div class="column-header">Нераспределенные</div>
-            <div class="player-list" id="list-unassigned" ondrop="drop(event)" ondragover="allowDrop(event)">
-                <!-- Players will answer here -->
+    <div class="top-bar">
+        <div style="display:flex; gap:10px;">
+            <label class="gk-toggle">
+                <input type="checkbox" id="chk-gk-a" onchange="toggleGK('a')" checked> GK A
+            </label>
+            <label class="gk-toggle">
+                <input type="checkbox" id="chk-gk-b" onchange="toggleGK('b')" checked> GK B
+            </label>
+        </div>
+        <span id="gameTitle" style="font-weight: bold; font-size:14px;">...</span>
+    </div>
+
+    <div class="game-container">
+        <!-- Unassigned -->
+        <div class="unassigned-section">
+            <div class="unassigned-header">Нераспределенные</div>
+            <div class="unassigned-list" id="list-unassigned" onclick="handleListClick(event, 'list-unassigned')"></div>
+        </div>
+
+        <!-- Teams -->
+        <div class="teams-grid">
+            <!-- Team A -->
+            <div class="column col-a">
+                <div class="column-header" onclick="moveSelectedToTeam('A')">Команда А <span id="rating-a"></span></div>
+                <div class="tactic-board">
+                    <div class="pos-group group-GK" id="a-GK" onclick="moveSelectedToSlot('a-GK', 'GK')">
+                        <div class="pos-header">GK</div>
+                        <div class="player-list"></div>
+                    </div>
+                    <div class="pos-group" id="a-DEF" onclick="moveSelectedToSlot('a-DEF', 'DEF')">
+                        <div class="pos-header">Защита (3)</div>
+                        <div class="player-list"></div>
+                    </div>
+                    <div class="pos-group" id="a-MID" onclick="moveSelectedToSlot('a-MID', 'MID')">
+                        <div class="pos-header">Полузащита (3)</div>
+                        <div class="player-list"></div>
+                    </div>
+                    <div class="pos-group" id="a-FWD" onclick="moveSelectedToSlot('a-FWD', 'FWD')">
+                        <div class="pos-header">Нападение (2)</div>
+                        <div class="player-list"></div>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <div class="column col-a">
-            <div class="column-header">Команда А <span id="rating-a"></span></div>
-            <div class="player-list" id="list-a" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
-        </div>
-
-        <div class="column col-b">
-            <div class="column-header">Команда Б <span id="rating-b"></span></div>
-            <div class="player-list" id="list-b" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <!-- Team B -->
+            <div class="column col-b">
+                <div class="column-header" onclick="moveSelectedToTeam('B')">Команда Б <span id="rating-b"></span></div>
+                <div class="tactic-board">
+                    <div class="pos-group group-GK" id="b-GK" onclick="moveSelectedToSlot('b-GK', 'GK')">
+                        <div class="pos-header">GK</div>
+                        <div class="player-list"></div>
+                    </div>
+                    <div class="pos-group" id="b-DEF" onclick="moveSelectedToSlot('b-DEF', 'DEF')">
+                        <div class="pos-header">Защита (3)</div>
+                        <div class="player-list"></div>
+                    </div>
+                    <div class="pos-group" id="b-MID" onclick="moveSelectedToSlot('b-MID', 'MID')">
+                        <div class="pos-header">Полузащита (3)</div>
+                        <div class="player-list"></div>
+                    </div>
+                    <div class="pos-group" id="b-FWD" onclick="moveSelectedToSlot('b-FWD', 'FWD')">
+                        <div class="pos-header">Нападение (2)</div>
+                        <div class="player-list"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="stats-panel">
-        <span>Разница MMR: <b id="diff-mmr">0</b></span>
-        <span>Игроков: <b id="count-total">0</b></span>
+        <span>Разница: <b id="diff-mmr">0</b></span>
+        <span>Игроки: <b id="count-total">0</b></span>
     </div>
 
     <div class="controls">
-        <button class="btn-balance" onclick="autoBalance()">⚖️ Авто-баланс</button>
+        <button class="btn-balance" onclick="autoBalance()">⚖️ Баланс</button>
         <button class="btn-save" onclick="saveTeams()">💾 Сохранить</button>
         <button class="btn-publish" onclick="publishTeams()">✅ Опубликовать</button>
     </div>
@@ -194,230 +389,139 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Parse Query Params
         const urlParams = new URLSearchParams(window.location.search);
-        const gameId = urlParams.get('game_id');
+        let gameId = urlParams.get('game_id');
+        let allPlayers = {};
+        let selectedPlayerId = null;
 
-        let allPlayers = {}; // id -> {name, rating, team}
+        // --- Init ---
+        if (!gameId) {
+            showGameSelector();
+        } else {
+            loadGame(gameId);
+        }
 
-        async function loadGame() {
+        function toggleGK(team) {
+            // If team is provided, toggle only that team. If not (init), toggle both based on their checkboxes.
+            if (team) {
+                const show = document.getElementById(`chk-gk-${team}`).checked;
+                const el = document.getElementById(`${team}-GK`);
+                if (el) el.style.display = show ? 'flex' : 'none';
+            } else {
+                // Init both
+                toggleGK('a');
+                toggleGK('b');
+            }
+        }
+
+        async function showGameSelector() {
+            document.getElementById('gameSelector').style.display = 'flex';
+            document.getElementById('gameTitle').innerText = "";
             try {
-                const response = await fetch(`/api/game/${gameId}?initData=${encodeURIComponent(tg.initData)}`);
+                const response = await fetch(`/api/games/open?initData=${encodeURIComponent(tg.initData)}`);
+                if (!response.ok) throw new Error("API Error");
+                const games = await response.json();
+                const list = document.getElementById('gameList');
+                list.innerHTML = '';
+                if (games.length === 0) {
+                    list.innerHTML = '<div style="color:#aaa">Нет активных игр</div>';
+                    return;
+                }
+                games.forEach(g => {
+                    const btn = document.createElement('div');
+                    btn.className = 'game-option';
+                    const d = new Date(g.date_time);
+                    btn.innerHTML = `${g.location} (${d.getDate()}.${d.getMonth() + 1})`;
+                    btn.onclick = () => {
+                        gameId = g.id;
+                        document.getElementById('gameSelector').style.display = 'none';
+                        loadGame(gameId);
+                    };
+                    list.appendChild(btn);
+                });
+            } catch (e) { tg.showAlert("Ошибка: " + e.message); }
+        }
+
+        async function loadGame(id) {
+            try {
+                const response = await fetch(`/api/game/${id}?initData=${encodeURIComponent(tg.initData)}`);
                 if (!response.ok) throw new Error("Load failed");
                 const game = await response.json();
 
-                document.getElementById('gameTitle').textContent = `Драфт: ${game.location}`;
-
-                // Clear lists
-                document.getElementById('list-unassigned').innerHTML = '';
-                document.getElementById('list-a').innerHTML = '';
-                document.getElementById('list-b').innerHTML = '';
+                document.getElementById('gameTitle').innerText = game.location;
                 allPlayers = {};
 
-                // Render lists
-                game.unassigned.forEach(p => addPlayer(p, 'list-unassigned'));
-                game.team_a.forEach(p => addPlayer(p, 'list-a'));
-                game.team_b.forEach(p => addPlayer(p, 'list-b'));
+                // Set GK Toggles
+                document.getElementById('chk-gk-a').checked = game.has_active_gk_a !== false; // Default true
+                document.getElementById('chk-gk-b').checked = game.has_active_gk_b !== false;
+                toggleGK(); // Apply vis
+
+                // Clear
+                document.getElementById('list-unassigned').innerHTML = '';
+                ['a', 'b'].forEach(team => {
+                    ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                        document.querySelector(`#${team}-${pos} .player-list`).innerHTML = '';
+                    });
+                });
+
+                // Helper to add
+                const addToTeam = (p, teamPrefix) => {
+                    allPlayers[p.id] = p;
+                    // Sort into slot
+                    const pos = p.position || 'DEF';
+                    const slotId = `${teamPrefix}-${pos}`;
+                    addPlayerToSlot(p, slotId);
+                };
+
+                game.unassigned.forEach(p => {
+                    allPlayers[p.id] = p;
+                    addPlayerToSlot(p, 'list-unassigned');
+                });
+                game.team_a.forEach(p => addToTeam(p, 'a'));
+                game.team_b.forEach(p => addToTeam(p, 'b'));
 
                 updateStats();
-            } catch (e) {
-                tg.showAlert("Ошибка загрузки: " + e.message);
-            }
+            } catch (e) { tg.showAlert("Ошибка: " + e.message); }
         }
 
-        function addPlayer(player, listId) {
-            allPlayers[player.id] = player;
-            const div = document.createElement('div');
-            div.className = 'player-card';
-            div.id = `player-${player.id}`;
-            div.draggable = true;
-            div.innerHTML = `
-                <span>${player.name}</span>
-                <span class="player-rating">${player.rating || 1200}</span>
-            `;
-
-            // Mobile-friendly "Select & Swap" Logic
-            div.onclick = function (e) {
-                e.preventDefault();
-                handlePlayerClick(player.id);
-            };
-
-            // Drag Logic
-            div.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData("text/plain", player.id);
-                selectPlayer(player.id); // Also select on drag
-            });
-
-            document.getElementById(listId).appendChild(div);
-        }
-
-        // --- Drag & Drop ---
-        function allowDrop(ev) {
-            ev.preventDefault();
-        }
-
-        function drop(ev) {
-            ev.preventDefault();
-            const playerId = ev.dataTransfer.getData("text/plain");
-            const playerCard = document.getElementById(`player-${playerId}`);
-            // Find closest list
-            let targetList = ev.target.closest('.player-list');
-            if (targetList) {
-                targetList.appendChild(playerCard);
-                updateStats();
-                deselectPlayer(); // Clear selection after drop
-            }
-        }
-
-        // --- Select & Swap Logic ---
-        let selectedPlayerId = null;
-
-        function handlePlayerClick(id) {
-            if (selectedPlayerId === id) {
-                deselectPlayer();
-            } else {
-                if (selectedPlayerId) {
-                    // Start Swap
-                    swapPlayers(selectedPlayerId, id);
-                    deselectPlayer();
-                } else {
-                    // Select
-                    selectPlayer(id);
-                }
-            }
-        }
-
-        function selectPlayer(id) {
-            if (selectedPlayerId) {
-                const prev = document.getElementById(`player-${selectedPlayerId}`);
-                if (prev) {
-                    prev.style.border = 'none';
-                    prev.style.background = '#3d3d3d';
-                }
-            }
-            selectedPlayerId = id;
-            const el = document.getElementById(`player-${id}`);
-            if (el) {
-                el.style.border = '2px solid #FFEB3B';
-                el.style.background = '#555';
-            }
-        }
-
-        function deselectPlayer() {
-            if (selectedPlayerId) {
-                const el = document.getElementById(`player-${selectedPlayerId}`);
-                if (el) {
-                    el.style.border = 'none';
-                    el.style.background = '#3d3d3d';
-                }
-            }
-            selectedPlayerId = null;
-        }
-
-        function swapPlayers(id1, id2) {
-            const card1 = document.getElementById(`player-${id1}`);
-            const card2 = document.getElementById(`player-${id2}`);
-
-            if (!card1 || !card2) return;
-
-            const parent1 = card1.parentNode;
-            const parent2 = card2.parentNode;
-            const next1 = card1.nextSibling;
-            const next2 = card2.nextSibling;
-
-            // Need to be careful moving elements
-            parent1.insertBefore(card2, next1);
-            parent2.insertBefore(card1, next2);
-
-            updateStats();
-            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        }
-
-        function setupColumnClicks() {
-            document.querySelector('.col-unassigned .column-header').onclick = () => moveSelectedTo('list-unassigned');
-            document.querySelector('.col-a .column-header').onclick = () => moveSelectedTo('list-a');
-            document.querySelector('.col-b .column-header').onclick = () => moveSelectedTo('list-b');
-        }
-
-        function moveSelectedTo(listId) {
-            if (!selectedPlayerId) return;
-            const card = document.getElementById(`player-${selectedPlayerId}`);
-            if (card && card.parentNode.id !== listId) {
-                document.getElementById(listId).appendChild(card);
-                updateStats();
-                if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-            }
-            deselectPlayer();
-        }
-
-        // --- Stats & Actions ---
-
-        function updateStats() {
-            let sumA = 0, countA = 0;
-            let sumB = 0, countB = 0;
-            let total = 0;
-
-            // Scan DOM to get current state
-            document.querySelectorAll('#list-a .player-card').forEach(el => {
-                const id = el.id.replace('player-', '');
-                const p = allPlayers[id];
-                if (p) {
-                    sumA += (p.rating || 1200);
-                    countA++;
-                    total++;
-                }
-            });
-
-            document.querySelectorAll('#list-b .player-card').forEach(el => {
-                const id = el.id.replace('player-', '');
-                const p = allPlayers[id];
-                if (p) {
-                    sumB += (p.rating || 1200);
-                    countB++;
-                    total++;
-                }
-            });
-
-            document.querySelectorAll('#list-unassigned .player-card').forEach(el => total++);
-
-            const avgA = countA ? Math.round(sumA / countA) : 0;
-            const avgB = countB ? Math.round(sumB / countB) : 0;
-
-            document.getElementById('rating-a').textContent = `(Avg: ${avgA})`;
-            document.getElementById('rating-b').textContent = `(Avg: ${avgB})`;
-
-            document.getElementById('diff-mmr').textContent = Math.abs(sumA - sumB);
-            document.getElementById('count-total').textContent = total;
-        }
+        // ... existing createCard ...
 
         async function autoBalance() {
-            if (!confirm("Перемешать команды автоматически?")) return;
+            if (!confirm("Авто-баланс сбросит расстановку. Продолжить?")) return;
             try {
+                // Ensure flags are current
+                await saveTeams();
+
                 await fetch('/api/balance_teams', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        initData: tg.initData,
-                        game_id: parseInt(gameId)
-                    })
+                    body: JSON.stringify({ initData: tg.initData, game_id: parseInt(gameId) })
                 });
-                await loadGame(); // Reload state
-                tg.showAlert("Команды сбалансированы!");
-            } catch (e) {
-                tg.showAlert("Ошибка: " + e.message);
-            }
+                await loadGame(gameId);
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            } catch (e) { tg.showAlert("Ошибка: " + e.message); }
         }
 
         async function saveTeams() {
+            // Gather IDs from slots
             const teamA = [];
             const teamB = [];
 
-            document.querySelectorAll('#list-a .player-card').forEach(el => {
-                teamA.push(parseInt(el.id.replace('player-', '')));
-            });
-            document.querySelectorAll('#list-b .player-card').forEach(el => {
-                teamB.push(parseInt(el.id.replace('player-', '')));
-            });
+            const gather = (prefix, list) => {
+                ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                    const slot = document.getElementById(`${prefix}-${pos}`);
+                    if (!slot) return;
+                    slot.querySelectorAll('.player-card').forEach(card => {
+                        list.push(parseInt(card.id.replace('player-', '')));
+                    });
+                });
+            };
+
+            gather('a', teamA);
+            gather('b', teamB);
+
+            const gkA = document.getElementById('chk-gk-a').checked;
+            const gkB = document.getElementById('chk-gk-b').checked;
 
             try {
                 await fetch('/api/update_teams', {
@@ -427,41 +531,32 @@
                         initData: tg.initData,
                         game_id: parseInt(gameId),
                         team_a: teamA,
-                        team_b: teamB
+                        team_b: teamB,
+                        has_active_gk_a: gkA,
+                        has_active_gk_b: gkB
                     })
                 });
-                tg.showAlert("Сохранено!");
-                updateStats();
-            } catch (e) {
-                tg.showAlert("Ошибка сохранения");
-            }
+                // SILENT SAVE
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                const btn = document.querySelector('.btn-save');
+                const old = btn.innerText;
+                btn.innerText = "OK!";
+                setTimeout(() => btn.innerText = old, 1000);
+            } catch (e) { tg.showAlert("Ошибка: " + e.message); }
         }
 
         async function publishTeams() {
-            if (!confirm("Опубликовать составы в канал? Игра станет АКИТВНОЙ.")) return;
-            await saveTeams();
+            if (!confirm("Опубликовать составы?")) return;
+            await saveTeams(); // Save first to ensure state
             try {
                 await fetch('/api/publish_teams', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        initData: tg.initData,
-                        game_id: parseInt(gameId)
-                    })
+                    body: JSON.stringify({ initData: tg.initData, game_id: parseInt(gameId) })
                 });
-                tg.showAlert("Опубликовано! Можно закрывать.");
+                tg.showAlert("Опубликовано!");
                 tg.close();
-            } catch (e) {
-                tg.showAlert("Ошибка публикации: " + e.message);
-            }
-        }
-
-        // Init
-        setupColumnClicks();
-        if (!gameId) {
-            document.body.innerHTML = "<h2>Ошибка: Game ID не найден</h2>";
-        } else {
-            loadGame();
+            } catch (e) { tg.showAlert("Ошибка: " + e.message); }
         }
     </script>
 </body>

@@ -33,20 +33,27 @@ async def run_draft_logic(game_id: int, session: AsyncSession, bot, target_chat_
     team_a, team_b = balance_teams(players)
 
     # Format Message
-    text = f"⚖️ <b>Драфт: {game.location}</b>\n"
-    text += f"📅 {game.date_time.strftime('%d.%m %H:%M')}\n\n"
-    text += "Нажмите кнопку ниже, чтобы открыть панель управления составами."
+    # Format Message
+    date_str = game.date_time.strftime('%d.%m %H:%M')
+    text = f"⚽ <b>Драфт: {date_str}</b>\n"
+    text += f"📍 {game.location}"
 
     web_app_url = f"{settings.WEBAPP_URL}/web/draft.html?game_id={game.id}"
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="🎽 Открыть Драфт (WebApp)", web_app=types.WebAppInfo(url=web_app_url))]
+        [types.InlineKeyboardButton(text="⚽ Драфт", web_app=types.WebAppInfo(url=web_app_url))]
     ])
     
     await bot.send_message(target_chat_id, text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(Command("draft"))
+@router.message(F.text == "🔀 Шаффл")
 async def cmd_draft(message: types.Message, session: AsyncSession):
+    if message.text == "🔀 Шаффл":
+        try:
+            await message.delete()
+        except:
+            pass
     if message.from_user.id not in settings.ADMIN_IDS:
         return
 
@@ -113,3 +120,15 @@ async def process_publish(callback: types.CallbackQuery, session: AsyncSession):
 
     await callback.message.edit_text("✅ **Опубликовано!**")
 
+@router.message(Command("finish"))
+async def cmd_finish(message: types.Message):
+    if message.from_user.id not in settings.ADMIN_IDS:
+        return
+
+    web_app_url = f"{settings.WEBAPP_URL}/web/finish.html"
+    
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="🏁 Завершить матч", web_app=types.WebAppInfo(url=web_app_url))]
+    ])
+    
+    await message.answer("Открыть панель завершения матча:", reply_markup=kb)

@@ -6,6 +6,12 @@ class Settings(BaseSettings):
     ADMIN_IDS: List[int]
     WEBHOOK_URL: str
     
+    # Seeding
+    INITIAL_CHATS: List[dict] = [
+        {"id": -1001234567890, "title": "Test Chat"},
+        {"id": -1009876543210, "title": "Main Chat"}
+    ]
+    
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str

@@ -6,6 +6,8 @@ from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from app.config import settings
+
 async def send_voting_message(game_id: int):
     async for session in get_session():
         result = await session.execute(select(Game).where(Game.id == game_id))
@@ -76,8 +78,7 @@ async def calculate_mvp(game_id: int):
             if mvp_user:
                 mvp_user.stats_mvp += 1
 
-        # ELO Calculation
-        game.status = GameStatus.FINISHED
+        # NOTE: We do NOT finish the game here. Admin must do it via /finish_game to set scores.
         await session.commit()
         
         text = f"🏆 MVP матча {game.location} признан {mvp_user.full_name} ({votes_count} голосов)!" if mvp_user else "MVP не выбран (нет голосов)."
@@ -100,12 +101,10 @@ async def remind_admin_to_finish(game_id: int):
         creator_id = game.created_by
         
         # 3. Формируем кнопку сразу на экран завершения
-        # Deep Link в Web App, чтобы открыть сразу нужную игру
-        # ВАЖНО: Замените на ваш реальный домен
-        web_app_url = f"https://your-domain.com/web/finish.html?id={game.id}"
+        web_app_url = f"{settings.WEBAPP_URL}/web/finish.html?id={game.id}"
         
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📝 Заполнить протокол", web_app=types.WebAppInfo(url=web_app_url))]
+            [InlineKeyboardButton(text="📝 Заполнить матч", web_app=types.WebAppInfo(url=web_app_url))]
         ])
         
         try:
@@ -114,6 +113,6 @@ async def remind_admin_to_finish(game_id: int):
                 text=f"⏰ Матч в <b>{game.location}</b> уже должен закончиться.\n\nПожалуйста, внесите счет и авторов голов, чтобы обновить статистику!",
                 reply_markup=kb
             )
-        except Exception:
-            # Админ мог заблочить бота, бывает
-            pass
+        except Exception as e:
+            # Админ мог заблочить бота
+             print(f"Failed to remind admin: {e}")

@@ -216,12 +216,13 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
     team_a, team_b = run_balance_teams(players)
 
     # Update DB
+    # Update DB
     for player in team_a:
-        signup = (await session.execute(select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == player.user_id))).scalar_one()
+        signup = (await session.execute(select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == player.id))).scalar_one()
         signup.team = Team.A
     
     for player in team_b:
-        signup = (await session.execute(select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == player.user_id))).scalar_one()
+        signup = (await session.execute(select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == player.id))).scalar_one()
         signup.team = Team.B
 
     await session.commit()
@@ -327,25 +328,10 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
     )
     team_b_objs = result.scalars().all()
 
-    # Update message in chat
-    text = f"⚖️ <b>Составы команд (Обновлено админом):</b>\n\n"
+    await session.commit()
     
-    text += "🔴 <b>Команда А:</b>\n"
-    for p in team_a_objs:
-        rating_info = f" ({p.rating})" if settings.SHOW_RATING else ""
-        text += f"- {p.full_name}{rating_info}\n"
-    
-    text += "\n🔵 <b>Команда Б:</b>\n"
-    for p in team_b_objs:
-        rating_info = f" ({p.rating})" if settings.SHOW_RATING else ""
-        text += f"- {p.full_name}{rating_info}\n"
-        
-    if settings.SHOW_RATING:
-        avg_a = sum(p.rating for p in team_a_objs) / len(team_a_objs) if team_a_objs else 0
-        avg_b = sum(p.rating for p in team_b_objs) / len(team_b_objs) if team_b_objs else 0
-        text += f"\n📊 Средний рейтинг: {int(avg_a)} vs {int(avg_b)}"
-
-    await bot.send_message(chat_id=game.chat_id, text=text)
+    # Message removed as per user request (Save should be silent)
+    # Only Publish sends notification
 
     return {"status": "updated"}
 
@@ -370,6 +356,31 @@ async def set_game_result(data: GameResult, session: AsyncSession = Depends(get_
 
     return {"status": "result_set"}
 
+@router.get("/games/open")
+async def get_open_games(initData: str, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(initData, settings.BOT_TOKEN):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+    
+    user_id = get_user_from_init_data(initData)
+    # Check admin rights in general? Or just list games where user is admin?
+    # For now, list ALL open games for simplicity, or filtered by chat.
+    # The prompt implies scaling, so maybe just list all OPEN games.
+    
+    result = await session.execute(
+        select(Game).where(Game.status.in_([GameStatus.OPEN, GameStatus.ACTIVE])).order_by(Game.date_time)
+    )
+    games = result.scalars().all()
+    
+    return [
+        {
+            "id": g.id, 
+            "location": g.location, 
+            "date_time": g.date_time.isoformat(),
+            "chat_id": g.chat_id
+        } 
+        for g in games
+    ]
+
 @router.get("/game/{game_id}")
 async def get_game_details(game_id: int, initData: str, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(initData, settings.BOT_TOKEN):
@@ -392,9 +403,18 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
     )
     players_data = result.all()
     
-    team_a = [{"id": p[0].user_id, "name": p[0].full_name, "rating": p[0].rating} for p in players_data if p[1] == Team.A]
-    team_b = [{"id": p[0].user_id, "name": p[0].full_name, "rating": p[0].rating} for p in players_data if p[1] == Team.B]
-    unassigned = [{"id": p[0].user_id, "name": p[0].full_name, "rating": p[0].rating} for p in players_data if not p[1]]
+    def serialize_player(p_tuple):
+        user, team = p_tuple
+        return {
+            "id": user.user_id,
+            "name": user.full_name,
+            "rating": user.rating,
+            "position": user.player_position.value if user.player_position else "DEF"
+        }
+    
+    team_a = [serialize_player(p) for p in players_data if p[1] == Team.A]
+    team_b = [serialize_player(p) for p in players_data if p[1] == Team.B]
+    unassigned = [serialize_player(p) for p in players_data if not p[1]]
     
     return {
         "id": game.id,
@@ -405,7 +425,9 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
         "unassigned": unassigned,
         "score_a": game.score_a,
         "score_b": game.score_b,
-        "status": game.status.value
+        "status": game.status.value,
+        "has_active_gk_a": game.has_active_gk_a,
+        "has_active_gk_b": game.has_active_gk_b
     }
 
 @router.post("/publish_teams")
@@ -423,6 +445,7 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
         
     await check_admin_rights(game.chat_id, user_id)
     
+    is_update = game.status == GameStatus.ACTIVE
     game.status = GameStatus.ACTIVE
     await session.commit()
     
@@ -438,6 +461,10 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
                 reply_markup=get_game_keyboard(game.id),
                 parse_mode="HTML"
             )
+            
+        if is_update:
+            await bot.send_message(game.chat_id, "🔄 <b>Составы обновлены!</b> Проверьте изменения в закрепе.")
+        else:
             await bot.send_message(game.chat_id, "📢 <b>Составы утверждены!</b> Чекайте закреп.")
     except Exception as e:
         print(f"Publish error: {e}")
@@ -503,7 +530,7 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
             player.rating = new_rating
             player.games_played += 1
             
-            # Log history (TODO: Import RatingHistory)
+            # Log history (Future functionality)
             # history = RatingHistory(...)
             # session.add(history)
 
@@ -532,11 +559,14 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
     scorers = [p for p in data.player_stats if p.goals > 0]
     if scorers:
         text += "\n⚽ <b>Голы:</b>\n"
+        scorer_ids = [s.user_id for s in scorers]
+        # Fetch names
+        result = await session.execute(select(User).where(User.user_id.in_(scorer_ids)))
+        users_map = {u.user_id: u.full_name for u in result.scalars().all()}
+        
         for s in scorers:
-            # Need to fetch names, but we only have IDs in request.
-            # Optimization: Fetch names in the loop or before.
-            # For now, let's skip names in notification to save time, or fetch them.
-            pass
+            name = users_map.get(s.user_id, "Неизвестный")
+            text += f"- {name}: {s.goals}\n"
 
     await bot.send_message(chat_id=game.chat_id, text=text)
 
