@@ -1,0 +1,23 @@
+
+# Secrets
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Database
+*.db
+*.sqlite3
+postgres_data/
+redis_data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
