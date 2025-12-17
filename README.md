@@ -32,25 +32,11 @@
 *   **Кэш**: Redis (хранение состояний и прав админов)
 *   **Инфраструктура**: Docker Compose + Nginx (Reverse Proxy)
 
-## 📦 Установка и Обновление
+## 📦 Установка
 
-Проект развернут на личном сервере.
-Подробная инструкция по деплою и обновлению находится в файле:
-📄 [DEPLOYMENT.md](deployment.md)
+Это приватный репозиторий. Развертывание и обновление производятся только владельцем системы.
 
-### Быстрые команды (для владельца)
-
-**Обновить код на сервере:**
-```bash
-# С локальной машины
-rsync -av --exclude 'venv' --exclude '__pycache__' --exclude '.git' --exclude 'football.db' . ubuntu@yernur-vm1.sin.cvut.cz:~/football_bot
-ssh ubuntu@yernur-vm1.sin.cvut.cz "cd ~/football_bot && docker compose up -d --build"
-```
-
-**Остановить бота:**
-```bash
-ssh ubuntu@yernur-vm1.sin.cvut.cz "cd ~/football_bot && docker compose down"
-```
+Техническая документация и инструкции по деплою находятся в закрытом доступе.
 
 ---
 *Private Software. Unauthorized access prohibited.*
