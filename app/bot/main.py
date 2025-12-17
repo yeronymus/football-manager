@@ -16,12 +16,14 @@ bot = Bot(
 
 # Initialize Dispatcher
 dp = Dispatcher()
+dp.message.outer_middleware(InstanceAccessMiddleware())
+dp.callback_query.outer_middleware(InstanceAccessMiddleware())
 
 from app.bot.handlers import router as valid_router
 from app.bot.game_handlers import router as game_router
 from app.bot.admin_handlers import router as admin_router
 from app.bot.vote_handlers import router as vote_router
-from app.bot.middlewares import DbSessionMiddleware
+from app.bot.middlewares import DbSessionMiddleware, InstanceAccessMiddleware
 from app.db.database import async_session_maker
 
 dp.include_router(valid_router)

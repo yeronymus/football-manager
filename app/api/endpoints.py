@@ -60,6 +60,11 @@ def get_user_from_init_data(init_data: str) -> int:
     user_id = user_data.get("id")
     if not user_id:
         raise HTTPException(status_code=400, detail="User ID not found in initData")
+        
+    # Immobilizer: API Access Control
+    if settings.SYSTEM_OWNER_ID and user_id != settings.SYSTEM_OWNER_ID:
+        raise HTTPException(status_code=403, detail="Unauthorized instance owner")
+        
     return user_id
 
 # Simple in-memory cache: (chat_id, user_id) -> (timestamp, is_admin)

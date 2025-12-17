@@ -545,7 +545,10 @@
                 const old = btn.innerText;
                 btn.innerText = "OK!";
                 setTimeout(() => btn.innerText = old, 1000);
-            } catch (e) { tg.showAlert("Ошибка: " + e.message); }
+            } catch (e) {
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+                tg.showAlert("Ошибка: " + e.message);
+            }
         }
 
         async function publishTeams() {
