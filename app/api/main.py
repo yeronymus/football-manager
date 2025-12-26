@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+print("Loading application module...", flush=True)
 from aiogram.types import Update
 from app.bot.main import bot, dp, start_bot, stop_bot
 from app.config import settings
@@ -46,7 +47,7 @@ app.mount("/web", StaticFiles(directory="app/web", html=True), name="web")
 async def on_shutdown():
     await stop_bot()
 
-@app.post("/webhook")
+@app.post("/api/webhook")
 async def webhook(request: Request):
     update = Update.model_validate(await request.json(), context={"bot": bot})
     await dp.feed_update(bot, update)

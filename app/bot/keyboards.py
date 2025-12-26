@@ -44,7 +44,7 @@ def get_main_menu_keyboard(is_admin: bool = False):
         return types.ReplyKeyboardRemove()
 
     from app.config import settings
-    web_app_url = f"{settings.WEBAPP_URL}/web/index.html"
+    web_app_url = f"{settings.WEBAPP_URL}/web/index.html?v=2"
     
     # Admin Panel Only
     buttons = [
@@ -56,3 +56,18 @@ def get_main_menu_keyboard(is_admin: bool = False):
         keyboard=buttons,
         resize_keyboard=True
     )
+
+def get_main_menu_inline_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
+    if not is_admin:
+        return None
+
+    from app.config import settings
+    # Ensure ?v=2 is present to break cache
+    web_app_url = f"{settings.WEBAPP_URL}/web/index.html?v=2"
+    
+    buttons = [
+        [InlineKeyboardButton(text="➕ Создать игру", web_app=types.WebAppInfo(url=web_app_url))],
+        [InlineKeyboardButton(text="🔀 Шаффл", callback_data="shuffle_teams")] # Placeholder for shuffle
+    ]
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)

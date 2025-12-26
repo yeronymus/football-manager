@@ -1,6 +1,6 @@
 import logging
 import sys
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from app.config import settings
@@ -54,6 +54,15 @@ async def start_bot():
         types.BotCommand(command="register_chat", description="📢 Подключить чат (Админ)"),
     ]
     await bot.set_my_commands(commands)
+
+    # Set Persistent Menu Button (WebApp)
+    web_app_url = f"{settings.WEBAPP_URL}/web/index.html?v=2"
+    await bot.set_chat_menu_button(
+        menu_button=types.MenuButtonWebApp(
+            text="Создать игру", 
+            web_app=types.WebAppInfo(url=web_app_url)
+        )
+    )
 
 async def stop_bot():
     """
