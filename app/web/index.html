@@ -109,6 +109,18 @@
 
         // 1. Fetch Chats
         async function loadChats() {
+            // DEBUG: Show initData status
+            if (!tg.initData) {
+                chatSelect.innerHTML = '<option value="" disabled>ERROR: No InitData (Are you in Telegram?)</option>';
+                // Also create a visible error
+                const debugDiv = document.createElement('div');
+                debugDiv.style.color = 'red';
+                debugDiv.style.padding = '10px';
+                debugDiv.innerText = "Debug: tg.initData is EMPTY. Platform: " + (tg.platform || 'unknown');
+                document.body.prepend(debugDiv);
+                return;
+            }
+
             try {
                 const response = await fetch('/api/chats?initData=' + encodeURIComponent(tg.initData));
                 if (response.ok) {
@@ -133,7 +145,7 @@
                 }
             } catch (e) {
                 console.error(e);
-                chatSelect.innerHTML = '<option value="" disabled>Ошибка сети</option>';
+                chatSelect.innerHTML = `<option value="" disabled>Ошибка сети: ${e.message}</option>`;
             }
         }
 

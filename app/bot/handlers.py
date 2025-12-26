@@ -1,11 +1,11 @@
 from aiogram import Router, F, types
 from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.fsm.context import FSMContext
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.fsm import Registration
-from app.bot.keyboards import get_multiselect_keyboard, get_primary_select_keyboard, get_main_menu_keyboard
+from app.bot.keyboards import get_multiselect_keyboard, get_primary_select_keyboard, get_main_menu_keyboard, get_main_menu_inline_keyboard
 from app.db.database import get_session
 from app.db.models import User, Position, Game, Signup, GameStats, RatingHistory, SignupStatus, GameStatus, Team
 from app.config import settings
@@ -145,7 +145,16 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 
         # Check if admin
         is_admin = message.from_user.id in settings.ADMIN_IDS
-        await message.answer("Привет! Я футбольный менеджер. ⚽\nИспользуйте команды или кнопки в чате.", reply_markup=get_main_menu_keyboard(is_admin))
+        
+        # 1. Force remove old ReplyKeyboard (UX Cleanup)
+        sent_msg = await message.answer("⌛", reply_markup=types.ReplyKeyboardRemove())
+        await sent_msg.delete() # Delete immediately so it's seamless
+
+        # 2. Send Inline Keyboard
+        await message.answer(
+            "Привет! Я футбольный менеджер. ⚽\nНажмите кнопку ниже, чтобы создать игру.", 
+            reply_markup=get_main_menu_inline_keyboard(is_admin)
+        )
         return
 
     # 4. If User NOT Exists -> Registration Flow

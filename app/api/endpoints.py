@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_session
 from app.db.models import Game, User, Chat, Signup, SignupStatus, Team, GameStats, GameStatus
+import logging
 from app.api.schemas import GameCreate, BalanceTeams, GameResult, GameFinishRequest, UpdateTeamsRequest
 from app.bot.elo import calculate_new_rating
 from app.bot.main import bot
@@ -16,6 +17,9 @@ import urllib.parse
 import json
 import time
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 def validate_init_data(init_data: str, bot_token: str) -> bool:
@@ -27,9 +31,11 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
         # or rely on local validation. 
         # Removed simple bypass to enforce signed data usage.
         if not init_data:
+            logger.warning("validate_init_data failed: Empty init_data")
             return False
         parsed_data = dict(urllib.parse.parse_qsl(init_data))
         if "hash" not in parsed_data:
+            logger.warning("validate_init_data failed: No hash in init_data")
             return False
         
         hash_value = parsed_data.pop("hash")
@@ -39,15 +45,18 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
         
         if calculated_hash != hash_value:
+            logger.warning(f"validate_init_data failed: Hash mismatch. Calc: {calculated_hash}, Recieved: {hash_value}")
             return False
             
         # Check auth_date for replay attacks (10 minutes window)
         auth_date = int(parsed_data.get("auth_date", 0))
         if time.time() - auth_date > 600:
+            logger.warning("validate_init_data failed: Auth date expired")
             return False
             
         return True
-    except Exception:
+    except Exception as e:
+        logger.error(f"validate_init_data exception: {e}")
         return False
 
 def get_user_from_init_data(init_data: str) -> int:
@@ -101,28 +110,39 @@ async def check_admin_rights(chat_id: int, user_id: int):
 
 @router.get("/chats")
 async def get_chats(initData: str, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(initData, settings.BOT_TOKEN):
-        raise HTTPException(status_code=403, detail="Invalid initData")
-    
-    user_id = get_user_from_init_data(initData)
-    
-    # Get all chats from DB
-    result = await session.execute(select(Chat))
-    all_chats = result.scalars().all()
-    
-    admin_chats = []
-    import asyncio
-    for chat in all_chats:
-        try:
-            # Check if user is admin in this chat
-            member = await bot.get_chat_member(chat.chat_id, user_id)
-            if member.status in ["administrator", "creator"]:
-                admin_chats.append({"id": chat.chat_id, "title": chat.title})
-            await asyncio.sleep(0.05) # Prevent FloodWait
-        except Exception:
-            continue
-            
-    return admin_chats
+    try:
+        if not validate_init_data(initData, settings.BOT_TOKEN):
+            raise HTTPException(status_code=403, detail="Invalid initData")
+        
+        user_id = get_user_from_init_data(initData)
+        logger.info(f"Fetching chats for user_id: {user_id}")
+        
+        # Get all chats from DB
+        result = await session.execute(select(Chat))
+        all_chats = result.scalars().all()
+        logger.info(f"Found {len(all_chats)} chats in DB")
+        
+        admin_chats = []
+        import asyncio
+        for chat in all_chats:
+            try:
+                # Check if user is admin in this chat
+                # Optimization: Could cache this or check DB if we track admins there
+                member = await bot.get_chat_member(chat.chat_id, user_id)
+                if member.status in ["administrator", "creator"]:
+                    admin_chats.append({"id": chat.chat_id, "title": chat.title})
+                await asyncio.sleep(0.05) # Prevent FloodWait
+            except Exception as e:
+                logger.warning(f"Error checking chat {chat.chat_id} for user {user_id}: {e}")
+                continue
+                
+        logger.info(f"User {user_id} is admin in {len(admin_chats)} chats")
+        return admin_chats
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"get_chats fatal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/create_game")
 async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get_session)):
