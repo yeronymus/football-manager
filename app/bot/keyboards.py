@@ -11,6 +11,7 @@ def get_position_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="⚽ Нападающий (FWD)", callback_data=f"pos_{Position.FWD.value}")],
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_multiselect_keyboard(selected: list[str]) -> InlineKeyboardMarkup:
     buttons = []
@@ -67,7 +68,21 @@ def get_main_menu_inline_keyboard(is_admin: bool = False) -> InlineKeyboardMarku
     
     buttons = [
         [InlineKeyboardButton(text="➕ Создать игру", web_app=types.WebAppInfo(url=web_app_url))],
-        [InlineKeyboardButton(text="🔀 Шаффл", callback_data="shuffle_teams")] # Placeholder for shuffle
+        [InlineKeyboardButton(text="🔀 Шаффл", callback_data="shuffle_teams")]
     ]
     
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def get_profile_edit_keyboard() -> InlineKeyboardMarkup:
+    buttons = [
+        [InlineKeyboardButton(text="✏️ Изменить профиль", callback_data="edit_profile")]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def get_edit_choice_keyboard() -> InlineKeyboardMarkup:
+    buttons = [
+        [InlineKeyboardButton(text="📝 Изменить имя", callback_data="edit_name")],
+        [InlineKeyboardButton(text="🏃 Изменить позицию", callback_data="edit_position")],
+        [InlineKeyboardButton(text="🔙 Отмена", callback_data="edit_cancel")]
+    ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)

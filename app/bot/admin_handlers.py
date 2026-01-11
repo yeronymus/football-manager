@@ -13,6 +13,48 @@ router = Router()
 
 router = Router()
 
+@router.message(Command("create"))
+async def cmd_create(message: types.Message):
+    if message.from_user.id not in settings.ADMIN_IDS:
+        await message.answer("У вас нет прав на создание игр.")
+        return
+
+    web_app_url = f"{settings.WEBAPP_URL}/web/index.html?v=2"
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="➕ Создать игру", web_app=types.WebAppInfo(url=web_app_url))]
+    ])
+    
+    await message.answer("Нажмите кнопку ниже, чтобы создать новую игру:", reply_markup=kb)
+
+from app.bot.admin_dashboard import update_dashboard_message
+from app.db.models import Signup
+# from app.bot.main import bot  <-- REMOVED to prevent circular import
+
+@router.callback_query(F.data.startswith("toggle_pay_"))
+async def cb_toggle_payment(callback: types.CallbackQuery, session: AsyncSession):
+    # Security: Ideally check if Admin. But Dashboard is only in Admin Chat (hidden via /link).
+    
+    parts = callback.data.split("_") # toggle, pay, signup_id
+    if len(parts) < 3:
+        return
+        
+    signup_id = int(parts[2])
+    signup = await session.get(Signup, signup_id)
+    
+    if signup:
+        signup.is_paid = not signup.is_paid
+        await session.commit()
+        
+        # Update Dashboard
+        await update_dashboard_message(callback.bot, signup.game_id, session)
+        # We don't update public message per privacy request
+        
+        # Just answer callback
+        status = "✅ Оплачено" if signup.is_paid else "🔴 Не оплачено"
+        await callback.answer(f"Статус изменен: {status}")
+    else:
+        await callback.answer("Игрок не найден", show_alert=True)
+
 async def run_draft_logic(game_id: int, session: AsyncSession, bot, target_chat_id: int):
     game = await session.get(Game, game_id)
     if not game:

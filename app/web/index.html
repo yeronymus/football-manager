@@ -77,11 +77,26 @@
     </div>
     <div class="form-group">
         <label for="location">Локация</label>
-        <input type="text" id="location" placeholder="Например, Strahov" required>
+        <input type="text" id="location" value="Pankrac" placeholder="Например, Pankrac" required>
     </div>
     <div class="form-group">
         <label for="max_players">Кол-во мест</label>
-        <input type="number" id="max_players" value="15" min="5" max="30" inputmode="numeric">
+        <input type="number" id="max_players" value="18" min="5" max="30" inputmode="numeric">
+    </div>
+    <div class="form-group">
+        <label for="team_count">Количество команд</label>
+        <select id="team_count">
+            <option value="2" selected>2 Команды</option>
+            <option value="3">3 Команды (Турнир)</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="price">Взнос (CZK)</label>
+        <input type="number" id="price" value="100" min="0" step="10" inputmode="numeric">
+    </div>
+    <div class="form-group">
+        <label for="payment_info">Номер счета</label>
+        <input type="text" id="payment_info" value="2924402033/0800" placeholder="Номер счета / карты">
     </div>
     <button id="submitBtn" onclick="createGame()">Опубликовать</button>
 
@@ -198,6 +213,9 @@
                         date_time: new Date(dateTime).toISOString(),
                         location: location,
                         max_players: parseInt(maxPlayers),
+                        price: parseInt(document.getElementById('price').value) || 100,
+                        payment_info: document.getElementById('payment_info').value || "2924402033/0800",
+                        team_count: parseInt(document.getElementById('team_count').value) || 2,
                         initData: tg.initData
                     })
                 });

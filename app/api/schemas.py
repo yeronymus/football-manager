@@ -8,6 +8,9 @@ class GameCreate(BaseModel):
     date_time: datetime
     location: str
     max_players: int = 18
+    price: int = 100
+    payment_info: str = "2924402033/0800"
+    team_count: int = 2
     initData: str
 
 class BalanceTeams(BaseModel):
@@ -35,4 +38,5 @@ class UpdateTeamsRequest(BaseModel):
     game_id: int
     team_a: list[int]
     team_b: list[int]
+    team_c: Optional[list[int]] = None
     initData: str

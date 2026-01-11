@@ -25,6 +25,7 @@ class SignupStatus(str, enum.Enum):
 class Team(str, enum.Enum):
     A = "A"
     B = "B"
+    C = "C"
 
 class User(Base):
     __tablename__ = "users"
@@ -50,6 +51,7 @@ class Chat(Base):
 
     chat_id = Column(BigInteger, primary_key=True, index=True)
     title = Column(String, nullable=False)
+    admin_chat_id = Column(BigInteger, nullable=True) # Linked Admin Chat
 
     games = relationship("Game", back_populates="chat")
 
@@ -62,13 +64,19 @@ class Game(Base):
     date_time = Column(DateTime(timezone=True), nullable=False)
     location = Column(String, nullable=False)
     max_players = Column(Integer, default=18)
+    price = Column(Integer, default=100)
+    payment_info = Column(String, default="2924402033/0800")
+    team_count = Column(Integer, default=2)
     status = Column(Enum(GameStatus), default=GameStatus.OPEN)
     winner_team = Column(Enum(Team), nullable=True)
     score_a = Column(Integer, nullable=True)
     score_b = Column(Integer, nullable=True)
-    message_id = Column(BigInteger, nullable=True)
+    score_c = Column(Integer, nullable=True)
+    message_id = Column(BigInteger, nullable=True) # Public Message
+    admin_message_id = Column(BigInteger, nullable=True) # Dashboard Message
     has_active_gk_a = Column(Boolean, default=True)
     has_active_gk_b = Column(Boolean, default=True)
+    has_active_gk_c = Column(Boolean, default=True)
     
     chat = relationship("Chat", back_populates="games")
     creator = relationship("User", back_populates="games_created")
