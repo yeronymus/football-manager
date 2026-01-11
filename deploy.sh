@@ -39,8 +39,24 @@ fi
 echo "Uploading $ENV_FILE as .env..."
 scp $ENV_FILE $SERVER_USER@$SERVER_HOST:$REMOTE_DIR/.env
 
-# 4. Restart Docker
-echo "Restarting services..."
+# 4. Migrations (Optional)
+if [ "$2" == "--migrate" ]; then
+    echo "🛠  Running Migrations..."
+    # We find all migrate_*.py files and run them securely
+    # Using 'run --rm' creates a temporary container ensuring network access to DB
+    ssh $SERVER_USER@$SERVER_HOST "cd $REMOTE_DIR && for f in migrate_*.py; do echo \"Running \$f...\"; docker-compose run --rm app python \$f; done"
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Migrations completed."
+    else
+        echo "❌ Migrations failed! Check logs above."
+        # Ask to continue? Or exit? Safer to exit if migration fails.
+        exit 1
+    fi
+fi
+
+# 5. Restart Docker
+echo "🔄 Restarting services..."
 ssh $SERVER_USER@$SERVER_HOST "cd $REMOTE_DIR && docker-compose down --remove-orphans && docker-compose build && docker-compose up -d"
 
-echo "Done! $ENV_NAME is running."
+echo "✅ Done! $ENV_NAME is running."

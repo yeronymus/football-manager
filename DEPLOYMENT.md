@@ -1,69 +1,84 @@
-# 🚀 Deployment Guide
+# 📦 Deployment Guide
 
-This guide describes how to deploy the Football Manager Bot to a remote server.
+Запуск бота настроен через Docker Compose. Процесс развертывания максимально автоматизирован с помощью скрипта `deploy.sh`.
 
-## Prerequisites
+## 🏗 Архитектура деплоя
 
-1.  **SSH Access**: You must have SSH access to the target server (e.g., `ubuntu@yernur-vm1.sin.cvut.cz`).
-2.  **Docker**: The server must have `docker` and `docker-compose` installed.
-3.  **SSH Key**: Your SSH public key must be in `~/.ssh/authorized_keys` on the server to allow passwordless login (required for the script).
+У нас есть два окружения:
+1.  **Production (prod)**: `football-prod`
+    *   Работает с боевой базой данных.
+    *   Запускается через `prod.sh` (обертка над `deploy.sh prod`).
+    *   Использует `.env` файл `production.env`.
+2.  **Development (dev)**: `football-dev`
+    *   Песочница.
+    *   Запускается через `deploy.sh dev`.
+    *   Использует `.env` файл `development.env`.
 
-## Environment Setup
+## 🚀 Быстрый Деплой
 
-The project uses two separate environment files for security:
-
-*   **Production**: `production.env` -> Deployed to `~/football-prod/.env`
-*   **Development**: `development.env` -> Deployed to `~/football-dev/.env`
-
-**⚠️ Vital:** Never commit these files to public version control if they contain real secrets.
-
-## 🛠 One-Command Deployment
-
-We use a helper script `deploy.sh` to automate the process (sync files + restart containers).
-
-### 1. Deploy to Production
-Updates the running instance that users are currently using.
+### 1. Обычное обновление кода
+Если вы изменили только python-файлы или шаблоны, просто запустите:
 
 ```bash
-./deploy.sh prod
-```
+# Для продакшена
+./prod.sh
 
-*   **Target**: `~/football-prod`
-*   **Port**: `8000` (API), `5432` (DB)
-*   **Config**: `production.env`
-
-### 2. Deploy to Development
-Updates the test instance for checking new features.
-
-```bash
+# Для дев-стенда
 ./deploy.sh dev
 ```
 
-*   **Target**: `~/football-dev`
-*   **Port**: `8001` (API), `5433` (DB)
-*   **Config**: `development.env`
+Скрипт:
+1.  Скопирует файлы на сервер (без остановки текущего контейнера).
+2.  Пересоберет образ `app`.
+3.  Перезапустит контейнер `app` (Docker Compose Up -d).
 
-## Troubleshooting
-
-### View Logs
-To see what's happening in real-time (e.g., Python errors, SQL queries):
+### 2. Деплой с миграциями БД
+Если вы добавили новые поля в модели или таблицы:
 
 ```bash
-# Production
-ssh ubuntu@yernur-vm1.sin.cvut.cz "docker logs -f football-prod_app_1"
-
-# Development
-ssh ubuntu@yernur-vm1.sin.cvut.cz "docker logs -f football-dev_app_1"
+# Добавьте флаг --migrate
+./prod.sh --migrate
 ```
 
-### Force Restart
-If the bot gets stuck:
+Скрипт дополнительно выполнит:
+1.  Запуск временного контейнера для выполнения всех скриптов миграции (`migrate_db.py`, `migrate_admin.py`, и любых новых файлов `migrate_*.py`).
+
+**💡 Важно:** Миграции запускаются _после_ обновления кода, но _до_ финального рестарта основного сервиса (хотя архитектурно они могут идти параллельно, мы используем безопасный `run` метод).
+
+## 🗃 Работа с Базой Данных
+
+### Бэкапы (WIP)
+_Планируется добавление скрипта backup.sh_
+
+### Ручной доступ к БД
+Подключиться к psql внутри контейнера:
+
 ```bash
-ssh ubuntu@yernur-vm1.sin.cvut.cz "cd ~/football-prod && docker-compose restart app"
+ssh ubuntu@<server> "cd ~/football-prod && docker-compose exec db psql -U football_user -d football_db"
 ```
 
-## Infrastructure Details
+## 🐞 Устранение неполадок (Troubleshooting)
 
-*   **Database**: PostgreSQL 15 (Data stored in Docker Volume `postgres_data`)
-*   **Cache**: Redis 7
-*   **Reverse Proxy**: Nginx (managed externally on the host, proxies port 443 -> 8000)
+### "Прод упал!"
+1.  **Проверьте логи**:
+    ```bash
+    ssh ubuntu@<server> "cd ~/football-prod && docker-compose logs --tail=100 app"
+    ```
+2.  **Контейнер перезагружается (Restarting)?**
+    *   Скорее всего ошибка при старте (ImportError, SyntaxError, DB connection). Логи покажут причину.
+    *   Если ошибка в коде: исправьте локально -> `./prod.sh`.
+    *   Если ошибка в БД (нет колонки): `./prod.sh --migrate`.
+
+### Миграция упала
+Если `./prod.sh --migrate` завершился с ошибкой:
+1.  Подключитесь к серверу.
+2.  Запустите руками, чтобы увидеть полный трейс:
+    ```bash
+    cd ~/football-prod
+    docker-compose run --rm app python migrate_your_script.py
+    ```
+
+## 📝 Чек-лист перед выкаткой в Прод
+1.  [ ] Код работает локально.
+2.  [ ] Если меняли модели -> создали `migrate_xyz.py`.
+3.  [ ] `./prod.sh --migrate` (если нужны миграции) или `./prod.sh`.

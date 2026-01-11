@@ -4,8 +4,17 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.fsm import Registration
-from app.bot.keyboards import get_multiselect_keyboard, get_primary_select_keyboard, get_main_menu_keyboard, get_main_menu_inline_keyboard
+from app.bot.fsm import Registration, EditingProfile
+from app.bot.keyboards import (
+    get_multiselect_keyboard, 
+    get_primary_select_keyboard, 
+    get_main_menu_keyboard, 
+    get_main_menu_inline_keyboard,
+    get_profile_edit_keyboard,
+    get_edit_choice_keyboard
+)
+
+
 from app.db.database import get_session
 from app.db.models import User, Position, Game, Signup, GameStats, RatingHistory, SignupStatus, GameStatus, Team
 from app.config import settings
@@ -150,10 +159,9 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
         sent_msg = await message.answer("⌛", reply_markup=types.ReplyKeyboardRemove())
         await sent_msg.delete() # Delete immediately so it's seamless
 
-        # 2. Send Inline Keyboard
+        # 2. Send Welcome Message (Menu Button handles interactions)
         await message.answer(
-            "Привет! Я футбольный менеджер. ⚽\nНажмите кнопку ниже, чтобы создать игру.", 
-            reply_markup=get_main_menu_inline_keyboard(is_admin)
+            "Привет! Я футбольный менеджер. ⚽\nИспользуйте кнопку 'Меню' или команды для управления."
         )
         return
 
@@ -237,6 +245,10 @@ async def process_position(callback: types.CallbackQuery, state: FSMContext, ses
         if game:
             text = await format_game_message(game, session)
             await callback.message.answer(text, reply_markup=get_game_keyboard(pending_game_id))
+            
+            # TRIGGER DASHBOARD UPDATE
+            from app.bot.admin_dashboard import update_dashboard_message
+            await update_dashboard_message(callback.bot, game.id, session)
         else:
             await callback.message.answer("Игра, которую вы искали, не найдена, но вы теперь зарегистрированы!")
 
@@ -295,7 +307,7 @@ async def cmd_my_profile(message: types.Message, session: AsyncSession):
     text += f"⭐️ MVP: <b>{user.stats_mvp}</b>\n"
     text += f"⚽ Голов: <b>{total_goals}</b>"
     
-    await message.answer(text)
+    await message.answer(text, reply_markup=get_profile_edit_keyboard())
 
 @router.message(F.text == "📜 Мои матчи")
 @router.message(Command("my_history"))
@@ -374,3 +386,62 @@ async def cmd_my_history(message: types.Message, session: AsyncSession):
     text += f"🎮 Матчей: <b>{user.games_played}</b>"
 
     await message.answer(text)
+
+# --- Profile Editing Handlers ---
+
+@router.callback_query(F.data == "edit_profile")
+async def cb_edit_profile(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup(reply_markup=get_edit_choice_keyboard())
+    await state.set_state(EditingProfile.waiting_for_choice)
+
+@router.callback_query(F.data == "edit_cancel")
+async def cb_edit_cancel(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
+    await state.clear()
+    await callback.answer("Редактирование отменено")
+    await callback.message.delete()
+    # Ideally we would show the profile again, but deleting the menu is simpler for now.
+
+@router.callback_query(F.data == "edit_name")
+async def cb_edit_name(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введите ваше новое Имя и Фамилию:")
+    await state.set_state(EditingProfile.waiting_for_name)
+    await callback.answer()
+
+@router.message(EditingProfile.waiting_for_name)
+async def process_edit_name_input(message: types.Message, state: FSMContext, session: AsyncSession):
+    # Validation
+    if not re.match(r"^[a-zA-Z\s]+$", message.text):
+        await message.answer("Пожалуйста, используйте только латинские буквы.\nПопробуйте еще раз:")
+        return
+
+    user = await session.get(User, message.from_user.id)
+    if user:
+        user.full_name = message.text
+        await session.commit()
+        await message.answer(f"✅ Имя обновлено на: {user.full_name}")
+    
+    await state.clear()
+    # Recursively call cmd_my_profile to show updated profile
+    await cmd_my_profile(message, session)
+
+@router.callback_query(F.data == "edit_position")
+async def cb_edit_position(callback: types.CallbackQuery, state: FSMContext):
+    # Reuse primary select keyboard but we need available positions.
+    all_positions = [p.value for p in Position]
+    await callback.message.answer("Выберите новую позицию:", reply_markup=get_primary_select_keyboard(all_positions))
+    await state.set_state(EditingProfile.waiting_for_position)
+    await callback.answer()
+
+@router.callback_query(EditingProfile.waiting_for_position, F.data.startswith("primary_"))
+async def process_edit_position_choice(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
+    position_value = callback.data.split("_")[1]
+    
+    user = await session.get(User, callback.from_user.id)
+    if user:
+        user.player_position = Position(position_value)
+        await session.commit()
+    
+    await callback.message.edit_text(f"✅ Позиция обновлена на: {position_value}")
+    await state.clear()
+    # For callback, we can't easily call message handler with same object type, 
+    # but we can just leave the success message.

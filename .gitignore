@@ -21,3 +21,6 @@ redis_data/
 .idea/
 .vscode/
 *.swp
+
+# Agent Rules
+.gemini_rules.md

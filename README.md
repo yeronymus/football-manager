@@ -28,7 +28,14 @@
 
 ## 📦 Установка и Развертывание
 
-Проект поддерживает **Infrastructure as Code**. См. [DEPLOYMENT.md](DEPLOYMENT.md).
+Проект поддерживает **Infrastructure as Code**. 
+Подробная инструкция по деплою и миграциям: [DEPLOYMENT.md](DEPLOYMENT.md).
+
+Quick start:
+```bash
+./prod.sh           # Деплой кода
+./prod.sh --migrate # Деплой + Миграции БД
+```
 
 ---
-*Created by [Your Name]. Open for engineering discussions.*
+*Created by Yeronym. Open for engineering discussions.*

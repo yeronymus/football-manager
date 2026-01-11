@@ -43,34 +43,50 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
     text += f"——————————————————\n"
     
     # Check if teams are active (Active Game logic)
-    team_a = [s for s in signups if s[0].status == SignupStatus.ACTIVE and s[0].team == Team.A]
-    team_b = [s for s in signups if s[0].status == SignupStatus.ACTIVE and s[0].team == Team.B]
-    unassigned = [s for s in signups if s[0].status == SignupStatus.ACTIVE and s[0].team is None]
-    
-    has_teams = bool(team_a or team_b)
-    
-    if has_teams:
-        # Show Teams
-        text += f"🔴 <b>Команда А</b> ({len(team_a)}):\n"
-        has_gk_a = False
-        for i, (signup, user) in enumerate(team_a, 1):
-            text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>({user.player_position.value})</i>\n"
-            if user.player_position == Position.GK:
-                has_gk_a = True
-        if not has_gk_a:
-            text += "<i>🧤 Вратарь решается на поле</i>\n"
+    # Determine if we should show teams.
+    # We show teams if ANY player has a team assigned? Or if status is ACTIVE?
+    # Game Status is reliable.
+    show_teams = False
+    if game.status in [GameStatus.ACTIVE, GameStatus.FINISHED]:
+        show_teams = True
+    elif any(s[0].team for s in active_players):
+        # Fallback if status isn't updated but players have teams
+        show_teams = True
+
+    if show_teams:
+        team_map = {0: Team.A, 1: Team.B, 2: Team.C}
+        team_names = ["🔴 Команда А", "🔵 Команда Б", "🟢 Команда С"]
+        team_gk_flags = [game.has_active_gk_a, game.has_active_gk_b, getattr(game, 'has_active_gk_c', True)] 
+        # getattr default True to match model default
+        
+        # Iterate up to game.team_count (default 2 if None)
+        count = game.team_count if game.team_count else 2
+        
+        for i in range(count):
+            team_enum = team_map.get(i)
+            if not team_enum: continue
             
-        text += f"\n🔵 <b>Команда B</b> ({len(team_b)}):\n"
-        has_gk_b = False
-        for i, (signup, user) in enumerate(team_b, 1):
-            text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>({user.player_position.value})</i>\n"
-            if user.player_position == Position.GK:
-                 has_gk_b = True
-        if not has_gk_b:
-            text += "<i>🧤 Вратарь решается на поле</i>\n"
+            t_players = [s for s in signups if s[0].status == SignupStatus.ACTIVE and s[0].team == team_enum]
+            t_name = team_names[i] if i < len(team_names) else f"Команда {i+1}"
             
+            text += f"{t_name} ({len(t_players)}):\n"
+            
+            has_gk = False
+            for j, (signup, user) in enumerate(t_players, 1):
+                text += f"{j}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>({user.player_position.value})</i>\n"
+                if user.player_position == Position.GK:
+                    has_gk = True
+            
+            # Check if this team needs a GK
+            needed_gk = team_gk_flags[i] if i < len(team_gk_flags) else True
+            if not has_gk and needed_gk:
+                text += "<i>🧤 Вратарь решается на поле</i>\n"
+            text += "\n"
+
+        # Unassigned
+        unassigned = [s for s in signups if s[0].status == SignupStatus.ACTIVE and s[0].team is None]
         if unassigned:
-            text += f"\n⚪ <b>Нераспределенные</b> ({len(unassigned)}):\n"
+            text += f"⚪ <b>Нераспределенные</b> ({len(unassigned)}):\n"
             for i, (signup, user) in enumerate(unassigned, 1):
                 text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>({user.player_position.value})</i>\n"
             
@@ -81,7 +97,8 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
         if active_players:
             text += "\n🏃 <b>Игроки:</b>\n"
             for i, (signup, user) in enumerate(active_players, 1):
-                text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>({user.player_position.value})</i>\n"
+                 price_paid = "" # Future: if paid
+                 text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>({user.player_position.value})</i>{price_paid}\n"
         else:
             text += "\nПока никого... 🦗\n"
     
@@ -89,5 +106,11 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
         text += f"\n🕒 <b>Резерв</b> ({len(reserve_players)}):\n"
         for i, (signup, user) in enumerate(reserve_players, 1):
             text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a>\n"
+            
+    # Add Footer with Game Info (Price, etc)
+    if game.price and game.price > 0:
+        text += f"\n💰 Взнос: {game.price} CZK"
+        if game.payment_info:
+            text += f"\n💳 Счет: <code>{html.escape(game.payment_info)}</code>"
 
     return text

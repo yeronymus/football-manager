@@ -31,6 +31,9 @@ dp.include_router(game_router)
 dp.include_router(admin_router)
 dp.include_router(vote_router)
 
+from app.bot.admin_tools import router as tools_router
+dp.include_router(tools_router)
+
 dp.update.middleware(DbSessionMiddleware(session_pool=async_session_maker))
 
 async def start_bot():
@@ -45,24 +48,52 @@ async def start_bot():
     
     logging.info(f"Webhook set to {settings.WEBHOOK_URL}")
 
-    # Set Bot Commands
-    commands = [
-        types.BotCommand(command="start", description="🏠 Главное меню / Регистрация"),
-        types.BotCommand(command="my_profile", description="👤 Мой профиль"),
-        types.BotCommand(command="my_history", description="📜 Мои игры"),
-        types.BotCommand(command="draft", description="⚖️ Драфт (Админ)"),
-        types.BotCommand(command="register_chat", description="📢 Подключить чат (Админ)"),
-    ]
-    await bot.set_my_commands(commands)
+    # Set Bot Commands ...
+    logging.info("Setting bot commands...")
+    
+    # 1. Clear existing commands to force update
+    try:
+        await bot.delete_my_commands(scope=types.BotCommandScopeDefault())
+        await bot.delete_my_commands(scope=types.BotCommandScopeAllPrivateChats())
+        logging.info("Cleared default and private commands.")
+    except Exception as e:
+        logging.warning(f"Failed to clear commands: {e}")
 
-    # Set Persistent Menu Button (WebApp)
-    web_app_url = f"{settings.WEBAPP_URL}/web/index.html?v=2"
-    await bot.set_chat_menu_button(
-        menu_button=types.MenuButtonWebApp(
-            text="Создать игру", 
-            web_app=types.WebAppInfo(url=web_app_url)
-        )
-    )
+    # 2. Set new commands
+    # Common commands for everyone
+    user_commands = [
+        types.BotCommand(command="start", description="🏠 Меню"),
+        types.BotCommand(command="create", description="➕ Создать"),
+        types.BotCommand(command="my_profile", description="👤 Профиль"),
+        types.BotCommand(command="my_history", description="📜 История"),
+    ]
+    
+    # Admin-only commands (appended to user commands)
+    admin_commands = user_commands + [
+        types.BotCommand(command="draft", description="⚖️ Драфт / Составы"),
+        types.BotCommand(command="finish", description="🏁 Завершить матч"),
+        types.BotCommand(command="register_chat", description="📢 Подключить чат"),
+        types.BotCommand(command="setup", description="🕹 God Mode"),
+    ]
+
+    # Set Default Scope (For groups etc)
+    await bot.set_my_commands(user_commands, scope=types.BotCommandScopeDefault())
+    
+    # Set Private Chats Scope (Explicitly for all private chats)
+    await bot.set_my_commands(user_commands, scope=types.BotCommandScopeAllPrivateChats())
+    
+    # Set Admin Scope (For specific admins in private chat)
+    for admin_id in settings.ADMIN_IDS:
+        try:
+            await bot.set_my_commands(admin_commands, scope=types.BotCommandScopeChat(chat_id=admin_id))
+        except Exception as e:
+            logging.warning(f"Failed to set commands for admin {admin_id}: {e}")
+
+    logging.info("Set role-based commands successfully.")
+    
+    # 3. Force 'Commands' menu button explicitly
+    logging.info("Setting menu button to COMMANDS...")
+    await bot.set_chat_menu_button(menu_button=types.MenuButtonCommands())
 
 async def stop_bot():
     """

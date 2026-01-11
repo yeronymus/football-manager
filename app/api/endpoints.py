@@ -179,7 +179,10 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         created_by=user_id,
         date_time=game_data.date_time,
         location=game_data.location,
-        max_players=game_data.max_players
+        max_players=game_data.max_players,
+        price=game_data.price,
+        payment_info=game_data.payment_info,
+        team_count=game_data.team_count
     )
     session.add(new_game)
     await session.commit()
@@ -198,6 +201,13 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         
         await bot.pin_chat_message(chat_id=game_data.chat_id, message_id=sent_message.message_id)
         
+        # Trigger Admin Dashboard Update
+        from app.bot.admin_dashboard import update_dashboard_message
+        try:
+             await update_dashboard_message(bot, new_game.id, session)
+        except Exception as e:
+             logging.warning(f"Failed to send admin dashboard: {e}")
+
         # Schedule voting
         from app.scheduler.main import scheduler
         from app.scheduler.tasks import send_voting_message
@@ -218,6 +228,11 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
 
 @router.post("/balance_teams")
 async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Depends(get_session)):
+    """
+    Balances teams for a specific game using the `balance_teams` algorithm.
+    Resets current team assignments and redistributes players based on the game's team count.
+    Saves the new assignments to the database and notifies the chat.
+    """
     if not validate_init_data(data.initData, settings.BOT_TOKEN):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
@@ -241,37 +256,45 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
     if len(players) < 2:
         raise HTTPException(status_code=400, detail="Not enough players to balance")
 
-    team_a, team_b = run_balance_teams(players)
+    teams = run_balance_teams(players, team_count=game.team_count)
 
     # Update DB
-    # Update DB
-    for player in team_a:
-        signup = (await session.execute(select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == player.id))).scalar_one()
-        signup.team = Team.A
+    # Reset current teams for these players logic? 
+    # Or just assign based on index
     
-    for player in team_b:
-        signup = (await session.execute(select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == player.id))).scalar_one()
-        signup.team = Team.B
+    team_map = {0: Team.A, 1: Team.B, 2: Team.C}
+    
+    # Flatten teams to iterate
+    for i, team_players in enumerate(teams):
+        team_enum = team_map.get(i)
+        if not team_enum:
+             continue # Should not happen if count <= 3
+             
+        for player in team_players:
+            signup = (await session.execute(select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == player.id))).scalar_one()
+            signup.team = team_enum
 
     await session.commit()
 
     # Send message with teams
     text = f"⚖️ <b>Составы команд ({game.location}):</b>\n\n"
     
-    text += "🔴 <b>Команда А:</b>\n"
-    for p in team_a:
-        rating_info = f" ({p.rating})" if settings.SHOW_RATING else ""
-        text += f"- {p.full_name}{rating_info}\n"
+    team_names = ["🔴 Команда А", "🔵 Команда Б", "🟢 Команда С"]
     
-    text += "\n🔵 <b>Команда Б:</b>\n"
-    for p in team_b:
-        rating_info = f" ({p.rating})" if settings.SHOW_RATING else ""
-        text += f"- {p.full_name}{rating_info}\n"
+    for i, team_players in enumerate(teams):
+        t_name = team_names[i] if i < len(team_names) else f"Команда {i+1}"
+        text += f"<b>{t_name}:</b>\n"
+        for p in team_players:
+            rating_info = f" ({p.rating})" if settings.SHOW_RATING else ""
+            text += f"- {p.full_name}{rating_info}\n"
+        text += "\n"
         
     if settings.SHOW_RATING:
-        avg_a = sum(p.rating for p in team_a) / len(team_a) if team_a else 0
-        avg_b = sum(p.rating for p in team_b) / len(team_b) if team_b else 0
-        text += f"\n📊 Средний рейтинг: {int(avg_a)} vs {int(avg_b)}"
+        avgs = []
+        for team_players in teams:
+            avg = sum(p.rating for p in team_players) / len(team_players) if team_players else 0
+            avgs.append(int(avg))
+        text += f"\n📊 Средний рейтинг: {' vs '.join(map(str, avgs))}"
 
     await bot.send_message(chat_id=game.chat_id, text=text)
 
@@ -294,7 +317,7 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
     except Exception:
         pass
 
-    return {"status": "balanced", "team_a_count": len(team_a), "team_b_count": len(team_b)}
+    return {"status": "balanced", "team_counts": [len(t) for t in teams]}
 
 @router.post("/update_teams")
 async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends(get_session)):
@@ -334,11 +357,20 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
             signup_map[uid].team = Team.B
             team_b_users.append(uid)
             
+    if data.team_c:
+        for uid in data.team_c:
+            if uid in signup_map:
+                signup_map[uid].team = Team.C
+                # team_c_users.append(uid)
+            
     # Reset others to None (or handle as "Unassigned")
     # If a user is in neither list, they are effectively removed from a team but still signed up?
     # Or should we assume the lists are exhaustive?
     # Let's assume lists contain ALL assigned players.
     assigned_ids = set(data.team_a) | set(data.team_b)
+    if data.team_c:
+        assigned_ids |= set(data.team_c)
+        
     for uid, signup in signup_map.items():
         if uid not in assigned_ids:
             signup.team = None
@@ -442,6 +474,7 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
     
     team_a = [serialize_player(p) for p in players_data if p[1] == Team.A]
     team_b = [serialize_player(p) for p in players_data if p[1] == Team.B]
+    team_c = [serialize_player(p) for p in players_data if p[1] == Team.C]
     unassigned = [serialize_player(p) for p in players_data if not p[1]]
     
     return {
@@ -450,12 +483,14 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
         "date": game.date_time.isoformat(),
         "team_a": team_a,
         "team_b": team_b,
+        "team_c": team_c,
         "unassigned": unassigned,
         "score_a": game.score_a,
         "score_b": game.score_b,
         "status": game.status.value,
         "has_active_gk_a": game.has_active_gk_a,
-        "has_active_gk_b": game.has_active_gk_b
+        "has_active_gk_b": game.has_active_gk_b,
+        "has_active_gk_c": getattr(game, 'has_active_gk_c', True)
     }
 
 @router.post("/publish_teams")
