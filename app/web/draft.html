@@ -209,6 +209,17 @@
             background: #4CAF50;
         }
 
+        .pos-CDM {
+            background: #388E3C;
+            /* Darker Green */
+        }
+
+        .pos-CAM {
+            background: #8BC34A;
+            /* Light Green */
+            color: #000;
+        }
+
         .pos-FWD {
             background: #f44336;
         }
@@ -351,7 +362,10 @@
                 Нераспределенные
                 <span onclick="openSearch()"
                     style="cursor:pointer; background:#2196F3; padding:2px 6px; border-radius:4px; margin-left:8px; font-size:10px;">➕
-                    Add</span>
+                    Поиск</span>
+                <span onclick="openGuestModal()"
+                    style="cursor:pointer; background:#4CAF50; padding:2px 6px; border-radius:4px; margin-left:4px; font-size:10px;">👤
+                    Гость</span>
             </div>
             <div class="unassigned-list" id="list-unassigned" onclick="handleListClick(event, 'list-unassigned')"></div>
         </div>
@@ -557,7 +571,7 @@
                         const pos = p.position;
                         if (pos === 'GK') posCat = 'GK';
                         else if (['LB', 'CB', 'RB'].includes(pos)) posCat = 'DEF';
-                        else if (['LM', 'CM', 'RM'].includes(pos)) posCat = 'MID';
+                        else if (['LM', 'CM', 'RM', 'CDM', 'CAM'].includes(pos)) posCat = 'MID';
                         else if (['LW', 'RW', 'FWD', 'ST'].includes(pos)) posCat = 'FWD';
 
                         addPlayerToSlot(p, `${key}-${posCat}`);
@@ -572,7 +586,11 @@
                 activeTeams.forEach(k => toggleGK(k));
                 updateStats();
 
-            } catch (e) { console.error(e); tg.showAlert("Ошибка: " + e.message); }
+            } catch (e) {
+                console.error(e);
+                alert("Ошибка загрузки данных (Load Error): " + e.message);
+                tg.showAlert("Ошибка: " + e.message);
+            }
         }
 
         function renderPosGroup(prefix, pos, label) {
@@ -831,7 +849,65 @@
                 tg.showAlert("Ошибка сети: " + e.message);
             }
         }
+        function openGuestModal() {
+            document.getElementById('guestModal').style.display = 'flex';
+            document.getElementById('guestName').focus();
+        }
+
+        async function submitGuest() {
+            const name = document.getElementById('guestName').value;
+            const pos = document.getElementById('guestPos').value;
+            if (!name) return alert("Введите имя!");
+
+            try {
+                const response = await fetch('/api/admin/add_guest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        initData: tg.initData,
+                        game_id: parseInt(gameId),
+                        name: name,
+                        position: pos
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Error");
+                }
+
+                document.getElementById('guestModal').style.display = 'none';
+                document.getElementById('guestName').value = '';
+                await loadGame(gameId);
+                tg.showAlert("Гость добавлен!");
+            } catch (e) {
+                alert("Ошибка: " + e.message);
+            }
+        }
     </script>
+
+    <!-- ADD GUEST MODAL -->
+    <div id="guestModal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); z-index:2001; flex-direction:column; padding:20px;">
+        <h3 style="color:white">👤 Гость</h3>
+        <input type="text" id="guestName" placeholder="Имя (Name)"
+            style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:none;">
+        <select id="guestPos" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:none;">
+            <option value="GK">GK (Вратарь)</option>
+            <option value="CB">CB (Центр. Защ)</option>
+            <option value="LB">LB (Левый Защ)</option>
+            <option value="RB">RB (Правый Защ)</option>
+            <option value="CDM">CDM (Опорник)</option>
+            <option value="CM" selected>CM (Центр. Пз)</option>
+            <option value="CAM">CAM (Атак. Пз)</option>
+            <option value="LW">LW (Левый Нап)</option>
+            <option value="RW">RW (Правый Нап)</option>
+            <option value="FWD">FWD (Нападающий)</option>
+        </select>
+        <button class="btn-save" onclick="submitGuest()">Добавить</button>
+        <button class="search-close-btn" onclick="document.getElementById('guestModal').style.display='none'"
+            style="margin-top:10px;">Отмена</button>
+    </div>
 </body>
 
 </html>
