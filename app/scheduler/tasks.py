@@ -100,6 +100,17 @@ async def remind_admin_to_finish(game_id: int):
         if not game or game.status == GameStatus.FINISHED:
             return
 
+        # Double-check timing: If game was rescheduled, this old job might be firing prematurely.
+        # Ensure now is actually past the reminder threshold (date_time + 2h).
+        from datetime import datetime, timedelta
+        # Ensure timezone awareness match
+        now_tz = datetime.now(game.date_time.tzinfo) if game.date_time.tzinfo else datetime.now()
+        threshold = game.date_time + timedelta(hours=1, minutes=59) # slightly lenient
+        
+        if now_tz < threshold:
+             # This is an old job firing for a game that was moved to the future. Ignore.
+             return
+
         # 2. Находим создателя игры (обычно он админ и был на поле)
         creator_id = game.created_by
         

@@ -61,3 +61,9 @@ class AddPlayerRequest(BaseModel):
     game_id: int
     user_id: int
     initData: str
+
+class AddGuestRequest(BaseModel):
+    game_id: int
+    name: str
+    position: str
+    initData: str

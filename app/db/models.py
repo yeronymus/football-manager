@@ -14,7 +14,9 @@ class Position(str, enum.Enum):
     RB = "RB"
     
     # Midfielders
+    CDM = "CDM"
     CM = "CM"
+    CAM = "CAM"
     LM = "LM"
     RM = "RM"
     

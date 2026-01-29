@@ -128,10 +128,11 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
         # Row 1: Edit, Draft
         row_1 = []
         edit_url = f"{settings.webapp_url}/web/edit_game.html?game_id={game.id}"
-        row_1.append(InlineKeyboardButton(text="✏️ Изменить", web_app=WebAppInfo(url=edit_url)))
+        # Fallback to URL to avoid BUTTON_TYPE_INVALID in groups/channels
+        row_1.append(InlineKeyboardButton(text="✏️ Изменить", url=edit_url))
         
         draft_url = f"{settings.webapp_url}/web/draft.html?game_id={game.id}"
-        row_1.append(InlineKeyboardButton(text="🔀 Составы (Draft)", web_app=WebAppInfo(url=draft_url)))
+        row_1.append(InlineKeyboardButton(text="🔀 Составы (Draft)", url=draft_url))
         buttons.append(row_1)
         
         # Row 2: Kick Menu, Finish
@@ -139,7 +140,7 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
         row_2.append(InlineKeyboardButton(text="💣 Убрать игрока", callback_data=f"god_kick_menu_{game.id}"))
         
         finish_url = f"{settings.webapp_url}/web/finish.html?game_id={game.id}"
-        row_2.append(InlineKeyboardButton(text="🏁 Завершить матч", web_app=WebAppInfo(url=finish_url)))
+        row_2.append(InlineKeyboardButton(text="🏁 Завершить матч", url=finish_url))
         buttons.append(row_2)
         
         # Row 3: Delete

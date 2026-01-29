@@ -598,3 +598,55 @@ async def admin_add_player(data: AddPlayerRequest, session: AsyncSession = Depen
     await session.commit()
     
     return {"status": "added"}
+
+from app.api.schemas import AddGuestRequest
+
+@router.post("/admin/add_guest")
+async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(data.initData, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+        
+    user_id = get_user_from_init_data(data.initData)
+    
+    # Check Admin Rights
+    result = await session.execute(select(Game).where(Game.id == data.game_id))
+    game = result.scalar_one_or_none()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, user_id)
+    
+    # Generate Guest ID (Negative Timestamp)
+    # We use microsecond precision to avoid collision if added quickly
+    guest_id = -int(time.time() * 1000000)
+    
+    # Create Guest User
+    # We assume simple fields for Guest
+    # Position Enum check?
+    try:
+        from app.db.models import Position
+        # Clean position string
+        pos_str = data.position.upper().strip()
+        # Default mapping if needed, or trust strict Enum
+        if pos_str not in Position.__members__:
+            pos_str = "CM" # Default fallback
+            
+        user = User(
+            user_id=guest_id,
+            full_name=f"{data.name} (Guest)",
+            username=None,
+            player_position=Position[pos_str],
+            rating=1200 # Default rating
+        )
+        session.add(user)
+        
+        # Signup
+        signup = Signup(game_id=data.game_id, user_id=guest_id, status=SignupStatus.ACTIVE)
+        session.add(signup)
+        
+        await session.commit()
+    except Exception as e:
+        logger.error(f"Add Guest Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to add guest: {e}")
+        
+    return {"status": "added", "user_id": guest_id}

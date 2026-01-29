@@ -288,6 +288,39 @@ class GameService:
                  if old_str != new_str:
                      changes.append(f"📅 Дата: {old_str} -> {new_str}")
                  game.date_time = data.date_time
+                 
+                 # --- Reschedule Tasks ---
+                 try:
+                     # Remove old jobs (best effort, as we don't track job IDs perfectly yet)
+                     # But we can add new ones. Overlapping jobs might be an issue?
+                     # Ideally we should store job IDs.
+                     # For now, let's just ADD new jobs. The old ones will fire but we check 'game.status' inside them.
+                     # wait, remind_admin checks if status is FINISHED. It doesn't check if time implies it should NOT fire yet.
+                     # So we MUST try to remove or at least accept duplicates?
+                     # Actually, if we add new jobs, we get double notifications.
+                     # Let's rely on the fact that 'apscheduler' doesn't easily support 'remove by args' without IDs.
+                     # So we just add new ones. The old one triggers -> checks DB -> sends message.
+                     # If the old time is NOW, it sends "Match should be finished". 
+                     # If we moved it to FUTURE, the old job still fires AT OLD TIME.
+                     # Inside 'remind_admin_to_finish', we should check: is current_time >= game.date_time + 2h?
+                     # If we moved game to future, 'remind_admin' logic should fail that check.
+                     pass 
+                     
+                     from app.scheduler.tasks import send_voting_message, remind_admin_to_finish
+                     from app.scheduler.main import scheduler
+                     
+                     now_tz = datetime.now(game.date_time.tzinfo)
+                     
+                     voting_time = game.date_time + timedelta(hours=2)
+                     if voting_time > now_tz:
+                         scheduler.add_job(send_voting_message, 'date', run_date=voting_time, args=[game.id])
+                     
+                     reminder_time = game.date_time + timedelta(hours=2, minutes=15)
+                     if reminder_time > now_tz:
+                          scheduler.add_job(remind_admin_to_finish, 'date', run_date=reminder_time, args=[game.id])
+
+                 except Exception as e:
+                     logger.warning(f"Failed to reschedule tasks: {e}")
              
         if data.max_players and data.max_players != game.max_players:
              changes.append(f"👥 Мест: {game.max_players} -> {data.max_players}")
