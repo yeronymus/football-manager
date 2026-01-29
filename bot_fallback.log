@@ -1,0 +1,167 @@
+nohup: ignoring input
+INFO:     Will watch for changes in these directories: ['/home/yeronym/Documents/fmBot/football-manager']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [94360] using StatReload
+INFO:     Started server process [94362]
+INFO:     Waiting for application startup.
+Config loaded via os.getenv
+2026-01-26 14:16:50,681 INFO sqlalchemy.engine.Engine select pg_catalog.version()
+INFO:sqlalchemy.engine.Engine:select pg_catalog.version()
+2026-01-26 14:16:50,681 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-01-26 14:16:50,683 INFO sqlalchemy.engine.Engine select current_schema()
+INFO:sqlalchemy.engine.Engine:select current_schema()
+2026-01-26 14:16:50,684 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-01-26 14:16:50,685 INFO sqlalchemy.engine.Engine show standard_conforming_strings
+INFO:sqlalchemy.engine.Engine:show standard_conforming_strings
+2026-01-26 14:16:50,685 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-01-26 14:16:50,686 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-01-26 14:16:50,689 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-01-26 14:16:50,689 INFO sqlalchemy.engine.Engine [generated in 0.00020s] ('users', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+INFO:sqlalchemy.engine.Engine:[generated in 0.00020s] ('users', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-01-26 14:16:50,695 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-01-26 14:16:50,695 INFO sqlalchemy.engine.Engine [cached since 0.006045s ago] ('chats', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+INFO:sqlalchemy.engine.Engine:[cached since 0.006045s ago] ('chats', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-01-26 14:16:50,696 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-01-26 14:16:50,696 INFO sqlalchemy.engine.Engine [cached since 0.007151s ago] ('games', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+INFO:sqlalchemy.engine.Engine:[cached since 0.007151s ago] ('games', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-01-26 14:16:50,697 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-01-26 14:16:50,697 INFO sqlalchemy.engine.Engine [cached since 0.008189s ago] ('signups', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+INFO:sqlalchemy.engine.Engine:[cached since 0.008189s ago] ('signups', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-01-26 14:16:50,698 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-01-26 14:16:50,698 INFO sqlalchemy.engine.Engine [cached since 0.00916s ago] ('votes', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+INFO:sqlalchemy.engine.Engine:[cached since 0.00916s ago] ('votes', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-01-26 14:16:50,699 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-01-26 14:16:50,699 INFO sqlalchemy.engine.Engine [cached since 0.01011s ago] ('rating_history', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+INFO:sqlalchemy.engine.Engine:[cached since 0.01011s ago] ('rating_history', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-01-26 14:16:50,700 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+2026-01-26 14:16:50,700 INFO sqlalchemy.engine.Engine [cached since 0.01112s ago] ('game_stats', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+INFO:sqlalchemy.engine.Engine:[cached since 0.01112s ago] ('game_stats', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+2026-01-26 14:16:50,701 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2026-01-26 14:16:50,701 INFO sqlalchemy.engine.Engine [generated in 0.00018s] ('user_position', 'pg_catalog')
+INFO:sqlalchemy.engine.Engine:[generated in 0.00018s] ('user_position', 'pg_catalog')
+2026-01-26 14:16:50,703 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2026-01-26 14:16:50,704 INFO sqlalchemy.engine.Engine [cached since 0.002207s ago] ('gamestatus', 'pg_catalog')
+INFO:sqlalchemy.engine.Engine:[cached since 0.002207s ago] ('gamestatus', 'pg_catalog')
+2026-01-26 14:16:50,705 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2026-01-26 14:16:50,705 INFO sqlalchemy.engine.Engine [cached since 0.003597s ago] ('team', 'pg_catalog')
+INFO:sqlalchemy.engine.Engine:[cached since 0.003597s ago] ('team', 'pg_catalog')
+2026-01-26 14:16:50,706 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_type.typname 
+FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+2026-01-26 14:16:50,706 INFO sqlalchemy.engine.Engine [cached since 0.004982s ago] ('signupstatus', 'pg_catalog')
+INFO:sqlalchemy.engine.Engine:[cached since 0.004982s ago] ('signupstatus', 'pg_catalog')
+2026-01-26 14:16:50,707 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+2026-01-26 14:16:50,709 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-01-26 14:16:50,725 INFO sqlalchemy.engine.Engine SELECT chats.chat_id AS chats_chat_id, chats.title AS chats_title, chats.admin_chat_id AS chats_admin_chat_id 
+FROM chats 
+WHERE chats.chat_id = $1::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT chats.chat_id AS chats_chat_id, chats.title AS chats_title, chats.admin_chat_id AS chats_admin_chat_id 
+FROM chats 
+WHERE chats.chat_id = $1::BIGINT
+2026-01-26 14:16:50,725 INFO sqlalchemy.engine.Engine [generated in 0.00020s] (-1001234567890,)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00020s] (-1001234567890,)
+2026-01-26 14:16:50,728 INFO sqlalchemy.engine.Engine SELECT chats.chat_id AS chats_chat_id, chats.title AS chats_title, chats.admin_chat_id AS chats_admin_chat_id 
+FROM chats 
+WHERE chats.chat_id = $1::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT chats.chat_id AS chats_chat_id, chats.title AS chats_title, chats.admin_chat_id AS chats_admin_chat_id 
+FROM chats 
+WHERE chats.chat_id = $1::BIGINT
+2026-01-26 14:16:50,728 INFO sqlalchemy.engine.Engine [cached since 0.003071s ago] (-1009876543210,)
+INFO:sqlalchemy.engine.Engine:[cached since 0.003071s ago] (-1009876543210,)
+2026-01-26 14:16:50,729 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:apscheduler.scheduler:Scheduler started
+INFO:app.api.main:Bot started in Polling Mode (Background setup)
+INFO:app.api.main:Application started successfully
+INFO:aiogram.dispatcher:Start polling
+INFO:root:Webhook set to 
+INFO:root:Setting bot commands...
+INFO:     Application startup complete.
+INFO:aiogram.dispatcher:Run polling for bot @footballManagerTestbot id=7652258054 - 'fmTest'
+INFO:root:Cleared default and private commands.
+INFO:root:Set role-based commands successfully.
+INFO:root:Setting menu button to COMMANDS...
+INFO:     127.0.0.1:58180 - "GET /health HTTP/1.1" 200 OK
+ERROR:aiogram.dispatcher:Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by setWebhook request
+WARNING:aiogram.dispatcher:Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 7652258054)
+INFO:aiogram.dispatcher:Connection established (tryings = 1, bot id = 7652258054)
+INFO:     127.0.0.1:60970 - "GET /health HTTP/1.1" 200 OK
+ERROR:aiogram.dispatcher:Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by setWebhook request
+WARNING:aiogram.dispatcher:Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 7652258054)
+INFO:aiogram.dispatcher:Connection established (tryings = 1, bot id = 7652258054)
+ERROR:aiogram.dispatcher:Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by setWebhook request
+WARNING:aiogram.dispatcher:Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 7652258054)
+INFO:aiogram.dispatcher:Connection established (tryings = 1, bot id = 7652258054)
+ERROR:aiogram.dispatcher:Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by setWebhook request
+WARNING:aiogram.dispatcher:Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 7652258054)
+INFO:aiogram.dispatcher:Connection established (tryings = 1, bot id = 7652258054)
+ERROR:aiogram.dispatcher:Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by setWebhook request
+WARNING:aiogram.dispatcher:Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 7652258054)
+INFO:aiogram.dispatcher:Connection established (tryings = 1, bot id = 7652258054)
+ERROR:aiogram.dispatcher:Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by setWebhook request
+WARNING:aiogram.dispatcher:Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 7652258054)
+INFO:aiogram.dispatcher:Connection established (tryings = 1, bot id = 7652258054)
+WARNING:  StatReload detected changes in 'venv/lib/python3.14/site-packages/pip/__init__.py'. Reloading...
+WARNING:aiogram.dispatcher:Received SIGTERM signal
+INFO:aiogram.dispatcher:Polling stopped for bot @footballManagerTestbot id=7652258054 - 'fmTest'
+INFO:aiogram.dispatcher:Polling stopped
+./run_local.sh: line 13: 94360 Killed                     uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload

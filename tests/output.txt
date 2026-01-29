@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/yeronym/Documents/fmBot/football-manager/tests/reproduce_crash.py", line 3, in <module>
+    from aiogram import types
+ModuleNotFoundError: No module named 'aiogram'

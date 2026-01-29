@@ -1,4 +1,4 @@
-from app.bot.main import bot
+# from app.bot.main import bot  <-- REMOVED
 from app.db.database import get_session
 from app.db.models import Game, Signup, User, Vote, SignupStatus, GameStatus, Team, RatingHistory
 from sqlalchemy import select, func
@@ -9,6 +9,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from app.config import settings
 
 async def send_voting_message(game_id: int):
+    from app.bot.main import bot
     async for session in get_session():
         result = await session.execute(select(Game).where(Game.id == game_id))
         game = result.scalar_one_or_none()
@@ -47,6 +48,7 @@ async def send_voting_message(game_id: int):
         scheduler.add_job(calculate_mvp, 'date', run_date=run_date, args=[game_id])
 
 async def calculate_mvp(game_id: int):
+    from app.bot.main import bot
     async for session in get_session():
         # Count votes
         result = await session.execute(
@@ -89,6 +91,7 @@ async def calculate_mvp(game_id: int):
         await bot.send_message(chat_id=game.chat_id, text=text)
 
 async def remind_admin_to_finish(game_id: int):
+    from app.bot.main import bot
     async for session in get_session():
         # 1. Берем игру
         game = await session.get(Game, game_id)
@@ -101,7 +104,7 @@ async def remind_admin_to_finish(game_id: int):
         creator_id = game.created_by
         
         # 3. Формируем кнопку сразу на экран завершения
-        web_app_url = f"{settings.WEBAPP_URL}/web/finish.html?id={game.id}"
+        web_app_url = f"{settings.webapp_url}/web/finish.html?id={game.id}"
         
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="📝 Заполнить матч", web_app=types.WebAppInfo(url=web_app_url))]
@@ -116,3 +119,95 @@ async def remind_admin_to_finish(game_id: int):
         except Exception as e:
             # Админ мог заблочить бота
              print(f"Failed to remind admin: {e}")
+async def release_gk_slots(game_id: int):
+    """
+    Called 48h after game creation.
+    Releases the "GK Reservation" by auto-promoting players from the waiting list
+    if there are still empty slots (which were effectively reserved).
+    """
+    async for session in get_session():
+        game = await session.get(Game, game_id)
+        if not game or game.status not in [GameStatus.OPEN, GameStatus.ACTIVE]:
+            return
+
+        # Count active
+        result = await session.execute(
+            select(func.count(Signup.id))
+            .where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
+        )
+        active_count = result.scalar()
+        
+        slots_available = game.max_players - active_count
+        
+        if slots_available > 0:
+            from app.bot.main import bot
+            # Promote from reserve
+            reserves_result = await session.execute(
+                select(Signup)
+                .where(Signup.game_id == game_id, Signup.status == SignupStatus.RESERVE)
+                .order_by(Signup.created_at) # FIFO
+                .limit(slots_available)
+            )
+            promoted_signups = reserves_result.scalars().all()
+            
+            if promoted_signups:
+                for signup in promoted_signups:
+                    signup.status = SignupStatus.ACTIVE
+                    
+                    # Notify User
+                    try:
+                        await bot.send_message(
+                            signup.user_id, 
+                            f"🧤 Бронь вратарей снята (48ч)!\nВы переведены в основной состав на игру в {game.location}!"
+                        )
+                    except Exception as e:
+                        print(f"Failed to notify user {signup.user_id}: {e}")
+                
+                await session.commit()
+                
+                # Update Message
+                from app.bot.utils import format_game_message
+                from app.bot.keyboards import get_game_keyboard
+                from app.bot.admin_dashboard import update_dashboard_message
+                
+                text = await format_game_message(game, session)
+                
+                if game.message_id and game.chat_id:
+                    try:
+                        await bot.edit_message_text(
+                            chat_id=game.chat_id,
+                            message_id=game.message_id,
+                            text=text,
+                            reply_markup=get_game_keyboard(game.id),
+                            parse_mode="HTML"
+                        )
+                    except Exception:
+                        pass
+                
+                await update_dashboard_message(bot, game.id, session)
+
+async def publish_game_task(game_id: int):
+    from app.bot.main import bot
+    async for session in get_session():
+        game = await session.get(Game, game_id)
+        if not game:
+            return
+
+        from app.bot.utils import format_game_message
+        from app.bot.keyboards import get_game_keyboard
+        
+        message_text = await format_game_message(game, session)
+        try:
+            sent_message = await bot.send_message(
+                chat_id=game.chat_id,
+                text=message_text,
+                reply_markup=get_game_keyboard(game.id)
+            )
+            
+            game.message_id = sent_message.message_id
+            await session.commit()
+            
+            await bot.pin_chat_message(chat_id=game.chat_id, message_id=sent_message.message_id)
+            
+        except Exception as e:
+            print(f"Failed to publish game task {game.id}: {e}")

@@ -1,15 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.db.database import get_session
 from app.db.models import Game, User, Chat, Signup, SignupStatus, Team, GameStats, GameStatus
 import logging
-from app.api.schemas import GameCreate, BalanceTeams, GameResult, GameFinishRequest, UpdateTeamsRequest
+from app.api.schemas import GameCreate, BalanceTeams, GameResult, GameFinishRequest, UpdateTeamsRequest, GameUpdate
+from app.services.user_service import UserService
+from app.services.game_service import GameService
 from app.bot.elo import calculate_new_rating
 from app.bot.main import bot
 from app.bot.utils import format_game_message
 from app.bot.keyboards import get_game_keyboard
-from app.bot.balancer import balance_teams as run_balance_teams
+from app.bot.balancer import balance_teams as run_balance_teams, Player
 from app.config import settings
 import hashlib
 import hmac
@@ -60,9 +62,9 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
         return False
 
 def get_user_from_init_data(init_data: str) -> int:
-    if settings.DEBUG and not init_data:
+    if settings.debug and not init_data:
         # Default debug user ID (replace with your admin ID for testing)
-        return settings.ADMIN_IDS[0] if settings.ADMIN_IDS else 123456789
+        return settings.admin_ids[0] if settings.admin_ids else 123456789
         
     parsed_data = dict(urllib.parse.parse_qsl(init_data))
     user_data = json.loads(parsed_data.get("user", "{}"))
@@ -71,7 +73,7 @@ def get_user_from_init_data(init_data: str) -> int:
         raise HTTPException(status_code=400, detail="User ID not found in initData")
         
     # Immobilizer: API Access Control
-    if settings.SYSTEM_OWNER_ID and user_id != settings.SYSTEM_OWNER_ID:
+    if settings.system_owner_id and user_id != settings.system_owner_id:
         raise HTTPException(status_code=403, detail="Unauthorized instance owner")
         
     return user_id
@@ -108,123 +110,100 @@ async def check_admin_rights(chat_id: int, user_id: int):
         # For now, just fail safe.
         raise HTTPException(status_code=400, detail=f"Cannot verify user rights: {str(e)}")
 
+@router.get("/chat/{chat_id}/admins")
+async def get_chat_admins(chat_id: int, initData: str, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(initData, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+    
+    try:
+        admins = await bot.get_chat_administrators(chat_id)
+        result = []
+        for a in admins:
+            if not a.user.is_bot:
+                result.append({
+                    "id": a.user.id,
+                    "first_name": a.user.first_name,
+                    "username": a.user.username
+                })
+        return result
+    except Exception as e:
+        logger.error(f"Failed to fetch admins: {e}")
+        raise HTTPException(status_code=400, detail="Failed to fetch admins")
+
 @router.get("/chats")
 async def get_chats(initData: str, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(initData, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+    
+    # Return all registered chats
+    result = await session.execute(select(Chat))
+    chats = result.scalars().all()
+    
+    return [
+        {"id": c.chat_id, "title": c.title} 
+        for c in chats
+    ]
+
+@router.post("/update_game")
+async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(data.initData, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+        
+    user_id = get_user_from_init_data(data.initData)
+    
+    # Fetch game to check rights
+    # Ideally Service should do it, but we need chat_id for check_admin_rights
+    # or we trust Service to fail if not found and we check rights after fetching game?
+    # Let's fetch game first to get chat_id.
+    result = await session.execute(select(Game).where(Game.id == data.game_id))
+    game = result.scalar_one_or_none()
+    
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, user_id)
+    
     try:
-        if not validate_init_data(initData, settings.BOT_TOKEN):
-            raise HTTPException(status_code=403, detail="Invalid initData")
-        
-        user_id = get_user_from_init_data(initData)
-        logger.info(f"Fetching chats for user_id: {user_id}")
-        
-        # Get all chats from DB
-        result = await session.execute(select(Chat))
-        all_chats = result.scalars().all()
-        logger.info(f"Found {len(all_chats)} chats in DB")
-        
-        admin_chats = []
-        import asyncio
-        for chat in all_chats:
-            try:
-                # Check if user is admin in this chat
-                # Optimization: Could cache this or check DB if we track admins there
-                member = await bot.get_chat_member(chat.chat_id, user_id)
-                if member.status in ["administrator", "creator"]:
-                    admin_chats.append({"id": chat.chat_id, "title": chat.title})
-                await asyncio.sleep(0.05) # Prevent FloodWait
-            except Exception as e:
-                logger.warning(f"Error checking chat {chat.chat_id} for user {user_id}: {e}")
-                continue
-                
-        logger.info(f"User {user_id} is admin in {len(admin_chats)} chats")
-        return admin_chats
-    except HTTPException:
-        raise
+        game_service = GameService(session)
+        updated_game = await game_service.update_game(data)
+        return {"status": "updated", "id": updated_game.id}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"get_chats fatal error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Update game error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/create_game")
 async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(game_data.initData, settings.BOT_TOKEN):
+    if not validate_init_data(game_data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
     user_id = get_user_from_init_data(game_data.initData)
     await check_admin_rights(game_data.chat_id, user_id)
 
-    # Ensure user exists
-    result = await session.execute(select(User).where(User.user_id == user_id))
-    user = result.scalar_one_or_none()
+    # Ensure user exists (Creator)
+    user_service = UserService(session)
+    user = await user_service.get_user(user_id)
     if not user:
         parsed_data = dict(urllib.parse.parse_qsl(game_data.initData))
         user_data = json.loads(parsed_data.get("user", "{}"))
-        user = User(user_id=user_id, full_name=user_data.get("first_name", "Admin"), player_position="MID")
-        session.add(user)
-        await session.commit()
-
-    # Ensure Chat exists
-    result = await session.execute(select(Chat).where(Chat.chat_id == game_data.chat_id))
-    chat = result.scalar_one_or_none()
-    if not chat:
-        try:
-            chat_obj = await bot.get_chat(game_data.chat_id)
-            chat = Chat(chat_id=game_data.chat_id, title=chat_obj.title or "Unknown Chat")
-            session.add(chat)
-            await session.commit()
-        except:
-             raise HTTPException(status_code=400, detail="Chat not found")
-
-    new_game = Game(
-        chat_id=game_data.chat_id,
-        created_by=user_id,
-        date_time=game_data.date_time,
-        location=game_data.location,
-        max_players=game_data.max_players,
-        price=game_data.price,
-        payment_info=game_data.payment_info,
-        team_count=game_data.team_count
-    )
-    session.add(new_game)
-    await session.commit()
-    await session.refresh(new_game)
-
-    message_text = await format_game_message(new_game, session)
-    try:
-        sent_message = await bot.send_message(
-            chat_id=game_data.chat_id,
-            text=message_text,
-            reply_markup=get_game_keyboard(new_game.id)
+        user = await user_service.create_user(
+            user_id=user_id, 
+            full_name=user_data.get("first_name", "Admin"), 
+            username=user_data.get("username"),
+            position="CM" # Default
         )
-        
-        new_game.message_id = sent_message.message_id
         await session.commit()
-        
-        await bot.pin_chat_message(chat_id=game_data.chat_id, message_id=sent_message.message_id)
-        
-        # Trigger Admin Dashboard Update
-        from app.bot.admin_dashboard import update_dashboard_message
-        try:
-             await update_dashboard_message(bot, new_game.id, session)
-        except Exception as e:
-             logging.warning(f"Failed to send admin dashboard: {e}")
 
-        # Schedule voting
-        from app.scheduler.main import scheduler
-        from app.scheduler.tasks import send_voting_message
-        from datetime import timedelta
-        
-        voting_time = new_game.date_time + timedelta(hours=2)
-        scheduler.add_job(send_voting_message, 'date', run_date=voting_time, args=[new_game.id])
-        
-        # Напоминание админу через 2 часа 15 минут
-        from app.scheduler.tasks import remind_admin_to_finish
-        reminder_time = new_game.date_time + timedelta(hours=2, minutes=15)
-        scheduler.add_job(remind_admin_to_finish, 'date', run_date=reminder_time, args=[new_game.id])
-        
-    except Exception:
-        pass
-
-    return {"game_id": new_game.id, "status": "created"}
+    try:
+        game_service = GameService(session)
+        new_game = await game_service.create_game(game_data, user_id)
+        return {"game_id": new_game.id, "status": "created"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Create game error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/balance_teams")
 async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Depends(get_session)):
@@ -233,7 +212,7 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
     Resets current team assignments and redistributes players based on the game's team count.
     Saves the new assignments to the database and notifies the chat.
     """
-    if not validate_init_data(data.initData, settings.BOT_TOKEN):
+    if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
     user_id = get_user_from_init_data(data.initData)
@@ -245,83 +224,20 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
 
     await check_admin_rights(game.chat_id, user_id)
 
-    # Fetch active signups
-    result = await session.execute(
-        select(User)
-        .join(Signup)
-        .where(Signup.game_id == data.game_id, Signup.status == SignupStatus.ACTIVE)
-    )
-    players = result.scalars().all()
-    
-    if len(players) < 2:
-        raise HTTPException(status_code=400, detail="Not enough players to balance")
-
-    teams = run_balance_teams(players, team_count=game.team_count)
-
-    # Update DB
-    # Reset current teams for these players logic? 
-    # Or just assign based on index
-    
-    team_map = {0: Team.A, 1: Team.B, 2: Team.C}
-    
-    # Flatten teams to iterate
-    for i, team_players in enumerate(teams):
-        team_enum = team_map.get(i)
-        if not team_enum:
-             continue # Should not happen if count <= 3
-             
-        for player in team_players:
-            signup = (await session.execute(select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == player.id))).scalar_one()
-            signup.team = team_enum
-
-    await session.commit()
-
-    # Send message with teams
-    text = f"⚖️ <b>Составы команд ({game.location}):</b>\n\n"
-    
-    team_names = ["🔴 Команда А", "🔵 Команда Б", "🟢 Команда С"]
-    
-    for i, team_players in enumerate(teams):
-        t_name = team_names[i] if i < len(team_names) else f"Команда {i+1}"
-        text += f"<b>{t_name}:</b>\n"
-        for p in team_players:
-            rating_info = f" ({p.rating})" if settings.SHOW_RATING else ""
-            text += f"- {p.full_name}{rating_info}\n"
-        text += "\n"
-        
-    if settings.SHOW_RATING:
-        avgs = []
-        for team_players in teams:
-            avg = sum(p.rating for p in team_players) / len(team_players) if team_players else 0
-            avgs.append(int(avg))
-        text += f"\n📊 Средний рейтинг: {' vs '.join(map(str, avgs))}"
-
-    await bot.send_message(chat_id=game.chat_id, text=text)
-
-    # OPTIONAL: Отправить админу в личку реальные цифры (God Mode View)
+    # Fetch active signups - Handled by Service
     try:
-        if not settings.SHOW_RATING:
-            admin_text = f"🕵️‍♂️ <b>Скрытые данные (Видно только вам):</b>\n\n"
-            admin_text += "🔴 <b>Команда А:</b>\n"
-            for p in team_a:
-                admin_text += f"- {p.full_name} ({p.rating})\n"
-            admin_text += "\n🔵 <b>Команда Б:</b>\n"
-            for p in team_b:
-                admin_text += f"- {p.full_name} ({p.rating})\n"
-            
-            avg_a = sum(p.rating for p in team_a) / len(team_a)
-            avg_b = sum(p.rating for p in team_b) / len(team_b)
-            admin_text += f"\n📊 Средний рейтинг: {int(avg_a)} vs {int(avg_b)}"
-            
-            await bot.send_message(chat_id=user_id, text=admin_text)
-    except Exception:
-        pass
-
-    return {"status": "balanced", "team_counts": [len(t) for t in teams]}
+        game_service = GameService(session)
+        result = await game_service.balance_teams(data.game_id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Balance error: {e}")
+        raise HTTPException(status_code=500, detail="Internal error")
 
 @router.post("/update_teams")
 async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(data.initData, settings.BOT_TOKEN):
+    if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
     user_id = get_user_from_init_data(data.initData)
@@ -397,7 +313,7 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
 
 @router.post("/set_game_result")
 async def set_game_result(data: GameResult, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(data.initData, settings.BOT_TOKEN):
+    if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
     user_id = get_user_from_init_data(data.initData)
@@ -418,7 +334,7 @@ async def set_game_result(data: GameResult, session: AsyncSession = Depends(get_
 
 @router.get("/games/open")
 async def get_open_games(initData: str, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(initData, settings.BOT_TOKEN):
+    if not validate_init_data(initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
     
     user_id = get_user_from_init_data(initData)
@@ -443,7 +359,7 @@ async def get_open_games(initData: str, session: AsyncSession = Depends(get_sess
 
 @router.get("/game/{game_id}")
 async def get_game_details(game_id: int, initData: str, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(initData, settings.BOT_TOKEN):
+    if not validate_init_data(initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
     
     user_id = get_user_from_init_data(initData)
@@ -469,7 +385,8 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
             "id": user.user_id,
             "name": user.full_name,
             "rating": user.rating,
-            "position": user.player_position.value if user.player_position else "DEF"
+            "position": user.player_position.value if user.player_position else "DEF",
+            "alt_positions": user.alt_positions or []
         }
     
     team_a = [serialize_player(p) for p in players_data if p[1] == Team.A]
@@ -481,6 +398,12 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
         "id": game.id,
         "location": game.location,
         "date": game.date_time.isoformat(),
+        "max_players": game.max_players,
+        "price": game.price,
+        "payment_info": game.payment_info,
+        "team_count": game.team_count,
+        "gk_hours": game.gk_hours,
+        "chat_id": game.chat_id,
         "team_a": team_a,
         "team_b": team_b,
         "team_c": team_c,
@@ -496,7 +419,7 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
 @router.post("/publish_teams")
 async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_session)):
     # Using BalanceTeams (game_id, initData)
-    if not validate_init_data(data.initData, settings.BOT_TOKEN):
+    if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
     
     user_id = get_user_from_init_data(data.initData)
@@ -536,7 +459,7 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
 
 @router.post("/finish_game")
 async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(data.initData, settings.BOT_TOKEN):
+    if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
     user_id = get_user_from_init_data(data.initData)
@@ -548,97 +471,21 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
 
     await check_admin_rights(game.chat_id, user_id)
 
-    # Update game score and status
-    game.score_a = data.score_a
-    game.score_b = data.score_b
-    game.winner_team = data.winner_team
-    game.status = GameStatus.FINISHED
-
-    # Save player stats
-    for p_stat in data.player_stats:
-        if p_stat.goals > 0:
-            stat = GameStats(game_id=game.id, user_id=p_stat.user_id, goals=p_stat.goals)
-            session.add(stat)
-
-    # ELO Calculation (if winner is set)
-    if game.winner_team:
-        # Fetch all active players with their teams
-        result = await session.execute(
-            select(User, Signup.team)
-            .join(Signup)
-            .where(Signup.game_id == game.id, Signup.status == SignupStatus.ACTIVE)
-        )
-        players_data = result.all() # List of (User, Team)
-        
-        team_a_players = [p[0] for p in players_data if p[1] == Team.A]
-        team_b_players = [p[0] for p in players_data if p[1] == Team.B]
-        
-        avg_a = sum(p.rating for p in team_a_players) / len(team_a_players) if team_a_players else 1200
-        avg_b = sum(p.rating for p in team_b_players) / len(team_b_players) if team_b_players else 1200
-        
-        # Helper to update and log
-        def update_player(player, opponent_avg, actual_score):
-            # MVP is not known yet, so is_mvp=False for now. 
-            # MVP bonus will be added later by scheduler if MVP voting is still used.
-            # OR we can assume MVP voting happens BEFORE this manual finish?
-            # The prompt says "Admin enters score AFTER whistle". MVP voting is usually later.
-            # Let's just calculate base ELO here. MVP bonus can be a separate adjustment or we ignore it here.
-            # Ideally, ELO should be calculated once.
-            # If we calculate here, we should disable the scheduler calculation or make it additive.
-            # Let's assume this REPLACES the scheduler calculation for ELO, but scheduler still does MVP.
-            
-            old_rating = player.rating
-            new_rating = calculate_new_rating(player, int(opponent_avg), actual_score, is_mvp=False)
-            
-            player.rating = new_rating
-            player.games_played += 1
-            
-            # Log history (Future functionality)
-            # history = RatingHistory(...)
-            # session.add(history)
-
-        # Calculate for Team A
-        actual_score_a = 1 if game.winner_team == Team.A else 0
-        for player in team_a_players:
-            update_player(player, avg_b, actual_score_a)
-        
-        # Calculate for Team B
-        actual_score_b = 1 if game.winner_team == Team.B else 0
-        for player in team_b_players:
-            update_player(player, avg_a, actual_score_b)
-
-    await session.commit()
-    
-    # Notify chat
-    text = f"🏁 <b>Матч завершен!</b>\n"
-    text += f"Счет: {game.score_a} - {game.score_b}\n"
-    if game.winner_team:
-        text += f"Победила команда {game.winner_team.value}!\n"
-    
-    if settings.SHOW_RATING and game.winner_team:
-        text += f"\n📈 Рейтинги обновлены!\n"
-    
-    # Show goal scorers
-    scorers = [p for p in data.player_stats if p.goals > 0]
-    if scorers:
-        text += "\n⚽ <b>Голы:</b>\n"
-        scorer_ids = [s.user_id for s in scorers]
-        # Fetch names
-        result = await session.execute(select(User).where(User.user_id.in_(scorer_ids)))
-        users_map = {u.user_id: u.full_name for u in result.scalars().all()}
-        
-        for s in scorers:
-            name = users_map.get(s.user_id, "Неизвестный")
-            text += f"- {name}: {s.goals}\n"
-
-    await bot.send_message(chat_id=game.chat_id, text=text)
-
-    return {"status": "finished"}
+    # Update game score and status - Handled by Service
+    try:
+        game_service = GameService(session)
+        await game_service.finish_game(data)
+        return {"status": "finished"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Finish game error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/history/{chat_id}")
 async def get_chat_history(chat_id: int, initData: str, session: AsyncSession = Depends(get_session)):
     # 1. Валидация WebApp данных
-    if not validate_init_data(initData, settings.BOT_TOKEN):
+    if not validate_init_data(initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
     
     user_id = get_user_from_init_data(initData)
@@ -682,3 +529,72 @@ async def get_chat_history(chat_id: int, initData: str, session: AsyncSession = 
         })
         
     return history
+    return history
+
+@router.get("/users/search")
+async def search_users(query: str, initData: str, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(initData, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+    
+    # Auth check - any valid user can search? Or only admins?
+    # Let's restrict to admins for now to prevent scraping
+    user_id = get_user_from_init_data(initData)
+    # Check if user is admin in ANY chat? Or basically just authenticated?
+    # Let's trust authentication for now, or check generic admin status if we had it.
+    # We will just proceed since we validate initData.
+    
+    user_service = UserService(session)
+    users = await user_service.search_users(query)
+    
+    return [
+        {
+            "id": u.user_id,
+            "name": u.full_name,
+            "username": u.username,
+            "position": u.player_position.value if u.player_position else "DEF"
+        }
+        for u in users
+    ]
+
+from app.api.schemas import AddPlayerRequest
+
+@router.post("/admin/add_player")
+async def admin_add_player(data: AddPlayerRequest, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(data.initData, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+        
+    user_id = get_user_from_init_data(data.initData)
+    
+    # Check Admin Rights on Game
+    result = await session.execute(select(Game).where(Game.id == data.game_id))
+    game = result.scalar_one_or_none()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, user_id)
+    
+    # Add Player Logic
+    # We can reuse GameService.join_game but that has checks for "Self" and "Max Players".
+    # Admin override should bypass some checks or use a specific method?
+    # GameService.join_game is for SELF join.
+    # Let's do raw insert or a new Service method 'force_add_player'.
+    # For now, explicit Signup creation here is fine and fast.
+    
+    # Check existence
+    result = await session.execute(select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == data.user_id))
+    existing = result.scalar_one_or_none()
+    
+    if existing:
+        if existing.status != SignupStatus.ACTIVE:
+            existing.status = SignupStatus.ACTIVE
+            await session.commit()
+            return {"status": "updated", "message": "Player restored to Active"}
+        else:
+            return {"status": "ok", "message": "Already active"}
+            
+    # Create new
+    signup = Signup(game_id=data.game_id, user_id=data.user_id, status=SignupStatus.ACTIVE)
+    session.add(signup)
+    await session.commit()
+    
+    return {"status": "added"}

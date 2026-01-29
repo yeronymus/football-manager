@@ -1,0 +1,21 @@
+Attaching to football-prod_app_1
+[36mapp_1    |[0m WHERE chats.chat_id = $1::BIGINT
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT chats.chat_id AS chats_chat_id, chats.title AS chats_title, chats.admin_chat_id AS chats_admin_chat_id 
+[36mapp_1    |[0m FROM chats 
+[36mapp_1    |[0m WHERE chats.chat_id = $1::BIGINT
+[36mapp_1    |[0m 2026-01-26 16:14:59,521 INFO sqlalchemy.engine.Engine [cached since 0.00955s ago] (-1009876543210,)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[cached since 0.00955s ago] (-1009876543210,)
+[36mapp_1    |[0m 2026-01-26 16:14:59,523 INFO sqlalchemy.engine.Engine COMMIT
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:COMMIT
+[36mapp_1    |[0m INFO:apscheduler.scheduler:Scheduler started
+[36mapp_1    |[0m INFO:app.api.main:Configuration: USE_POLLING=False, WEBHOOK_URL=https://yernur-vm1.sin.cvut.cz/api/webhook
+[36mapp_1    |[0m INFO:app.api.main:Starting in Webhook mode...
+[36mapp_1    |[0m INFO:root:Webhook set to https://yernur-vm1.sin.cvut.cz/api/webhook
+[36mapp_1    |[0m INFO:root:Setting bot commands...
+[36mapp_1    |[0m INFO:root:Cleared default and private commands.
+[36mapp_1    |[0m WARNING:root:Failed to set commands for admin 123456789: Telegram server says - Bad Request: chat not found
+[36mapp_1    |[0m INFO:root:Set role-based commands successfully.
+[36mapp_1    |[0m INFO:root:Setting menu button to COMMANDS...
+[36mapp_1    |[0m INFO:app.api.main:Application started successfully
+[36mapp_1    |[0m INFO:     Application startup complete.
+[36mapp_1    |[0m INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)

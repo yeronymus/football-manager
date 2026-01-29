@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 # Initialize Bot
 bot = Bot(
-    token=settings.BOT_TOKEN,
+    token=settings.bot_token,
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
 
@@ -31,8 +31,13 @@ dp.include_router(game_router)
 dp.include_router(admin_router)
 dp.include_router(vote_router)
 
-from app.bot.admin_tools import router as tools_router
-dp.include_router(tools_router)
+from app.bot.admin_system import router as system_router
+dp.include_router(system_router)
+
+from app.bot.common_handlers import router as common_router
+dp.include_router(common_router)
+
+
 
 dp.update.middleware(DbSessionMiddleware(session_pool=async_session_maker))
 
@@ -42,11 +47,12 @@ async def start_bot():
     This will be called from the FastAPI startup event.
     This will be called from the FastAPI startup event.
     """
-    webhook_info = await bot.get_webhook_info()
-    if webhook_info.url != settings.WEBHOOK_URL:
-        await bot.set_webhook(settings.WEBHOOK_URL)
+    if settings.webhook_url and not settings.use_polling:
+        webhook_info = await bot.get_webhook_info()
+        if webhook_info.url != settings.webhook_url:
+            await bot.set_webhook(settings.webhook_url)
     
-    logging.info(f"Webhook set to {settings.WEBHOOK_URL}")
+    logging.info(f"Webhook set to {settings.webhook_url}")
 
     # Set Bot Commands ...
     logging.info("Setting bot commands...")
@@ -63,17 +69,16 @@ async def start_bot():
     # Common commands for everyone
     user_commands = [
         types.BotCommand(command="start", description="🏠 Меню"),
-        types.BotCommand(command="create", description="➕ Создать"),
         types.BotCommand(command="my_profile", description="👤 Профиль"),
         types.BotCommand(command="my_history", description="📜 История"),
     ]
     
     # Admin-only commands (appended to user commands)
+    # Admin-only commands (appended to user commands)
+    # We remove context-specifc commands (draft, finish) from the main menu to reduce clutter.
+    # They are still available via typing but won't show in the simple menu.
     admin_commands = user_commands + [
-        types.BotCommand(command="draft", description="⚖️ Драфт / Составы"),
-        types.BotCommand(command="finish", description="🏁 Завершить матч"),
-        types.BotCommand(command="register_chat", description="📢 Подключить чат"),
-        types.BotCommand(command="setup", description="🕹 God Mode"),
+        types.BotCommand(command="create", description="➕ Создать игру"),
     ]
 
     # Set Default Scope (For groups etc)
@@ -83,7 +88,7 @@ async def start_bot():
     await bot.set_my_commands(user_commands, scope=types.BotCommandScopeAllPrivateChats())
     
     # Set Admin Scope (For specific admins in private chat)
-    for admin_id in settings.ADMIN_IDS:
+    for admin_id in settings.admin_ids:
         try:
             await bot.set_my_commands(admin_commands, scope=types.BotCommandScopeChat(chat_id=admin_id))
         except Exception as e:
@@ -108,6 +113,8 @@ async def main():
     Entry point for polling mode.
     """
     await bot.delete_webhook(drop_pending_updates=True)
+    # Ensure commands are set even in polling mode
+    await start_bot() 
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
