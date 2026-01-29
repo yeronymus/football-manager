@@ -4,8 +4,8 @@ from app.config import settings
 
 jobstores = {
     'default': RedisJobStore(
-        host=settings.REDIS_HOST,
-        port=settings.REDIS_PORT,
+        host=settings.redis_host,
+        port=settings.redis_port,
         db=0
     )
 }

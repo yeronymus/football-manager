@@ -7,9 +7,21 @@ from app.db.database import Base
 
 class Position(str, enum.Enum):
     GK = "GK"
-    DEF = "DEF"
-    MID = "MID"
-    FWD = "FWD"
+    
+    # Defenders
+    LB = "LB"
+    CB = "CB"
+    RB = "RB"
+    
+    # Midfielders
+    CM = "CM"
+    LM = "LM"
+    RM = "RM"
+    
+    # Forwards
+    LW = "LW"
+    RW = "RW"
+    FWD = "FWD" # General Forward
 
 class GameStatus(str, enum.Enum):
     OPEN = "open"
@@ -36,7 +48,7 @@ class User(Base):
     player_position = Column(Enum(Position, name="user_position"), nullable=False)
     stats_matches = Column(Integer, default=0)
     stats_mvp = Column(Integer, default=0)
-    rating = Column(Integer, default=1200)  # ELO Rating
+    rating = Column(Integer, default=100)  # ELO Rating
     games_played = Column(Integer, default=0)
     alt_positions = Column(ARRAY(String), default=[])
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -67,21 +79,27 @@ class Game(Base):
     price = Column(Integer, default=100)
     payment_info = Column(String, default="2924402033/0800")
     team_count = Column(Integer, default=2)
+    gk_hours = Column(Integer, default=48)
     status = Column(Enum(GameStatus), default=GameStatus.OPEN)
     winner_team = Column(Enum(Team), nullable=True)
     score_a = Column(Integer, nullable=True)
     score_b = Column(Integer, nullable=True)
     score_c = Column(Integer, nullable=True)
-    message_id = Column(BigInteger, nullable=True) # Public Message
+    message_id = Column(BigInteger, nullable=True) # Public Group Message
+    channel_id = Column(BigInteger, nullable=True) # Channel Chat ID
+    channel_message_id = Column(BigInteger, nullable=True) # Channel Message ID
     admin_message_id = Column(BigInteger, nullable=True) # Dashboard Message
     has_active_gk_a = Column(Boolean, default=True)
     has_active_gk_b = Column(Boolean, default=True)
     has_active_gk_c = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     chat = relationship("Chat", back_populates="games")
     creator = relationship("User", back_populates="games_created")
     signups = relationship("Signup", back_populates="game", cascade="all, delete-orphan")
     votes = relationship("Vote", back_populates="game", cascade="all, delete-orphan")
+    rating_history = relationship("RatingHistory", back_populates="game", cascade="all, delete-orphan")
+    stats = relationship("GameStats", back_populates="game", cascade="all, delete-orphan")
 
 class Signup(Base):
     __tablename__ = "signups"
@@ -129,7 +147,7 @@ class RatingHistory(Base):
     date = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", backref="rating_history")
-    game = relationship("Game", backref="rating_history")
+    game = relationship("Game", back_populates="rating_history")
 
 class GameStats(Base):
     __tablename__ = "game_stats"
@@ -140,6 +158,7 @@ class GameStats(Base):
     
     goals = Column(Integer, default=0)
     assists = Column(Integer, default=0)
+    is_mvp = Column(Boolean, default=False)
     
-    game = relationship("Game", backref="stats")
+    game = relationship("Game", back_populates="stats")
     user = relationship("User", backref="match_stats")

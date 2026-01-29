@@ -276,31 +276,50 @@
             grid-column: span 2;
         }
 
-        #gameSelector {
+        #searchModal {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
             background: rgba(0, 0, 0, 0.9);
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            z-index: 2000;
             display: none;
+            flex-direction: column;
+            padding: 20px;
         }
 
-        .game-option {
-            background: #333;
+        #searchInput {
             width: 100%;
-            padding: 15px;
-            margin: 5px 0;
-            border-radius: 8px;
-            text-align: center;
+            padding: 12px;
             font-size: 16px;
-            cursor: pointer;
+            border-radius: 8px;
+            border: 1px solid #555;
+            background: #333;
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        #searchResults {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .search-result-item {
+            background: #444;
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .search-close-btn {
+            margin-top: 10px;
+            background: #f44336;
         }
     </style>
 </head>
@@ -309,6 +328,14 @@
     <div id="gameSelector">
         <h2>Выберите игру</h2>
         <div id="gameList"></div>
+    </div>
+
+    <!-- ADD SEARCH MODAL -->
+    <div id="searchModal">
+        <h3>🔍 Добавить игрока</h3>
+        <input type="text" id="searchInput" placeholder="Имя или @username..." oninput="debounceSearch()">
+        <div id="searchResults"></div>
+        <button class="search-close-btn" onclick="closeSearch()">Закрыть</button>
     </div>
 
     <div class="top-bar">
@@ -320,7 +347,12 @@
 
     <div class="game-container">
         <div class="unassigned-section">
-            <div class="unassigned-header">Нераспределенные</div>
+            <div class="unassigned-header">
+                Нераспределенные
+                <span onclick="openSearch()"
+                    style="cursor:pointer; background:#2196F3; padding:2px 6px; border-radius:4px; margin-left:8px; font-size:10px;">➕
+                    Add</span>
+            </div>
             <div class="unassigned-list" id="list-unassigned" onclick="handleListClick(event, 'list-unassigned')"></div>
         </div>
 
@@ -400,10 +432,11 @@
                 selectedPlayer = p;
             };
 
+            const alts = (p.alt_positions && p.alt_positions.length) ? ` <span style="color:#aaa; font-size:10px;">(${p.alt_positions.join(', ')})</span>` : '';
             div.innerHTML = `
                 <div class="player-info">
                     <div class="player-pos pos-${p.position}">${p.position}</div>
-                    <div class="player-name">${p.name}</div>
+                    <div class="player-name">${p.name}${alts}</div>
                 </div>
                 <div class="player-rating">${p.rating || '-'}</div>
             `;
@@ -467,10 +500,10 @@
 
                 // Determine Teams
                 // We use game.team_c to decide if we need C
-                const hasTeamC = (game.team_c && game.team_c.length > 0) || (game.has_active_gk_c !== undefined);
-                // Better heuristic: use API team_count or just check lists
+                // Determine Teams based on team_count (if available) or existing data
                 activeTeams = ['a', 'b'];
-                if (game.team_c) activeTeams.push('c');
+                const count = game.team_count || (game.team_c && game.team_c.length > 0 ? 3 : 2);
+                if (count >= 3) activeTeams.push('c');
 
                 // Render Grid
                 const grid = document.getElementById('teamsGrid');
@@ -519,7 +552,15 @@
                     if (!list) return;
                     list.forEach(p => {
                         allPlayers[p.id] = p;
-                        addPlayerToSlot(p, `${key}-${p.position || 'DEF'}`);
+                        // Map specific positions to general categories
+                        let posCat = 'DEF';
+                        const pos = p.position;
+                        if (pos === 'GK') posCat = 'GK';
+                        else if (['LB', 'CB', 'RB'].includes(pos)) posCat = 'DEF';
+                        else if (['LM', 'CM', 'RM'].includes(pos)) posCat = 'MID';
+                        else if (['LW', 'RW', 'FWD', 'ST'].includes(pos)) posCat = 'FWD';
+
+                        addPlayerToSlot(p, `${key}-${posCat}`);
                     });
                 };
 
@@ -599,17 +640,18 @@
                 // Must save? No, API uses current signups in DB.
                 // But if we moved players to unassigned locally, we haven't saved that.
                 // Actually `balance_teams` endpoint balances ALL ACTIVE signups in DB.
-                // So local changes to "Unassigned" (which might mean removed from team but still active signup? Or signup status changed?)
-                // Implementation: Unassigned = Signup.team is None.
-                // So we should SAVE local state to DB first (assigning teams/None), then call Balance?
-                // OR Balance just grabs everyone and re-assigns.
-                // Better: Just call balance. It balances everyone signed up.
 
-                await fetch('/api/balance_teams', {
+                const response = await fetch('/api/balance_teams', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ initData: tg.initData, game_id: parseInt(gameId) })
                 });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Ошибка сервера");
+                }
+
                 await loadGame(gameId);
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             } catch (e) {
@@ -648,11 +690,17 @@
             });
 
             try {
-                await fetch('/api/update_teams', {
+                const response = await fetch('/api/update_teams', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Ошибка сохранения");
+                }
+
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                 const btn = document.querySelector('.btn-save');
                 btn.innerText = "OK!";
@@ -664,13 +712,21 @@
 
         async function publishTeams() {
             if (!confirm("Опубликовать составы?")) return;
+            // First save
             await saveTeams();
+
             try {
-                await fetch('/api/publish_teams', {
+                const response = await fetch('/api/publish_teams', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ initData: tg.initData, game_id: parseInt(gameId) })
                 });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Ошибка публикации");
+                }
+
                 tg.showAlert("Опубликовано!");
                 tg.close();
             } catch (e) { tg.showAlert("Ошибка: " + e.message); }
@@ -697,6 +753,83 @@
                     list.appendChild(btn);
                 });
             } catch (e) { tg.showAlert("Ошибка: " + e.message); }
+        }
+
+        // --- Search Logic ---
+        let searchTimeout;
+
+        function openSearch() {
+            document.getElementById('searchModal').style.display = 'flex';
+            document.getElementById('searchInput').focus();
+        }
+
+        function closeSearch() {
+            document.getElementById('searchModal').style.display = 'none';
+            document.getElementById('searchResults').innerHTML = '';
+            document.getElementById('searchInput').value = '';
+        }
+
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(performSearch, 500);
+        }
+
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value;
+            if (query.length < 2) return;
+
+            try {
+                const res = await fetch(`/api/users/search?query=${encodeURIComponent(query)}&initData=${encodeURIComponent(tg.initData)}`);
+                if (res.ok) {
+                    const users = await res.json();
+                    renderSearchResults(users);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderSearchResults(users) {
+            const container = document.getElementById('searchResults');
+            container.innerHTML = '';
+
+            users.forEach(u => {
+                const div = document.createElement('div');
+                div.className = 'search-result-item';
+                div.innerHTML = `
+                    <div><b>${u.name}</b> <small>(${u.position})</small></div>
+                    <button style="width:auto; padding:5px 10px; margin:0;" onclick="addPlayerToGame(${u.id})">➕</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function addPlayerToGame(userId) {
+            try {
+                const payload = {
+                    game_id: parseInt(gameId),
+                    user_id: userId,
+                    initData: tg.initData
+                };
+
+                const res = await fetch('/api/admin/add_player', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    // Success! Refresh game
+                    await loadGame(gameId);
+                    tg.showAlert("Игрок добавлен!");
+                    closeSearch();
+                } else {
+                    const err = await res.json();
+                    tg.showAlert("Ошибка: " + err.detail);
+                }
+            } catch (e) {
+                tg.showAlert("Ошибка сети: " + e.message);
+            }
         }
     </script>
 </body>

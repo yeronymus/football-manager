@@ -27,7 +27,7 @@ async def seed_chats(session: AsyncSession):
     from app.db.models import Chat
     from sqlalchemy import select
     
-    for chat_data in settings.INITIAL_CHATS:
+    for chat_data in settings.initial_chats:
         chat_id = chat_data["id"]
         title = chat_data["title"]
         

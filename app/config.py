@@ -1,54 +1,77 @@
-from pydantic_settings import BaseSettings
-from typing import List
+import os
+import json
+import sys
+from dotenv import load_dotenv
 
-class Settings(BaseSettings):
-    BOT_TOKEN: str
-    ADMIN_IDS: List[int]
-    WEBHOOK_URL: str
-    
-    # Seeding
-    INITIAL_CHATS: List[dict] = [
-        {"id": -1001234567890, "title": "Test Chat"},
-        {"id": -1009876543210, "title": "Main Chat"}
-    ]
-    
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
-    POSTGRES_HOST: str
-    POSTGRES_PORT: int
+# Load .env explicitly
+load_dotenv(".env")
 
-    REDIS_HOST: str
-    REDIS_PORT: int
+class Settings:
+    def __init__(self):
+        # Allow fail-safe loading
+        try:
+            self.bot_token = os.getenv("BOT_TOKEN", "")
+            
+            admin_ids_str = os.getenv("ADMIN_IDS", "[]")
+            try:
+                self.admin_ids = json.loads(admin_ids_str)
+                if isinstance(self.admin_ids, list):
+                    self.admin_ids = [int(i) for i in self.admin_ids]
+                else:
+                    self.admin_ids = []
+            except (json.JSONDecodeError, ValueError):
+                print(f"Warning: Failed to parse or normalize ADMIN_IDS: {admin_ids_str}")
+                self.admin_ids = []
 
-    # ELO Settings
-    ELO_K_FACTOR_BASE: int = 25
-    ELO_K_FACTOR_PRO: int = 50
-    ELO_PRO_THRESHOLD: int = 5 # Games played
-    ELO_WIN_BONUS: int = 10
-    ELO_LOSS_PENALTY: int = 20
-    
-    # NEW: Видимость рейтинга
-    SHOW_RATING: bool = False
-    
-    # Local Development
-    USE_POLLING: bool = False
-    DEBUG: bool = False
-    WEBAPP_URL: str = "https://your-domain.com"
-    
-    # Access Control
-    SYSTEM_OWNER_ID: int = None
+            self.webhook_url = os.getenv("WEBHOOK_URL", "")
+            
+            # Seeding
+            self.initial_chats = [
+                {"id": -1001234567890, "title": "Test Chat"},
+                {"id": -1009876543210, "title": "Main Chat"}
+            ]
+
+            self.postgres_user = os.getenv("POSTGRES_USER", "postgres")
+            self.postgres_password = os.getenv("POSTGRES_PASSWORD", "password")
+            self.postgres_db = os.getenv("POSTGRES_DB", "football")
+            self.postgres_host = os.getenv("POSTGRES_HOST", "db")
+            self.postgres_port = int(os.getenv("POSTGRES_PORT", "5432"))
+
+            self.redis_host = os.getenv("REDIS_HOST", "redis")
+            self.redis_port = int(os.getenv("REDIS_PORT", "6379"))
+
+            # ELO
+            self.elo_k_factor_base = int(os.getenv("ELO_K_FACTOR_BASE", "25"))
+            self.elo_k_factor_pro = int(os.getenv("ELO_K_FACTOR_PRO", "50"))
+            self.elo_pro_threshold = int(os.getenv("ELO_PRO_THRESHOLD", "10"))
+            self.elo_win_bonus = int(os.getenv("ELO_WIN_BONUS", "10"))
+            self.elo_loss_penalty = int(os.getenv("ELO_LOSS_PENALTY", "15"))
+
+            self.show_rating = os.getenv("SHOW_RATING", "False").lower() == "true"
+            self.use_polling = os.getenv("USE_POLLING", "False").lower() == "true"
+            self.debug = os.getenv("DEBUG", "False").lower() == "true"
+            self.webapp_url = os.getenv("WEBAPP_URL", "https://your-domain.com")
+
+            owner = os.getenv("SYSTEM_OWNER_ID")
+            self.system_owner_id = int(owner) if owner else None
+            
+        except Exception as e:
+            print(f"Config Init Error: {e}", file=sys.stderr)
+            # Default empty to prevent crash, check health for error
+            pass
 
     @property
     def DATABASE_URL(self) -> str:
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
     @property
     def REDIS_URL(self) -> str:
-        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+        return f"redis://{self.redis_host}:{self.redis_port}/0"
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
-
-settings = Settings()
+# Singleton
+try:
+    settings = Settings()
+    print("Config loaded via os.getenv")
+except Exception as e:
+    print(f"FATAL CONFIG ERROR: {e}")
+    raise e

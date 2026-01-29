@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.db.models import Game, Signup, User, SignupStatus, Position, Team
+from app.db.models import Game, Signup, User, SignupStatus, Position, Team, GameStatus
 import html
 
 async def format_game_message(game: Game, session: AsyncSession) -> str:
@@ -19,21 +19,20 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
     active_players = [s for s in signups if s[0].status == SignupStatus.ACTIVE]
     reserve_players = [s for s in signups if s[0].status == SignupStatus.RESERVE]
 
-    # Group by position
-    gk = [s for s in active_players if s[1].player_position == Position.GK]
-    defenders = [s for s in active_players if s[1].player_position == Position.DEF]
-    midfielders = [s for s in active_players if s[1].player_position == Position.MID]
-    forwards = [s for s in active_players if s[1].player_position == Position.FWD]
+    # Grouping removed (Unused and caused AttributeError)
 
     # Invisible link for deep linking
     text = f'<a href="https://t.me/fm_metabot?start=game_{game.id}">&#8203;</a>'
     
-    # Localize Date
+    # Localize Date (Assuming DB is UTC and user wants Prague CET +1)
+    from datetime import timedelta
+    local_dt = game.date_time + timedelta(hours=1)
+    
     days_map = {
         "Mon": "Пн", "Tue": "Вт", "Wed": "Ср", "Thu": "Чт",
         "Fri": "Пт", "Sat": "Сб", "Sun": "Вс"
     }
-    date_str = game.date_time.strftime('%d.%m (%a) %H:%M')
+    date_str = local_dt.strftime('%d.%m (%a) %H:%M')
     for eng, rus in days_map.items():
         date_str = date_str.replace(eng, rus)
 
@@ -53,11 +52,17 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
         # Fallback if status isn't updated but players have teams
         show_teams = True
 
+    # Helper for formatting positions
+    def format_positions(user):
+        main_pos = user.player_position.value
+        if user.alt_positions:
+            return f"{main_pos} ({', '.join(user.alt_positions)})"
+        return main_pos
+
     if show_teams:
         team_map = {0: Team.A, 1: Team.B, 2: Team.C}
-        team_names = ["🔴 Команда А", "🔵 Команда Б", "🟢 Команда С"]
+        team_names = ["🟠 Команда А", "🟢 Команда Б", "🔵 Команда С"]
         team_gk_flags = [game.has_active_gk_a, game.has_active_gk_b, getattr(game, 'has_active_gk_c', True)] 
-        # getattr default True to match model default
         
         # Iterate up to game.team_count (default 2 if None)
         count = game.team_count if game.team_count else 2
@@ -73,7 +78,7 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
             
             has_gk = False
             for j, (signup, user) in enumerate(t_players, 1):
-                text += f"{j}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>({user.player_position.value})</i>\n"
+                text += f"{j}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user)}</i>\n"
                 if user.player_position == Position.GK:
                     has_gk = True
             
@@ -82,23 +87,27 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
             if not has_gk and needed_gk:
                 text += "<i>🧤 Вратарь решается на поле</i>\n"
             text += "\n"
-
+        
         # Unassigned
         unassigned = [s for s in signups if s[0].status == SignupStatus.ACTIVE and s[0].team is None]
         if unassigned:
             text += f"⚪ <b>Нераспределенные</b> ({len(unassigned)}):\n"
             for i, (signup, user) in enumerate(unassigned, 1):
-                text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>({user.player_position.value})</i>\n"
+                text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user)}</i>\n"
             
     else:
         # Show Pool (Draft Mode) - Simplified List
-        text += f"👥 <b>Состав</b> ({len(active_players)}/{game.max_players}):\n"
+        count = game.team_count if game.team_count else 2
+        per_team = game.max_players // count
+        fmt = " на ".join([str(per_team)] * count)
+        
+        text += f"👥 <b>Состав</b> ({len(active_players)}/{game.max_players}) ({fmt}):\n"
 
         if active_players:
             text += "\n🏃 <b>Игроки:</b>\n"
             for i, (signup, user) in enumerate(active_players, 1):
                  price_paid = "" # Future: if paid
-                 text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>({user.player_position.value})</i>{price_paid}\n"
+                 text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user)}</i>{price_paid}\n"
         else:
             text += "\nПока никого... 🦗\n"
     

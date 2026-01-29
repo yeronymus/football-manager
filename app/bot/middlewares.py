@@ -28,16 +28,8 @@ class InstanceAccessMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: Dict[str, Any],
     ) -> Any:
-        # Immobilizer: Only system owner can use this instance
-        if not settings.SYSTEM_OWNER_ID:
-            # If not configured, allow all (or block all? Safer to allow during setup, but instructions say "protection")
-            # Let's assume if var is None, security is off. But prompt implies strictness.
-            # User said "Add SYSTEM_OWNER_ID... to create master key".
-            # If missing, maybe log warning. 
-            # For now, if SYSTEM_OWNER_ID is set, enforce it.
-            pass
-        elif event.from_user and event.from_user.id != settings.SYSTEM_OWNER_ID:
-            # Silent ignore
-            return
+        # Immobilizer disabled for production use
+        # if settings.SYSTEM_OWNER_ID and event.from_user and event.from_user.id != settings.SYSTEM_OWNER_ID:
+        #     return
             
         return await handler(event, data)

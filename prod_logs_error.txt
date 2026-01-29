@@ -1,0 +1,101 @@
+Attaching to football-prod_app_1
+[36mapp_1    |[0m INFO:root:Setting menu button to COMMANDS...
+[36mapp_1    |[0m INFO:app.api.main:Application started successfully
+[36mapp_1    |[0m INFO:     Application startup complete.
+[36mapp_1    |[0m INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+[36mapp_1    |[0m 2026-01-26 15:02:48,009 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+[36mapp_1    |[0m 2026-01-26 15:02:48,012 INFO sqlalchemy.engine.Engine SELECT chats.chat_id, chats.title, chats.admin_chat_id 
+[36mapp_1    |[0m FROM chats
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT chats.chat_id, chats.title, chats.admin_chat_id 
+[36mapp_1    |[0m FROM chats
+[36mapp_1    |[0m 2026-01-26 15:02:48,012 INFO sqlalchemy.engine.Engine [generated in 0.00056s] ()
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[generated in 0.00056s] ()
+[36mapp_1    |[0m 2026-01-26 15:02:48,200 INFO sqlalchemy.engine.Engine ROLLBACK
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:ROLLBACK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294457345 is handled. Duration 199 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:55486 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294457346 is handled. Duration 154 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:55030 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:     172.18.0.1:58376 - "GET /index.html?v=3&target_chat_id=-1003051977474 HTTP/1.1" 200 OK
+[36mapp_1    |[0m 2026-01-26 15:03:17,438 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+[36mapp_1    |[0m 2026-01-26 15:03:17,439 INFO sqlalchemy.engine.Engine SELECT chats.chat_id, chats.title, chats.admin_chat_id 
+[36mapp_1    |[0m FROM chats
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT chats.chat_id, chats.title, chats.admin_chat_id 
+[36mapp_1    |[0m FROM chats
+[36mapp_1    |[0m 2026-01-26 15:03:17,439 INFO sqlalchemy.engine.Engine [cached since 29.43s ago] ()
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[cached since 29.43s ago] ()
+[36mapp_1    |[0m INFO:     172.18.0.1:58386 - "GET /api/chats?initData=query_id%3DAAGb3PEdAAAAAJvc8R2MijDM%26user%3D%257B%2522id%2522%253A502389915%252C%2522first_name%2522%253A%2522ye%2522%252C%2522last_name%2522%253A%2522b%2522%252C%2522username%2522%253A%2522yeronym%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FxcrC42JWz92AO5fMgbxHiooHcbewbcSICbTwowYVdgk.svg%2522%257D%26auth_date%3D1769439794%26signature%3DipIR2IlrnqQ4H7URY_RUqECCEwLsReScAmhOC2uMFB6I-hTXgOe3PMa-fZh-zqOWEc9KqvdzZWuz2Yhd2DjECw%26hash%3D523445aa51e9d6bd2fb3fabe6e01394356d3144530ce1d9f8c0add54e8572fef HTTP/1.1" 200 OK
+[36mapp_1    |[0m 2026-01-26 15:03:17,444 INFO sqlalchemy.engine.Engine ROLLBACK
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:ROLLBACK
+[36mapp_1    |[0m INFO:     172.18.0.1:58400 - "GET /api/chat/-1003245016508/admins?initData=query_id%3DAAGb3PEdAAAAAJvc8R2MijDM%26user%3D%257B%2522id%2522%253A502389915%252C%2522first_name%2522%253A%2522ye%2522%252C%2522last_name%2522%253A%2522b%2522%252C%2522username%2522%253A%2522yeronym%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FxcrC42JWz92AO5fMgbxHiooHcbewbcSICbTwowYVdgk.svg%2522%257D%26auth_date%3D1769439794%26signature%3DipIR2IlrnqQ4H7URY_RUqECCEwLsReScAmhOC2uMFB6I-hTXgOe3PMa-fZh-zqOWEc9KqvdzZWuz2Yhd2DjECw%26hash%3D523445aa51e9d6bd2fb3fabe6e01394356d3144530ce1d9f8c0add54e8572fef HTTP/1.1" 200 OK
+[36mapp_1    |[0m 2026-01-26 15:04:01,991 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+[36mapp_1    |[0m 2026-01-26 15:04:01,997 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+[36mapp_1    |[0m FROM users 
+[36mapp_1    |[0m WHERE users.user_id = $1::BIGINT
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+[36mapp_1    |[0m FROM users 
+[36mapp_1    |[0m WHERE users.user_id = $1::BIGINT
+[36mapp_1    |[0m 2026-01-26 15:04:01,997 INFO sqlalchemy.engine.Engine [generated in 0.00059s] (502389915,)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[generated in 0.00059s] (502389915,)
+[36mapp_1    |[0m 2026-01-26 15:04:02,064 INFO sqlalchemy.engine.Engine SELECT chats.chat_id AS chats_chat_id, chats.title AS chats_title, chats.admin_chat_id AS chats_admin_chat_id 
+[36mapp_1    |[0m FROM chats 
+[36mapp_1    |[0m WHERE chats.chat_id = $1::BIGINT
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT chats.chat_id AS chats_chat_id, chats.title AS chats_title, chats.admin_chat_id AS chats_admin_chat_id 
+[36mapp_1    |[0m FROM chats 
+[36mapp_1    |[0m WHERE chats.chat_id = $1::BIGINT
+[36mapp_1    |[0m 2026-01-26 15:04:02,064 INFO sqlalchemy.engine.Engine [cached since 76.25s ago] (-1003245016508,)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[cached since 76.25s ago] (-1003245016508,)
+[36mapp_1    |[0m 2026-01-26 15:04:02,075 INFO sqlalchemy.engine.Engine INSERT INTO games (chat_id, created_by, date_time, location, max_players, price, payment_info, team_count, gk_hours, status, winner_team, score_a, score_b, score_c, message_id, admin_message_id, has_active_gk_a, has_active_gk_b, has_active_gk_c) VALUES ($1::BIGINT, $2::BIGINT, $3::TIMESTAMP WITH TIME ZONE, $4::VARCHAR, $5::INTEGER, $6::INTEGER, $7::VARCHAR, $8::INTEGER, $9::INTEGER, $10::gamestatus, $11::team, $12::INTEGER, $13::INTEGER, $14::INTEGER, $15::BIGINT, $16::BIGINT, $17::BOOLEAN, $18::BOOLEAN, $19::BOOLEAN) RETURNING games.id, games.created_at
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:INSERT INTO games (chat_id, created_by, date_time, location, max_players, price, payment_info, team_count, gk_hours, status, winner_team, score_a, score_b, score_c, message_id, admin_message_id, has_active_gk_a, has_active_gk_b, has_active_gk_c) VALUES ($1::BIGINT, $2::BIGINT, $3::TIMESTAMP WITH TIME ZONE, $4::VARCHAR, $5::INTEGER, $6::INTEGER, $7::VARCHAR, $8::INTEGER, $9::INTEGER, $10::gamestatus, $11::team, $12::INTEGER, $13::INTEGER, $14::INTEGER, $15::BIGINT, $16::BIGINT, $17::BOOLEAN, $18::BOOLEAN, $19::BOOLEAN) RETURNING games.id, games.created_at
+[36mapp_1    |[0m 2026-01-26 15:04:02,076 INFO sqlalchemy.engine.Engine [generated in 0.00080s] (-1003245016508, 502389915, datetime.datetime(2026, 1, 26, 16, 0, tzinfo=TzInfo(UTC)), 'Pankrac', 18, 100, '2924402033/0800', 2, 48, 'OPEN', None, None, None, None, None, None, True, True, True)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[generated in 0.00080s] (-1003245016508, 502389915, datetime.datetime(2026, 1, 26, 16, 0, tzinfo=TzInfo(UTC)), 'Pankrac', 18, 100, '2924402033/0800', 2, 48, 'OPEN', None, None, None, None, None, None, True, True, True)
+[36mapp_1    |[0m 2026-01-26 15:04:02,108 INFO sqlalchemy.engine.Engine COMMIT
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:COMMIT
+[36mapp_1    |[0m 2026-01-26 15:04:02,113 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+[36mapp_1    |[0m 2026-01-26 15:04:02,119 INFO sqlalchemy.engine.Engine SELECT games.id, games.chat_id, games.created_by, games.date_time, games.location, games.max_players, games.price, games.payment_info, games.team_count, games.gk_hours, games.status, games.winner_team, games.score_a, games.score_b, games.score_c, games.message_id, games.admin_message_id, games.has_active_gk_a, games.has_active_gk_b, games.has_active_gk_c, games.created_at 
+[36mapp_1    |[0m FROM games 
+[36mapp_1    |[0m WHERE games.id = $1::INTEGER
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT games.id, games.chat_id, games.created_by, games.date_time, games.location, games.max_players, games.price, games.payment_info, games.team_count, games.gk_hours, games.status, games.winner_team, games.score_a, games.score_b, games.score_c, games.message_id, games.admin_message_id, games.has_active_gk_a, games.has_active_gk_b, games.has_active_gk_c, games.created_at 
+[36mapp_1    |[0m FROM games 
+[36mapp_1    |[0m WHERE games.id = $1::INTEGER
+[36mapp_1    |[0m 2026-01-26 15:04:02,119 INFO sqlalchemy.engine.Engine [generated in 0.00044s] (16,)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[generated in 0.00044s] (16,)
+[36mapp_1    |[0m INFO:app.services.game_service:Creating Game: 2026-01-26 16:00:00+00:00 (TZ: UTC) vs Now: 2026-01-26 15:04:02.126896+00:00
+[36mapp_1    |[0m INFO:app.services.game_service:Is Past: False
+[36mapp_1    |[0m INFO:apscheduler.scheduler:Added job "publish_game_task" to job store "default"
+[36mapp_1    |[0m WARNING:root:DEBUG: update_dashboard START game_id=16
+[36mapp_1    |[0m 2026-01-26 15:04:02,141 INFO sqlalchemy.engine.Engine SELECT games.id, games.chat_id, games.created_by, games.date_time, games.location, games.max_players, games.price, games.payment_info, games.team_count, games.gk_hours, games.status, games.winner_team, games.score_a, games.score_b, games.score_c, games.message_id, games.admin_message_id, games.has_active_gk_a, games.has_active_gk_b, games.has_active_gk_c, games.created_at 
+[36mapp_1    |[0m FROM games 
+[36mapp_1    |[0m WHERE games.id = $1::INTEGER
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT games.id, games.chat_id, games.created_by, games.date_time, games.location, games.max_players, games.price, games.payment_info, games.team_count, games.gk_hours, games.status, games.winner_team, games.score_a, games.score_b, games.score_c, games.message_id, games.admin_message_id, games.has_active_gk_a, games.has_active_gk_b, games.has_active_gk_c, games.created_at 
+[36mapp_1    |[0m FROM games 
+[36mapp_1    |[0m WHERE games.id = $1::INTEGER
+[36mapp_1    |[0m 2026-01-26 15:04:02,141 INFO sqlalchemy.engine.Engine [generated in 0.00046s] (16,)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[generated in 0.00046s] (16,)
+[36mapp_1    |[0m WARNING:root:DEBUG: No linked admin chat for game 16
+[36mapp_1    |[0m INFO:apscheduler.scheduler:Added job "send_voting_message" to job store "default"
+[36mapp_1    |[0m INFO:apscheduler.scheduler:Added job "remind_admin_to_finish" to job store "default"
+[36mapp_1    |[0m INFO:apscheduler.scheduler:Added job "release_gk_slots" to job store "default"
+[36mapp_1    |[0m ERROR:app.api.endpoints:Create game error: 'NoneType' object has no attribute 'id'
+[36mapp_1    |[0m 2026-01-26 15:04:02,155 INFO sqlalchemy.engine.Engine ROLLBACK
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:ROLLBACK
+[36mapp_1    |[0m INFO:     172.18.0.1:50912 - "POST /api/create_game HTTP/1.1" 500 Internal Server Error
+[36mapp_1    |[0m INFO:     172.18.0.1:42308 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+[36mapp_1    |[0m 2026-01-26 15:05:16,963 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+[36mapp_1    |[0m 2026-01-26 15:05:16,965 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+[36mapp_1    |[0m FROM users 
+[36mapp_1    |[0m WHERE users.user_id = $1::BIGINT
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+[36mapp_1    |[0m FROM users 
+[36mapp_1    |[0m WHERE users.user_id = $1::BIGINT
+[36mapp_1    |[0m 2026-01-26 15:05:16,965 INFO sqlalchemy.engine.Engine [cached since 74.97s ago] (502389915,)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[cached since 74.97s ago] (502389915,)
+[36mapp_1    |[0m 2026-01-26 15:05:17,180 INFO sqlalchemy.engine.Engine ROLLBACK
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:ROLLBACK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294457347 is handled. Duration 227 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:48470 - "POST /api/webhook HTTP/1.1" 200 OK

@@ -65,7 +65,7 @@
     <div class="form-group">
         <label for="chat_id">Чат</label>
         <select id="chat_id">
-            <option value="" disabled selected>Выберите чат</option>
+            <option value="" disabled selected>Загрузка...</option>
             <!-- Options will be populated via JS or hardcoded for MVP -->
             <!-- For MVP, user enters Chat ID manually or we fetch from API if possible -->
             <!-- Since we don't have an endpoint to list chats yet, let's use a text input for ID or hardcode -->
@@ -98,41 +98,51 @@
         <label for="payment_info">Номер счета</label>
         <input type="text" id="payment_info" value="2924402033/0800" placeholder="Номер счета / карты">
     </div>
+    <div class="form-group" id="admin_wrapper" style="display:none;">
+        <label>Авто-запись админов:</label>
+        <div id="admin_list"
+            style="max-height: 150px; overflow-y: auto; background: var(--tg-theme-secondary-bg-color); border-radius: 8px; padding: 10px;">
+            <!-- Checkboxes populated dynamically -->
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="publish_at">Отложенная публикация (опционально)</label>
+        <input type="text" id="publish_at" placeholder="Сразу">
+    </div>
+
+    <div class="form-group">
+        <label for="gk_hours">Бронь вратарей (часов)</label>
+        <input type="number" id="gk_hours" value="48" min="0" max="168" inputmode="numeric">
+        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - отключить</small>
+    </div>
+
     <button id="submitBtn" onclick="createGame()">Опубликовать</button>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.ready(); // Signal that WebApp is ready
+        tg.ready();
         tg.expand();
 
-        // DEBUG: Check initData
+        let autoJoinIds = [];
+
+        // Check initData
         if (!tg.initData) {
-            // Local Debug Mode check
-            // We can't easily check backend DEBUG flag here, but we can warn.
-            // But if backend allows empty initData, we should proceed.
-            // Let's rely on fetch returning 403 if it fails.
-            console.log("No initData found. Assuming Local Debug Mode or Error.");
-        } else {
-            // alert("Debug: initData found. Length: " + tg.initData.length);
+            console.log("No initData found.");
         }
 
-        // Initialize elements
         const chatSelect = document.getElementById('chat_id');
         const dateTimeInput = document.getElementById('date_time');
         const locationInput = document.getElementById('location');
         const maxPlayersInput = document.getElementById('max_players');
+        const adminWrapper = document.getElementById('admin_wrapper');
+        const adminList = document.getElementById('admin_list');
+        const publishAtInput = document.getElementById('publish_at');
 
         // 1. Fetch Chats
         async function loadChats() {
-            // DEBUG: Show initData status
             if (!tg.initData) {
-                chatSelect.innerHTML = '<option value="" disabled>ERROR: No InitData (Are you in Telegram?)</option>';
-                // Also create a visible error
-                const debugDiv = document.createElement('div');
-                debugDiv.style.color = 'red';
-                debugDiv.style.padding = '10px';
-                debugDiv.innerText = "Debug: tg.initData is EMPTY. Platform: " + (tg.platform || 'unknown');
-                document.body.prepend(debugDiv);
+                chatSelect.innerHTML = '<option value="" disabled>ERROR: No InitData</option>';
                 return;
             }
 
@@ -143,7 +153,7 @@
                     chatSelect.innerHTML = '<option value="" disabled selected>Выберите чат</option>';
                     if (chats.length === 0) {
                         const option = document.createElement('option');
-                        option.text = "Нет доступных чатов (добавьте бота в админы)";
+                        option.text = "Нет доступных чатов";
                         option.disabled = true;
                         chatSelect.add(option);
                     } else {
@@ -153,31 +163,97 @@
                             option.text = chat.title;
                             chatSelect.add(option);
                         });
+
+                        // Auto-select if target_chat_id provided
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const targetChatId = urlParams.get('target_chat_id');
+                        if (targetChatId) {
+                            chatSelect.value = targetChatId;
+                            chatSelect.dispatchEvent(new Event('change'));
+                        }
                     }
                 } else {
                     console.error("Failed to fetch chats");
-                    chatSelect.innerHTML = '<option value="" disabled>Ошибка загрузки чатов</option>';
                 }
             } catch (e) {
                 console.error(e);
-                chatSelect.innerHTML = `<option value="" disabled>Ошибка сети: ${e.message}</option>`;
             }
         }
 
-        // 2. Set Default Time (Prague/CET) and Init Flatpickr
+        // Listen for Chat Change
+        chatSelect.addEventListener('change', async function () {
+            const chatId = this.value;
+            if (!chatId) return;
+
+            // Clear current admins
+            adminList.innerHTML = 'Загрузка...';
+            adminWrapper.style.display = 'block';
+
+            try {
+                const url = `/api/chat/${chatId}/admins?initData=${encodeURIComponent(tg.initData)}`;
+                const res = await fetch(url);
+                if (res.ok) {
+                    const admins = await res.json();
+                    adminList.innerHTML = '';
+                    if (admins.length > 0) {
+                        admins.forEach(admin => {
+                            const div = document.createElement('div');
+                            div.style.marginBottom = '5px';
+
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.value = admin.id;
+                            checkbox.id = `admin_${admin.id}`;
+                            checkbox.style.width = 'auto'; // Reset global width: 100%
+                            checkbox.style.marginRight = '10px';
+
+                            const label = document.createElement('label');
+                            label.htmlFor = `admin_${admin.id}`;
+                            label.innerText = admin.first_name + (admin.username ? ` (@${admin.username})` : '');
+                            label.style.display = 'inline';
+                            label.style.fontWeight = 'normal';
+
+                            div.appendChild(checkbox);
+                            div.appendChild(label);
+                            adminList.appendChild(div);
+                        });
+                    } else {
+                        adminList.innerHTML = 'Админы не найдены.';
+                    }
+                } else {
+                    adminList.innerHTML = 'Ошибка загрузки админов.';
+                }
+            } catch (e) {
+                adminList.innerHTML = 'Ошибка сети.';
+            }
+        });
+
+        // 2. Set Default Time and Init Flatpickr
         function initDatePicker() {
             const now = new Date();
             now.setHours(now.getHours() + 1);
             now.setMinutes(0);
 
+            // Game Date
             flatpickr("#date_time", {
                 enableTime: true,
-                dateFormat: "Y-m-dTH:i", // ISO format for backend
+                dateFormat: "Y-m-dTH:i",
                 altInput: true,
-                altFormat: "d.m.Y H:i", // European display format
+                altFormat: "d.m.Y H:i",
                 defaultDate: now,
                 time_24hr: true,
-                locale: "ru", // Or "cs" for Czech
+                locale: "ru"
+                // minDate removed for retroactive games
+            });
+
+            // Publish At (Optional)
+            flatpickr("#publish_at", {
+                enableTime: true,
+                dateFormat: "Y-m-dTH:i",
+                altInput: true,
+                altFormat: "d.m.Y H:i",
+                time_24hr: true,
+                locale: "ru",
                 minDate: "today"
             });
         }
@@ -193,6 +269,13 @@
             const location = locationInput.value;
             const maxPlayers = maxPlayersInput.value;
 
+            // Collect admins
+            const checkedAdmins = [];
+            const checkboxes = adminList.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                if (cb.checked) checkedAdmins.push(parseInt(cb.value));
+            });
+
             if (!chatId || !dateTime || !location) {
                 tg.showAlert("Заполните все поля!");
                 return;
@@ -203,25 +286,31 @@
             btn.innerText = "Публикация...";
 
             try {
+                const payload = {
+                    chat_id: parseInt(chatId),
+                    date_time: new Date(dateTime).toISOString(),
+                    location: location,
+                    max_players: parseInt(maxPlayers),
+                    price: parseInt(document.getElementById('price').value) || 100,
+                    payment_info: document.getElementById('payment_info').value || "2924402033/0800",
+                    team_count: parseInt(document.getElementById('team_count').value) || 2,
+                    gk_hours: parseInt(document.getElementById('gk_hours').value) || 48,
+                    auto_join_ids: checkedAdmins,
+                    initData: tg.initData
+                };
+
+                if (publishAtInput.value) {
+                    payload.publish_at = new Date(publishAtInput.value).toISOString();
+                }
+
                 const response = await fetch('/api/create_game', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        chat_id: parseInt(chatId),
-                        date_time: new Date(dateTime).toISOString(),
-                        location: location,
-                        max_players: parseInt(maxPlayers),
-                        price: parseInt(document.getElementById('price').value) || 100,
-                        payment_info: document.getElementById('payment_info').value || "2924402033/0800",
-                        team_count: parseInt(document.getElementById('team_count').value) || 2,
-                        initData: tg.initData
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
                 if (response.ok) {
-                    tg.showAlert("Игра создана!");
+                    tg.showAlert("Игра создана!" + (payload.publish_at ? " (Отложка)" : ""));
                     tg.close();
                 } else {
                     const error = await response.json();

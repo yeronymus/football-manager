@@ -271,6 +271,10 @@
             if (scoreA > scoreB) winner = "A";
             if (scoreB > scoreA) winner = "B";
 
+            // Get MVP
+            const mvpRadio = document.querySelector('input[name="mvp"]:checked');
+            const mvpId = mvpRadio ? parseInt(mvpRadio.value) : null;
+
             const playerStats = Object.entries(playerGoals).map(([uid, goals]) => ({
                 user_id: parseInt(uid),
                 goals: goals
@@ -281,6 +285,7 @@
                 score_a: scoreA,
                 score_b: scoreB,
                 winner_team: winner,
+                mvp_user_id: mvpId,
                 player_stats: playerStats,
                 initData: tg.initData
             };
@@ -331,6 +336,9 @@
                 html += `
                     <div class="player-row">
                         <div class="player-name">${p.name}</div>
+                        <div style="margin-right:10px;">
+                            <label style="font-size:12px;">MVP <input type="radio" name="mvp" value="${p.id}"></label>
+                        </div>
                         <div class="goal-controls">
                             <button class="btn-circle" onclick="updateGoal(${p.id}, -1, 'A')">-</button>
                             <span class="goal-count" id="goals-${p.id}">0</span>
@@ -346,6 +354,9 @@
                 html += `
                     <div class="player-row">
                         <div class="player-name">${p.name}</div>
+                        <div style="margin-right:10px;">
+                            <label style="font-size:12px;">MVP <input type="radio" name="mvp" value="${p.id}"></label>
+                        </div>
                         <div class="goal-controls">
                             <button class="btn-circle" onclick="updateGoal(${p.id}, -1, 'B')">-</button>
                             <span class="goal-count" id="goals-${p.id}">0</span>

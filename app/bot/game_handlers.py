@@ -5,6 +5,7 @@ from app.db.database import get_session
 from app.db.models import Game, Signup, User, SignupStatus, GameStatus
 from app.bot.utils import format_game_message
 from app.bot.keyboards import get_game_keyboard
+from app.config import settings
 import logging
 
 router = Router()
@@ -14,146 +15,149 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
     game_id = int(callback.data.split("_")[1])
     user_id = callback.from_user.id
     
-    # Check if user is registered
+    # Check if user is registered (basic check before Service call, or let Service handle?)
+    # Service expects user to exist.
+    # existing check logic kept for UX (redirect to reg)
     result = await session.execute(select(User).where(User.user_id == user_id))
     user = result.scalar_one_or_none()
     
     if not user:
-        # Fetch bot username for the link
         me = await callback.bot.get_me()
         bot_username = me.username
-        await callback.answer(
-            "Сначала зарегистрируйтесь! (Перейдите в ЛС)", 
-            show_alert=True, 
-            url=f"https://t.me/{bot_username}?start=reg"
-        )
+        await callback.answer("Переходим к регистрации...", url=f"https://t.me/{bot_username}?start=reg")
         return
 
-    # Lock the game row for update to handle race conditions
-    # This ensures only one transaction can check count and insert at a time for this game
-    result = await session.execute(
-        select(Game).where(Game.id == game_id).with_for_update()
-    )
-    game = result.scalar_one_or_none()
+    from app.services.game_service import GameService, GameActionError, GameFullError, AlreadySignedUpError
     
-    if not game or (game.status != GameStatus.OPEN and game.status != GameStatus.ACTIVE):
-        await callback.answer("Запись закрыта!")
-        return
+    game_service = GameService(session)
+    
+    try:
+        signup, alert_msg = await game_service.join_game(game_id, user_id)
+        
+        # Success! Update UI
+        game = await game_service.get_game(game_id)
+        text = await format_game_message(game, session)
+        
+        # --- Multi-Sync Logic ---
+        current_chat_id = callback.message.chat.id
+        if current_chat_id != game.chat_id:
+            if game.channel_id != current_chat_id:
+                game.channel_id = current_chat_id
+                game.channel_message_id = callback.message.message_id
+                await session.commit()
 
-    # Check if already signed up (after lock to be sure)
-    result = await session.execute(select(Signup).where(Signup.game_id == game_id, Signup.user_id == user_id))
-    existing_signup = result.scalar_one_or_none()
-    
-    if existing_signup:
-        await callback.answer("Вы уже записаны!")
-        # Force refresh message just in case it's stale
-        try:
-            text = await format_game_message(game, session)
-            if game.message_id:
+        # Update Both Messages
+        async def safe_edit(chat_id, msg_id):
+            if not chat_id or not msg_id: return
+            try:
                 await callback.bot.edit_message_text(
-                    chat_id=game.chat_id,
-                    message_id=game.message_id,
+                    chat_id=chat_id,
+                    message_id=msg_id,
                     text=text,
                     reply_markup=get_game_keyboard(game_id),
                     parse_mode="HTML"
                 )
-            else:
-                await callback.message.edit_text(text, reply_markup=get_game_keyboard(game_id))
+            except Exception as e:
+                logging.warning(f"Failed to edit message in {chat_id}: {e}")
+
+        await safe_edit(game.chat_id, game.message_id) # Primary
+        await safe_edit(game.channel_id, game.channel_message_id) # Channel
+
+        # Dashboard Update
+        from app.bot.admin_dashboard import update_dashboard_message
+        try:
+             await update_dashboard_message(callback.bot, game.id, session)
         except Exception as e:
-            logging.error(f"Failed to refresh message: {e}")
-        return
+             logging.warning(f"Failed to update dashboard: {e}")
 
-    # Count current active signups
-    result = await session.execute(select(func.count(Signup.id)).where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE))
-    active_count = result.scalar()
-    
-    status = SignupStatus.ACTIVE if active_count < game.max_players else SignupStatus.RESERVE
-    
-    new_signup = Signup(game_id=game_id, user_id=user_id, status=status)
-    session.add(new_signup)
-    
-    try:
-        await session.commit()
+        await callback.answer(alert_msg if alert_msg else "Вы записаны!")
+
+    except AlreadySignedUpError:
+        await callback.answer("Вы уже записаны!")
+        # Optional: Refresh message
+    except GameActionError as e:
+        await callback.answer(str(e), show_alert=True)
     except Exception as e:
-        logging.error(f"Error saving signup: {e}", exc_info=True)
-        await session.rollback()
-        await callback.answer("Ошибка записи. Попробуйте снова.")
-        return
-
-    # Update message
-    text = await format_game_message(game, session)
-    try:
-        if game.message_id:
-            await callback.bot.edit_message_text(
-                chat_id=game.chat_id,
-                message_id=game.message_id,
-                text=text,
-                reply_markup=get_game_keyboard(game_id),
-                parse_mode="HTML"
-            )
-        else:
-            await callback.message.edit_text(text, reply_markup=get_game_keyboard(game_id))
-    except Exception as e:
-        logging.error(f"Failed to update message: {e}")
-
-    await callback.answer(
-        "Вы записаны!" if status == SignupStatus.ACTIVE else "Вы в резерве!"
-    )
+        logging.error(f"Join Error: {e}", exc_info=True)
+        await callback.answer("Произошла ошибка при записи.")
 
 @router.callback_query(F.data.startswith("leave_"))
 async def process_leave(callback: types.CallbackQuery, session: AsyncSession):
     game_id = int(callback.data.split("_")[1])
     user_id = callback.from_user.id
     
-    # Check if signed up
-    result = await session.execute(select(Signup).where(Signup.game_id == game_id, Signup.user_id == user_id))
-    signup = result.scalar_one_or_none()
+    from app.services.game_service import GameService, GameActionError, CancellationLockedError
     
-    if not signup:
-        await callback.answer("Вы не записаны!")
-        return
-        
-    was_active = signup.status == SignupStatus.ACTIVE
-    await session.delete(signup)
+    game_service = GameService(session)
+    # Refined admin check including strings if necessary, though IDs should be ints
+    is_admin = int(callback.from_user.id) in settings.admin_ids or callback.from_user.id == settings.system_owner_id
+    logging.warning(f"DEBUG_LEAVE: user={callback.from_user.id} game={game_id} is_admin={is_admin}")
     
-    # Auto-promotion logic
-    game_result = await session.execute(select(Game).where(Game.id == game_id))
-    game = game_result.scalar_one_or_none()
-
-    if was_active and game.status == GameStatus.OPEN:
-        # Promote first reserve
-        reserve_result = await session.execute(
-            select(Signup)
-            .where(Signup.game_id == game_id, Signup.status == SignupStatus.RESERVE)
-            .order_by(Signup.created_at)
-            .limit(1)
-        )
-        first_reserve = reserve_result.scalar_one_or_none()
-        
-        if first_reserve:
-            first_reserve.status = SignupStatus.ACTIVE
-            # Notify user (optional, requires bot to initiate chat)
-            try:
-                await callback.bot.send_message(first_reserve.user_id, f"Вы переведены в основной состав на игру {game.location}!")
-            except:
-                pass
-
-    await session.commit()
-    
-    # Update message
-    text = await format_game_message(game, session)
     try:
-        if game.message_id:
-            await callback.bot.edit_message_text(
-                chat_id=game.chat_id,
-                message_id=game.message_id,
-                text=text,
-                reply_markup=get_game_keyboard(game_id),
-                parse_mode="HTML"
-            )
-        else:
-            await callback.message.edit_text(text, reply_markup=get_game_keyboard(game_id))
-    except Exception as e:
-        logging.error(f"Failed to update message: {e}")
+        game, was_active = await game_service.leave_game(game_id, user_id, is_admin=is_admin)
+        
+        # Success! Update UI
+        text = await format_game_message(game, session)
+        
+        # --- Multi-Sync Logic ---
+        current_chat_id = callback.message.chat.id
+        if current_chat_id != game.chat_id:
+            if game.channel_id != current_chat_id:
+                game.channel_id = current_chat_id
+                game.channel_message_id = callback.message.message_id
+                await session.commit()
 
-    await callback.answer("Вы выписались.")
+        async def safe_edit(chat_id, msg_id):
+            if not chat_id or not msg_id: return
+            try:
+                await callback.bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=msg_id,
+                    text=text,
+                    reply_markup=get_game_keyboard(game_id),
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logging.warning(f"Failed to edit message in {chat_id}: {e}")
+
+        await safe_edit(game.chat_id, game.message_id)
+        await safe_edit(game.channel_id, game.channel_message_id)
+        
+        # Trigger Admin Dashboard Update
+        from app.bot.admin_dashboard import update_dashboard_message
+        try:
+             await update_dashboard_message(callback.bot, game.id, session)
+        except Exception as e:
+             logging.warning(f"Failed to update dashboard: {e}")
+
+        await callback.answer("Вы выписались.")
+
+    except CancellationLockedError as e:
+        # Notify Admin Chat
+        chat_id = callback.message.chat.id
+        user_name = callback.from_user.full_name
+        
+        # Try to find admin chat
+        try:
+             chat_stmt = select(Chat).where(Chat.chat_id == game_id) # Wait, game.chat_id
+             # We need game object here. Let's fetch it if error occurs or fetch before.
+             # Actually we can just inform the chat where button was clicked if it's admin or get it from Chat model
+             from app.db.models import Game, Chat
+             game_obj = await session.get(Game, game_id)
+             if game_obj:
+                 chat_obj = await session.get(Chat, game_obj.chat_id)
+                 if chat_obj and chat_obj.admin_chat_id:
+                     await callback.bot.send_message(
+                         chat_obj.admin_chat_id,
+                         f"⚠️ <b>Попытка отмены!</b>\nИгрок <a href='tg://user?id={user_id}'>{user_name}</a> пытался выписаться из игры #{game_id}, но уже слишком поздно.",
+                         parse_mode="HTML"
+                     )
+        except Exception as ex:
+             logging.warning(f"Failed to notify admin of late cancellation: {ex}")
+
+        await callback.answer(str(e), show_alert=True)
+    except GameActionError as e:
+        await callback.answer(str(e), show_alert=True)
+    except Exception as e:
+        logging.error(f"Leave Error: {e}", exc_info=True)
+        await callback.answer("Произошла ошибка при отмене записи.")

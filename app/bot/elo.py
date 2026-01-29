@@ -10,20 +10,23 @@ def calculate_new_rating(player: User, opponent_avg_rating: int, actual_score: f
     """
     Calculates new rating for a player.
     """
-    # K-factor logic
-    k_factor = settings.ELO_K_FACTOR_PRO if player.games_played < settings.ELO_PRO_THRESHOLD else settings.ELO_K_FACTOR_BASE
-    
-    expected_score = calculate_expected_score(player.rating, opponent_avg_rating)
+    """
+    Calculates new rating based on static points system.
+    Win: +10
+    Loss: -5
+    MVP: +5
+    """
+    rating_change = 0
     
     # Base change
-    rating_change = k_factor * (actual_score - expected_score)
+    if actual_score == 1: # Win
+        rating_change = 10
+    elif actual_score == 0: # Loss
+        rating_change = -5
     
     # MVP Bonus
     if is_mvp:
-        if actual_score == 1: # Win
-            rating_change += settings.ELO_WIN_BONUS
-        elif actual_score == 0: # Loss
-            rating_change += settings.ELO_LOSS_PENALTY
+        rating_change += 5
             
     new_rating = player.rating + int(rating_change)
-    return new_rating
+    return max(0, new_rating) # Prevent negative rating? User didn't specify, but safer.

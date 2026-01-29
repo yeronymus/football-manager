@@ -78,7 +78,30 @@ ssh ubuntu@<server> "cd ~/football-prod && docker-compose exec db psql -U footba
     docker-compose run --rm app python migrate_your_script.py
     ```
 
+## ⚠️ Изменение схемы базы данных
+
+> [!IMPORTANT]
+> **Будьте предельно осторожны при изменении моделей БД!**
+
+Поля в `app/db/models.py` не обновляются в базе данных автоматически. 
+1. Если вы добавили поле (например, в `GameStats`), обязательно создайте скрипт миграции `migrate_stats.py`.
+2. Запустите его на сервере: `docker-compose exec app python3 migrate_stats.py`.
+3. Без миграции бот упадет с ошибкой `UndefinedColumnError` при первом же запросе к этим данным.
+
+## 🐞 Частые ошибки (Troubleshooting)
+
+### TelegramConflictError
+Если в логах "Conflict: terminated by setWebhook request":
+- Это значит, что бот пытается использовать Polling, пока активен Webhook.
+- **Решение**: Код в `app/api/main.py` теперь автоматически удаляет вебхук при старте в режиме Polling. Проверьте, что `USE_POLLING=True` в `.env`.
+
+### ModuleNotFoundError / Permission Denied
+Если контейнер не видит папку `app` или файлы:
+- Это может быть связано с SELinux на сервере.
+- **Решение**: Убедитесь, что в `docker-compose.yml` у тома стоит флаг `:z` (например, `- .:/app:z`).
+
 ## 📝 Чек-лист перед выкаткой в Прод
-1.  [ ] Код работает локально.
-2.  [ ] Если меняли модели -> создали `migrate_xyz.py`.
-3.  [ ] `./prod.sh --migrate` (если нужны миграции) или `./prod.sh`.
+1.  [x] Код работает локально.
+2.  [x] Если меняли модели -> создали `migrate_xyz.py` и протестировали его.
+3.  [x] `./prod.sh` (автоматически подхватит изменения кода).
+4.  [x] **После деплоя**: Запустить миграцию вручную, если это необходимо.
