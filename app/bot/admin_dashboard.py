@@ -58,7 +58,7 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
         # Filter in Python to match utils.py logic and avoid SQL enum issues
         rows = [
             (s, u) for s, u in all_rows 
-            if s.status in [SignupStatus.ACTIVE, SignupStatus.RESERVE]
+            if s.status == SignupStatus.ACTIVE
         ]
         
         # Detailed Logging for debugging empty lists
@@ -127,20 +127,23 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
         # Action Rows
         # Row 1: Edit, Draft
         row_1 = []
-        edit_url = f"{settings.webapp_url}/web/edit_game.html?game_id={game.id}"
-        # Fallback to URL to avoid BUTTON_TYPE_INVALID in groups/channels
-        row_1.append(InlineKeyboardButton(text="✏️ Изменить", url=edit_url))
+        # DEEP LINK STRATEGY: Redirect to PM to open WebApp
+        # Use tg:// schema to attempt to suppress "Open Link" dialog
+        bot_username = "fm_metabot"
         
-        draft_url = f"{settings.webapp_url}/web/draft.html?game_id={game.id}"
-        row_1.append(InlineKeyboardButton(text="🔀 Составы (Draft)", url=draft_url))
+        edit_deep_link = f"tg://resolve?domain={bot_username}&start=edit_{game.id}"
+        row_1.append(InlineKeyboardButton(text="✏️ Изменить", url=edit_deep_link))
+        
+        draft_deep_link = f"tg://resolve?domain={bot_username}&start=game_{game.id}"
+        row_1.append(InlineKeyboardButton(text="🔀 Составы (Draft)", url=draft_deep_link))
         buttons.append(row_1)
         
         # Row 2: Kick Menu, Finish
         row_2 = []
         row_2.append(InlineKeyboardButton(text="💣 Убрать игрока", callback_data=f"god_kick_menu_{game.id}"))
         
-        finish_url = f"{settings.webapp_url}/web/finish.html?game_id={game.id}"
-        row_2.append(InlineKeyboardButton(text="🏁 Завершить матч", url=finish_url))
+        finish_deep_link = f"tg://resolve?domain={bot_username}&start=finish_{game.id}"
+        row_2.append(InlineKeyboardButton(text="🏁 Завершить матч", url=finish_deep_link))
         buttons.append(row_2)
         
         # Row 3: Delete

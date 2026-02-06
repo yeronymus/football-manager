@@ -52,6 +52,21 @@ async def start_bot():
         if webhook_info.url != settings.webhook_url:
             await bot.set_webhook(settings.webhook_url)
     
+    # Run Schema Migration
+    try:
+        logging.warning("MIGRATION: Schema Check...")
+        from sqlalchemy import text
+        from app.db.database import async_session_maker
+        async with async_session_maker() as session:
+             # Add position column if not exists
+             await session.execute(text("ALTER TABLE signups ADD COLUMN IF NOT EXISTS position VARCHAR(10)"))
+             await session.commit()
+             logging.warning("MIGRATION: Schema Updated (position column added).")
+    except Exception as e:
+        logging.error(f"SCHEMA MIGRATION FAILED: {e}")
+
+    # Rating fix migration removed (now handled via management scripts)
+
     logging.info(f"Webhook set to {settings.webhook_url}")
 
     # Set Bot Commands ...
@@ -81,11 +96,14 @@ async def start_bot():
         types.BotCommand(command="create", description="➕ Создать игру"),
     ]
 
-    # Set Default Scope (For groups etc)
-    await bot.set_my_commands(user_commands, scope=types.BotCommandScopeDefault())
-    
     # Set Private Chats Scope (Explicitly for all private chats)
     await bot.set_my_commands(user_commands, scope=types.BotCommandScopeAllPrivateChats())
+    
+    # Set Group Chats Scope (Empty to hide menu in groups)
+    await bot.set_my_commands([], scope=types.BotCommandScopeAllGroupChats())
+    
+    # Set Default Scope (Empty as fallback)
+    await bot.set_my_commands([], scope=types.BotCommandScopeDefault())
     
     # Set Admin Scope (For specific admins in private chat)
     for admin_id in settings.admin_ids:
@@ -96,9 +114,11 @@ async def start_bot():
 
     logging.info("Set role-based commands successfully.")
     
-    # 3. Force 'Commands' menu button explicitly
-    logging.info("Setting menu button to COMMANDS...")
-    await bot.set_chat_menu_button(menu_button=types.MenuButtonCommands())
+    # 3. Force 'Commands' menu button explicitly (Only for private chats?)
+    # Actually, setting commands usually sets the button.
+    # To be safe, we might not need set_chat_menu_button if we want it hidden in groups.
+    # But let's leave it, as scope modification above is the primary way.
+    # await bot.set_chat_menu_button(menu_button=types.MenuButtonCommands()) 
 
 async def stop_bot():
     """

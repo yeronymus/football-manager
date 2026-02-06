@@ -1,0 +1,3 @@
+admin_dashboard.py                              0%    0     0.0KB/s   --:-- ETAadmin_dashboard.py                            100% 8242    39.3KB/s   00:00    
+Restarting football-prod_app_1 ... 
+Restarting football-prod_app_1 ... done

@@ -57,6 +57,6 @@ fi
 
 # 5. Restart Docker
 echo "🔄 Restarting services..."
-ssh $SERVER_USER@$SERVER_HOST "cd $REMOTE_DIR && docker-compose down --remove-orphans && docker-compose build && docker-compose up -d"
+ssh $SERVER_USER@$SERVER_HOST "cd $REMOTE_DIR && docker-compose down --remove-orphans && docker-compose build --no-cache && docker-compose up -d"
 
 echo "✅ Done! $ENV_NAME is running."

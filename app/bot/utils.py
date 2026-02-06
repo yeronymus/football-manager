@@ -48,13 +48,12 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
     show_teams = False
     if game.status in [GameStatus.ACTIVE, GameStatus.FINISHED]:
         show_teams = True
-    elif any(s[0].team for s in active_players):
-        # Fallback if status isn't updated but players have teams
-        show_teams = True
 
     # Helper for formatting positions
-    def format_positions(user):
-        main_pos = user.player_position.value
+    def format_positions(user, signup):
+        # Override if Signup has a specific position set (Draft override)
+        main_pos = signup.position.value if signup.position else user.player_position.value
+        
         if user.alt_positions:
             return f"{main_pos} ({', '.join(user.alt_positions)})"
         return main_pos
@@ -71,21 +70,68 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
             team_enum = team_map.get(i)
             if not team_enum: continue
             
-            t_players = [s for s in signups if s[0].status == SignupStatus.ACTIVE and s[0].team == team_enum]
+            t_players = [
+                (s, u) for (s, u) in signups 
+                if s.status == SignupStatus.ACTIVE and s.team == team_enum
+            ]
             t_name = team_names[i] if i < len(team_names) else f"Команда {i+1}"
             
             text += f"{t_name} ({len(t_players)}):\n"
             
-            has_gk = False
-            for j, (signup, user) in enumerate(t_players, 1):
-                text += f"{j}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user)}</i>\n"
-                if user.player_position == Position.GK:
-                    has_gk = True
+            # Grouping Logic
+            groups = {
+                "GK": [],
+                "DEF": [],
+                "MID": [],
+                "FWD": []
+            }
             
-            # Check if this team needs a GK
+            for s, u in t_players:
+                # Determine effective position
+                pos_enum = s.position if s.position else u.player_position
+                pos_str = pos_enum.value if pos_enum else "DEF"
+                
+                # Categorize
+                if pos_str == "GK":
+                    groups["GK"].append((s, u))
+                elif pos_str in ["CB", "LB", "RB", "LWB", "RWB"]:
+                    groups["DEF"].append((s, u))
+                elif pos_str in ["CM", "CDM", "CAM", "LM", "RM"]:
+                    groups["MID"].append((s, u))
+                elif pos_str in ["ST", "CF", "FWD", "LW", "RW"]:
+                    groups["FWD"].append((s, u))
+                else:
+                    groups["DEF"].append((s, u)) # Fallback
+            
+            # Headers
+            headers = {
+                "GK": "<b>Вратари</b>",
+                "DEF": "<b>Защита</b>",
+                "MID": "<b>Полузащита</b>",
+                "FWD": "<b>Нападение</b>"
+            }
+            
+            team_counter = 1
+            has_gk = False
+            
+            # Render Order: GK -> DEF -> MID -> FWD
+            for cat in ["GK", "DEF", "MID", "FWD"]:
+                plist = groups[cat]
+                if not plist: continue
+                
+                # Show Sub-Header for all categories
+                text += f"<i>{headers[cat]}</i>\n"
+                    
+                for signup, user in plist:
+                    if cat == "GK": has_gk = True
+                    text += f"{team_counter}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
+                    team_counter += 1
+            
+            # Check GK Requirement
             needed_gk = team_gk_flags[i] if i < len(team_gk_flags) else True
             if not has_gk and needed_gk:
-                text += "<i>🧤 Вратарь решается на поле</i>\n"
+                 text += "<i>🧤 Вратарь решается на поле</i>\n"
+            
             text += "\n"
         
         # Unassigned
@@ -93,7 +139,7 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
         if unassigned:
             text += f"⚪ <b>Нераспределенные</b> ({len(unassigned)}):\n"
             for i, (signup, user) in enumerate(unassigned, 1):
-                text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user)}</i>\n"
+                text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
             
     else:
         # Show Pool (Draft Mode) - Simplified List
@@ -107,19 +153,19 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
             text += "\n🏃 <b>Игроки:</b>\n"
             for i, (signup, user) in enumerate(active_players, 1):
                  price_paid = "" # Future: if paid
-                 text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user)}</i>{price_paid}\n"
+                 text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>{price_paid}\n"
         else:
             text += "\nПока никого... 🦗\n"
-    
     if reserve_players:
         text += f"\n🕒 <b>Резерв</b> ({len(reserve_players)}):\n"
         for i, (signup, user) in enumerate(reserve_players, 1):
             text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a>\n"
-            
-    # Add Footer with Game Info (Price, etc)
-    if game.price and game.price > 0:
-        text += f"\n💰 Взнос: {game.price} CZK"
+    
+    # Payment info
+    if game.price > 0:
+        text += f"——————————————————\n"
+        text += f"💰 <b>Цена:</b> {game.price} CZK\n"
         if game.payment_info:
-            text += f"\n💳 Счет: <code>{html.escape(game.payment_info)}</code>"
+            text += f"💳 <code>{html.escape(game.payment_info)}</code>\n"
 
     return text

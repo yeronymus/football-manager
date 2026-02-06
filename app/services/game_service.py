@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from app.db.models import Game, Chat, User, Signup, SignupStatus, GameStatus
+from app.db.models import Game, Chat, User, Signup, SignupStatus, GameStatus, Team
 from app.api.schemas import GameCreate, GameFinishRequest, GameUpdate
 from datetime import datetime, timedelta
 import logging
@@ -57,6 +57,12 @@ class GameService:
         
         if existing_signup:
             raise AlreadySignedUpError("Вы уже записаны!")
+
+        # Check for Past Game
+        if game.date_time:
+             now_tz = datetime.now(game.date_time.tzinfo)
+             if game.date_time < now_tz:
+                 raise GameActionError("Игра уже прошла!")
 
         # Fetch User for position check
         user = await self.session.get(User, user_id)
@@ -134,21 +140,49 @@ class GameService:
         
         # Auto-promotion logic
         if was_active and game.status == GameStatus.OPEN:
-            # Promote first reserve
+            # Check GK Reservation Window
+            is_gk_priority_window = False
+            if game.created_at:
+                now_tz = datetime.now(game.created_at.tzinfo) if game.created_at.tzinfo else datetime.now()
+                age_hours = (now_tz - game.created_at).total_seconds() / 3600
+                if age_hours < game.gk_hours:
+                    is_gk_priority_window = True
+
+            # Get new active count
+            res = await self.session.execute(
+                select(func.count(Signup.id))
+                .where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
+            )
+            new_active_count = res.scalar()
+
+            # Find first reserve with user data to check position
+            from app.db.models import Position # Local import for safety
             reserve_result = await self.session.execute(
-                select(Signup)
+                select(Signup, User)
+                .join(User)
                 .where(Signup.game_id == game_id, Signup.status == SignupStatus.RESERVE)
                 .order_by(Signup.created_at)
                 .limit(1)
             )
-            first_reserve = reserve_result.scalar_one_or_none()
+            res_data = reserve_result.first()
             
-            if first_reserve:
-                first_reserve.status = SignupStatus.ACTIVE
-                # We return this info or handle notification here?
-                # Notification is side-effect. Ideally Service returns the promoted user ID
-                # allowing Controller to notify. 
-                # For now let's just commit.
+            if res_data:
+                first_reserve, res_user = res_data
+                
+                # Decision: Can we promote this person?
+                can_promote = True
+                
+                if is_gk_priority_window:
+                    # If this person is NOT a GK, check if we have "non-reserved" slots
+                    if res_user.player_position != Position.GK:
+                        # We have 2 slots reserved. Soft cap is max - 2.
+                        if new_active_count >= (game.max_players - 2):
+                            can_promote = False
+                            logger.info(f"Skipping auto-promotion for non-GK {res_user.user_id} due to GK priority.")
+                
+                if can_promote:
+                    first_reserve.status = SignupStatus.ACTIVE
+                    logger.info(f"Auto-promoted user {res_user.user_id} to game {game_id}")
 
         await self.session.commit()
         return game, was_active
@@ -428,7 +462,7 @@ class GameService:
         # Build Message
         from app.config import settings
         text = f"⚖️ <b>Составы команд ({game.location}):</b>\n\n"
-        team_names = ["🔴 Команда А", "🔵 Команда Б", "🟢 Команда С"]
+        team_names = ["🟠 Команда А", "🟢 Команда Б", "🔵 Команда С"]
         
         for i, team_players in enumerate(teams):
             t_name = team_names[i] if i < len(team_names) else f"Команда {i+1}"
@@ -486,6 +520,37 @@ class GameService:
              raise ValueError("Game not found")
         
         # Update game score and status
+        if game.status == GameStatus.FINISHED:
+            # Rollback previous results to allow editing/correction
+            from app.db.models import RatingHistory, GameStats
+            
+            # 1. Revert Ratings & Games Played
+            history_result = await self.session.execute(select(RatingHistory).where(RatingHistory.game_id == game.id))
+            histories = history_result.scalars().all()
+            for h in histories:
+                user = await self.session.get(User, h.user_id)
+                if user and h.old_rating is not None:
+                    # We revert to old_rating. 
+                    # Note: If multiple updates happened, order matters? 
+                    # If we delete ALL history for this game, we effectively revert the chain steps.
+                    # E.g. 100->105 (H1), 105->110 (H2).
+                    # Loop H2: user=105. Loop H1: user=100. Correct.
+                    user.rating = h.old_rating
+                    user.games_played = max(0, user.games_played - 1)
+                await self.session.delete(h)
+                
+            # 2. Revert Stats (MVP)
+            stats_result = await self.session.execute(select(GameStats).where(GameStats.game_id == game.id))
+            stats = stats_result.scalars().all()
+            for s in stats:
+                if s.is_mvp:
+                    user = await self.session.get(User, s.user_id)
+                    if user:
+                        user.stats_mvp = max(0, user.stats_mvp - 1)
+                await self.session.delete(s)
+            
+            await self.session.flush()
+
         game.score_a = data.score_a
         game.score_b = data.score_b
         game.winner_team = data.winner_team
@@ -509,53 +574,70 @@ class GameService:
                     if user_obj:
                          user_obj.stats_mvp += 1
 
-        # ELO Calculation (if winner is set)
-        if game.winner_team:
-            # Fetch all active players with their teams
-            result = await self.session.execute(
-                select(User, Signup.team)
-                .join(Signup)
-                .where(Signup.game_id == game.id, Signup.status == SignupStatus.ACTIVE)
-            )
-            players_data = result.all() # List of (User, Team)
-            
-            team_a_players = [p[0] for p in players_data if p[1] == Team.A]
-            team_b_players = [p[0] for p in players_data if p[1] == Team.B]
-            
-            avg_a = sum(p.rating for p in team_a_players) / len(team_a_players) if team_a_players else 1200
-            avg_b = sum(p.rating for p in team_b_players) / len(team_b_players) if team_b_players else 1200
-            
-            # Helper to update
-            def update_player(player, opponent_avg, actual_score, is_mvp=False):
-                old_rating = player.rating
-                new_rating = calculate_new_rating(player, int(opponent_avg), actual_score, is_mvp=is_mvp)
-                player.rating = new_rating
-                player.games_played += 1
+        # ELO Calculation
+        # Determine Ranks for 3-team games
+        ranking = []
+        if game.team_count == 3:
+            scores = [
+                (Team.A, game.score_a or 0),
+                (Team.B, game.score_b or 0),
+                (Team.C, game.score_c or 0)
+            ]
+            scores.sort(key=lambda x: x[1], reverse=True)
+            ranking = [s[0] for s in scores] # [1st, 2nd, 3rd]
 
-            # Calculate for Team A
-            actual_score_a = 1 if game.winner_team == Team.A else 0
-            for player in team_a_players:
-                is_mvp = (player.user_id == data.mvp_user_id)
-                update_player(player, avg_b, actual_score_a, is_mvp=is_mvp)
+        # Fetch all active players with their teams
+        result = await self.session.execute(
+            select(User, Signup.team)
+            .join(Signup)
+            .where(Signup.game_id == game.id, Signup.status == SignupStatus.ACTIVE)
+        )
+        players_data = result.all() # List of (User, Team)
+        
+        from app.db.models import RatingHistory
+
+        for user, team in players_data:
+            old_rating = user.rating
+            change = -5 # Default
             
-            # Calculate for Team B
-            actual_score_b = 1 if game.winner_team == Team.B else 0
-            for player in team_b_players:
-                is_mvp = (player.user_id == data.mvp_user_id)
-                update_player(player, avg_a, actual_score_b, is_mvp=is_mvp)
+            if game.team_count == 2:
+                if team == game.winner_team:
+                    change = 10
+                else:
+                    change = -5
+            else:
+                # 3 Teams logic: 1st:+10, 2nd:0, 3rd:-5
+                if team == ranking[0]:
+                    change = 10
+                elif team == ranking[1]:
+                    change = 0
+                else:
+                    change = -5
+            
+            is_mvp = (user.user_id == data.mvp_user_id)
+            if is_mvp:
+                change += 5
+            
+            user.rating += change
+            user.games_played += 1
+            user.stats_matches += 1
+            
+            # Record History
+            self.session.add(RatingHistory(
+                user_id=user.user_id,
+                game_id=game.id,
+                old_rating=old_rating,
+                new_rating=user.rating,
+                change=change
+            ))
 
         await self.session.commit()
         
         # Notify chat
         from app.config import settings
-        text = f"🏁 <b>Матч завершен!</b>\n"
-        text += f"Счет: {game.score_a} - {game.score_b}\n"
-        if game.winner_team:
-            text += f"Победила команда {game.winner_team.value}!\n"
+        text = f"🏁 <b>Матч завершен!</b>\n\n"
+        text += f"Команда оранжевые 🟠 {game.score_a}:{game.score_b} 🟢 Команда зеленые\n"
         
-        if settings.show_rating and game.winner_team:
-            text += f"\n📈 Рейтинги обновлены!\n"
-            
         # MVP
         if data.mvp_user_id:
              mvp_user = await self.session.get(User, data.mvp_user_id)
