@@ -3,7 +3,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
-from app.db.models import User, Position, Game, Signup, SignupStatus, GameStats, GameStatus, RatingHistory
+from app.db.models import User, Position, Game, Signup, SignupStatus, GameStats, GameStatus, RatingHistory, Team
 from app.config import settings
 from app.services.user_service import UserService
 from app.bot.fsm import EditingProfile
@@ -35,6 +35,8 @@ async def cmd_history(message: types.Message):
 @router.message(F.text == "👤 Мой профиль")
 @router.message(Command("my_profile"))
 async def cmd_my_profile(message: types.Message, session: AsyncSession):
+    if message.chat.type != "private":
+        return
     await render_profile(message, message.from_user.id, session)
 
 async def render_profile(messageable: types.Message, user_id: int, session: AsyncSession):
@@ -58,11 +60,11 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
     
     if user.alt_positions:
         text += f"🔄 Доп. позиции: {', '.join(user.alt_positions)}\n"
-    
+        
     text += f"➖➖➖➖➖➖➖➖\n"
     
     # Always show rating (User request)
-    # FIX: Check for corrupted rating (1200) and fix on the fly
+    # FIX: Check for legacy default rating (1200) and fix to new default (100)
     if user.rating == 1200:
         user.rating = 100
         await session.commit()
@@ -90,6 +92,8 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
 @router.message(F.text == "📜 Мои матчи")
 @router.message(Command("my_history"))
 async def cmd_my_history(message: types.Message, session: AsyncSession):
+    if message.chat.type != "private":
+        return
     user_id = message.from_user.id
 
     # 1. Запрашиваем последние 10 игр, в которых участвовал юзер
@@ -118,8 +122,13 @@ async def cmd_my_history(message: types.Message, session: AsyncSession):
     text = "<b>📜 Ваши последние игры:</b>\n\n"
 
     for game, signup, stats, rating in matches:
-        # А. Определяем результат (Победа/Поражение)
-        result_icon = "🤝" # Ничья по дефолту
+        # А. Определяем результат и иконку команды
+        team_icon = "⚪"
+        if signup.team == Team.A: team_icon = "🟠"
+        elif signup.team == Team.B: team_icon = "🟢"
+        elif signup.team == Team.C: team_icon = "🔵"
+
+        result_icon = "🤝" 
         if game.winner_team:
             if game.winner_team == signup.team:
                 result_icon = "🏆" # Победа
@@ -128,39 +137,36 @@ async def cmd_my_history(message: types.Message, session: AsyncSession):
         
         # Б. Счет матча
         score_text = f"{game.score_a or 0}:{game.score_b or 0}"
+        if game.team_count == 3:
+            score_text += f":{game.score_c or 0}"
         
         # В. Строка матча
         date_str = game.date_time.strftime("%d.%m")
-        text += f"{result_icon} <b>{date_str} | {game.location}</b> ({score_text})\n"
+        # Извлекаем краткое название локации (первая часть до запятой или палки)
+        loc_short = game.location.split('|')[0].split(',')[0].strip()
+        
+        text += f"{result_icon} <b>{date_str} | {loc_short}</b> ({score_text})\n"
         
         # Г. Личная статистика (Детали)
         details = []
-        
+        details.append(f"{team_icon} Команда")
+
         # Голы
         if stats and stats.goals > 0:
-            details.append(f"⚽ {stats.goals}")
+            details.append(f"⚽ {stats.goals} гол")
             
-        # Рейтинг (Shadow ELO check)
-        if settings.show_rating and rating:
+        # Рейтинг (MMR change)
+        if rating:
             sign = "+" if rating.change > 0 else ""
-            details.append(f"📈 {sign}{rating.change} MMR")
+            details.append(f"{sign}{rating.change} MMR")
         
-        # Если были детали, добавляем их
-        if details:
-            text += f"   └ <i>{' • '.join(details)}</i>\n"
-        else:
-            text += "   └ <i>Без результативных действий</i>\n"
-            
-        text += "\n"
+        text += f"   └ <i>{ ' • '.join(details) }</i>\n\n"
 
     # Добавляем общую стату в подвал
     user = await session.get(User, user_id)
     text += f"➖➖➖➖➖➖➖➖\n"
     text += f"👤 <b>{user.full_name}</b>\n"
-    
-    if settings.show_rating:
-        text += f"📊 Рейтинг: <b>{user.rating}</b>\n"
-        
+    text += f"📊 Рейтинг: <b>{user.rating}</b>\n"
     text += f"🎮 Матчей: <b>{user.games_played}</b>"
 
     await message.answer(text)

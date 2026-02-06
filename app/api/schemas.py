@@ -55,6 +55,7 @@ class UpdateTeamsRequest(BaseModel):
     team_a: list[int]
     team_b: list[int]
     team_c: Optional[list[int]] = None
+    positions: Optional[dict[int, str]] = None
     initData: str
 
 class AddPlayerRequest(BaseModel):

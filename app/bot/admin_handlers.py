@@ -105,9 +105,22 @@ async def cb_god_kick_menu(callback: types.CallbackQuery, session: AsyncSession)
 
 @router.callback_query(F.data.startswith("god_dash_refresh_"))
 async def cb_god_dash_refresh(callback: types.CallbackQuery, session: AsyncSession):
-    game_id = int(callback.data.split("_")[3])
-    from app.bot.admin_dashboard import update_dashboard_message
-    await update_dashboard_message(callback.bot, game_id, session, target_chat_id=callback.message.chat.id)
+    try:
+        # Format: god_dash_refresh_{game_id}
+        game_id = int(callback.data.split("_")[3])
+        
+        from app.bot.admin_dashboard import update_dashboard_message
+        # Force update the same message (callback.message)
+        success = await update_dashboard_message(callback.bot, game_id, session, target_chat_id=callback.message.chat.id)
+        
+        if success:
+            await callback.answer("✅ Меню обновлено")
+        else:
+            await callback.answer("⚠️ Ошибка обновления меню")
+            
+    except Exception as e:
+        logger.error(f"Back Button Error: {e}")
+        await callback.answer(f"Error: {e}")
 
 @router.callback_query(F.data.startswith("kick_p_"))
 async def cb_kick_intent(callback: types.CallbackQuery):

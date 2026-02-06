@@ -86,7 +86,9 @@ async def calculate_mvp(game_id: int):
         text = f"🏆 MVP матча {game.location} признан {mvp_user.full_name} ({votes_count} голосов)!" if mvp_user else "MVP не выбран (нет голосов)."
         
         if game.winner_team:
-            text += f"\n\nПобедила команда {game.winner_team.value}."
+            team_colors = {Team.A: "🟠 Команда А", Team.B: "🟢 Команда Б", Team.C: "🔵 Команда С"}
+            winner_text = team_colors.get(game.winner_team, f"Команда {game.winner_team.value}")
+            text += f"\n\n🏆 Победила {winner_text}."
 
         await bot.send_message(chat_id=game.chat_id, text=text)
 

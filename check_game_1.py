@@ -10,6 +10,8 @@ async def main():
             game = result.scalar_one_or_none()
             if game:
                 print(f"Game ID: {game.id}")
+                print(f"Chat ID: {game.chat_id}")
+                print(f"Message ID: {game.message_id}")
                 print(f"GK Hours: {game.gk_hours}")
                 print(f"Created At: {game.created_at}")
             else:

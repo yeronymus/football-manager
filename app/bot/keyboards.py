@@ -86,6 +86,11 @@ def get_primary_select_keyboard(available: list[str]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_game_keyboard(game_id: int) -> InlineKeyboardMarkup:
+    # Use Deep Link to bypass "WebApp in Channel" restriction
+    # User clicks -> Private Chat -> /start game_id -> We show WebApp button there
+    bot_username = "fm_metabot" 
+    deep_link = f"https://t.me/{bot_username}?start=game_{game_id}"
+    
     buttons = [
         [
             InlineKeyboardButton(text="➕ Я в деле", callback_data=f"join_{game_id}"),

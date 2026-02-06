@@ -54,7 +54,36 @@ _Планируется добавление скрипта backup.sh_
 Подключиться к psql внутри контейнера:
 
 ```bash
-ssh ubuntu@<server> "cd ~/football-prod && docker-compose exec db psql -U football_user -d football_db"
+# Прямая команда для подключения (скопируйте и запустите в терминале):
+ssh ubuntu@yernur-vm1.sin.cvut.cz "cd ~/football-prod && docker-compose exec -u postgres db psql -U postgres -d football"
+```
+
+### Полезные SQL команды (для администратора)
+Если нужно сбросить статистику или проверить данные:
+```sql
+-- Проверить последние игры
+SELECT id, date_time, status FROM games ORDER BY date_time DESC LIMIT 5;
+
+-- Проверить рейтинг топ-5 игроков
+SELECT full_name, rating FROM users ORDER BY rating DESC LIMIT 5;
+```
+
+## 🛠 Администрирование Сервера
+
+### Доступ (SSH)
+Агент (и вы) подключается к серверу по следующей команде:
+```bash
+ssh ubuntu@yernur-vm1.sin.cvut.cz
+```
+Папка проекта: `~/football-prod`
+
+### Управление Docker
+```bash
+# Посмотреть статус контейнеров
+ssh ubuntu@yernur-vm1.sin.cvut.cz "cd football-prod && docker-compose ps"
+
+# Перезагрузить только бота
+ssh ubuntu@yernur-vm1.sin.cvut.cz "cd football-prod && docker-compose restart app"
 ```
 
 ## 🐞 Устранение неполадок (Troubleshooting)

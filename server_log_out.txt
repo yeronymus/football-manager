@@ -1,0 +1,104 @@
+Attaching to football-prod_app_1
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[cached since 0.02101s ago] ('votes', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+[36mapp_1    |[0m 2026-02-04 13:10:34,192 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+[36mapp_1    |[0m FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+[36mapp_1    |[0m FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_cla
+=== CHECKING LOGS ===_
+[INFO] Running: ssh -o StrictHostKeyChecking=no ubuntu@yernur-vm1.sin.cvut.cz cd ~/football-prod && docker-compose logs --tail=100 app
+ss.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+[36mapp_1    |[0m 2026-02-04 13:10:34,192 INFO sqlalchemy.engine.Engine [cached since 0.02403s ago] ('rating_history', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[cached since 0.02403s ago] ('rating_history', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+[36mapp_1    |[0m 2026-02-04 13:10:34,195 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+[36mapp_1    |[0m FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_class.relname 
+[36mapp_1    |[0m FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+[36mapp_1    |[0m 2026-02-04 13:10:34,195 INFO sqlalchemy.engine.Engine [cached since 0.02707s ago] ('game_stats', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[cached since 0.02707s ago] ('game_stats', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+[36mapp_1    |[0m 2026-02-04 13:10:34,200 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+[36mapp_1    |[0m FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_type.typname 
+[36mapp_1    |[0m FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+[36mapp_1    |[0m 2026-02-04 13:10:34,200 INFO sqlalchemy.engine.Engine [generated in 0.00048s] ('user_position', 'pg_catalog')
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[generated in 0.00048s] ('user_position', 'pg_catalog')
+[36mapp_1    |[0m 2026-02-04 13:10:34,205 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+[36mapp_1    |[0m FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_type.typname 
+[36mapp_1    |[0m FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+[36mapp_1    |[0m 2026-02-04 13:10:34,206 INFO sqlalchemy.engine.Engine [cached since 0.005586s ago] ('gamestatus', 'pg_catalog')
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[cached since 0.005586s ago] ('gamestatus', 'pg_catalog')
+[36mapp_1    |[0m 2026-02-04 13:10:34,209 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+[36mapp_1    |[0m FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_type.typname 
+[36mapp_1    |[0m FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+[36mapp_1    |[0m 2026-02-04 13:10:34,209 INFO sqlalchemy.engine.Engine [cached since 0.009093s ago] ('team', 'pg_catalog')
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[cached since 0.009093s ago] ('team', 'pg_catalog')
+[36mapp_1    |[0m 2026-02-04 13:10:34,212 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+[36mapp_1    |[0m FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_type.typname 
+[36mapp_1    |[0m FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+[36mapp_1    |[0m 2026-02-04 13:10:34,213 INFO sqlalchemy.engine.Engine [cached since 0.01292s ago] ('signupstatus', 'pg_catalog')
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[cached since 0.01292s ago] ('signupstatus', 'pg_catalog')
+[36mapp_1    |[0m 2026-02-04 13:10:34,217 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+[36mapp_1    |[0m FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT pg_catalog.pg_type.typname 
+[36mapp_1    |[0m FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+[36mapp_1    |[0m WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+[36mapp_1    |[0m 2026-02-04 13:10:34,217 INFO sqlalchemy.engine.Engine [cached since 0.01709s ago] ('signup_position_enum', 'pg_catalog')
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[cached since 0.01709s ago] ('signup_position_enum', 'pg_catalog')
+[36mapp_1    |[0m 2026-02-04 13:10:34,219 INFO sqlalchemy.engine.Engine COMMIT
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:COMMIT
+[36mapp_1    |[0m 2026-02-04 13:10:34,223 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+[36mapp_1    |[0m 2026-02-04 13:10:34,312 INFO sqlalchemy.engine.Engine SELECT chats.chat_id AS chats_chat_id, chats.title AS chats_title, chats.admin_chat_id AS chats_admin_chat_id 
+[36mapp_1    |[0m FROM chats 
+[36mapp_1    |[0m WHERE chats.chat_id = $1::BIGINT
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT chats.chat_id AS chats_chat_id, chats.title AS chats_title, chats.admin_chat_id AS chats_admin_chat_id 
+[36mapp_1    |[0m FROM chats 
+[36mapp_1    |[0m WHERE chats.chat_id = $1::BIGINT
+[36mapp_1    |[0m 2026-02-04 13:10:34,313 INFO sqlalchemy.engine.Engine [generated in 0.00062s] (-1001234567890,)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[generated in 0.00062s] (-1001234567890,)
+[36mapp_1    |[0m 2026-02-04 13:10:34,321 INFO sqlalchemy.engine.Engine SELECT chats.chat_id AS chats_chat_id, chats.title AS chats_title, chats.admin_chat_id AS chats_admin_chat_id 
+[36mapp_1    |[0m FROM chats 
+[36mapp_1    |[0m WHERE chats.chat_id = $1::BIGINT
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:SELECT chats.chat_id AS chats_chat_id, chats.title AS chats_title, chats.admin_chat_id AS chats_admin_chat_id 
+[36mapp_1    |[0m FROM chats 
+[36mapp_1    |[0m WHERE chats.chat_id = $1::BIGINT
+[36mapp_1    |[0m 2026-02-04 13:10:34,321 INFO sqlalchemy.engine.Engine [cached since 0.009607s ago] (-1009876543210,)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[cached since 0.009607s ago] (-1009876543210,)
+[36mapp_1    |[0m 2026-02-04 13:10:34,323 INFO sqlalchemy.engine.Engine COMMIT
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:COMMIT
+[36mapp_1    |[0m INFO:apscheduler.scheduler:Scheduler started
+[36mapp_1    |[0m INFO:app.api.main:Configuration: USE_POLLING=False, WEBHOOK_URL=https://yernur-vm1.sin.cvut.cz/api/webhook
+[36mapp_1    |[0m INFO:app.api.main:Starting in Webhook mode...
+[36mapp_1    |[0m WARNING:root:MIGRATION: Schema Check...
+[36mapp_1    |[0m 2026-02-04 13:10:34,463 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+[36mapp_1    |[0m 2026-02-04 13:10:34,464 INFO sqlalchemy.engine.Engine ALTER TABLE signups ADD COLUMN IF NOT EXISTS position VARCHAR(10)
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:ALTER TABLE signups ADD COLUMN IF NOT EXISTS position VARCHAR(10)
+[36mapp_1    |[0m 2026-02-04 13:10:34,464 INFO sqlalchemy.engine.Engine [generated in 0.00043s] ()
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:[generated in 0.00043s] ()
+[36mapp_1    |[0m 2026-02-04 13:10:34,469 INFO sqlalchemy.engine.Engine COMMIT
+[36mapp_1    |[0m INFO:sqlalchemy.engine.Engine:COMMIT
+[36mapp_1    |[0m WARNING:root:MIGRATION: Schema Updated (position column added).
+[36mapp_1    |[0m INFO:root:Webhook set to https://yernur-vm1.sin.cvut.cz/api/webhook
+[36mapp_1    |[0m INFO:root:Setting bot commands...
+[36mapp_1    |[0m INFO:root:Cleared default and private commands.
+[36mapp_1    |[0m WARNING:root:Failed to set commands for admin 123456789: Telegram server says - Bad Request: chat not found
+[36mapp_1    |[0m INFO:root:Set role-based commands successfully.
+[36mapp_1    |[0m INFO:app.api.main:Application started successfully
+[36mapp_1    |[0m INFO:     Application startup complete.
+[36mapp_1    |[0m INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)

@@ -218,23 +218,9 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
     # 3. If User Exists -> Show Menu OR Game Action
     if user:
         if game_id:
-            # Fetch Game First
-            result = await session.execute(select(Game).where(Game.id == game_id))
-            game = result.scalar_one_or_none()
-            
-            # Determine Admin Status (Dynamic)
+            # Check Admin for protected actions
             from app.config import settings
-            is_admin = False
-            
-            if message.from_user.id in settings.admin_ids or message.from_user.id == settings.system_owner_id:
-                is_admin = True
-            elif game:
-                try:
-                    chat_member = await message.bot.get_chat_member(game.chat_id, message.from_user.id)
-                    if chat_member.status in ["administrator", "creator"]:
-                        is_admin = True
-                except Exception:
-                    pass
+            is_admin = message.from_user.id in settings.admin_ids or message.from_user.id == settings.system_owner_id
             
             if action_type == "edit":
                 if not is_admin:
@@ -270,11 +256,13 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     # 2. Get standard keyboard (which has Deep Link URL for draft)
                     kb = get_game_keyboard(game_id)
                     
-                    # 3. If Admin (Calculated dynamically above)
+                    # 3. If Admin, give them the Tool view (Full Text + ONLY WebApp Button)
+                    # Use global settings
+                    is_admin = message.from_user.id in settings.admin_ids or message.from_user.id == settings.system_owner_id
                     
                     if is_admin:
                         # Clean UX: No Join/Leave buttons, just the tool they asked for.
-                        web_app_url = f"{settings.webapp_url}/web/draft.html?game_id={game_id}&v=1.9"
+                        web_app_url = f"{settings.webapp_url}/web/draft.html?game_id={game_id}&v=1.1"
                         kb = types.InlineKeyboardMarkup(inline_keyboard=[
                             [types.InlineKeyboardButton(text="🛠 Составы (Draft) [WebApp]", web_app=types.WebAppInfo(url=web_app_url))]
                         ])

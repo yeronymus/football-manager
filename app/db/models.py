@@ -111,6 +111,7 @@ class Signup(Base):
     user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
     status = Column(Enum(SignupStatus), default=SignupStatus.ACTIVE)
     team = Column(Enum(Team), nullable=True)
+    position = Column(Enum(Position, name="signup_position_enum"), nullable=True) # Per-match override
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     is_paid = Column(Boolean, default=False)
 

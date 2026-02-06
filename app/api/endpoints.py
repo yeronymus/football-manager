@@ -50,9 +50,9 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
             logger.warning(f"validate_init_data failed: Hash mismatch. Calc: {calculated_hash}, Recieved: {hash_value}")
             return False
             
-        # Check auth_date for replay attacks (10 minutes window)
+        # Check auth_date for replay attacks (Increased to 12h for ease of use)
         auth_date = int(parsed_data.get("auth_date", 0))
-        if time.time() - auth_date > 600:
+        if time.time() - auth_date > 43200:
             logger.warning("validate_init_data failed: Auth date expired")
             return False
             
@@ -71,10 +71,6 @@ def get_user_from_init_data(init_data: str) -> int:
     user_id = user_data.get("id")
     if not user_id:
         raise HTTPException(status_code=400, detail="User ID not found in initData")
-        
-    # Immobilizer: API Access Control
-    if settings.system_owner_id and user_id != settings.system_owner_id:
-        raise HTTPException(status_code=403, detail="Unauthorized instance owner")
         
     return user_id
 
@@ -291,71 +287,40 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
         if uid not in assigned_ids:
             signup.team = None
 
-    await session.commit()
+    # Update Positions (Per-Match Override)
+    if data.positions:
+        from app.db.models import Position
+        
+        # Map simplified Frontend slots to Concrete DB Positions
+        # effectively "representative" positions for the slot
+        slot_map = {
+            "GK": Position.GK,
+            "DEF": Position.CB,
+            "MID": Position.CM,
+            "FWD": Position.FWD
+        }
+        
+        for user_id_val, pos_str in data.positions.items():
+            if user_id_val in signup_map:
+                try:
+                    # 1. Try generic map
+                    new_pos = slot_map.get(pos_str)
+                    
+                    # 2. If not found, try direct enum conversion (fallback)
+                    if not new_pos:
+                        new_pos = Position(pos_str)
+                        
+                    # Save into Signup
+                    signup_map[user_id_val].position = new_pos
+                    
+                except ValueError:
+                    pass
+                
+        await session.commit()
     
-    # Fetch updated player objects for message
-    result = await session.execute(
-        select(User).where(User.user_id.in_(team_a_users))
-    )
-    team_a_objs = result.scalars().all()
-    
-    result = await session.execute(
-        select(User).where(User.user_id.in_(team_b_users))
-    )
-    team_b_objs = result.scalars().all()
+    return {"status": "updated"} # No need to fetch objs if message is disabled here
 
-    await session.commit()
-    
-    # Message removed as per user request (Save should be silent)
-    # Only Publish sends notification
-
-    return {"status": "updated"}
-
-@router.post("/set_game_result")
-async def set_game_result(data: GameResult, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(data.initData, settings.bot_token):
-        raise HTTPException(status_code=403, detail="Invalid initData")
-
-    user_id = get_user_from_init_data(data.initData)
-    
-    result = await session.execute(select(Game).where(Game.id == data.game_id))
-    game = result.scalar_one_or_none()
-    if not game:
-        raise HTTPException(status_code=404, detail="Game not found")
-
-    await check_admin_rights(game.chat_id, user_id)
-
-    game.winner_team = data.winner_team
-    await session.commit()
-
-    await bot.send_message(chat_id=game.chat_id, text=f"🏁 Результат матча зафиксирован! Победила команда {data.winner_team.value}!")
-
-    return {"status": "result_set"}
-
-@router.get("/games/open")
-async def get_open_games(initData: str, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(initData, settings.bot_token):
-        raise HTTPException(status_code=403, detail="Invalid initData")
-    
-    user_id = get_user_from_init_data(initData)
-    # Check admin rights in general? Or just list games where user is admin?
-    # For now, list ALL open games for simplicity, or filtered by chat.
-    # The prompt implies scaling, so maybe just list all OPEN games.
-    
-    result = await session.execute(
-        select(Game).where(Game.status.in_([GameStatus.OPEN, GameStatus.ACTIVE])).order_by(Game.date_time)
-    )
-    games = result.scalars().all()
-    
-    return [
-        {
-            "id": g.id, 
-            "location": g.location, 
-            "date_time": g.date_time.isoformat(),
-            "chat_id": g.chat_id
-        } 
-        for g in games
-    ]
+# ... (skip to get_game_details) ...
 
 @router.get("/game/{game_id}")
 async def get_game_details(game_id: int, initData: str, session: AsyncSession = Depends(get_session)):
@@ -371,28 +336,32 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
         
     await check_admin_rights(game.chat_id, user_id)
     
-    # Fetch players
+    # Fetch players with Signup data
     result = await session.execute(
-        select(User, Signup.team)
+        select(User, Signup) # Select both
         .join(Signup)
         .where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
     )
     players_data = result.all()
     
     def serialize_player(p_tuple):
-        user, team = p_tuple
+        user, signup = p_tuple
+        # Use Signup position override if available, else User default
+        eff_pos = signup.position if signup.position else user.player_position
+        
         return {
             "id": user.user_id,
             "name": user.full_name,
             "rating": user.rating,
-            "position": user.player_position.value if user.player_position else "DEF",
+            "position": eff_pos.value if eff_pos else "DEF",
+            "original_position": user.player_position.value if user.player_position else "DEF",
             "alt_positions": user.alt_positions or []
         }
     
-    team_a = [serialize_player(p) for p in players_data if p[1] == Team.A]
-    team_b = [serialize_player(p) for p in players_data if p[1] == Team.B]
-    team_c = [serialize_player(p) for p in players_data if p[1] == Team.C]
-    unassigned = [serialize_player(p) for p in players_data if not p[1]]
+    team_a = [serialize_player(p) for p in players_data if p[1].team == Team.A]
+    team_b = [serialize_player(p) for p in players_data if p[1].team == Team.B]
+    team_c = [serialize_player(p) for p in players_data if p[1].team == Team.C]
+    unassigned = [serialize_player(p) for p in players_data if not p[1].team]
     
     return {
         "id": game.id,
@@ -437,23 +406,54 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
     
     # Update Public Message
     from app.bot.main import bot
-    public_text = await format_game_message(game, session)
     try:
+        public_text = await format_game_message(game, session)
+        
         if game.message_id:
-            await bot.edit_message_text(
+            try:
+                await bot.edit_message_text(
+                    chat_id=game.chat_id,
+                    message_id=game.message_id,
+                    text=public_text,
+                    reply_markup=get_game_keyboard(game.id),
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                # If message not modified, it's fine. If not found, send new.
+                if "message is not modified" in str(e):
+                    pass
+                elif "message to edit not found" in str(e) or "message can't be edited" in str(e):
+                    # Message deleted? Send new one.
+                    msg = await bot.send_message(
+                        chat_id=game.chat_id,
+                        text=public_text,
+                        reply_markup=get_game_keyboard(game.id),
+                        parse_mode="HTML"
+                    )
+                    game.message_id = msg.message_id
+                    await session.commit()
+                else:
+                    raise e
+        else:
+            # First publish or lost message
+            msg = await bot.send_message(
                 chat_id=game.chat_id,
-                message_id=game.message_id,
                 text=public_text,
                 reply_markup=get_game_keyboard(game.id),
                 parse_mode="HTML"
             )
+            game.message_id = msg.message_id
+            await session.commit()
             
         if is_update:
             await bot.send_message(game.chat_id, "🔄 <b>Составы обновлены!</b> Проверьте изменения в закрепе.")
         else:
             await bot.send_message(game.chat_id, "📢 <b>Составы утверждены!</b> Чекайте закреп.")
+            
     except Exception as e:
-        print(f"Publish error: {e}")
+        logger.error(f"Publish error: {e}", exc_info=True)
+        # IMPORTANT: Returning error to client so user sees it
+        raise HTTPException(status_code=500, detail=f"Bot Error: {str(e)}")
         
     return {"status": "published"}
 
@@ -479,8 +479,8 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Finish game error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Finish game error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal Error: {str(e)}")
 
 @router.get("/history/{chat_id}")
 async def get_chat_history(chat_id: int, initData: str, session: AsyncSession = Depends(get_session)):
@@ -636,7 +636,7 @@ async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends
             full_name=f"{data.name} (Guest)",
             username=None,
             player_position=Position[pos_str],
-            rating=1200 # Default rating
+            rating=100 # Default rating
         )
         session.add(user)
         
