@@ -4,7 +4,8 @@ from aiogram.filters import Command, CommandObject
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from app.db.models import User, GameStats
-from app.db.database import get_db
+from app.db.models import User, GameStats
+# from app.db.database import get_db # removed
 
 router = Router()
 
@@ -14,7 +15,15 @@ async def cmd_top(message: types.Message, command: CommandObject, session: Async
     Shows top lists.
     Usage: /top [category]
     Categories: rating (default), goals, mvp, matches
+    Categories: rating (default), goals, mvp, matches
     """
+    if message.chat.type != "private":
+        # Silent ignore or minimal "DM only"
+        # User requested "no spam", so let's just ignore or delete?
+        # A quick self-destructing message is polite but might be spammy.
+        # Let's just return.
+        return
+
     args = command.args.split() if command.args else []
     category = args[0].lower() if args else "rating"
     
