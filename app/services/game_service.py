@@ -97,7 +97,7 @@ class GameService:
                          
         if is_gk_priority:
             status = SignupStatus.RESERVE
-            alert_msg = f"🧤 Места зарезервированы для вратарей ({game.gk_hours}ч)! Вы в резерве."
+            alert_msg = f"🧤 Места зарезервированы для вратарей (24ч)! Вы в резерве."
         elif active_count >= game.max_players:
             status = SignupStatus.RESERVE
             alert_msg = "Резерв (мест нет)"
@@ -409,22 +409,37 @@ class GameService:
     async def _publish_game_message(self, game: Game):
         """Internal helper to send/pin the game message."""
         from app.bot.main import bot
-        if game.message_id:
-            logger.info(f"Game {game.id} already published.")
-            return
+        from app.bot.keyboards import get_game_keyboard
+        
+        # 1. Publish to Channel (Full Mode)
+        if game.channel_id:
+            text_full = await format_game_message(game, self.session, is_short=False)
+            try:
+                sent_full = await bot.send_message(
+                    chat_id=game.channel_id,
+                    text=text_full,
+                    reply_markup=get_game_keyboard(game.id)
+                )
+                game.channel_message_id = sent_full.message_id
+            except Exception as e:
+                logger.warning(f"Failed to publish to channel {game.channel_id}: {e}")
 
-        message_text = await format_game_message(game, self.session)
+        # 2. Publish to Group Chat (Short Mode)
+        text_short = await format_game_message(game, self.session, is_short=True)
         try:
             sent_message = await bot.send_message(
                 chat_id=game.chat_id,
-                text=message_text,
+                text=text_short,
                 reply_markup=get_game_keyboard(game.id)
             )
-            
             game.message_id = sent_message.message_id
             await self.session.commit()
+            
+            try:
+                await bot.pin_chat_message(chat_id=game.chat_id, message_id=sent_message.message_id)
+            except: pass
         except Exception as e:
-            logger.warning(f"Failed to publish game message: {e}")
+            logger.warning(f"Failed to publish game message to chat {game.chat_id}: {e}")
 
     async def balance_teams(self, game_id: int):
         """
@@ -621,7 +636,7 @@ class GameService:
         )
         players_data = result.all() # List of (User, Team)
         
-        from app.db.models import RatingHistory
+
 
         for user, team in players_data:
             old_rating = user.rating

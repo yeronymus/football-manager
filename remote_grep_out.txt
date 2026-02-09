@@ -1,0 +1,6 @@
+        <label for="duration">Длительность (часов)</label>
+        <input type="number" id="duration" value="2" min="1" max="5" inputmode="numeric">
+        <label for="gk_hours">Бронь вратарей (часов)</label>
+        <input type="number" id="gk_hours" value="24" min="0" max="168" inputmode="numeric">
+                    gk_hours: parseInt(document.getElementById('gk_hours').value) || 24,
+                    duration: parseInt(document.getElementById('duration').value) || 2,
