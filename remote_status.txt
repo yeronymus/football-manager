@@ -1,0 +1,179 @@
+
+--- EXEC: hostname ---
+[INFO] Connecting to yernur-vm1.sin.cvut.cz...
+yernur-vm1
+
+
+--- EXEC: docker ps -a ---
+[INFO] Connecting to yernur-vm1.sin.cvut.cz...
+CONTAINER ID   IMAGE                COMMAND                  CREATED       STATUS                        PORTS                                         NAMES
+24c532847365   football-prod_app    "uvicorn app.api.mai…"   3 days ago    Up 28 hours                   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp   football-prod_app_1
+b06ff7e9ee13   postgres:15-alpine   "docker-entrypoint.s…"   3 days ago    Up 3 days                     0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp   football-prod_db_1
+0d89fbe0e6f6   redis:7-alpine       "docker-entrypoint.s…"   3 days ago    Up 3 days                     0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp   football-prod_redis_1
+0a3ea4a96388   2fc2a29fd998         "/bin/sh -c 'apt-get…"   3 days ago    Exited (100) 3 days ago                                                     affectionate_hellman
+a09ddf008569   1a52b1d318d3         "/bin/sh -c 'apt-get…"   3 days ago    Exited (100) 3 days ago                                                     practical_euclid
+c0972289ae1b   football-dev_app     "uvicorn app.api.mai…"   3 weeks ago   Restarting (3) 34 hours ago                                                 football-dev_app_1
+9649c7645a05   redis:7-alpine       "docker-entrypoint.s…"   3 weeks ago   Up 3 weeks                    0.0.0.0:6380->6379/tcp, [::]:6380->6379/tcp   football-dev_redis_1
+77c90d013956   postgres:15-alpine   "docker-entrypoint.s…"   3 weeks ago   Up 3 weeks                    0.0.0.0:5434->5432/tcp, [::]:5434->5432/tcp   football-dev_db_1
+
+
+--- EXEC: docker volume ls ---
+[INFO] Connecting to yernur-vm1.sin.cvut.cz...
+DRIVER    VOLUME NAME
+local     506b3224c43734cbe5bccd5d050beb62e9f7db6770fb1569845d713644f833c8
+local     8105d95f102eab07110b44df5352223ac9fd175d24752d2cbfd599f9ff564905
+local     03838867dbea87acee1bc6356cdff267dbe2ded03507353358eee9ac23957e5d
+local     cityplan_grafana_data
+local     cityplan_postgres_data
+local     cityplan_prometheus_data
+local     dbea280ad5a117ee5939bc5ea93538b54705d73a43970cc5d455b6e6182aacb0
+local     e52571f0cb6e61f16e8eae94180a7f656b97b9efaed904e6bf916381c0df124f
+local     ec9d338b202e8119fd15c0f24bc59e93eed6b05cedc9d05c4e947d992ae6ece8
+local     eed9c90e70337f76964b8203b677b2fc3434717b3a095cfddeef08c63a5be66d
+local     f280c962950d58e6a6d3d2e30c6403b190f7a38a6fa36ddbea78173d248b75c1
+local     f187726a14cca50a807e8c25b73f4c2cc1c52d41c1889cced6626b9c2be6f4fa
+local     football-dev_postgres_data
+local     football-dev_redis_data
+local     football-prod_postgres_data
+local     football-prod_redis_data
+local     football_bot_postgres_data
+local     football_bot_redis_data
+
+
+--- EXEC: ls -F ~/football-prod/ ---
+[INFO] Connecting to yernur-vm1.sin.cvut.cz...
+DEPLOYMENT.md
+Dockerfile
+FUTURE.md
+README.md
+app/
+app_current_logs.txt
+app_logs.txt
+app_logs_check.txt
+app_logs_final.txt
+app_logs_fixed.txt
+app_ls.txt
+app_startup_logs.txt
+bot_fallback.log
+build.log
+check_db_state.py
+check_game_1.py
+check_game_1_date.py
+check_games.py
+check_mmr.py
+check_users.py
+container_ls.txt
+curl_prod_health.txt
+db_tables.txt
+dead_bot_logs.txt
+debug_history.py
+debug_output.txt
+debug_output_2.txt
+debug_ssh.py
+debug_start.py
+debug_startup_logs.txt
+deploy.sh*
+deploy_debug.log
+development.env
+docker-compose.yml
+docker_clean_status.txt
+docker_current_ps.txt
+docker_status.txt
+docker_status_check.txt
+docker_status_final.txt
+final_stats.txt
+find_results.txt
+fix_chat_id.py
+fix_game_button.py
+fix_roster.py
+football.db
+football.db.bak
+force_voting_msg.py
+game_1_date.txt
+game_1_details.txt
+games_list.txt
+get_bot_username.py
+get_stats.py
+health.txt
+health_check.txt
+health_final.txt
+health_fixed.txt
+health_startup.txt
+history_data.json
+id.txt
+import_history.py
+inspect_game_13.py
+install.log
+ip.txt
+local.env
+logs.sh*
+manage_past_games.py
+manual_refresh_dash.py
+manual_update_msg.py
+migrate_admin.py
+migrate_channels.py
+migrate_db.py
+migrate_enums.py
+migrate_gk_hours.py
+migrate_payment.py
+migrate_remove_positions.py
+migrate_reset_ratings.py
+migrate_score.py
+migrate_signup_pos.py
+migrate_stats.py
+migrate_votes.py
+out.txt
+output.log
+phase4_log_check.txt
+phase5_debug_logs.txt
+phase6_final_check.txt
+phase7_final_check.txt
+phase8_debug_logs.txt
+phase9_final_check.txt
+pip_list.txt
+prod.sh*
+prod_final_check.txt
+prod_logs.txt
+prod_logs_error.txt
+prod_logs_final_check.txt
+prod_logs_fix_check.txt
+production.env
+ps_out.txt
+ps_python.txt
+psql_out.txt
+rating_top.txt
+refresh_game1.py
+refresh_output.txt
+remote.env
+remote_debug.sh
+remote_docker_compose.yml
+remote_import_test.txt
+remote_logs_ipv4.txt
+remote_ls.txt
+repair_game.py
+repair_game_1.py
+requirements.txt
+reset_db.py
+restore_and_publish.py
+restore_game_13.py
+run_local.log
+run_local.sh*
+run_local_debug.log
+running.log
+simulate_reserve.py
+ssh_ls.txt
+ssh_test.txt
+stats_output.txt
+sudo_id.txt
+test_chat.py
+test_env_parsing.py
+test_output.txt
+test_script.py
+tests/
+users.txt
+users_downloaded.txt
+users_fixed.txt
+users_psql.txt
+verify_game_13.py
+whoami.txt
+

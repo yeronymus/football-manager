@@ -209,10 +209,16 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 game_id = int(args.split("_")[1])
                 action_type = "edit"
             except ValueError: pass
+            except ValueError: pass
         elif args.startswith("finish_"):
             try:
                 game_id = int(args.split("_")[1])
                 action_type = "finish"
+            except ValueError: pass
+        elif args.startswith("vote_"):
+            try:
+                game_id = int(args.split("_")[1])
+                action_type = "vote"
             except ValueError: pass
 
     # 3. If User Exists -> Show Menu OR Game Action
@@ -256,6 +262,14 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     [types.InlineKeyboardButton(text="🏁 Открыть завершение (WebApp)", web_app=types.WebAppInfo(url=web_app_url))]
                 ])
                 await message.answer(f"🏁 <b>Завершение игры #{game_id}</b>", reply_markup=kb)
+                return
+
+            elif action_type == "vote":
+                web_app_url = f"{settings.webapp_url}/web/vote.html?game_id={game_id}"
+                kb = types.InlineKeyboardMarkup(inline_keyboard=[
+                    [types.InlineKeyboardButton(text="🏆 Голосовать (WebApp)", web_app=types.WebAppInfo(url=web_app_url))]
+                ])
+                await message.answer(f"🏆 <b>Голосование за MVP (Игра #{game_id})</b>\nНажмите кнопку ниже, чтобы выбрать игроков.", reply_markup=kb)
                 return
 
             # Show Game Interface (default "game_" action)

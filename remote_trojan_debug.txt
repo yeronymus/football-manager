@@ -1,0 +1,29 @@
+Uploading apply_roster_fix.py -> ~/football-prod/apply_roster_fix.py
+>>> PATCHING HANDLER...
+Remote EXEC: docker cp ~/football-prod/apply_roster_fix.py football-prod_app_1:/app/apply_roster_fix.py
+
+Remote EXEC: docker exec -i football-prod_app_1 python3 /app/apply_roster_fix.py patch
+Config loaded via os.getenv
+PATCHING handler file with DEBUG logging...
+Successfully wrote /app/app/bot/vote_handlers.py
+
+>>> RESTARTING CONTAINER...
+Remote EXEC: docker restart football-prod_app_1
+football-prod_app_1
+
+Waiting 10s for boot...
+>>> SENDING BUTTONS...
+Remote EXEC: docker exec -i football-prod_app_1 python3 /app/apply_roster_fix.py send
+Config loaded via os.getenv
+SENDING buttons...
+Traceback (most recent call last):
+  File "/app/apply_roster_fix.py", line 229, in <module>
+    asyncio.run(send_buttons())
+  File "/usr/local/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/app/apply_roster_fix.py", line 145, in send_buttons
+    result = await session.execute(select(Game).where(Game.id == 2))
+TypeError: 'module' object is not callable
+

@@ -1,0 +1,94 @@
+
+--- EXEC: cat ~/football-prod/production.env ---
+[INFO] Connecting to yernur-vm1.sin.cvut.cz...
+# Production Environment
+# RENAME TO .env ON SERVER
+
+# Telegram Bot
+BOT_TOKEN=8067557564:AAGpWa9lF3jdPS4umdi-peX2H3cOXfwUW4E
+ADMIN_IDS=[502389915,123456789]
+WEBHOOK_URL=https://yernur-vm1.sin.cvut.cz/api/webhook
+
+# Security
+SYSTEM_OWNER_ID=502389915
+DEBUG=False
+
+# PostrgreSQL
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=secure_prod_password
+POSTGRES_DB=football_prod
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+
+# Redis
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# WebApp
+WEBAPP_URL=https://yernur-vm1.sin.cvut.cz
+
+# Ports (Host:Container)
+APP_PORT=8000
+DB_PORT=5433
+REDIS_PORT=6379
+
+
+--- EXEC: docker logs --tail 100 football-prod_app_1 ---
+[INFO] Connecting to yernur-vm1.sin.cvut.cz...
+INFO:     69.164.217.245:33463 - "GET / HTTP/1.1" 200 OK
+INFO:     172.236.127.133:22632 - "GET / HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459665 is not handled. Duration 6 ms by bot id=8067557564
+INFO:     172.18.0.1:34788 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459666 is not handled. Duration 4 ms by bot id=8067557564
+INFO:     172.18.0.1:54558 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459667 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:50580 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459668 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:51192 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459669 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:59586 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459670 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:44442 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459671 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:43092 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459672 is not handled. Duration 6 ms by bot id=8067557564
+INFO:     172.18.0.1:44338 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459673 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:37794 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459674 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:39920 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459675 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:39930 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459676 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:53556 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459677 is not handled. Duration 3 ms by bot id=8067557564
+INFO:     172.18.0.1:45126 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459678 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:45138 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459679 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:36048 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459680 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:56010 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459681 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:47382 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459682 is not handled. Duration 11 ms by bot id=8067557564
+INFO:     172.18.0.1:48862 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459683 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:48868 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459684 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:48876 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459685 is not handled. Duration 4 ms by bot id=8067557564
+INFO:     172.18.0.1:60762 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294459686 is not handled. Duration 5 ms by bot id=8067557564
+INFO:     172.18.0.1:60770 - "POST /api/webhook HTTP/1.1" 200 OK
+
+
+--- EXEC: docker exec football-prod_db_1 psql -U postgres -c '\l' ---
+[INFO] Connecting to yernur-vm1.sin.cvut.cz...
+OCI runtime exec failed: write /tmp/runc-process705652020: no space left on device: unknown
+
+
+--- EXEC: docker exec football-prod_db_1 psql -U postgres -d football -c 'SELECT count(*) FROM games;' || true ---
+[INFO] Connecting to yernur-vm1.sin.cvut.cz...
+OCI runtime exec failed: write /tmp/runc-process2999096840: no space left on device: unknown
+

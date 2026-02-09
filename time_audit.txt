@@ -1,0 +1,15 @@
+--- SERVER TIME ---
+Remote EXEC: date
+Sat Feb  7 22:44:44 UTC 2026
+
+--- CONTAINER TIME ---
+Remote EXEC: docker exec football-prod_app_1 date
+Sat Feb  7 22:44:46 UTC 2026
+
+--- TZ CONFIG ---
+Remote EXEC: cat /etc/timezone
+Etc/UTC
+
+Remote EXEC: docker exec football-prod_app_1 cat /etc/timezone
+cat: /etc/timezone: No such file or directory
+

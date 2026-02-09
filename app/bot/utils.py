@@ -37,7 +37,8 @@ async def format_game_message(game: Game, session: AsyncSession) -> str:
         date_str = date_str.replace(eng, rus)
 
     # Header
-    text += f"⚽ <b>{date_str}</b>\n"
+    duration_str = f" 🕒 {game.duration} часа" if game.duration else ""
+    text += f"⚽ <b>{date_str}{duration_str}</b>\n"
     text += f"📍 <b>{html.escape(game.location)}</b>\n"
     text += f"——————————————————\n"
     

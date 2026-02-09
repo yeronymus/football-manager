@@ -1,0 +1,500 @@
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:19:40,717 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+2026-02-07 17:19:40,717 INFO sqlalchemy.engine.Engine [cached since 805.1s ago] (2, 8285643658, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 805.1s ago] (2, 8285643658, 'ACTIVE')
+2026-02-07 17:19:40,721 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+2026-02-07 17:19:40,721 INFO sqlalchemy.engine.Engine [cached since 805.1s ago] (2, 5012634665)
+INFO:sqlalchemy.engine.Engine:[cached since 805.1s ago] (2, 5012634665)
+2026-02-07 17:19:40,724 INFO sqlalchemy.engine.Engine SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+INFO:sqlalchemy.engine.Engine:SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+2026-02-07 17:19:40,724 INFO sqlalchemy.engine.Engine [cached since 805.1s ago] (2, 8285643658, 'A')
+INFO:sqlalchemy.engine.Engine:[cached since 805.1s ago] (2, 8285643658, 'A')
+2026-02-07 17:19:40,727 INFO sqlalchemy.engine.Engine INSERT INTO votes (game_id, voter_id, target_id, vote_team) VALUES ($1::INTEGER, $2::BIGINT, $3::BIGINT, $4::vote_team_enum) RETURNING votes.id
+INFO:sqlalchemy.engine.Engine:INSERT INTO votes (game_id, voter_id, target_id, vote_team) VALUES ($1::INTEGER, $2::BIGINT, $3::BIGINT, $4::vote_team_enum) RETURNING votes.id
+2026-02-07 17:19:40,727 INFO sqlalchemy.engine.Engine [cached since 574.1s ago] (2, 8285643658, 5012634665, 'A')
+INFO:sqlalchemy.engine.Engine:[cached since 574.1s ago] (2, 8285643658, 5012634665, 'A')
+2026-02-07 17:19:40,730 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.bot.vote_handlers:Vote recorded: 8285643658 -> 5012634665 (A)
+2026-02-07 17:19:40,827 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:19:40,828 INFO sqlalchemy.engine.Engine SELECT count(signups.id) AS count_1 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.status = $2::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT count(signups.id) AS count_1 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.status = $2::signupstatus
+2026-02-07 17:19:40,828 INFO sqlalchemy.engine.Engine [cached since 574.1s ago] (2, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 574.1s ago] (2, 'ACTIVE')
+2026-02-07 17:19:40,832 INFO sqlalchemy.engine.Engine SELECT count(votes.id) AS count_1 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER
+INFO:sqlalchemy.engine.Engine:SELECT count(votes.id) AS count_1 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER
+2026-02-07 17:19:40,832 INFO sqlalchemy.engine.Engine [cached since 574.1s ago] (2,)
+INFO:sqlalchemy.engine.Engine:[cached since 574.1s ago] (2,)
+INFO:app.bot.vote_handlers:Stats: 17/20 votes.
+2026-02-07 17:19:40,834 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:aiogram.event:Update id=294460021 is handled. Duration 134 ms by bot id=8067557564
+INFO:     172.18.0.1:38412 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:aiogram.event:Update id=294460022 is not handled. Duration 6 ms by bot id=8067557564
+INFO:     172.18.0.1:40488 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:app.bot.vote_handlers:Vote attempt by 1283322634 data=vote_2_8498501216
+2026-02-07 17:23:27,707 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:27,708 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+2026-02-07 17:23:27,709 INFO sqlalchemy.engine.Engine [cached since 1032s ago] (2, 1283322634, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 1032s ago] (2, 1283322634, 'ACTIVE')
+2026-02-07 17:23:27,713 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+2026-02-07 17:23:27,713 INFO sqlalchemy.engine.Engine [cached since 1032s ago] (2, 8498501216)
+INFO:sqlalchemy.engine.Engine:[cached since 1032s ago] (2, 8498501216)
+2026-02-07 17:23:27,718 INFO sqlalchemy.engine.Engine SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+INFO:sqlalchemy.engine.Engine:SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+2026-02-07 17:23:27,719 INFO sqlalchemy.engine.Engine [cached since 1032s ago] (2, 1283322634, 'B')
+INFO:sqlalchemy.engine.Engine:[cached since 1032s ago] (2, 1283322634, 'B')
+INFO:app.bot.vote_handlers:User 1283322634 already voted for B
+2026-02-07 17:23:27,791 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:aiogram.event:Update id=294460023 is handled. Duration 99 ms by bot id=8067557564
+INFO:     172.18.0.1:58824 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:app.bot.vote_handlers:Vote attempt by 928516797 data=vote_2_5012634665
+2026-02-07 17:23:34,289 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:34,290 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+2026-02-07 17:23:34,290 INFO sqlalchemy.engine.Engine [cached since 1039s ago] (2, 928516797, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 1039s ago] (2, 928516797, 'ACTIVE')
+2026-02-07 17:23:34,294 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+2026-02-07 17:23:34,295 INFO sqlalchemy.engine.Engine [cached since 1039s ago] (2, 5012634665)
+INFO:sqlalchemy.engine.Engine:[cached since 1039s ago] (2, 5012634665)
+2026-02-07 17:23:34,297 INFO sqlalchemy.engine.Engine SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+INFO:sqlalchemy.engine.Engine:SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+2026-02-07 17:23:34,298 INFO sqlalchemy.engine.Engine [cached since 1039s ago] (2, 928516797, 'A')
+INFO:sqlalchemy.engine.Engine:[cached since 1039s ago] (2, 928516797, 'A')
+2026-02-07 17:23:34,301 INFO sqlalchemy.engine.Engine INSERT INTO votes (game_id, voter_id, target_id, vote_team) VALUES ($1::INTEGER, $2::BIGINT, $3::BIGINT, $4::vote_team_enum) RETURNING votes.id
+INFO:sqlalchemy.engine.Engine:INSERT INTO votes (game_id, voter_id, target_id, vote_team) VALUES ($1::INTEGER, $2::BIGINT, $3::BIGINT, $4::vote_team_enum) RETURNING votes.id
+2026-02-07 17:23:34,301 INFO sqlalchemy.engine.Engine [cached since 807.7s ago] (2, 928516797, 5012634665, 'A')
+INFO:sqlalchemy.engine.Engine:[cached since 807.7s ago] (2, 928516797, 5012634665, 'A')
+2026-02-07 17:23:34,303 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.bot.vote_handlers:Vote recorded: 928516797 -> 5012634665 (A)
+2026-02-07 17:23:34,476 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:34,477 INFO sqlalchemy.engine.Engine SELECT count(signups.id) AS count_1 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.status = $2::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT count(signups.id) AS count_1 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.status = $2::signupstatus
+2026-02-07 17:23:34,477 INFO sqlalchemy.engine.Engine [cached since 807.8s ago] (2, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 807.8s ago] (2, 'ACTIVE')
+2026-02-07 17:23:34,480 INFO sqlalchemy.engine.Engine SELECT count(votes.id) AS count_1 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER
+INFO:sqlalchemy.engine.Engine:SELECT count(votes.id) AS count_1 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER
+2026-02-07 17:23:34,480 INFO sqlalchemy.engine.Engine [cached since 807.8s ago] (2,)
+INFO:sqlalchemy.engine.Engine:[cached since 807.8s ago] (2,)
+INFO:app.bot.vote_handlers:Stats: 18/20 votes.
+2026-02-07 17:23:34,483 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:aiogram.event:Update id=294460024 is handled. Duration 209 ms by bot id=8067557564
+INFO:     172.18.0.1:58840 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:app.bot.vote_handlers:Vote attempt by 928516797 data=vote_2_928516797
+2026-02-07 17:23:36,196 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:36,197 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+2026-02-07 17:23:36,197 INFO sqlalchemy.engine.Engine [cached since 1041s ago] (2, 928516797, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 1041s ago] (2, 928516797, 'ACTIVE')
+2026-02-07 17:23:36,200 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+2026-02-07 17:23:36,201 INFO sqlalchemy.engine.Engine [cached since 1041s ago] (2, 928516797)
+INFO:sqlalchemy.engine.Engine:[cached since 1041s ago] (2, 928516797)
+2026-02-07 17:23:36,204 INFO sqlalchemy.engine.Engine SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+INFO:sqlalchemy.engine.Engine:SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+2026-02-07 17:23:36,205 INFO sqlalchemy.engine.Engine [cached since 1041s ago] (2, 928516797, 'B')
+INFO:sqlalchemy.engine.Engine:[cached since 1041s ago] (2, 928516797, 'B')
+2026-02-07 17:23:36,207 INFO sqlalchemy.engine.Engine INSERT INTO votes (game_id, voter_id, target_id, vote_team) VALUES ($1::INTEGER, $2::BIGINT, $3::BIGINT, $4::vote_team_enum) RETURNING votes.id
+INFO:sqlalchemy.engine.Engine:INSERT INTO votes (game_id, voter_id, target_id, vote_team) VALUES ($1::INTEGER, $2::BIGINT, $3::BIGINT, $4::vote_team_enum) RETURNING votes.id
+2026-02-07 17:23:36,208 INFO sqlalchemy.engine.Engine [cached since 809.6s ago] (2, 928516797, 928516797, 'B')
+INFO:sqlalchemy.engine.Engine:[cached since 809.6s ago] (2, 928516797, 928516797, 'B')
+2026-02-07 17:23:36,210 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.bot.vote_handlers:Vote recorded: 928516797 -> 928516797 (B)
+2026-02-07 17:23:36,244 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:36,245 INFO sqlalchemy.engine.Engine SELECT count(signups.id) AS count_1 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.status = $2::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT count(signups.id) AS count_1 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.status = $2::signupstatus
+2026-02-07 17:23:36,245 INFO sqlalchemy.engine.Engine [cached since 809.6s ago] (2, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 809.6s ago] (2, 'ACTIVE')
+2026-02-07 17:23:36,248 INFO sqlalchemy.engine.Engine SELECT count(votes.id) AS count_1 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER
+INFO:sqlalchemy.engine.Engine:SELECT count(votes.id) AS count_1 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER
+2026-02-07 17:23:36,248 INFO sqlalchemy.engine.Engine [cached since 809.6s ago] (2,)
+INFO:sqlalchemy.engine.Engine:[cached since 809.6s ago] (2,)
+INFO:app.bot.vote_handlers:Stats: 19/20 votes.
+2026-02-07 17:23:36,250 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:aiogram.event:Update id=294460025 is handled. Duration 69 ms by bot id=8067557564
+INFO:     172.18.0.1:35632 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:app.bot.vote_handlers:Vote attempt by 797293110 data=vote_2_8285643658
+2026-02-07 17:23:37,864 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:37,864 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+2026-02-07 17:23:37,865 INFO sqlalchemy.engine.Engine [cached since 1042s ago] (2, 797293110, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 1042s ago] (2, 797293110, 'ACTIVE')
+2026-02-07 17:23:37,868 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+2026-02-07 17:23:37,869 INFO sqlalchemy.engine.Engine [cached since 1042s ago] (2, 8285643658)
+INFO:sqlalchemy.engine.Engine:[cached since 1042s ago] (2, 8285643658)
+2026-02-07 17:23:37,871 INFO sqlalchemy.engine.Engine SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+INFO:sqlalchemy.engine.Engine:SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+2026-02-07 17:23:37,871 INFO sqlalchemy.engine.Engine [cached since 1042s ago] (2, 797293110, 'B')
+INFO:sqlalchemy.engine.Engine:[cached since 1042s ago] (2, 797293110, 'B')
+INFO:app.bot.vote_handlers:User 797293110 already voted for this person.
+2026-02-07 17:23:37,946 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:aiogram.event:Update id=294460026 is handled. Duration 98 ms by bot id=8067557564
+INFO:     172.18.0.1:35648 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:app.bot.vote_handlers:Vote attempt by 1060963691 data=vote_2_1060963691
+2026-02-07 17:23:38,898 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:38,899 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+2026-02-07 17:23:38,899 INFO sqlalchemy.engine.Engine [cached since 1043s ago] (2, 1060963691, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 1043s ago] (2, 1060963691, 'ACTIVE')
+2026-02-07 17:23:38,903 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+2026-02-07 17:23:38,903 INFO sqlalchemy.engine.Engine [cached since 1043s ago] (2, 1060963691)
+INFO:sqlalchemy.engine.Engine:[cached since 1043s ago] (2, 1060963691)
+2026-02-07 17:23:38,907 INFO sqlalchemy.engine.Engine SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+INFO:sqlalchemy.engine.Engine:SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+2026-02-07 17:23:38,907 INFO sqlalchemy.engine.Engine [cached since 1043s ago] (2, 1060963691, 'B')
+INFO:sqlalchemy.engine.Engine:[cached since 1043s ago] (2, 1060963691, 'B')
+INFO:app.bot.vote_handlers:User 1060963691 already voted for this person.
+2026-02-07 17:23:38,982 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:aiogram.event:Update id=294460027 is handled. Duration 99 ms by bot id=8067557564
+INFO:     172.18.0.1:35654 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:app.bot.vote_handlers:Vote attempt by 1060963691 data=vote_2_5012634665
+2026-02-07 17:23:41,876 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:41,877 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+2026-02-07 17:23:41,877 INFO sqlalchemy.engine.Engine [cached since 1046s ago] (2, 1060963691, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 1046s ago] (2, 1060963691, 'ACTIVE')
+2026-02-07 17:23:41,880 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+2026-02-07 17:23:41,881 INFO sqlalchemy.engine.Engine [cached since 1046s ago] (2, 5012634665)
+INFO:sqlalchemy.engine.Engine:[cached since 1046s ago] (2, 5012634665)
+2026-02-07 17:23:41,883 INFO sqlalchemy.engine.Engine SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+INFO:sqlalchemy.engine.Engine:SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+2026-02-07 17:23:41,884 INFO sqlalchemy.engine.Engine [cached since 1046s ago] (2, 1060963691, 'A')
+INFO:sqlalchemy.engine.Engine:[cached since 1046s ago] (2, 1060963691, 'A')
+2026-02-07 17:23:41,887 INFO sqlalchemy.engine.Engine INSERT INTO votes (game_id, voter_id, target_id, vote_team) VALUES ($1::INTEGER, $2::BIGINT, $3::BIGINT, $4::vote_team_enum) RETURNING votes.id
+INFO:sqlalchemy.engine.Engine:INSERT INTO votes (game_id, voter_id, target_id, vote_team) VALUES ($1::INTEGER, $2::BIGINT, $3::BIGINT, $4::vote_team_enum) RETURNING votes.id
+2026-02-07 17:23:41,887 INFO sqlalchemy.engine.Engine [cached since 815.3s ago] (2, 1060963691, 5012634665, 'A')
+INFO:sqlalchemy.engine.Engine:[cached since 815.3s ago] (2, 1060963691, 5012634665, 'A')
+2026-02-07 17:23:41,889 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.bot.vote_handlers:Vote recorded: 1060963691 -> 5012634665 (A)
+2026-02-07 17:23:41,924 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:41,925 INFO sqlalchemy.engine.Engine SELECT count(signups.id) AS count_1 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.status = $2::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT count(signups.id) AS count_1 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.status = $2::signupstatus
+2026-02-07 17:23:41,925 INFO sqlalchemy.engine.Engine [cached since 815.2s ago] (2, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 815.2s ago] (2, 'ACTIVE')
+2026-02-07 17:23:41,928 INFO sqlalchemy.engine.Engine SELECT count(votes.id) AS count_1 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER
+INFO:sqlalchemy.engine.Engine:SELECT count(votes.id) AS count_1 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER
+2026-02-07 17:23:41,929 INFO sqlalchemy.engine.Engine [cached since 815.2s ago] (2,)
+INFO:sqlalchemy.engine.Engine:[cached since 815.2s ago] (2,)
+INFO:app.bot.vote_handlers:Stats: 20/20 votes.
+2026-02-07 17:23:42,064 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:42,069 INFO sqlalchemy.engine.Engine SELECT votes.target_id, count(votes.id) AS count 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.vote_team = $2::vote_team_enum GROUP BY votes.target_id ORDER BY count(votes.id) DESC 
+ LIMIT $3::INTEGER
+INFO:sqlalchemy.engine.Engine:SELECT votes.target_id, count(votes.id) AS count 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.vote_team = $2::vote_team_enum GROUP BY votes.target_id ORDER BY count(votes.id) DESC 
+ LIMIT $3::INTEGER
+2026-02-07 17:23:42,070 INFO sqlalchemy.engine.Engine [generated in 0.00062s] (2, 'A', 1)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00062s] (2, 'A', 1)
+2026-02-07 17:23:42,153 INFO sqlalchemy.engine.Engine SELECT votes.target_id, count(votes.id) AS count 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.vote_team = $2::vote_team_enum GROUP BY votes.target_id ORDER BY count(votes.id) DESC 
+ LIMIT $3::INTEGER
+INFO:sqlalchemy.engine.Engine:SELECT votes.target_id, count(votes.id) AS count 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.vote_team = $2::vote_team_enum GROUP BY votes.target_id ORDER BY count(votes.id) DESC 
+ LIMIT $3::INTEGER
+2026-02-07 17:23:42,154 INFO sqlalchemy.engine.Engine [cached since 0.08445s ago] (2, 'B', 1)
+INFO:sqlalchemy.engine.Engine:[cached since 0.08445s ago] (2, 'B', 1)
+2026-02-07 17:23:42,163 INFO sqlalchemy.engine.Engine SELECT games.id, games.chat_id, games.created_by, games.date_time, games.location, games.max_players, games.price, games.payment_info, games.team_count, games.gk_hours, games.status, games.winner_team, games.score_a, games.score_b, games.score_c, games.message_id, games.channel_id, games.channel_message_id, games.admin_message_id, games.has_active_gk_a, games.has_active_gk_b, games.has_active_gk_c, games.created_at 
+FROM games 
+WHERE games.id = $1::INTEGER
+INFO:sqlalchemy.engine.Engine:SELECT games.id, games.chat_id, games.created_by, games.date_time, games.location, games.max_players, games.price, games.payment_info, games.team_count, games.gk_hours, games.status, games.winner_team, games.score_a, games.score_b, games.score_c, games.message_id, games.channel_id, games.channel_message_id, games.admin_message_id, games.has_active_gk_a, games.has_active_gk_b, games.has_active_gk_c, games.created_at 
+FROM games 
+WHERE games.id = $1::INTEGER
+2026-02-07 17:23:42,164 INFO sqlalchemy.engine.Engine [generated in 0.00059s] (2,)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00059s] (2,)
+2026-02-07 17:23:42,202 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-07 17:23:42,203 INFO sqlalchemy.engine.Engine [generated in 0.00064s] (5012634665,)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00064s] (5012634665,)
+2026-02-07 17:23:42,236 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-07 17:23:42,236 INFO sqlalchemy.engine.Engine [cached since 0.03369s ago] (8285643658,)
+INFO:sqlalchemy.engine.Engine:[cached since 0.03369s ago] (8285643658,)
+2026-02-07 17:23:42,238 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+2026-02-07 17:23:42,427 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:aiogram.event:Update id=294460028 is handled. Duration 567 ms by bot id=8067557564
+INFO:     172.18.0.1:35658 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:app.bot.vote_handlers:Vote attempt by 1060963691 data=vote_2_1060963691
+2026-02-07 17:23:44,115 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:44,116 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+2026-02-07 17:23:44,116 INFO sqlalchemy.engine.Engine [cached since 1049s ago] (2, 1060963691, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 1049s ago] (2, 1060963691, 'ACTIVE')
+2026-02-07 17:23:44,150 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+2026-02-07 17:23:44,150 INFO sqlalchemy.engine.Engine [cached since 1049s ago] (2, 1060963691)
+INFO:sqlalchemy.engine.Engine:[cached since 1049s ago] (2, 1060963691)
+2026-02-07 17:23:44,154 INFO sqlalchemy.engine.Engine SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+INFO:sqlalchemy.engine.Engine:SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+2026-02-07 17:23:44,155 INFO sqlalchemy.engine.Engine [cached since 1049s ago] (2, 1060963691, 'B')
+INFO:sqlalchemy.engine.Engine:[cached since 1049s ago] (2, 1060963691, 'B')
+INFO:app.bot.vote_handlers:User 1060963691 already voted for this person.
+2026-02-07 17:23:44,236 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:aiogram.event:Update id=294460029 is handled. Duration 138 ms by bot id=8067557564
+INFO:     172.18.0.1:35668 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:app.bot.vote_handlers:Vote attempt by 985745008 data=vote_2_985745008
+2026-02-07 17:23:44,285 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:44,286 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+2026-02-07 17:23:44,286 INFO sqlalchemy.engine.Engine [cached since 1049s ago] (2, 985745008, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 1049s ago] (2, 985745008, 'ACTIVE')
+2026-02-07 17:23:44,290 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+2026-02-07 17:23:44,290 INFO sqlalchemy.engine.Engine [cached since 1049s ago] (2, 985745008)
+INFO:sqlalchemy.engine.Engine:[cached since 1049s ago] (2, 985745008)
+2026-02-07 17:23:44,293 INFO sqlalchemy.engine.Engine SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+INFO:sqlalchemy.engine.Engine:SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+2026-02-07 17:23:44,293 INFO sqlalchemy.engine.Engine [cached since 1049s ago] (2, 985745008, 'A')
+INFO:sqlalchemy.engine.Engine:[cached since 1049s ago] (2, 985745008, 'A')
+INFO:app.bot.vote_handlers:User 985745008 already voted for this person.
+2026-02-07 17:23:44,359 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:aiogram.event:Update id=294460030 is handled. Duration 89 ms by bot id=8067557564
+INFO:     172.18.0.1:35684 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:app.bot.vote_handlers:Vote attempt by 985745008 data=vote_2_5012634665
+2026-02-07 17:23:47,106 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:47,106 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+2026-02-07 17:23:47,107 INFO sqlalchemy.engine.Engine [cached since 1052s ago] (2, 985745008, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 1052s ago] (2, 985745008, 'ACTIVE')
+2026-02-07 17:23:47,112 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+2026-02-07 17:23:47,112 INFO sqlalchemy.engine.Engine [cached since 1051s ago] (2, 5012634665)
+INFO:sqlalchemy.engine.Engine:[cached since 1051s ago] (2, 5012634665)
+2026-02-07 17:23:47,118 INFO sqlalchemy.engine.Engine SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+INFO:sqlalchemy.engine.Engine:SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+2026-02-07 17:23:47,119 INFO sqlalchemy.engine.Engine [cached since 1051s ago] (2, 985745008, 'A')
+INFO:sqlalchemy.engine.Engine:[cached since 1051s ago] (2, 985745008, 'A')
+INFO:app.bot.vote_handlers:User 985745008 already voted for A
+2026-02-07 17:23:47,157 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:aiogram.event:Update id=294460031 is handled. Duration 68 ms by bot id=8067557564
+INFO:     172.18.0.1:34116 - "POST /api/webhook HTTP/1.1" 200 OK
+INFO:app.bot.vote_handlers:Vote attempt by 985745008 data=vote_2_8285643658
+2026-02-07 17:23:51,141 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 17:23:51,142 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT AND signups.status = $3::signupstatus
+2026-02-07 17:23:51,143 INFO sqlalchemy.engine.Engine [cached since 1056s ago] (2, 985745008, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[cached since 1056s ago] (2, 985745008, 'ACTIVE')
+2026-02-07 17:23:51,146 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER AND signups.user_id = $2::BIGINT
+2026-02-07 17:23:51,147 INFO sqlalchemy.engine.Engine [cached since 1056s ago] (2, 8285643658)
+INFO:sqlalchemy.engine.Engine:[cached since 1056s ago] (2, 8285643658)
+2026-02-07 17:23:51,149 INFO sqlalchemy.engine.Engine SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+INFO:sqlalchemy.engine.Engine:SELECT votes.id, votes.game_id, votes.voter_id, votes.target_id, votes.vote_team 
+FROM votes 
+WHERE votes.game_id = $1::INTEGER AND votes.voter_id = $2::BIGINT AND votes.vote_team = $3::vote_team_enum
+2026-02-07 17:23:51,150 INFO sqlalchemy.engine.Engine [cached since 1056s ago] (2, 985745008, 'B')
+INFO:sqlalchemy.engine.Engine:[cached since 1056s ago] (2, 985745008, 'B')
+INFO:app.bot.vote_handlers:User 985745008 already voted for this person.
+2026-02-07 17:23:51,249 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:aiogram.event:Update id=294460032 is handled. Duration 126 ms by bot id=8067557564
+INFO:     172.18.0.1:34120 - "POST /api/webhook HTTP/1.1" 200 OK

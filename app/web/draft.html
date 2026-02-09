@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Драфт (Draft)</title>
+    <title>Драфт v2 (Orange/Green)</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
@@ -14,8 +14,8 @@
             --text-color: #ffffff;
             --accent-color: #4CAF50;
             --danger-color: #f44336;
-            --team-a-color: #e53935;
-            --team-b-color: #1e88e5;
+            --team-a-color: #FF9800;
+            --team-b-color: #4CAF50;
             --team-c-color: #43a047;
         }
 
@@ -554,7 +554,7 @@
                     col.className = `column col-${key}`;
                     const teamName = key.toUpperCase();
 
-                    const emojis = { a: '🔴', b: '🔵', c: '🟢' };
+                    const emojis = { a: '🟠', b: '🟢', c: '🔵' };
                     col.innerHTML = `
                         <div class="column-header" onclick="moveSelectedToTeam('${key}')">${emojis[key] || ''} Команда ${teamName} <span id="rating-${key}"></span></div>
                         <div class="tactic-board">
@@ -826,7 +826,7 @@
         async function showGameSelector() {
             document.getElementById('gameSelector').style.display = 'flex';
             try {
-                const response = await fetch(`/api/games/open?initData=${encodeURIComponent(tg.initData)}`);
+                const response = await fetch(`/api/games/editable?initData=${encodeURIComponent(tg.initData)}`);
                 if (!response.ok) throw new Error("API Error");
                 const games = await response.json();
                 const list = document.getElementById('gameList');

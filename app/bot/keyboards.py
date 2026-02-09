@@ -91,10 +91,16 @@ def get_game_keyboard(game_id: int) -> InlineKeyboardMarkup:
     bot_username = "fm_metabot" 
     deep_link = f"https://t.me/{bot_username}?start=game_{game_id}"
     
+    from app.config import settings
+    vote_url = f"{settings.webapp_url}/web/vote.html?game_id={game_id}"
+
     buttons = [
         [
             InlineKeyboardButton(text="➕ Я в деле", callback_data=f"join_{game_id}"),
             InlineKeyboardButton(text="➖ Сливаюсь", callback_data=f"leave_{game_id}")
+        ],
+        [
+            InlineKeyboardButton(text="🏆 Голосование (MVP)", web_app=types.WebAppInfo(url=vote_url))
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)

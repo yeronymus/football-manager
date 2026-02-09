@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from app.db.models import Game, Chat, User, Signup, SignupStatus, GameStatus, Team
+from app.db.models import Game, Chat, User, Signup, SignupStatus, GameStatus, Team, Vote
 from app.api.schemas import GameCreate, GameFinishRequest, GameUpdate
 from datetime import datetime, timedelta
 import logging
@@ -10,6 +10,7 @@ from app.scheduler.main import scheduler
 from app.scheduler.tasks import send_voting_message, release_gk_slots, remind_admin_to_finish, publish_game_task
 from app.bot.utils import format_game_message
 from app.bot.keyboards import get_game_keyboard
+from app.db.models import RatingHistory, GameStats
 
 
 import logging
@@ -216,7 +217,8 @@ class GameService:
             price=game_data.price,
             payment_info=game_data.payment_info,
             team_count=game_data.team_count,
-            gk_hours=game_data.gk_hours
+            gk_hours=game_data.gk_hours,
+            duration=game_data.duration
         )
         self.session.add(new_game)
         await self.session.commit()
@@ -281,13 +283,14 @@ class GameService:
         # Safeguard: Don't schedule past events (Retroactive games)
         now_tz = datetime.now(new_game.date_time.tzinfo) if new_game.date_time.tzinfo else datetime.now()
         
-        voting_time = new_game.date_time + timedelta(hours=2)
+        voting_time = new_game.date_time + timedelta(hours=2, minutes=30)
         if voting_time > now_tz:
-            scheduler.add_job(send_voting_message, 'date', run_date=voting_time, args=[new_game.id])
+            scheduler.add_job(send_voting_message, 'date', run_date=voting_time, args=[new_game.id], id=f"voting_{new_game.id}", replace_existing=True)
         
-        reminder_time = new_game.date_time + timedelta(hours=2, minutes=15)
+        # Reminder: 5h after voting opens (2.5 + 5 = 7.5h from start)
+        reminder_time = new_game.date_time + timedelta(hours=7, minutes=30)
         if reminder_time > now_tz:
-             scheduler.add_job(remind_admin_to_finish, 'date', run_date=reminder_time, args=[new_game.id])
+             scheduler.add_job(remind_admin_to_finish, 'date', run_date=reminder_time, args=[new_game.id], id=f"reminder_{new_game.id}", replace_existing=True)
         
         # GK Slots Release - Only if gk_hours > 0
         if new_game.gk_hours > 0:
@@ -345,13 +348,13 @@ class GameService:
                      
                      now_tz = datetime.now(game.date_time.tzinfo)
                      
-                     voting_time = game.date_time + timedelta(hours=2)
+                     voting_time = game.date_time + timedelta(hours=2, minutes=30)
                      if voting_time > now_tz:
-                         scheduler.add_job(send_voting_message, 'date', run_date=voting_time, args=[game.id])
+                         scheduler.add_job(send_voting_message, 'date', run_date=voting_time, args=[game.id], id=f"voting_{game.id}", replace_existing=True)
                      
-                     reminder_time = game.date_time + timedelta(hours=2, minutes=15)
+                     reminder_time = game.date_time + timedelta(hours=7, minutes=30)
                      if reminder_time > now_tz:
-                          scheduler.add_job(remind_admin_to_finish, 'date', run_date=reminder_time, args=[game.id])
+                          scheduler.add_job(remind_admin_to_finish, 'date', run_date=reminder_time, args=[game.id], id=f"reminder_{game.id}", replace_existing=True)
 
                  except Exception as e:
                      logger.warning(f"Failed to reschedule tasks: {e}")
@@ -369,6 +372,9 @@ class GameService:
              
         if data.gk_hours is not None and data.gk_hours != game.gk_hours:
              game.gk_hours = data.gk_hours
+             
+        if data.duration is not None and data.duration != game.duration:
+             game.duration = data.duration
              
         await self.session.commit()
         
@@ -522,7 +528,6 @@ class GameService:
         # Update game score and status
         if game.status == GameStatus.FINISHED:
             # Rollback previous results to allow editing/correction
-            from app.db.models import RatingHistory, GameStats
             
             # 1. Revert Ratings & Games Played
             history_result = await self.session.execute(select(RatingHistory).where(RatingHistory.game_id == game.id))
@@ -551,14 +556,26 @@ class GameService:
             
             await self.session.flush()
 
+        # Update scores and status
         game.score_a = data.score_a
         game.score_b = data.score_b
         game.winner_team = data.winner_team
         game.status = GameStatus.FINISHED
 
+        # MVP Logic: Driven ONLY by Manual Input (data.mvp_user_id)
+        # Voting is advisory and announced in chat separately.
+        mvp_ids = set()
+        if data.mvp_user_id:
+            mvp_ids.add(data.mvp_user_id)
+        if data.mvp_team_a:
+            mvp_ids.add(data.mvp_team_a)
+        if data.mvp_team_b:
+            mvp_ids.add(data.mvp_team_b)
+
         # Save player stats
+        processed_stats_ids = set()
         for p_stat in data.player_stats:
-            is_mvp = (data.mvp_user_id == p_stat.user_id)
+            is_mvp = (p_stat.user_id in mvp_ids)
             if p_stat.goals > 0 or is_mvp:
                 stat = GameStats(
                     game_id=game.id, 
@@ -567,12 +584,22 @@ class GameService:
                     is_mvp=is_mvp
                 )
                 self.session.add(stat)
+                processed_stats_ids.add(p_stat.user_id)
                 
                 # Update User Total MVP count
                 if is_mvp:
                     user_obj = await self.session.get(User, p_stat.user_id)
                     if user_obj:
                          user_obj.stats_mvp += 1
+        
+        # Ensure MVPs without goals are recorded
+        for mid in mvp_ids:
+            if mid not in processed_stats_ids:
+                stat = GameStats(game_id=game.id, user_id=mid, goals=0, is_mvp=True)
+                self.session.add(stat)
+                user_obj = await self.session.get(User, mid)
+                if user_obj:
+                     user_obj.stats_mvp += 1
 
         # ELO Calculation
         # Determine Ranks for 3-team games
@@ -614,7 +641,7 @@ class GameService:
                 else:
                     change = -5
             
-            is_mvp = (user.user_id == data.mvp_user_id)
+            is_mvp = (user.user_id in mvp_ids)
             if is_mvp:
                 change += 5
             
@@ -639,10 +666,13 @@ class GameService:
         text += f"Команда оранжевые 🟠 {game.score_a}:{game.score_b} 🟢 Команда зеленые\n"
         
         # MVP
-        if data.mvp_user_id:
-             mvp_user = await self.session.get(User, data.mvp_user_id)
-             if mvp_user:
-                 text += f"🌟 <b>MVP:</b> {mvp_user.full_name}\n"
+        if mvp_ids:
+             text += "🌟 <b>MVP:</b> "
+             mvp_names = []
+             for mid in mvp_ids:
+                 u = await self.session.get(User, mid)
+                 if u: mvp_names.append(u.full_name)
+             text += ", ".join(mvp_names) + "\n"
         
         # Show goal scorers
         scorers = [p for p in data.player_stats if p.goals > 0]

@@ -26,18 +26,41 @@ async def process_vote(callback: types.CallbackQuery, session: AsyncSession):
         await callback.answer("Голосовать могут только участники матча!", show_alert=True)
         return
 
-    # Check if already voted
-    result = await session.execute(select(Vote).where(Vote.game_id == game_id, Vote.voter_id == voter_id))
+    # Get Target's Team
+    result = await session.execute(
+        select(Signup).where(Signup.game_id == game_id, Signup.user_id == target_id)
+    )
+    target_signup = result.scalar_one_or_none()
+    
+    if not target_signup or not target_signup.team:
+        await callback.answer("Ошибка: Игрок не найден или без команды.", show_alert=True)
+        return
+
+    target_team = target_signup.team
+
+    # Check if already voted FOR THIS TEAM
+    result = await session.execute(
+        select(Vote).where(
+            Vote.game_id == game_id, 
+            Vote.voter_id == voter_id,
+            Vote.vote_team == target_team
+        )
+    )
     if result.scalar_one_or_none():
-        await callback.answer("Вы уже проголосовали!", show_alert=True)
+        await callback.answer(f"Вы уже выбрали MVP команды {target_team.value}!", show_alert=True)
         return
 
     # Record vote
-    vote = Vote(game_id=game_id, voter_id=voter_id, target_id=target_id)
+    vote = Vote(
+        game_id=game_id, 
+        voter_id=voter_id, 
+        target_id=target_id, 
+        vote_team=target_team
+    )
     session.add(vote)
     await session.commit()
     
-    await callback.answer("Ваш голос учтен!")
+    await callback.answer(f"Голос за {target_team.value} принят! (Осталось выбрать вторую команду)")
 
     # Check if voting is complete (all active players voted)
     from sqlalchemy import func

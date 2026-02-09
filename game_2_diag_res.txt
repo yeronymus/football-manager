@@ -1,0 +1,10 @@
+Uploading diag_games.py -> ~/football-prod/diag_games.py
+Remote EXEC: docker cp ~/football-prod/diag_games.py football-prod_app_1:/app/diag_games.py
+
+Remote EXEC: docker exec football-prod_app_1 python3 diag_games.py
+Config loaded via os.getenv
+Traceback (most recent call last):
+  File "/app/diag_games.py", line 2, in <module>
+    from app.db.database import async_session
+ImportError: cannot import name 'async_session' from 'app.db.database' (/app/app/db/database.py)
+

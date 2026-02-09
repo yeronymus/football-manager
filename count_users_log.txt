@@ -1,0 +1,18 @@
+Config loaded via os.getenv
+Traceback (most recent call last):
+  File "/home/yeronym/Documents/fmBot/football-manager/count_users.py", line 13, in <module>
+    asyncio.run(count_users())
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.14/asyncio/runners.py", line 204, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/usr/lib64/python3.14/asyncio/runners.py", line 127, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib64/python3.14/asyncio/base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/yeronym/Documents/fmBot/football-manager/count_users.py", line 8, in count_users
+    result = await session.execute(select(func.count(User.id)))
+                                                     ^^^^^^^
+AttributeError: type object 'User' has no attribute 'id'

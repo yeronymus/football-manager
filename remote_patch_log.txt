@@ -1,0 +1,13 @@
+Uploading apply_roster_fix.py -> ~/football-prod/apply_roster_fix.py
+>>> PATCHING HANDLER (Fixing Count Logic)...
+Remote EXEC: docker cp ~/football-prod/apply_roster_fix.py football-prod_app_1:/app/apply_roster_fix.py
+
+Remote EXEC: docker exec -i football-prod_app_1 python3 /app/apply_roster_fix.py patch
+Config loaded via os.getenv
+PATCHING handler file with COUNT DISTINT FIX...
+Successfully wrote /app/app/bot/vote_handlers.py
+
+>>> RESTARTING CONTAINER...
+Remote EXEC: docker restart football-prod_app_1
+football-prod_app_1
+

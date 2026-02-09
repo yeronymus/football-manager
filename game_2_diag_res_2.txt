@@ -1,0 +1,134 @@
+Uploading diag_games.py -> ~/football-prod/diag_games.py
+Remote EXEC: docker cp ~/football-prod/diag_games.py football-prod_app_1:/app/diag_games.py
+
+Remote EXEC: docker exec football-prod_app_1 python3 diag_games.py
+Config loaded via os.getenv
+2026-02-08 11:19:49,727 INFO sqlalchemy.engine.Engine select pg_catalog.version()
+2026-02-08 11:19:49,727 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-02-08 11:19:49,731 INFO sqlalchemy.engine.Engine select current_schema()
+2026-02-08 11:19:49,731 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-02-08 11:19:49,734 INFO sqlalchemy.engine.Engine show standard_conforming_strings
+2026-02-08 11:19:49,734 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-02-08 11:19:49,736 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-02-08 11:19:49,811 INFO sqlalchemy.engine.Engine SELECT games.id, games.chat_id, games.created_by, games.date_time, games.location, games.max_players, games.price, games.payment_info, games.team_count, games.gk_hours, games.duration, games.status, games.winner_team, games.score_a, games.score_b, games.score_c, games.message_id, games.channel_id, games.channel_message_id, games.admin_message_id, games.has_active_gk_a, games.has_active_gk_b, games.has_active_gk_c, games.created_at 
+FROM games 
+WHERE games.id = $1::INTEGER
+2026-02-08 11:19:49,811 INFO sqlalchemy.engine.Engine [generated in 0.00045s] (2,)
+GAME 2: Status=active, ScoreA=None, ScoreB=None, Winner=None
+2026-02-08 11:19:49,882 INFO sqlalchemy.engine.Engine SELECT signups.user_id, signups.team 
+FROM signups 
+WHERE signups.game_id = $1::INTEGER
+2026-02-08 11:19:49,882 INFO sqlalchemy.engine.Engine [generated in 0.00050s] (2,)
+Signups:
+2026-02-08 11:19:49,893 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,894 INFO sqlalchemy.engine.Engine [generated in 0.00044s] (1283322634,)
+  Yernar Bestikpayev (1283322634) -> Team A
+2026-02-08 11:19:49,918 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,918 INFO sqlalchemy.engine.Engine [cached since 0.02526s ago] (1138510155,)
+  Daulet Bekmolda (1138510155) -> Team A
+2026-02-08 11:19:49,921 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,922 INFO sqlalchemy.engine.Engine [cached since 0.02828s ago] (928516797,)
+  Medeu Yersain (928516797) -> Team B
+2026-02-08 11:19:49,924 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,924 INFO sqlalchemy.engine.Engine [cached since 0.03127s ago] (202430562,)
+  Said Soltanzade (202430562) -> Team A
+2026-02-08 11:19:49,928 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,928 INFO sqlalchemy.engine.Engine [cached since 0.03477s ago] (763051109,)
+  Raimbek Sarzhakov (763051109) -> Team B
+2026-02-08 11:19:49,931 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,931 INFO sqlalchemy.engine.Engine [cached since 0.03785s ago] (797293110,)
+  Aidyn Galymbekov (797293110) -> Team A
+2026-02-08 11:19:49,934 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,934 INFO sqlalchemy.engine.Engine [cached since 0.04093s ago] (5012634665,)
+  Zhanibek Xenbek (5012634665) -> Team A
+2026-02-08 11:19:49,937 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,937 INFO sqlalchemy.engine.Engine [cached since 0.04399s ago] (1060963691,)
+  Mansur Mutayev (1060963691) -> Team B
+2026-02-08 11:19:49,940 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,940 INFO sqlalchemy.engine.Engine [cached since 0.04681s ago] (8285643658,)
+  Adok Salimzhan (8285643658) -> Team B
+2026-02-08 11:19:49,942 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,943 INFO sqlalchemy.engine.Engine [cached since 0.0494s ago] (518794227,)
+  Dias August (518794227) -> Team A
+2026-02-08 11:19:49,945 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,945 INFO sqlalchemy.engine.Engine [cached since 0.05198s ago] (985745008,)
+  Vlad Lishanlo (985745008) -> Team A
+2026-02-08 11:19:49,948 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,948 INFO sqlalchemy.engine.Engine [cached since 0.05459s ago] (7955640728,)
+  Akhmetov Dias (7955640728) -> Team B
+2026-02-08 11:19:49,950 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,951 INFO sqlalchemy.engine.Engine [cached since 0.05735s ago] (1727698240,)
+  Yermakhan Borankhan (1727698240) -> Team B
+2026-02-08 11:19:49,953 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,953 INFO sqlalchemy.engine.Engine [cached since 0.05966s ago] (8061827877,)
+  Mirlan Toktoshev (8061827877) -> Team B
+2026-02-08 11:19:49,955 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,955 INFO sqlalchemy.engine.Engine [cached since 0.06206s ago] (704118658,)
+  Bakhtiyar Temirbayev (704118658) -> Team A
+2026-02-08 11:19:49,957 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,958 INFO sqlalchemy.engine.Engine [cached since 0.06434s ago] (487794486,)
+  Nurkabyl Sharipbay (487794486) -> Team None
+2026-02-08 11:19:49,960 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,960 INFO sqlalchemy.engine.Engine [cached since 0.06675s ago] (2010952581,)
+  Viktor Snytkin (2010952581) -> Team B
+2026-02-08 11:19:49,962 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,962 INFO sqlalchemy.engine.Engine [cached since 0.06895s ago] (909239853,)
+  Daryn Bakyrkhan (909239853) -> Team A
+2026-02-08 11:19:49,964 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,964 INFO sqlalchemy.engine.Engine [cached since 0.07096s ago] (424561504,)
+  Yerik Yekibay (424561504) -> Team B
+2026-02-08 11:19:49,966 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,966 INFO sqlalchemy.engine.Engine [cached since 0.07307s ago] (8498501216,)
+  Aktan Abdullaatov (8498501216) -> Team B
+2026-02-08 11:19:49,968 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,968 INFO sqlalchemy.engine.Engine [cached since 0.07506s ago] (1389316320,)
+  Dastan Sadyraliyev (1389316320) -> Team A
+2026-02-08 11:19:49,970 INFO sqlalchemy.engine.Engine SELECT users.user_id AS users_user_id, users.username AS users_username, users.full_name AS users_full_name, users.player_position AS users_player_position, users.stats_matches AS users_stats_matches, users.stats_mvp AS users_stats_mvp, users.rating AS users_rating, users.games_played AS users_games_played, users.alt_positions AS users_alt_positions, users.created_at AS users_created_at 
+FROM users 
+WHERE users.user_id = $1::BIGINT
+2026-02-08 11:19:49,970 INFO sqlalchemy.engine.Engine [cached since 0.07721s ago] (553743066,)
+  Assylbek Nurmagambetov (553743066) -> Team None
+2026-02-08 11:19:49,972 INFO sqlalchemy.engine.Engine ROLLBACK
+

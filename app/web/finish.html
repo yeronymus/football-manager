@@ -271,9 +271,9 @@
             if (scoreA > scoreB) winner = "A";
             if (scoreB > scoreA) winner = "B";
 
-            // Get MVP
-            const mvpSelect = document.getElementById('mvp-select');
-            const mvpId = mvpSelect && mvpSelect.value ? parseInt(mvpSelect.value) : null;
+            // Get MVPs
+            const mvpA = document.getElementById('mvp-team-a').value;
+            const mvpB = document.getElementById('mvp-team-b').value;
 
             const playerStats = Object.entries(playerGoals).map(([uid, goals]) => ({
                 user_id: parseInt(uid),
@@ -285,7 +285,8 @@
                 score_a: scoreA,
                 score_b: scoreB,
                 winner_team: winner,
-                mvp_user_id: mvpId,
+                mvp_team_a: mvpA ? parseInt(mvpA) : null,
+                mvp_team_b: mvpB ? parseInt(mvpB) : null,
                 player_stats: playerStats,
                 initData: tg.initData
             };
@@ -366,18 +367,34 @@
             html += `
                 <div style="background:var(--tg-theme-secondary-bg-color, #f5f5f5); padding:15px; border-radius:12px; margin-bottom:20px;">
                     <h3 style="margin-top:0; margin-bottom:10px;">⭐ Выберите MVP матча</h3>
-                    <select id="mvp-select">
-                        <option value="">-- Никто --</option>
+                    
+                    <div style="margin-bottom: 10px;">
+                        <label>🟠 MVP (Команда А):</label>
+                        <select id="mvp-team-a" style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 6px;">
+                            <option value="">-- Никто --</option>
             `;
 
-            // Combine all players for dropdown
-            const allPlayers = [...gameData.team_a, ...gameData.team_b];
-            allPlayers.forEach(p => {
+            gameData.team_a.forEach(p => {
                 html += `<option value="${p.id}">${p.name}</option>`;
             });
 
             html += `
-                    </select>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label>🟢 MVP (Команда Б):</label>
+                        <select id="mvp-team-b" style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 6px;">
+                            <option value="">-- Никто --</option>
+            `;
+
+            gameData.team_b.forEach(p => {
+                html += `<option value="${p.id}">${p.name}</option>`;
+            });
+
+            html += `
+                        </select>
+                    </div>
                 </div>
             `;
 

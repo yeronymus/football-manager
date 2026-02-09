@@ -82,6 +82,7 @@ class Game(Base):
     payment_info = Column(String, default="2924402033/0800")
     team_count = Column(Integer, default=2)
     gk_hours = Column(Integer, default=48)
+    duration = Column(Integer, default=2) # Match duration in hours
     status = Column(Enum(GameStatus), default=GameStatus.OPEN)
     winner_team = Column(Enum(Team), nullable=True)
     score_a = Column(Integer, nullable=True)
@@ -129,13 +130,14 @@ class Vote(Base):
     game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
     voter_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
     target_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
+    vote_team = Column(Enum(Team, name="vote_team_enum"), nullable=False)
 
     game = relationship("Game", back_populates="votes")
     voter = relationship("User", foreign_keys=[voter_id], back_populates="votes_cast")
     target = relationship("User", foreign_keys=[target_id], back_populates="votes_received")
 
     __table_args__ = (
-        UniqueConstraint('game_id', 'voter_id', name='unique_vote'),
+        UniqueConstraint('game_id', 'voter_id', 'vote_team', name='unique_vote_team'),
     )
 
 class RatingHistory(Base):

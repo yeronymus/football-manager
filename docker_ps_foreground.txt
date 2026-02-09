@@ -1,0 +1,2 @@
+CONTAINER ID   IMAGE                COMMAND                  CREATED          STATUS          PORTS                                         NAMES
+7c32763c9255   postgres:15-alpine   "docker-entrypoint.s…"   17 seconds ago   Up 17 seconds   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp   football-manager-db-1

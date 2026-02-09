@@ -1,0 +1,53 @@
+Uploading add_duration_column.py -> ~/football-prod/add_duration_column.py
+>>> RUNNING MIGRATION...
+Remote EXEC: docker cp ~/football-prod/add_duration_column.py football-prod_app_1:/app/add_duration_column.py
+
+Remote EXEC: docker exec -i football-prod_app_1 python3 /app/add_duration_column.py
+Config loaded via os.getenv
+2026-02-07 23:04:14,092 INFO sqlalchemy.engine.Engine select pg_catalog.version()
+2026-02-07 23:04:14,092 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-02-07 23:04:14,098 INFO sqlalchemy.engine.Engine select current_schema()
+2026-02-07 23:04:14,098 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-02-07 23:04:14,102 INFO sqlalchemy.engine.Engine show standard_conforming_strings
+2026-02-07 23:04:14,102 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-02-07 23:04:14,106 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+Adding 'duration' column to 'games' table...
+2026-02-07 23:04:14,107 INFO sqlalchemy.engine.Engine ALTER TABLE games ADD COLUMN duration INTEGER DEFAULT 2
+2026-02-07 23:04:14,107 INFO sqlalchemy.engine.Engine [generated in 0.00033s] ()
+Successfully added 'duration' column.
+2026-02-07 23:04:14,119 INFO sqlalchemy.engine.Engine COMMIT
+
+Remote EXEC: mkdir -p ~/football-prod/app/db
+
+Uploading app/db/models.py -> ~/football-prod/app/db/models.py
+>>> PATCHING app/db/models.py...
+Remote EXEC: docker cp ~/football-prod/app/db/models.py football-prod_app_1:/app/app/db/models.py
+
+Remote EXEC: mkdir -p ~/football-prod/app/api
+
+Uploading app/api/schemas.py -> ~/football-prod/app/api/schemas.py
+>>> PATCHING app/api/schemas.py...
+Remote EXEC: docker cp ~/football-prod/app/api/schemas.py football-prod_app_1:/app/app/api/schemas.py
+
+Remote EXEC: mkdir -p ~/football-prod/app/services
+
+Uploading app/services/game_service.py -> ~/football-prod/app/services/game_service.py
+>>> PATCHING app/services/game_service.py...
+Remote EXEC: docker cp ~/football-prod/app/services/game_service.py football-prod_app_1:/app/app/services/game_service.py
+
+Remote EXEC: mkdir -p ~/football-prod/app/scheduler
+
+Uploading app/scheduler/tasks.py -> ~/football-prod/app/scheduler/tasks.py
+>>> PATCHING app/scheduler/tasks.py...
+Remote EXEC: docker cp ~/football-prod/app/scheduler/tasks.py football-prod_app_1:/app/app/scheduler/tasks.py
+
+Remote EXEC: mkdir -p ~/football-prod/app/bot
+
+Uploading app/bot/utils.py -> ~/football-prod/app/bot/utils.py
+>>> PATCHING app/bot/utils.py...
+Remote EXEC: docker cp ~/football-prod/app/bot/utils.py football-prod_app_1:/app/app/bot/utils.py
+
+>>> RESTARTING CONTAINER...
+Remote EXEC: docker restart football-prod_app_1
+football-prod_app_1
+

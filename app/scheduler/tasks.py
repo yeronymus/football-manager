@@ -28,42 +28,49 @@ async def send_voting_message(game_id: int):
         if not players:
             return
 
-        # Create keyboard with players
-        buttons = []
-        for player in players:
-            buttons.append([InlineKeyboardButton(text=player.full_name, callback_data=f"vote_{game_id}_{player.user_id}")])
+        # Create keyboard with single WebApp button
+        from app.config import settings
+        vote_url = f"{settings.webapp_url}/web/vote.html?game_id={game_id}"
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="🏆 Голосование (MVP)", web_app=types.WebAppInfo(url=vote_url))
+        ]])
         
         await bot.send_message(
             chat_id=game.chat_id,
-            text=f"Матч {game.location} завершен! Выберите MVP матча:",
-            reply_markup=keyboard
+            text=f"Матч в <b>{game.location}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды) по кнопке ниже.\n<i>(Результаты через 5 часов)</i>\n\nП.С. Отправляйте свои голы @yeronym для внесения в статистику",
+            reply_markup=keyboard,
+            parse_mode="HTML"
         )
         
-        # Schedule calculation in 2 hours
+        # Schedule calculation in 5 hours
         from app.scheduler.main import scheduler
         from datetime import datetime, timedelta
-        run_date = datetime.now() + timedelta(hours=2)
-        scheduler.add_job(calculate_mvp, 'date', run_date=run_date, args=[game_id])
+        run_date = datetime.now() + timedelta(hours=5)
+        scheduler.add_job(calculate_mvp, 'date', run_date=run_date, args=[game_id], id=f"mvp_calc_{game_id}", replace_existing=True)
 
 async def calculate_mvp(game_id: int):
     from app.bot.main import bot
     async for session in get_session():
-        # Count votes
-        result = await session.execute(
-            select(Vote.target_id, func.count(Vote.id).label('count'))
-            .where(Vote.game_id == game_id)
-            .group_by(Vote.target_id)
+        # Get Team A Results
+        res_a = await session.execute(
+            select(User.full_name, func.count(Vote.id))
+            .join(Vote, User.user_id == Vote.target_id)
+            .where(Vote.game_id == game_id, Vote.vote_team == Team.A)
+            .group_by(User.full_name)
             .order_by(func.count(Vote.id).desc())
-            .limit(1)
         )
-        winner_data = result.first()
+        results_a = res_a.all()
         
-        mvp_id = None
-        votes_count = 0
-        if winner_data:
-            mvp_id, votes_count = winner_data
+        # Get Team B Results
+        res_b = await session.execute(
+            select(User.full_name, func.count(Vote.id))
+            .join(Vote, User.user_id == Vote.target_id)
+            .where(Vote.game_id == game_id, Vote.vote_team == Team.B)
+            .group_by(User.full_name)
+            .order_by(func.count(Vote.id).desc())
+        )
+        results_b = res_b.all()
         
         # Get game info
         result = await session.execute(select(Game).where(Game.id == game_id))
@@ -72,25 +79,24 @@ async def calculate_mvp(game_id: int):
         if not game:
             return
 
-        # Get MVP User
-        mvp_user = None
-        if mvp_id:
-            result = await session.execute(select(User).where(User.user_id == mvp_id))
-            mvp_user = result.scalar_one_or_none()
-            if mvp_user:
-                mvp_user.stats_mvp += 1
-
-        # NOTE: We do NOT finish the game here. Admin must do it via /finish_game to set scores.
-        await session.commit()
+        text = f"📊 <b>Результаты голосования MVP</b>\n\n"
         
-        text = f"🏆 MVP матча {game.location} признан {mvp_user.full_name} ({votes_count} голосов)!" if mvp_user else "MVP не выбран (нет голосов)."
-        
-        if game.winner_team:
-            team_colors = {Team.A: "🟠 Команда А", Team.B: "🟢 Команда Б", Team.C: "🔵 Команда С"}
-            winner_text = team_colors.get(game.winner_team, f"Команда {game.winner_team.value}")
-            text += f"\n\n🏆 Победила {winner_text}."
+        def format_results(items):
+            if not items: return "<i>Голосов нет</i>"
+            lines = []
+            for i, (name, count) in enumerate(items):
+                prefix = "🌟 " if i == 0 else "- "
+                lines.append(f"{prefix}{name}: {count}")
+            return "\n".join(lines)
 
-        await bot.send_message(chat_id=game.chat_id, text=text)
+        text += "<b>Команда А 🟠:</b>\n"
+        text += format_results(results_a)
+        text += "\n\n"
+        
+        text += "<b>Команда Б 🟢:</b>\n"
+        text += format_results(results_b)
+
+        await bot.send_message(chat_id=game.chat_id, text=text, parse_mode="HTML")
 
 async def remind_admin_to_finish(game_id: int):
     from app.bot.main import bot
