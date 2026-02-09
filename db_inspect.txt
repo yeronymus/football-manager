@@ -1,0 +1,5 @@
+docker: 'docker inspect' requires at least 1 argument
+
+Usage:  docker inspect [OPTIONS] NAME|ID [NAME|ID...]
+
+See 'docker inspect --help' for more information

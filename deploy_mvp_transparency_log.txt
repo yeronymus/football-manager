@@ -1,0 +1,8 @@
+Uploading app/scheduler/tasks.py -> ~/football-prod/app/scheduler/tasks.py
+>>> PATCHING TASKS (Full Results)...
+Remote EXEC: docker cp ~/football-prod/app/scheduler/tasks.py football-prod_app_1:/app/app/scheduler/tasks.py
+
+>>> RESTARTING CONTAINER...
+Remote EXEC: docker restart football-prod_app_1
+football-prod_app_1
+

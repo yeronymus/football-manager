@@ -1,0 +1,9 @@
+
+--- EXEC: docker ps ---
+CONTAINER ID   IMAGE                COMMAND                  CREATED         STATUS         PORTS                                         NAMES
+cc660c75a561   6177e76a8838         "/bin/sh -c 'pip ins…"   6 seconds ago   Up 5 seconds                                                 thirsty_benz
+b06ff7e9ee13   postgres:15-alpine   "docker-entrypoint.s…"   3 days ago      Up 3 days      0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp   football-prod_db_1
+0d89fbe0e6f6   redis:7-alpine       "docker-entrypoint.s…"   3 days ago      Up 3 days      0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp   football-prod_redis_1
+9649c7645a05   redis:7-alpine       "docker-entrypoint.s…"   3 weeks ago     Up 3 weeks     0.0.0.0:6380->6379/tcp, [::]:6380->6379/tcp   football-dev_redis_1
+77c90d013956   postgres:15-alpine   "docker-entrypoint.s…"   3 weeks ago     Up 3 weeks     0.0.0.0:5434->5432/tcp, [::]:5434->5432/tcp   football-dev_db_1
+

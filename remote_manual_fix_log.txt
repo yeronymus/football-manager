@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/yeronym/Documents/fmBot/football-manager/remote_apply_roster_fix.py", line 3, in <module>
+    import s, sys
+ModuleNotFoundError: No module named 's'

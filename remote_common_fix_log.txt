@@ -1,0 +1,34 @@
+Local EXEC: tar -czf app_repair.tar.gz app
+Uploading app_repair.tar.gz -> ~/football-prod/app_repair.tar.gz
+Remote EXEC: cd ~/football-prod && tar -xzf app_repair.tar.gz
+
+Remote EXEC: cd ~/football-prod && rm app_repair.tar.gz
+
+Remote EXEC: docker restart football-prod_app_1
+football-prod_app_1
+
+Remote EXEC: sleep 5
+
+Remote EXEC: docker logs --tail 20 football-prod_app_1
+INFO:app.api.main:Configuration: USE_POLLING=False, WEBHOOK_URL=https://yernur-vm1.sin.cvut.cz/api/webhook
+INFO:app.api.main:Starting in Webhook mode...
+WARNING:root:MIGRATION: Schema Check...
+2026-02-07 16:15:45,746 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 16:15:45,748 INFO sqlalchemy.engine.Engine ALTER TABLE signups ADD COLUMN IF NOT EXISTS position VARCHAR(10)
+INFO:sqlalchemy.engine.Engine:ALTER TABLE signups ADD COLUMN IF NOT EXISTS position VARCHAR(10)
+2026-02-07 16:15:45,748 INFO sqlalchemy.engine.Engine [generated in 0.00039s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00039s] ()
+2026-02-07 16:15:45,752 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+WARNING:root:MIGRATION: Schema Updated (position column added).
+INFO:root:Webhook set to https://yernur-vm1.sin.cvut.cz/api/webhook
+INFO:root:Setting bot commands...
+INFO:root:Cleared default and private commands.
+WARNING:root:Failed to set commands for admin 123456789: Telegram server says - Bad Request: chat not found
+INFO:root:Set role-based commands successfully.
+INFO:app.api.main:Application started successfully
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+
+Local EXEC: rm app_repair.tar.gz

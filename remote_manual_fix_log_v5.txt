@@ -1,0 +1,6 @@
+Uploading apply_roster_fix.py -> ~/football-prod/apply_roster_fix.py
+Remote EXEC: docker exec -i football-prod_app_1 python3 /app/apply_roster_fix.py
+  File "/app/apply_roster_fix.py", line 85
+    if game.message_id:
+IndentationError: unexpected indent
+

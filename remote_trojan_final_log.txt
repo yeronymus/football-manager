@@ -1,0 +1,57 @@
+Uploading apply_roster_fix.py -> ~/football-prod/apply_roster_fix.py
+>>> PATCHING HANDLER...
+Remote EXEC: docker cp ~/football-prod/apply_roster_fix.py football-prod_app_1:/app/apply_roster_fix.py
+
+Remote EXEC: docker exec -i football-prod_app_1 python3 /app/apply_roster_fix.py patch
+Config loaded via os.getenv
+PATCHING handler file...
+Successfully wrote /app/app/bot/vote_handlers.py
+
+>>> RESTARTING CONTAINER...
+Remote EXEC: docker restart football-prod_app_1
+football-prod_app_1
+
+Waiting 10s for boot...
+>>> SENDING BUTTONS...
+Remote EXEC: docker exec -i football-prod_app_1 python3 /app/apply_roster_fix.py send
+Config loaded via os.getenv
+SENDING buttons...
+2026-02-07 16:43:08,077 INFO sqlalchemy.engine.Engine select pg_catalog.version()
+INFO:sqlalchemy.engine.Engine:select pg_catalog.version()
+2026-02-07 16:43:08,077 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-07 16:43:08,081 INFO sqlalchemy.engine.Engine select current_schema()
+INFO:sqlalchemy.engine.Engine:select current_schema()
+2026-02-07 16:43:08,082 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-07 16:43:08,085 INFO sqlalchemy.engine.Engine show standard_conforming_strings
+INFO:sqlalchemy.engine.Engine:show standard_conforming_strings
+2026-02-07 16:43:08,085 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-07 16:43:08,088 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-07 16:43:08,179 INFO sqlalchemy.engine.Engine SELECT games.id, games.chat_id, games.created_by, games.date_time, games.location, games.max_players, games.price, games.payment_info, games.team_count, games.gk_hours, games.status, games.winner_team, games.score_a, games.score_b, games.score_c, games.message_id, games.channel_id, games.channel_message_id, games.admin_message_id, games.has_active_gk_a, games.has_active_gk_b, games.has_active_gk_c, games.created_at 
+FROM games 
+WHERE games.id = $1::INTEGER
+INFO:sqlalchemy.engine.Engine:SELECT games.id, games.chat_id, games.created_by, games.date_time, games.location, games.max_players, games.price, games.payment_info, games.team_count, games.gk_hours, games.status, games.winner_team, games.score_a, games.score_b, games.score_c, games.message_id, games.channel_id, games.channel_message_id, games.admin_message_id, games.has_active_gk_a, games.has_active_gk_b, games.has_active_gk_c, games.created_at 
+FROM games 
+WHERE games.id = $1::INTEGER
+2026-02-07 16:43:08,179 INFO sqlalchemy.engine.Engine [generated in 0.00056s] (2,)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00056s] (2,)
+2026-02-07 16:43:08,265 INFO sqlalchemy.engine.Engine SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid, users.user_id AS user_id_1, users.username, users.full_name, users.player_position, users.stats_matches, users.stats_mvp, users.rating, users.games_played, users.alt_positions, users.created_at AS created_at_1 
+FROM signups JOIN users ON users.user_id = signups.user_id 
+WHERE signups.game_id = $1::INTEGER AND signups.status = $2::signupstatus ORDER BY signups.team, users.full_name
+INFO:sqlalchemy.engine.Engine:SELECT signups.id, signups.game_id, signups.user_id, signups.status, signups.team, signups.position, signups.created_at, signups.is_paid, users.user_id AS user_id_1, users.username, users.full_name, users.player_position, users.stats_matches, users.stats_mvp, users.rating, users.games_played, users.alt_positions, users.created_at AS created_at_1 
+FROM signups JOIN users ON users.user_id = signups.user_id 
+WHERE signups.game_id = $1::INTEGER AND signups.status = $2::signupstatus ORDER BY signups.team, users.full_name
+2026-02-07 16:43:08,265 INFO sqlalchemy.engine.Engine [generated in 0.00059s] (2, 'ACTIVE')
+INFO:sqlalchemy.engine.Engine:[generated in 0.00059s] (2, 'ACTIVE')
+Buttons sent! Msg ID: 1032
+2026-02-07 16:43:08,526 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+ERROR:asyncio:Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70a5abe20430>
+ERROR:asyncio:Unclosed connector
+connections: ['[(<aiohttp.client_proto.ResponseHandler object at 0x70a5ac755e40>, 4887185.607618667)]']
+connector: <aiohttp.connector.TCPConnector object at 0x70a5ac6d20e0>
+

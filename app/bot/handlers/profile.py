@@ -133,7 +133,7 @@ async def cmd_my_history(message: types.Message, session: AsyncSession):
             if game.winner_team == signup.team:
                 result_icon = "🏆" # Победа
             else:
-                result_icon = "💀" # Поражение
+                result_icon = "❌" # Поражение
         
         # Б. Счет матча
         score_text = f"{game.score_a or 0}:{game.score_b or 0}"

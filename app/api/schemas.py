@@ -12,6 +12,7 @@ class GameCreate(BaseModel):
     payment_info: str = "2924402033/0800"
     team_count: int = 2
     gk_hours: int = 48
+    duration: int = 2
     auto_join_ids: List[int] = []
     publish_at: Optional[datetime] = None
     initData: str
@@ -24,6 +25,7 @@ class GameUpdate(BaseModel):
     price: Optional[int] = None
     payment_info: Optional[str] = None
     gk_hours: Optional[int] = None
+    duration: Optional[int] = None
     initData: str
     initData: str
 
@@ -43,10 +45,11 @@ class PlayerStat(BaseModel):
 class GameFinishRequest(BaseModel):
     game_id: int
     score_a: int
-    score_a: int
     score_b: int
     winner_team: Optional[Team]
-    mvp_user_id: Optional[int] = None
+    mvp_user_id: Optional[int] = None # Deprecated, kept for backward compat
+    mvp_team_a: Optional[int] = None
+    mvp_team_b: Optional[int] = None
     player_stats: list[PlayerStat]
     initData: str
 
@@ -67,4 +70,10 @@ class AddGuestRequest(BaseModel):
     game_id: int
     name: str
     position: str
+    initData: str
+
+class VoteRequest(BaseModel):
+    game_id: int
+    mvp_team_a: int
+    mvp_team_b: int
     initData: str

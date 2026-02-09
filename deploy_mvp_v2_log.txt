@@ -1,0 +1,18 @@
+endpoints.py                                    0%    0     0.0KB/s   --:-- ETAendpoints.py                                  100%   29KB  68.6KB/s   00:00    
+scp: write remote "football-prod/app/api/endpoints.py": Failure
+scp: failed to upload file app/api/endpoints.py to ~/football-prod/app/api/endpoints.py
+tasks.py                                        0%    0     0.0KB/s   --:-- ETAtasks.py                                      100% 9656    46.1KB/s   00:00    
+force_voting_msg.py                             0%    0     0.0KB/s   --:-- ETAforce_voting_msg.py                           100% 1478     7.0KB/s   00:00    
+scp: write remote "football-prod/force_voting_msg.py": Failure
+scp: failed to upload file force_voting_msg.py to ~/football-prod/force_voting_msg.py
+Restarting football-prod_app_1 ... 
+Restarting football-prod_app_1 ... error
+
+ERROR: for football-prod_app_1  Cannot restart container 24c53284736556fbac507a24c676bbb996713d5cf14ea0565d1660764ac938d8: mkdir /var/lib/docker/overlay2/97568a8795f4852280708605e5d8e07994fc4119516bc6ea958c8acbc15a56c8/merged: no space left on device
+Creating football-prod_app_run ... 
+Creating football-prod_app_run ... error
+
+ERROR: for football-prod_app_run  Cannot create container for service app: mkdir /var/lib/docker/overlay2/0b1248c7753fa7d39d98dc790e3d57059c6309dd840bac4c1308b7ddac7e48cd-init: no space left on device
+
+ERROR: for app  Cannot create container for service app: mkdir /var/lib/docker/overlay2/0b1248c7753fa7d39d98dc790e3d57059c6309dd840bac4c1308b7ddac7e48cd-init: no space left on device
+Encountered errors while bringing up the project.

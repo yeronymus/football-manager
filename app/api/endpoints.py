@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.db.database import get_session
-from app.db.models import Game, User, Chat, Signup, SignupStatus, Team, GameStats, GameStatus
+from app.db.models import Game, User, Chat, Signup, SignupStatus, Team, GameStats, GameStatus, Vote
 import logging
-from app.api.schemas import GameCreate, BalanceTeams, GameResult, GameFinishRequest, UpdateTeamsRequest, GameUpdate
+from app.api.schemas import GameCreate, BalanceTeams, GameResult, GameFinishRequest, UpdateTeamsRequest, GameUpdate, AddPlayerRequest, AddGuestRequest, VoteRequest
 from app.services.user_service import UserService
 from app.services.game_service import GameService
 from app.bot.elo import calculate_new_rating
@@ -245,10 +245,10 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
 
     await check_admin_rights(game.chat_id, user_id)
 
-    # Fetch all active signups for this game
+    # Fetch active AND reserve signups for this game
     result = await session.execute(
         select(Signup)
-        .where(Signup.game_id == data.game_id, Signup.status == SignupStatus.ACTIVE)
+        .where(Signup.game_id == data.game_id, Signup.status.in_([SignupStatus.ACTIVE, SignupStatus.RESERVE]))
     )
     signups = result.scalars().all()
     
@@ -258,21 +258,38 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
     team_a_users = []
     team_b_users = []
     
+    # Helper for promotion
+    async def promote_if_reserve(uid):
+        s = signup_map[uid]
+        if s.status == SignupStatus.RESERVE:
+            s.status = SignupStatus.ACTIVE
+            try:
+                await bot.send_message(
+                    uid, 
+                    "<b>Ты в основном составе!</b>\nАдмин перенес тебя из резерва. <b>Подтверди в группе или админам, что будешь играть!</b>", 
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
+
     # Update teams
     for uid in data.team_a:
         if uid in signup_map:
             signup_map[uid].team = Team.A
+            await promote_if_reserve(uid)
             team_a_users.append(uid)
             
     for uid in data.team_b:
         if uid in signup_map:
             signup_map[uid].team = Team.B
+            await promote_if_reserve(uid)
             team_b_users.append(uid)
             
     if data.team_c:
         for uid in data.team_c:
             if uid in signup_map:
                 signup_map[uid].team = Team.C
+                await promote_if_reserve(uid)
                 # team_c_users.append(uid)
             
     # Reset others to None (or handle as "Unassigned")
@@ -400,8 +417,18 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
         
     await check_admin_rights(game.chat_id, user_id)
     
-    is_update = game.status == GameStatus.ACTIVE
-    game.status = GameStatus.ACTIVE
+    # Only set to ACTIVE if it's currently OPEN. 
+    # If it's FINISHED, keep it FINISHED but update the message (Retroactive Fix).
+    # If it's CANCELLED, maybe reopen? Let's assume Publish means "Show Teams".
+    is_update = True
+    if game.status == GameStatus.OPEN:
+        game.status = GameStatus.ACTIVE
+        is_update = False
+    elif game.status == GameStatus.CANCELLED:
+         # Reopen
+         game.status = GameStatus.ACTIVE
+         is_update = False
+
     await session.commit()
     
     # Update Public Message
@@ -420,10 +447,11 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
                 )
             except Exception as e:
                 # If message not modified, it's fine. If not found, send new.
-                if "message is not modified" in str(e):
+                err_str = str(e)
+                if "message is not modified" in err_str:
                     pass
-                elif "message to edit not found" in str(e) or "message can't be edited" in str(e):
-                    # Message deleted? Send new one.
+                elif any(x in err_str for x in ["message to edit not found", "message can't be edited", "BUTTON_TYPE_INVALID"]):
+                    # Message deleted or incompatible buttons? Send new one.
                     msg = await bot.send_message(
                         chat_id=game.chat_id,
                         text=public_text,
@@ -445,17 +473,58 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
             game.message_id = msg.message_id
             await session.commit()
             
-        if is_update:
-            await bot.send_message(game.chat_id, "🔄 <b>Составы обновлены!</b> Проверьте изменения в закрепе.")
+        # Notification logic
+        if not is_update:
+             await bot.send_message(game.chat_id, "📢 <b>Составы утверждены!</b>")
         else:
-            await bot.send_message(game.chat_id, "📢 <b>Составы утверждены!</b> Чекайте закреп.")
+             # If strictly updating, maybe silent? User sometimes wants confirmation.
+             # "Changes published"
+             pass
             
     except Exception as e:
         logger.error(f"Publish error: {e}", exc_info=True)
-        # IMPORTANT: Returning error to client so user sees it
         raise HTTPException(status_code=500, detail=f"Bot Error: {str(e)}")
         
     return {"status": "published"}
+
+@router.get("/games/editable")
+async def get_editable_games(initData: str, session: AsyncSession = Depends(get_session)):
+    """Returns Open, Active, and recent Finished games for the Draft selector."""
+    if not validate_init_data(initData, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+        
+    user_id = get_user_from_init_data(initData)
+    
+    # Fetch user's administered chats? 
+    # For simplicity, we return games from chats where user is admin.
+    # But checking rights for ALL games is expensive.
+    # Let's return last 10 games globally (if simple auth) 
+    # OR better: client passes chat_id if context known?
+    # Context: User opens WebApp via "Edit" button -> has game_id.
+    # User opens via Menu -> No game_id. 
+    # We show list. Filtering by admin rights is proper but tricky without Chat list.
+    
+    # Let's fetch last 20 games and filter by admin rights logic (cached).
+    result = await session.execute(
+        select(Game).order_by(Game.date_time.desc()).limit(20)
+    )
+    games = result.scalars().all()
+    
+    editable = []
+    for g in games:
+        try:
+            # Check rights
+            await check_admin_rights(g.chat_id, user_id)
+            editable.append({
+                "id": g.id,
+                "location": g.location,
+                "date_time": g.date_time.isoformat(),
+                "status": g.status.value
+            })
+        except:
+            pass
+            
+    return editable
 
 @router.post("/finish_game")
 async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(get_session)):
@@ -650,3 +719,92 @@ async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends
         raise HTTPException(status_code=500, detail=f"Failed to add guest: {e}")
         
     return {"status": "added", "user_id": guest_id}
+
+@router.get("/game/{game_id}/vote_data")
+async def get_vote_data(game_id: int, initData: str, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(initData, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+    
+    user_id = get_user_from_init_data(initData)
+    
+    # Check if user is a participant (Active Signup)
+    result = await session.execute(
+         select(Signup).where(
+             Signup.game_id == game_id, 
+             Signup.user_id == user_id, 
+             Signup.status == SignupStatus.ACTIVE
+         )
+    )
+    if not result.scalar_one_or_none():
+         raise HTTPException(status_code=403, detail="Only active players can vote")
+
+    # Fetch all active players
+    result = await session.execute(
+        select(User, Signup)
+        .join(Signup)
+        .where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
+    )
+    all_players = result.all()
+    
+    team_a = [
+        {"id": u.user_id, "name": u.full_name, "position": s.position.value if s.position else u.player_position.value}
+        for u, s in all_players if s.team == Team.A
+    ]
+    team_b = [
+        {"id": u.user_id, "name": u.full_name, "position": s.position.value if s.position else u.player_position.value}
+        for u, s in all_players if s.team == Team.B
+    ]
+    
+    # Check if already voted
+    result = await session.execute(
+        select(Vote).where(Vote.game_id == game_id, Vote.voter_id == user_id)
+    )
+    existing_votes = result.scalars().all()
+    has_voted = len(existing_votes) > 0
+    
+    return {
+        "team_a": team_a,
+        "team_b": team_b,
+        "has_voted": has_voted
+    }
+
+@router.post("/game/vote")
+async def submit_vote(data: VoteRequest, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(data.initData, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+        
+    user_id = get_user_from_init_data(data.initData)
+    
+    # Check participation
+    result = await session.execute(
+        select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == user_id, Signup.status == SignupStatus.ACTIVE)
+    )
+    if not result.scalar_one_or_none():
+         raise HTTPException(status_code=403, detail="Only active players can vote")
+         
+    # Check existing votes
+    result = await session.execute(
+        select(Vote).where(Vote.game_id == data.game_id, Vote.voter_id == user_id)
+    )
+    votes = result.scalars().all()
+    if votes:
+        raise HTTPException(status_code=400, detail="Already voted")
+        
+    # Prevent self-voting
+    if data.mvp_team_a == user_id or data.mvp_team_b == user_id:
+        raise HTTPException(status_code=400, detail="You cannot vote for yourself")
+        
+    # Create Votes
+    vote_a = Vote(game_id=data.game_id, voter_id=user_id, target_id=data.mvp_team_a, vote_team=Team.A)
+    vote_b = Vote(game_id=data.game_id, voter_id=user_id, target_id=data.mvp_team_b, vote_team=Team.B)
+    
+    session.add(vote_a)
+    session.add(vote_b)
+    
+    try:
+        await session.commit()
+    except Exception as e:
+        logger.error(f"Vote error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save vote")
+        
+    return {"status": "ok"}

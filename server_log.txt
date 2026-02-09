@@ -99,3 +99,144 @@ Attaching to football-prod_app_1
 [36mapp_1    |[0m INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 [36mapp_1    |[0m INFO:aiogram.event:Update id=294459465 is handled. Duration 154 ms by bot id=8067557564
 [36mapp_1    |[0m INFO:     172.18.0.1:60026 - "POST /api/webhook HTTP/1.1" 200 OK
+Attaching to football-prod_app_1
+[36mapp_1    |[0m INFO:     69.164.217.245:33463 - "GET / HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:     172.236.127.133:22632 - "GET / HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459665 is not handled. Duration 6 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:34788 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459666 is not handled. Duration 4 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:54558 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459667 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:50580 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459668 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:51192 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459669 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:59586 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459670 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:44442 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459671 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:43092 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459672 is not handled. Duration 6 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:44338 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459673 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:37794 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459674 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:39920 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459675 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:39930 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459676 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:53556 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459677 is not handled. Duration 3 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:45126 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459678 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:45138 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459679 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:36048 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459680 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:56010 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459681 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:47382 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459682 is not handled. Duration 11 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:48862 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459683 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:48868 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459684 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:48876 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459685 is not handled. Duration 4 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:60762 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459686 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:60770 - "POST /api/webhook HTTP/1.1" 200 OK
+Attaching to football-prod_app_1
+[36mapp_1    |[0m INFO:     69.164.217.245:33463 - "GET / HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:     172.236.127.133:22632 - "GET / HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459665 is not handled. Duration 6 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:34788 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459666 is not handled. Duration 4 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:54558 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459667 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:50580 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459668 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:51192 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459669 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:59586 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459670 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:44442 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459671 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:43092 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459672 is not handled. Duration 6 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:44338 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459673 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:37794 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459674 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:39920 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459675 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:39930 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459676 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:53556 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459677 is not handled. Duration 3 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:45126 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459678 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:45138 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459679 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:36048 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459680 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:56010 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459681 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:47382 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459682 is not handled. Duration 11 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:48862 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459683 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:48868 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459684 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:48876 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459685 is not handled. Duration 4 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:60762 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459686 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:60770 - "POST /api/webhook HTTP/1.1" 200 OK
+Attaching to football-prod_app_1
+[36mapp_1    |[0m INFO:     69.164.217.245:33463 - "GET / HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:     172.236.127.133:22632 - "GET / HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459665 is not handled. Duration 6 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:34788 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459666 is not handled. Duration 4 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:54558 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459667 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:50580 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459668 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:51192 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459669 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:59586 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459670 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:44442 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459671 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:43092 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459672 is not handled. Duration 6 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:44338 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459673 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:37794 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459674 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:39920 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459675 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:39930 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459676 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:53556 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459677 is not handled. Duration 3 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:45126 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459678 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:45138 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459679 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:36048 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459680 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:56010 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459681 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:47382 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459682 is not handled. Duration 11 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:48862 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459683 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:48868 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459684 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:48876 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459685 is not handled. Duration 4 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:60762 - "POST /api/webhook HTTP/1.1" 200 OK
+[36mapp_1    |[0m INFO:aiogram.event:Update id=294459686 is not handled. Duration 5 ms by bot id=8067557564
+[36mapp_1    |[0m INFO:     172.18.0.1:60770 - "POST /api/webhook HTTP/1.1" 200 OK
