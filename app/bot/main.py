@@ -89,6 +89,7 @@ async def start_bot():
         types.BotCommand(command="start", description="🏠 Меню"),
         types.BotCommand(command="my_profile", description="👤 Профиль"),
         types.BotCommand(command="my_history", description="📜 История"),
+        types.BotCommand(command="top", description="🏆 Топ"),
     ]
     
     # Admin-only commands (appended to user commands)
