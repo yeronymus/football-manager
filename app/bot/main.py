@@ -37,6 +37,9 @@ dp.include_router(system_router)
 from app.bot.common_handlers import router as common_router
 dp.include_router(common_router)
 
+from app.bot.stats_handlers import router as stats_router
+dp.include_router(stats_router)
+
 
 
 dp.update.middleware(DbSessionMiddleware(session_pool=async_session_maker))

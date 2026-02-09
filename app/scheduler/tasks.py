@@ -177,7 +177,7 @@ async def release_gk_slots(game_id: int):
                     try:
                         await bot.send_message(
                             signup.user_id, 
-                            f"🧤 Бронь вратарей снята (48ч)!\nВы переведены в основной состав на игру в {game.location}!"
+                            f"🧤 Бронь вратарей снята (24ч)!\nВы переведены в основной состав на игру в {game.location}!"
                         )
                     except Exception as e:
                         print(f"Failed to notify user {signup.user_id}: {e}")
@@ -215,18 +215,34 @@ async def publish_game_task(game_id: int):
         from app.bot.utils import format_game_message
         from app.bot.keyboards import get_game_keyboard
         
-        message_text = await format_game_message(game, session)
+        # 1. Publish to Channel (Full)
+        if game.channel_id:
+            text_full = await format_game_message(game, session, is_short=False)
+            try:
+                sent_full = await bot.send_message(
+                    chat_id=game.channel_id,
+                    text=text_full,
+                    reply_markup=get_game_keyboard(game.id)
+                )
+                game.channel_message_id = sent_full.message_id
+            except Exception as e:
+                print(f"Failed to publish to channel {game.channel_id}: {e}")
+
+        # 2. Publish to Group (Short)
+        text_short = await format_game_message(game, session, is_short=True)
         try:
             sent_message = await bot.send_message(
                 chat_id=game.chat_id,
-                text=message_text,
+                text=text_short,
                 reply_markup=get_game_keyboard(game.id)
             )
             
             game.message_id = sent_message.message_id
             await session.commit()
             
-            await bot.pin_chat_message(chat_id=game.chat_id, message_id=sent_message.message_id)
+            try:
+                await bot.pin_chat_message(chat_id=game.chat_id, message_id=sent_message.message_id)
+            except: pass
             
         except Exception as e:
-            print(f"Failed to publish game task {game.id}: {e}")
+            print(f"Failed to publish game task {game.id} to chat: {e}")

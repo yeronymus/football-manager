@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Game, Signup, User, SignupStatus, GameStatus, Team, Chat
 from app.config import settings
 from app.bot.balancer import balance_teams, Player
-from app.bot.utils import format_game_message
+from app.bot.utils import format_game_message, update_game_message
 from app.bot.keyboards import get_game_keyboard
 
 import logging
@@ -26,7 +26,7 @@ async def cmd_create(message: types.Message):
     if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
         return
 
-    web_app_url = f"{settings.webapp_url}/web/index.html?v=10"
+    web_app_url = f"{settings.webapp_url}/web/index.html?v=1.2"
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(text="➕ Создать новую игру", web_app=types.WebAppInfo(url=web_app_url))]
     ])
@@ -183,3 +183,71 @@ async def cb_kick_confirm(callback: types.CallbackQuery, session: AsyncSession):
         from app.bot.admin_dashboard import update_dashboard_message
         await update_dashboard_message(callback.bot, game_id, session)
 
+
+@router.message(Command("add_player"))
+async def cmd_add_player(message: types.Message, session: AsyncSession):
+    """
+    Usage: /add_player <game_id> <user_id_or_username>
+    """
+    if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
+        return
+
+    args = message.text.split()
+    if len(args) != 3:
+        await message.answer("⚠️ Использование: `/add_player <game_id> <id_или_@username>`")
+        return
+
+    try:
+        game_id = int(args[1])
+        user_input = args[2]
+        
+        target_user = None
+
+        # 1. Try Lookup by ID
+        if user_input.isdigit():
+            target_user = await session.get(User, int(user_input))
+        
+        # 2. Try Lookup by Username
+        if not target_user:
+            username_query = user_input.lstrip("@")
+            result = await session.execute(
+                select(User).where(User.username.ilike(username_query))
+            )
+            target_user = result.scalar_one_or_none()
+        
+        if not target_user:
+            await message.answer(f"❌ Пользователь '{user_input}' не найден в базе данных бота.")
+            return
+
+        # 3. Add to Game
+        from app.services.game_service import GameService, AlreadySignedUpError, GameFullError
+        service = GameService(session)
+        
+        signup, _ = await service.join_game(game_id, target_user.user_id)
+        
+        await message.answer(f"✅ Игрок {target_user.full_name} успешно добавлен в игру #{game_id}!")
+        
+        # Notify user?
+        try:
+            await message.bot.send_message(target_user.user_id, f"🎟️ Администратор добавил вас в игру #{game_id}.")
+        except: pass
+
+        # Update Dashboard if exists?
+        # Ideally we trigger a refresh logic, but join_game usually updates logic via scheduler/handlers 
+        # But here we invoke service method directly. join_game updates message? 
+        # Looking at join_game implementation... it usually returns signup. 
+        # The update_game_message logic is usually triggered by the callback handler in normal flow.
+        # We might want to force update the game message here.
+        
+        from app.bot.utils import update_game_message
+        game = await session.get(Game, game_id)
+        if game:
+             await update_game_message(message.bot, game, session)
+
+    except AlreadySignedUpError:
+        await message.answer("⚠️ Этот игрок уже записан на эту игру.")
+    except GameFullError:
+        await message.answer("⚠️ В игре нет мест (или она закрыта).")
+    except Exception as e:
+        logger.error(f"Add Player Error: {e}")
+        await message.answer(f"❌ Ошибка: {e}")
