@@ -98,10 +98,20 @@ def get_game_keyboard(game_id: int) -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="➕ Я в деле", callback_data=f"join_{game_id}"),
             InlineKeyboardButton(text="➖ Сливаюсь", callback_data=f"leave_{game_id}")
-        ],
-        [
-            InlineKeyboardButton(text="🏆 Голосование (MVP)", web_app=types.WebAppInfo(url=vote_url))
         ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def get_channel_game_keyboard(game_id: int) -> InlineKeyboardMarkup:
+    from app.config import settings
+    # Deep link to bot with start param
+    bot_username = settings.bot_token.split(":")[0] # Hacky if username not in config, but we used hardcoded before.
+    # Better use the string we had
+    bot_username = "fm_metabot"
+    deep_link = f"https://t.me/{bot_username}?start=game_{game_id}"
+    
+    buttons = [
+        [InlineKeyboardButton(text="⚽ Перейти к записи", url=deep_link)]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
