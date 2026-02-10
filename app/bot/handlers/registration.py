@@ -3,7 +3,7 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.models import Game
-from app.services.user_service import UserService
+from app.core.repositories.user_repository import UserRepository
 from app.bot.fsm import Registration
 from app.bot.keyboards import get_multiselect_keyboard, get_primary_select_keyboard, get_game_keyboard
 import re
@@ -64,9 +64,9 @@ async def process_position(callback: types.CallbackQuery, state: FSMContext, ses
     if position_value in alt_positions:
         alt_positions.remove(position_value)
     
-    # Save to DB via Service
-    user_service = UserService(session)
-    new_user = await user_service.create_user(
+    # Save to DB via Repository
+    user_repo = UserRepository(session)
+    new_user = await user_repo.create_user(
         user_id=callback.from_user.id,
         username=callback.from_user.username,
         full_name=full_name,

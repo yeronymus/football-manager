@@ -45,11 +45,8 @@ def run_interactive(cmd_list):
         
         os.waitpid(pid, 0)
 
-def main():
+def monitor_remote_logs():
     # Check status and last 100 logs of app
     print("\n=== CHECKING LOGS ===_")
     remote_cmd = "cd ~/football-prod && docker-compose logs --tail=100 app"
     run_interactive(["ssh", "-o", "StrictHostKeyChecking=no", f"{SERVER_USER}@{SERVER_HOST}", remote_cmd])
-
-if __name__ == "__main__":
-    main()

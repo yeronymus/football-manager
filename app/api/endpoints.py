@@ -5,7 +5,7 @@ from app.db.database import get_session
 from app.db.models import Game, User, Chat, Signup, SignupStatus, Team, GameStats, GameStatus, Vote
 import logging
 from app.api.schemas import GameCreate, BalanceTeams, GameResult, GameFinishRequest, UpdateTeamsRequest, GameUpdate, AddPlayerRequest, AddGuestRequest, VoteRequest
-from app.services.user_service import UserService
+from app.core.repositories.user_repository import UserRepository
 
 from app.bot.elo import calculate_new_rating
 from app.bot.main import bot
@@ -218,12 +218,12 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
     await check_admin_rights(game_data.chat_id, user_id)
 
     # Ensure user exists (Creator)
-    user_service = UserService(session)
-    user = await user_service.get_user(user_id)
+    user_repo = UserRepository(session)
+    user = await user_repo.get_user(user_id)
     if not user:
         parsed_data = dict(urllib.parse.parse_qsl(game_data.initData))
         user_data = json.loads(parsed_data.get("user", "{}"))
-        user = await user_service.create_user(
+        user = await user_repo.create_user(
             user_id=user_id, 
             full_name=user_data.get("first_name", "Admin"), 
             username=user_data.get("username"),
@@ -788,8 +788,8 @@ async def search_users(query: str, initData: str, session: AsyncSession = Depend
     # Let's trust authentication for now, or check generic admin status if we had it.
     # We will just proceed since we validate initData.
     
-    user_service = UserService(session)
-    users = await user_service.search_users(query)
+    user_repo = UserRepository(session)
+    users = await user_repo.search_users(query)
     
     return [
         {
