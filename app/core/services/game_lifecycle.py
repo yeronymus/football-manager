@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 from datetime import datetime
@@ -8,13 +9,20 @@ from app.api.schemas import GameCreate, GameUpdate, GameFinishRequest
 from app.core.services.stats import StatsService
 from app.infrastructure.scheduler.service import SchedulerService
 
+if TYPE_CHECKING:
+    from app.core.uow import UnitOfWork
+
 logger = logging.getLogger(__name__)
 
 class GameLifecycleService:
-    def __init__(self, session: AsyncSession, scheduler: SchedulerService, stats: StatsService):
-        self.session = session
+    def __init__(self, uow: "UnitOfWork", scheduler: SchedulerService, stats: StatsService):
+        self.uow = uow
         self.scheduler = scheduler
         self.stats = stats
+
+    @property
+    def session(self) -> AsyncSession:
+        return self.uow.session
 
     async def create_game(self, data: GameCreate, creator_id: int) -> Game:
         """
@@ -62,19 +70,18 @@ class GameLifecycleService:
         is_past = game.date_time < now_tz
         
         if not is_past:
-             if data.publish_at:
-                 pub_at = data.publish_at
-                 # Ensure compare aware vs aware
-                 if pub_at.tzinfo is None and tz:
-                     pub_at = pub_at.replace(tzinfo=tz)
-                 
-                 if pub_at > now_tz:
-                     self.scheduler.schedule_publish(game.id, pub_at)
-             
-             self.scheduler.schedule_game_lifecycle(game)
+            if data.publish_at:
+                pub_at = data.publish_at
+                # Ensure compare aware vs aware
+                if pub_at.tzinfo is None and tz:
+                    pub_at = pub_at.replace(tzinfo=tz)
+                
+                if pub_at > now_tz:
+                    self.scheduler.schedule_publish(game.id, pub_at)
+            
+            self.scheduler.schedule_game_lifecycle(game)
         
-        await self.session.commit()
-        await self.session.refresh(game)
+        # No Commit here. Caller must commit.
         return game
 
     async def update_game(self, data: GameUpdate) -> tuple[Game, list[str]]:
@@ -125,8 +132,7 @@ class GameLifecycleService:
         if data.duration is not None and data.duration != game.duration:
              game.duration = data.duration
              
-        await self.session.commit()
-        await self.session.refresh(game)
+        # No Commit.
         return game, changes
 
     async def finish_game(self, data: GameFinishRequest) -> Game:
@@ -189,6 +195,7 @@ class GameLifecycleService:
         # Call Stats Service for Ratings
         await self.stats.apply_game_results(game, mvp_ids)
         
-        await self.session.commit()
-        await self.session.refresh(game)
+        # No Commit.
         return game
+
+

@@ -11,7 +11,7 @@ from app.bot.elo import calculate_new_rating
 from app.bot.main import bot
 from app.bot.utils import format_game_message
 from app.bot.keyboards import get_game_keyboard
-from app.bot.balancer import balance_teams as run_balance_teams, Player
+from app.core.domain.balancer import balance_teams as run_balance_teams, Player
 from app.config import settings
 import hashlib
 import hmac
@@ -164,13 +164,19 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
         from app.infrastructure.scheduler.service import SchedulerService
         from app.core.services.stats import StatsService
         from app.core.services.game_lifecycle import GameLifecycleService
-        from app.bot.admin_dashboard import update_dashboard_message
+        from app.core.uow import UnitOfWork
         
-        scheduler = SchedulerService()
-        stats = StatsService(session)
-        lifecycle = GameLifecycleService(session, scheduler, stats)
+        updated_game = None
+        changes = []
         
-        updated_game, changes = await lifecycle.update_game(data)
+        async with UnitOfWork() as uow:
+            scheduler = SchedulerService()
+            stats = StatsService(uow.session)
+            lifecycle = GameLifecycleService(uow, scheduler, stats)
+            
+            updated_game, changes = await lifecycle.update_game(data)
+            await uow.commit()
+
         
         # --- Controller Logic (Notifications) ---
         if changes:
@@ -231,14 +237,20 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         from app.core.services.stats import StatsService
         from app.core.services.game_lifecycle import GameLifecycleService
         from app.bot.admin_dashboard import update_dashboard_message
+        from app.core.uow import UnitOfWork
         
-        # Instantiate Services
-        scheduler = SchedulerService()
-        stats = StatsService(session)
-        lifecycle = GameLifecycleService(session, scheduler, stats)
+        new_game = None
         
-        # Execute Domain Logic
-        new_game = await lifecycle.create_game(game_data, user_id)
+        async with UnitOfWork() as uow:
+            # Instantiate Services
+            scheduler = SchedulerService()
+            stats = StatsService(uow.session)
+            lifecycle = GameLifecycleService(uow, scheduler, stats)
+            
+            # Execute Domain Logic
+            new_game = await lifecycle.create_game(game_data, user_id)
+            await uow.commit() # Commit Game Creation
+
         
         # --- Controller Logic (Presentation/Notifications) ---
         
@@ -345,12 +357,15 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
         # --- NEW ARCHITECTURE (RosterService) ---
         from app.core.services.roster import RosterService
         from app.core.repositories.game_repo import GameRepository
+        from app.core.uow import UnitOfWork
         
-        repo = GameRepository(session)
-        service = RosterService(repo)
-        
-        await service.balance_teams(data.game_id)
-        await session.commit()
+        async with UnitOfWork() as uow:
+            repo = GameRepository(uow.session)
+            service = RosterService(repo)
+            
+            await service.balance_teams(data.game_id)
+            await uow.commit()
+
         
         # Update Message
         try:
@@ -404,18 +419,22 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
     try:
         from app.core.services.roster import RosterService
         from app.core.repositories.game_repo import GameRepository
+        from app.core.uow import UnitOfWork
         
-        repo = GameRepository(session)
-        service = RosterService(repo)
-        
-        promoted_ids = await service.update_teams(
-            data.game_id, 
-            data.team_a, 
-            data.team_b, 
-            data.team_c, 
-            data.positions or {}
-        )
-        await session.commit()
+        promoted_ids = []
+        async with UnitOfWork() as uow:
+            repo = GameRepository(uow.session)
+            service = RosterService(repo)
+            
+            promoted_ids = await service.update_teams(
+                data.game_id, 
+                data.team_a, 
+                data.team_b, 
+                data.team_c, 
+                data.positions or {}
+            )
+            await uow.commit()
+
         
         # Notify Promoted
         for uid in promoted_ids:
@@ -645,13 +664,19 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
         from app.infrastructure.scheduler.service import SchedulerService
         from app.core.services.stats import StatsService
         from app.core.services.game_lifecycle import GameLifecycleService
+        from app.core.uow import UnitOfWork
         
-        # Instantiate
-        scheduler = SchedulerService()
-        stats = StatsService(session)
-        lifecycle = GameLifecycleService(session, scheduler, stats)
+        game = None
         
-        game = await lifecycle.finish_game(data)
+        async with UnitOfWork() as uow:
+            # Instantiate
+            scheduler = SchedulerService()
+            stats = StatsService(uow.session)
+            lifecycle = GameLifecycleService(uow, scheduler, stats)
+            
+            game = await lifecycle.finish_game(data)
+            await uow.commit()
+
         
         # --- Controller Logic (Notifications) ---
         # 1. Construct Message

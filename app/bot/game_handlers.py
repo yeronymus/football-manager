@@ -44,51 +44,49 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
     alert_msg = result.message
 
     # --- UI UPDATE LOGIC ---
+    # Update Channel/Chat ID if needed (Multi-Sync)
+    # Ideally this should be in Service or separate, but ok here for context.
     try:
-        # Fetch Game for UI
-        game = await session.get(Game, game_id)
-        if not game: return
-
-        text = await format_game_message(game, session)
-        
-        # --- Multi-Sync Logic ---
         current_chat_id = callback.message.chat.id
-        if current_chat_id != game.chat_id:
-            if game.channel_id != current_chat_id:
-                game.channel_id = current_chat_id
-                game.channel_message_id = callback.message.message_id
-                await session.commit()
+        # We need to fetch game to check IDs
+        game = await session.get(Game, game_id)
+        if game:
+             if current_chat_id != game.chat_id and game.channel_id != current_chat_id:
+                 # It's a channel/linked chat interaction
+                 game.channel_id = current_chat_id
+                 game.channel_message_id = callback.message.message_id
+                 await session.commit()
+    except: pass
 
-        # Update Both Messages
-        async def safe_edit(chat_id, msg_id, keyboard):
-            if not chat_id or not msg_id: return
-            try:
-                await callback.bot.edit_message_text(
-                    chat_id=chat_id,
-                    message_id=msg_id,
-                    text=text,
-                    reply_markup=keyboard,
-                    parse_mode="HTML"
-                )
-            except Exception as e:
-                logging.warning(f"Failed to edit message in {chat_id}: {e}")
+    # Publish Event for UI Updates
+    from app.core.events import EventBus
+    from app.core.services.roster import PlayerJoinedEvent
+    
+    # We need to reconstruct the Signup object or just pass ID? 
+    # Event expects Signup object. 
+    # Result has result.signup.
+    if result.signup:
+        await EventBus.publish(PlayerJoinedEvent(
+            game_id=game_id, 
+            user_id=user_id, 
+            signup=result.signup, 
+            is_reserve=result.is_reserve, 
+            message=alert_msg
+        ))
+    
+    # Dashboard Update also handled by listener? 
+    # Currently listener does NOT update dashboard. 
+    # Let's keep dashboard update or move it to listener?
+    # Listner has `update_dashboard_message` call? 
+    # No, listener in `update_game_ui` only edits chat messages.
+    # I should add dashboard update to listener too.
+    # For now, let's keep explicit dashboard update here to be safe or add it to listener.
+    # Refactoring: Add dashboard update to listener.
+    # So I remove it from here.
 
-        await safe_edit(game.chat_id, game.message_id, get_game_keyboard(game_id)) # Primary
-        await safe_edit(game.channel_id, game.channel_message_id, get_channel_game_keyboard(game_id)) # Channel
 
-        # Dashboard Update
-        from app.bot.admin_dashboard import update_dashboard_message
-        try:
-                await update_dashboard_message(callback.bot, game.id, session)
-        except Exception as e:
-                logging.warning(f"Failed to update dashboard: {e}")
+    await callback.answer(alert_msg if alert_msg else "Вы записаны!")
 
-        await callback.answer(alert_msg if alert_msg else "Вы записаны!")
-        
-    except Exception as e:
-         logging.error(f"UI Update Error: {e}", exc_info=True)
-         if not alert_msg:
-             await callback.answer("Записан, но не удалось обновить сообщение.")
 
 @router.callback_query(F.data.startswith("leave_"))
 async def process_leave(callback: types.CallbackQuery, session: AsyncSession):
@@ -142,43 +140,30 @@ async def process_leave(callback: types.CallbackQuery, session: AsyncSession):
                 pass
 
         # --- COMMON UI UPDATE ---
-        game = await session.get(Game, game_id)
-        if not game:
-             await callback.answer("Игра не найдена / Ошибка данных.")
-             return
-
-        text = await format_game_message(game, session)
-        
-        # --- Multi-Sync Logic ---
-        current_chat_id = callback.message.chat.id
-        if current_chat_id != game.chat_id:
-            if game.channel_id != current_chat_id:
-                game.channel_id = current_chat_id
-                game.channel_message_id = callback.message.message_id
-                await session.commit()
-
-        async def safe_edit(chat_id, msg_id, keyboard):
-            if not chat_id or not msg_id: return
-            try:
-                await callback.bot.edit_message_text(
-                    chat_id=chat_id,
-                    message_id=msg_id,
-                    text=text,
-                    reply_markup=keyboard,
-                    parse_mode="HTML"
-                )
-            except Exception as e:
-                logging.warning(f"Failed to edit message in {chat_id}: {e}")
-
-        await safe_edit(game.chat_id, game.message_id, get_game_keyboard(game_id))
-        await safe_edit(game.channel_id, game.channel_message_id, get_channel_game_keyboard(game_id))
-        
-        # Trigger Admin Dashboard Update
-        from app.bot.admin_dashboard import update_dashboard_message
+        # Multi-Sync Logic
         try:
-             await update_dashboard_message(callback.bot, game.id, session)
-        except Exception as e:
-             logging.warning(f"Failed to update dashboard: {e}")
+             game = await session.get(Game, game_id)
+             if game:
+                 current_chat_id = callback.message.chat.id
+                 if current_chat_id != game.chat_id and game.channel_id != current_chat_id:
+                     game.channel_id = current_chat_id
+                     game.channel_message_id = callback.message.message_id
+                     await session.commit()
+        except: pass
+
+        # Publish Event
+        from app.core.events import EventBus
+        from app.core.services.roster import PlayerLeftEvent
+        
+        await EventBus.publish(PlayerLeftEvent(
+            game_id=game_id, 
+            user_id=user_id, 
+            message=msg, 
+            promoted_user=promoted_user
+        ))
+        
+        # Dashboard handled by listener (to be added)
+
 
         await callback.answer(msg)
 

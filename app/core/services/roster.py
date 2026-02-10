@@ -14,6 +14,14 @@ class PlayerJoinedEvent(Event):
     message: str
 
 @dataclass
+class PlayerLeftEvent(Event):
+    game_id: int
+    user_id: int
+    message: str
+    promoted_user: User | None
+
+
+@dataclass
 class JoinResult:
     success: bool
     signup: Signup | None
@@ -86,9 +94,8 @@ class RosterService(BaseService):
         signup = self.game_repo.create_signup(game_id, user.user_id, status)
         
         # Note: We do NOT commit here. The Controller (Handler) will commit.
-        # But we DO publish an event to side-channel
-        
-        await self.bus.publish(PlayerJoinedEvent(game_id, user.user_id, signup, is_reserve, alert_msg))
+        # Event publishing moved to Controller/Handler
+
         
         return JoinResult(True, signup, alert_msg, is_reserve)
 
@@ -131,14 +138,18 @@ class RosterService(BaseService):
                 res_signup.status = SignupStatus.ACTIVE
                 promoted_user = res_user
         
+        # Event is published by Controller/Handler after commit
         return True, "Вы выписались.", promoted_user
+
+
+
 
     async def balance_teams(self, game_id: int) -> bool:
         """
         Balances teams using the balancer algorithm and updates Signup records.
         Returns True if successful.
         """
-        from app.bot.balancer import balance_teams as run_balance_teams, Player
+        from app.core.domain.balancer import balance_teams as run_balance_teams, Player
         from app.db.models import Team
 
         # 1. Lock Game (Implicitly via repo or just fetch?)
