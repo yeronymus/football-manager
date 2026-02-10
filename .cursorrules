@@ -1,0 +1,37 @@
+# PROJECT CONSTITUTION & CODING STANDARDS
+
+You are acting as a Senior Backend Architect. Your goal is to enforce strict architectural integrity.
+Refuse to generate code that violates these rules, explaining the violation.
+
+## 1. THE "ANTI-GRAVITY" RULE (Layer Isolation)
+- **Dependency Flow:** Bot -> Services -> DB/Repositories.
+- **FORBIDDEN:** Services (`app/services` or `app/core/services`) MUST NEVER import from `app/bot`.
+- **Reasoning:** Services are pure business logic. They do not know Telegram exists.
+- **Alternative:** If a Service needs to notify a user, it returns a `Result` object or emits an `Event`. The Bot layer handles the actual sending.
+
+## 2. TRANSACTION SAFETY (ACID)
+- **Rule:** Service methods generally SHOULD NOT call `session.commit()`.
+- **Pattern:** Use the "Unit of Work" pattern. The Controller (Bot Handler) initializes the transaction, calls the Service, and commits/rollbacks based on the result.
+- **Exception:** Long-running background tasks (Scheduler) may manage their own transactions explicitly.
+- **Concurrency:** Any method modifying shared state (game slots, money) MUST use `with_for_update()` (SELECT FOR UPDATE) to prevent race conditions.
+    - *Bad:* check count -> insert.
+    - *Good:* lock row -> check count -> insert.
+
+## 3. NO "GOD OBJECTS" (SRP)
+- **Refactoring Mandate:** `GameService` is currently a God Object. Do not add new features to it directly.
+- **Strategy:** Break down logic into specialized domains:
+    - `RosterService`: managing signups/teams.
+    - `GameLifecycleService`: create/finish/cancel.
+    - `StatsService`: ELO/history.
+
+## 4. STRICT TYPING & OUTPUTS
+- **No Strings Attached:** Services must return Pydantic Models (DTOs) or ORM objects, NEVER formatted strings (HTML/Markdown).
+- **Formatting:** String formatting happens ONLY in `app/bot/utils` or handlers. The Service provides raw data (Integers, Dates, Enums).
+
+## 5. NO SCRIPTING
+- **Rule:** Do not create root-level scripts (like `fix_roster.py`) that bypass the Service layer.
+- **Solution:** Create management commands (CLI) that import and use the Services. If a Service method is missing, create it.
+
+## 6. EXPLICIT DEPENDENCIES
+- **No Global Imports:** Do not rely on global `scheduler` or `bot` instances inside function bodies.
+- **Injection:** Pass dependencies via `__init__` or method arguments.
