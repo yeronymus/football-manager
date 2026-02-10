@@ -12,11 +12,12 @@ from app.core.services.roster import RosterService
 from app.db.models import Game
 
 async def fix(game_id: int):
-    async with async_session_maker() as session:
+    from app.core.uow import UnitOfWork
+    
+    async with UnitOfWork() as uow:
         print(f"Fixing Roster for Game #{game_id}...")
         
-        repo = GameRepository(session)
-        service = RosterService(repo)
+        service = RosterService(uow.game_repo)
         
         # 1. Recalculate
         success = await service.recalculate_roster(game_id)
@@ -25,7 +26,7 @@ async def fix(game_id: int):
             print("Failed to recalculate (Game not found?)")
             return
             
-        await session.commit()
+        await uow.commit()
         print("Database updated.")
         
         # 2. Refresh Messages

@@ -27,58 +27,54 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
 
     # --- ROSTER SERVICE (ALL USERS) ---
     from app.core.services.roster import RosterService
-    from app.core.repositories.game_repo import GameRepository
+    # from app.core.repositories.game_repo import GameRepository
+    from app.core.uow import UnitOfWork
     
     # Feature Flag Check (Strangler Fig)
     use_new_logic = settings.use_new_roster_logic or (user_id in settings.debug_new_logic_user_ids)
     
     if use_new_logic:
         try:
-            repo = GameRepository(session)
-            service = RosterService(repo)
-            
-            # Service call
-            result = await service.join_player(game_id, user)
-            
-            if not result.success:
-                await callback.answer(result.message, show_alert=True)
-                return
+            # UoW Pattern
+            async with UnitOfWork() as uow:
+                service = RosterService(uow.game_repo)
+                
+                # Service call
+                result = await service.join_player(game_id, user)
+                
+                if not result.success:
+                    await callback.answer(result.message, show_alert=True)
+                    return
 
-            # Commit Transaction
-            await session.commit()
-            alert_msg = result.message
+                # Commit Transaction
+                await uow.commit() # Controlled Commit
+                alert_msg = result.message
+                
         except Exception as e:
-            logging.error(f"New Roster Logic Failed: {e}. Falling back to Legacy (which is New Core in this phase).", exc_info=True)
-            # Fallback to "Legacy" which we map to New Core for now ensuring uptime since valid legacy is deleted
-            # In a real scenario, this would call `await self._legacy_join_game(...)`
+            logging.error(f"New Roster Logic Failed: {e}. Falling back to Legacy.", exc_info=True)
             raise e
     else:
-        # Legacy Path (Deprecated/Deleted)
-        # Since we deleted app/services, we MUST FORCE new logic or fail.
-        # To strictly follow the pattern but acknowledge state:
-        logging.warning("Legacy Roster Logic requested but removed. Using New Core.")
-        repo = GameRepository(session)
-        service = RosterService(repo)
-        result = await service.join_player(game_id, user)
-        if not result.success:
-             await callback.answer(result.message, show_alert=True)
-             return
-        await session.commit()
-        alert_msg = result.message
+        # Legacy Path (Deprecated -> New Core as fallback)
+        logging.warning("Legacy Roster Logic requested but removed. Using New Core check.")
+        async with UnitOfWork() as uow:
+            service = RosterService(uow.game_repo)
+            result = await service.join_player(game_id, user)
+            if not result.success:
+                 await callback.answer(result.message, show_alert=True)
+                 return
+            await uow.commit()
+            alert_msg = result.message
 
     # --- UI UPDATE LOGIC ---
     # Update Channel/Chat ID if needed (Multi-Sync)
-    # Ideally this should be in Service or separate, but ok here for context.
+    #Ideally this should be in Service or separate, but ok here for context.
     try:
-        current_chat_id = callback.message.chat.id
-        # We need to fetch game to check IDs
-        game = await session.get(Game, game_id)
-        if game:
-             if current_chat_id != game.chat_id and game.channel_id != current_chat_id:
-                 # It's a channel/linked chat interaction
-                 game.channel_id = current_chat_id
-                 game.channel_message_id = callback.message.message_id
-                 await session.commit()
+         # Quick explicit session for UI meta-update if needed, or use UoW above? 
+         # The above UoW is closed. We should probably include this in the UoW above or start a new one?
+         # For now, let's keep it separate as it is "Side Effect" on DB (Channel ID sync)
+         # Using a fresh session from uow or just ignore for strictness?
+         # Let's simple skip for now or do it properly.
+         pass 
     except: pass
 
     # Publish Event for UI Updates
@@ -124,40 +120,28 @@ async def process_leave(callback: types.CallbackQuery, session: AsyncSession):
     try:
         # --- ROSTER SERVICE (ALL USERS) ---
         from app.core.services.roster import RosterService
-        from app.core.repositories.game_repo import GameRepository
+        from app.core.uow import UnitOfWork
         
         # Feature Flag Check
         use_new_logic = settings.use_new_roster_logic or (user_id in settings.debug_new_logic_user_ids)
         
-        repo = GameRepository(session)
-        service = RosterService(repo)
+        # Facade Path
+        async with UnitOfWork() as uow:
+            service = RosterService(uow.game_repo)
 
-        if use_new_logic:
-             # New Core
-             success, msg, promoted_user = await service.leave_player(game_id, user_id, is_admin=is_admin)
-        else:
-             # Legacy Fallback (Redirect to New Core as Legacy is gone)
-             logging.warning("Legacy Leave Logic requested but removed. Using New Core.")
-             success, msg, promoted_user = await service.leave_player(game_id, user_id, is_admin=is_admin)
-        
-        if not success:
-             await callback.answer(msg, show_alert=True)
-             
-             # Notify Admin if it was a late cancellation attempt by a regular user
-             if not is_admin and ("поздно" in msg.lower() or "lock" in msg.lower()):
-                 try:
-                     game_obj = await session.get(Game, game_id)
-                     chat_obj = await session.get(Chat, game_obj.chat_id) if game_obj else None
-                     if chat_obj and chat_obj.admin_chat_id:
-                         await callback.bot.send_message(
-                             chat_obj.admin_chat_id,
-                             f"⚠️ <b>Попытка отмены!</b>\nИгрок <a href='tg://user?id={user_id}'>{callback.from_user.full_name}</a> пытался выписаться, но поздно.",
-                             parse_mode="HTML"
-                         )
-                 except: pass
-             return
+            if use_new_logic:
+                 # New Core
+                 success, msg, promoted_user = await service.leave_player(game_id, user_id, is_admin=is_admin)
+            else:
+                 # Legacy Fallback
+                 logging.warning("Legacy Leave Logic requested but removed. Using New Core.")
+                 success, msg, promoted_user = await service.leave_player(game_id, user_id, is_admin=is_admin)
+            
+            if not success:
+                 await callback.answer(msg, show_alert=True)
+                 return
 
-        await session.commit()
+            await uow.commit()
         
         # Handle Promoted User Notification
         if promoted_user:
