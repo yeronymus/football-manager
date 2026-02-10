@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Game, Signup, User, SignupStatus, GameStatus, Team, Chat
 from app.config import settings
-from app.bot.balancer import balance_teams, Player
+from app.core.domain.balancer import balance_teams, Player
 from app.bot.utils import format_game_message, update_game_message
 from app.bot.keyboards import get_game_keyboard
 
@@ -76,71 +76,18 @@ async def cmd_force_refresh(message: types.Message, session: AsyncSession):
             
         game_id = int(args[1])
         
-        # 1. Fetch Game
-        game = await session.get(Game, game_id)
-        if not game:
-            await message.answer("❌ Игра не найдена.")
-            return
+        # 1. Reuse listener logic
+        from app.bot.listeners import update_game_ui
+        await update_game_ui(game_id)
+        
+        await message.answer("✅ Force refresh завершен.")
 
-        # 2. Update Chat
-        try:
-            public_text = await format_game_message(game, session)
-            kb = get_game_keyboard(game.id)
-            
-            if game.chat_id and game.message_id:
-                try:
-                    await message.bot.edit_message_text(
-                        chat_id=game.chat_id,
-                        message_id=game.message_id,
-                        text=public_text,
-                        reply_markup=kb,
-                        parse_mode="HTML"
-                    )
-                    await message.answer("✅ Сообщение в чате обновлено.")
-                except Exception as e:
-                    await message.answer(f"⚠️ Ошибка обновления чата: {e}")
-            else:
-                await message.answer("ℹ️ Нет привязанного сообщения в чате.")
-
-            # 3. Update Channel
-            if game.channel_id and game.channel_message_id:
-                # Channel usually has full text? Or specific format?
-                # Using same format_game_message logic (handles is_short internally via flag if passed, 
-                # but format_game_message usually returns full text or short based on game status/config?
-                # Actually format_game_message has is_short arg.
-                # Let's check `format_game_message` signature in `app/bot/utils.py` or usage in `endpoints.py`.
-                # Endpoints uses `is_short=False` for Channel.
-                
-                channel_text = await format_game_message(game, session, is_short=False)
-                # Channel buttons? Usually explicit link button only.
-                # But here we just refresh text/markup.
-                # If we don't pass markup it might clear it? 
-                # `edit_message_text` with `reply_markup=None` clears it.
-                # Channel usually needs Link Button to Bot?
-                # Let's use `get_game_keyboard` which handles channel logic if we implemented it, 
-                # OR just leave existing markup if None?
-                # Safety: pass `get_game_keyboard(game.id)`. It should generate correct buttons for channel if programmed.
-                
-                try:
-                    await message.bot.edit_message_text(
-                        chat_id=game.channel_id,
-                        message_id=game.channel_message_id,
-                        text=channel_text,
-                        reply_markup=get_game_keyboard(game.id), 
-                        parse_mode="HTML"
-                    )
-                    await message.answer("✅ Сообщение в канале обновлено.")
-                except Exception as e:
-                    await message.answer(f"⚠️ Ошибка обновления канала: {e}")
-                    
-        except Exception as e:
-            await message.answer(f"❌ Фатальная ошибка обновления: {e}")
-            
     except ValueError:
         await message.answer("⚠️ ID игры должен быть числом.")
     except Exception as e:
         logger.error(f"Force refresh error: {e}")
         await message.answer(f"❌ Ошибка: {e}")
+
 # --- Merged from admin_tools.py ---
 
 @router.callback_query(F.data.startswith("toggle_pay_"))
@@ -249,6 +196,7 @@ async def cb_kick_confirm(callback: types.CallbackQuery, session: AsyncSession):
         
         if success:
             # Success! return to kick menu to allow more kicks
+            await session.commit()
             await callback.answer("Игрок удален")
             
             # Notify the user they were removed
@@ -256,12 +204,19 @@ async def cb_kick_confirm(callback: types.CallbackQuery, session: AsyncSession):
                 await callback.bot.send_message(user_id, f"⚠️ Администратор удалил вас из состава на игру #{game_id}.")
             except: pass
             
+            # Publish Event for UI Update
+            from app.core.events import EventBus
+            from app.core.services.roster import PlayerLeftEvent
+            await EventBus.publish(PlayerLeftEvent(game_id, user_id, "Администратор удалил игрока", None))
+
             # Return to kick menu
             await cb_god_kick_menu(callback, session)
+
         else:
              await callback.answer(f"Ошибка: {msg}")
-             from app.bot.admin_dashboard import update_dashboard_message
-             await update_dashboard_message(callback.bot, game_id, session)
+             from app.bot.listeners import update_game_ui
+             await update_game_ui(game_id)
+
 
     except Exception as e:
         await callback.answer(f"Ошибка: {e}")
@@ -317,28 +272,29 @@ async def cmd_add_player(message: types.Message, session: AsyncSession):
         result = await service.join_player(game_id, target_user, ignore_limit=True)
         
         if result.success:
+             await session.commit()
              await message.answer(f"✅ Игрок {target_user.full_name} успешно добавлен в игру #{game_id}! ({result.message})")
              try:
                  await message.bot.send_message(target_user.user_id, f"🎟️ Администратор добавил вас в игру #{game_id}.")
+
              except: pass
              
-             # Force update dashboard/message
-             from app.bot.utils import format_game_message
-             from app.bot.keyboards import get_game_keyboard
+             # Publish Event
+             from app.core.events import EventBus
+             from app.core.services.roster import PlayerJoinedEvent
              
-             game = await session.get(Game, game_id)
-             if game:
-                  public_text = await format_game_message(game, session)
-                  try:
-                      if game.message_id:
-                          await message.bot.edit_message_text(
-                              chat_id=game.chat_id,
-                              message_id=game.message_id,
-                              text=public_text,
-                              reply_markup=get_game_keyboard(game.id),
-                              parse_mode="HTML"
-                          )
-                  except: pass
+             # Need Signup object
+             # We can fetch it or trust result if it had it?
+             # result.signup is available if ignore_limit=True returns it (it should)
+             if result.signup:
+                 await EventBus.publish(PlayerJoinedEvent(
+                     game_id=game_id, 
+                     user_id=target_user.user_id, 
+                     signup=result.signup, 
+                     is_reserve=result.is_reserve, 
+                     message=result.message
+                ))
+
         else:
              await message.answer(f"⚠️ Не удалось добавить игрока: {result.message}")
 
