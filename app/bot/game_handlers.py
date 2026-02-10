@@ -1,23 +1,9 @@
 from aiogram import Router, F, types
-from app.bot.utils import format_game_message
 from app.config import settings
 from app.core.uow import UnitOfWork
-from app.core.services.roster import RosterService, JoinResult
-from app.core.services.roster import PlayerJoinedEvent, PlayerLeftEvent # Assuming these classes are in roster.py or need to be moved to events?
-# Wait, user's roster.py code did NOT include Event classes. 
-# I need to ensure Event classes are defined somewhere. 
-# They were in roster.py before. User's snippet for roster.py removed them?
-# Let me check my previous view of roster.py. 
-# Yes, they were in roster.py. User's provided code for roster.py did NOT have them.
-# They should be in app/core/events.py or roster.py. 
-# User said "Refactor RosterService: Rewrite app/core/services/roster.py".
-# If I overwrite roster.py with user's code, I lose Event definitions if they were there.
-# I should move them to events.py or keep them in roster.py.
-# User's code has `from app.core.services.roster import RosterService, PlayerJoinedEvent, PlayerLeftEvent` in handlers.
-# So they expect them in roster.py probably.
-# I will append them to roster.py or ensure they are there.
-
-from app.core.events import EventBus, Event
+from app.core.services.roster import RosterService, PlayerJoinedEvent, PlayerLeftEvent
+from app.core.events import EventBus
+from app.db.models import Game
 import logging
 
 router = Router()
@@ -27,58 +13,60 @@ async def process_join(callback: types.CallbackQuery):
     game_id = int(callback.data.split("_")[1])
     telegram_user_id = callback.from_user.id
     
+    # Feature Flag для Strangler Fig Pattern
+    use_new_logic = settings.use_new_roster_logic or (telegram_user_id in settings.debug_new_logic_user_ids)
+
+    if not use_new_logic:
+        await callback.answer("Легаси режим отключен. Используйте новую логику.", show_alert=True)
+        return
+
     alert_msg = None
     event_payload = None
 
     try:
-        # Open Transaction
+        # Вся работа с БД строго внутри контекста UoW
         async with UnitOfWork() as uow:
-            # 1. Get User via Repo (No Raw SQL)
+            # 1. Проверка регистрации (через репозиторий, а не SQL!)
             user = await uow.user_repo.get_by_id(telegram_user_id)
             
             if not user:
                 me = await callback.bot.get_me()
-                bot_username = me.username
-                await callback.answer("Регистрация обязательна!", url=f"https://t.me/{bot_username}?start=reg")
+                await callback.answer("Переходим к регистрации...", url=f"https://t.me/{me.username}?start=reg")
                 return
 
-            # 2. Init Service
+            # 2. Работа сервиса
             service = RosterService(uow.game_repo)
-            
-            # 3. Biz Logic
             result = await service.join_player(game_id, user)
             
             if not result.success:
                 await callback.answer(result.message, show_alert=True)
-                return # Rollback auto
+                # Нет commit(), транзакция откатится автоматически при выходе
+                return
 
+            # 3. Подготовка данных для события (до коммита)
             alert_msg = result.message
-
-            # Prepare Event (After Commit)
             if result.signup:
-                # We need to import PlayerJoinedEvent. 
-                # Assuming it is available.
-                from app.core.services.roster import PlayerJoinedEvent
                 event_payload = PlayerJoinedEvent(
-                    game_id=game_id,
-                    user_id=telegram_user_id,
-                    signup=result.signup,
-                    is_reserve=result.is_reserve,
+                    game_id=game_id, 
+                    user_id=telegram_user_id, 
+                    signup=result.signup, 
+                    is_reserve=result.is_reserve, 
                     message=alert_msg
                 )
 
-            # 4. Commit Atomically
+            # 4. Фиксация транзакции
             await uow.commit()
 
-        # --- Side Effects ---
+        # --- Side Effects (События отправляем ПОСЛЕ успешного коммита) ---
         if event_payload:
             await EventBus.publish(event_payload)
 
+        # Обновление UI (убрана логика dashboard отсюда, она должна быть в listener)
         await callback.answer(alert_msg)
 
     except Exception as e:
-        logging.error(f"Join Error: {e}", exc_info=True)
-        await callback.answer("Произошла ошибка при записи.", show_alert=True)
+        logging.error(f"New Roster Logic Failed: {e}", exc_info=True)
+        await callback.answer("Произошла системная ошибка", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("leave_"))
@@ -87,10 +75,6 @@ async def process_leave(callback: types.CallbackQuery):
     telegram_user_id = callback.from_user.id
     is_admin = telegram_user_id in settings.admin_ids or telegram_user_id == settings.system_owner_id
     
-    promoted_user = None
-    msg = ""
-    success = False
-
     try:
         async with UnitOfWork() as uow:
             service = RosterService(uow.game_repo)
@@ -103,20 +87,9 @@ async def process_leave(callback: types.CallbackQuery):
                 await callback.answer(msg, show_alert=True)
                 return
 
-            # Update Chat Metadata (Sync Logic)
-            game = await uow.game_repo.get_game(game_id)
-            if game:
-                 current_chat_id = callback.message.chat.id
-                 if current_chat_id != game.chat_id and game.channel_id != current_chat_id:
-                     game.channel_id = current_chat_id
-                     game.channel_message_id = callback.message.message_id
-                     # Session tracks game, commit will save it.
-
             await uow.commit()
-        
-        # --- Post-Commit Actions ---
-        
-        # Notify Promoted User
+            
+        # --- Side Effects ---
         if promoted_user:
             try:
                 await callback.bot.send_message(
@@ -125,10 +98,8 @@ async def process_leave(callback: types.CallbackQuery):
                     parse_mode="HTML"
                 )
             except Exception:
-                pass # Non-blocking
+                pass
 
-        # Publish Event
-        from app.core.services.roster import PlayerLeftEvent
         await EventBus.publish(PlayerLeftEvent(
             game_id=game_id, 
             user_id=telegram_user_id, 
