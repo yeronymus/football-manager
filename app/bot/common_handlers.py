@@ -47,31 +47,31 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
         # Handle "game_{game_id}" (Drafts)
         if args.startswith("game_"):
             try:
-                game_id = args.split("_")[1]
+                game_id = str(args.split("_")[1])
                 
-                # Check if admin (Draft is admin only tool usually, matches handlers/common.py logic)
-                is_admin = message.from_user.id in settings.admin_ids or message.from_user.id == settings.system_owner_id
+                # Load Game
+                from app.db.models import Game
+                game = await session.get(Game, int(game_id))
                 
-                if is_admin:
-                    # Construct WebApp URL
-                    base = settings.webapp_url.rstrip("/")
-                    web_url = f"{base}/web/draft.html?game_id={game_id}&v=1.8"
+                if game:
+                    from app.bot.utils import format_game_message
+                    from app.bot.keyboards import get_game_keyboard
                     
-                    kb = types.InlineKeyboardMarkup(inline_keyboard=[
-                        [types.InlineKeyboardButton(
-                            text="🛠 Составы (Draft) [WebApp]",
-                            web_app=types.WebAppInfo(url=web_url)
-                        )]
-                    ])
+                    text = await format_game_message(game, session)
+                    await message.answer(text, reply_markup=get_game_keyboard(game.id), parse_mode="HTML")
                     
-                    await message.answer(
-                        f"🛠 <b>Управление составами игры #{game_id}</b>",
-                        reply_markup=kb
-                    )
-                    return
+                    # If Admin, also show Draft Tool?
+                    is_admin = message.from_user.id in settings.admin_ids or message.from_user.id == settings.system_owner_id
+                    if is_admin:
+                         base = settings.webapp_url.rstrip("/")
+                         web_url = f"{base}/web/draft.html?game_id={game_id}&v=1.8"
+                         kb_draft = types.InlineKeyboardMarkup(inline_keyboard=[
+                             [types.InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=web_url))]
+                         ])
+                         await message.answer("🔧 Админ-панель:", reply_markup=kb_draft)
                 else:
-                    await message.answer("⛔ Только для админов.")
-                    return
+                    await message.answer("Игра не найдена.")
+                return
 
             except IndexError:
                 pass

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_session
 from app.db.models import Game, Signup, User, SignupStatus, GameStatus
 from app.bot.utils import format_game_message
-from app.bot.keyboards import get_game_keyboard
+from app.bot.keyboards import get_game_keyboard, get_channel_game_keyboard
 from app.config import settings
 import logging
 
@@ -47,21 +47,21 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
                 await session.commit()
 
         # Update Both Messages
-        async def safe_edit(chat_id, msg_id):
+        async def safe_edit(chat_id, msg_id, keyboard):
             if not chat_id or not msg_id: return
             try:
                 await callback.bot.edit_message_text(
                     chat_id=chat_id,
                     message_id=msg_id,
                     text=text,
-                    reply_markup=get_game_keyboard(game_id),
+                    reply_markup=keyboard,
                     parse_mode="HTML"
                 )
             except Exception as e:
                 logging.warning(f"Failed to edit message in {chat_id}: {e}")
 
-        await safe_edit(game.chat_id, game.message_id) # Primary
-        await safe_edit(game.channel_id, game.channel_message_id) # Channel
+        await safe_edit(game.chat_id, game.message_id, get_game_keyboard(game_id)) # Primary
+        await safe_edit(game.channel_id, game.channel_message_id, get_channel_game_keyboard(game_id)) # Channel
 
         # Dashboard Update
         from app.bot.admin_dashboard import update_dashboard_message
@@ -107,21 +107,21 @@ async def process_leave(callback: types.CallbackQuery, session: AsyncSession):
                 game.channel_message_id = callback.message.message_id
                 await session.commit()
 
-        async def safe_edit(chat_id, msg_id):
+        async def safe_edit(chat_id, msg_id, keyboard):
             if not chat_id or not msg_id: return
             try:
                 await callback.bot.edit_message_text(
                     chat_id=chat_id,
                     message_id=msg_id,
                     text=text,
-                    reply_markup=get_game_keyboard(game_id),
+                    reply_markup=keyboard,
                     parse_mode="HTML"
                 )
             except Exception as e:
                 logging.warning(f"Failed to edit message in {chat_id}: {e}")
 
-        await safe_edit(game.chat_id, game.message_id)
-        await safe_edit(game.channel_id, game.channel_message_id)
+        await safe_edit(game.chat_id, game.message_id, get_game_keyboard(game_id))
+        await safe_edit(game.channel_id, game.channel_message_id, get_channel_game_keyboard(game_id))
         
         # Trigger Admin Dashboard Update
         from app.bot.admin_dashboard import update_dashboard_message

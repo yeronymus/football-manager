@@ -1,0 +1,14 @@
+--- SYSTEM TIME ---
+Remote EXEC: date
+Mon Feb  9 20:19:09 UTC 2026
+
+--- CONTAINER TIME ---
+Remote EXEC: docker exec football-prod_app_1 date
+Traceback (most recent call last):
+  File "/home/yeronym/Documents/fmBot/football-manager/force_publish_47.py", line 54, in <module>
+    print(run_remote_command("docker exec football-prod_app_1 date"))
+          ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/yeronym/Documents/fmBot/football-manager/force_publish_47.py", line 23, in run_remote_command
+    r, _, _ = select.select([fd], [], [], 1)
+              ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+KeyboardInterrupt

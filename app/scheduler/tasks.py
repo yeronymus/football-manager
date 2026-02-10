@@ -213,7 +213,7 @@ async def publish_game_task(game_id: int):
             return
 
         from app.bot.utils import format_game_message
-        from app.bot.keyboards import get_game_keyboard
+        from app.bot.keyboards import get_game_keyboard, get_channel_game_keyboard
         
         # 1. Publish to Channel (Full)
         if game.channel_id:
@@ -222,7 +222,7 @@ async def publish_game_task(game_id: int):
                 sent_full = await bot.send_message(
                     chat_id=game.channel_id,
                     text=text_full,
-                    reply_markup=get_game_keyboard(game.id)
+                    reply_markup=get_channel_game_keyboard(game.id)
                 )
                 game.channel_message_id = sent_full.message_id
             except Exception as e:
