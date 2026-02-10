@@ -62,6 +62,17 @@ class GameRepository(BaseRepository[Game]):
         return result.scalars().all()
 
 
+    async def get_with_lock(self, game_id: int) -> Game | None:
+        """Fetch game with FOR UPDATE lock."""
+        result = await self.session.execute(
+            select(Game).where(Game.id == game_id).with_for_update()
+        )
+        return result.scalar_one_or_none()
+
+    async def get_game(self, game_id: int) -> Game | None:
+        """Fetch game without lock."""
+        return await self.session.get(Game, game_id)
+
     async def get_all_signups_sorted(self, game_id: int) -> list[tuple[Signup, User]]:
         """Fetch all signups (Active + Reserve) sorted by creation time."""
         result = await self.session.execute(

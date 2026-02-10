@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from app.core.services.base import BaseService
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+# from app.core.services.base import BaseService # Removed
 from app.core.repositories.game_repo import GameRepository
 from app.db.models import Game, User, Signup, SignupStatus, GameStatus, Position
 from app.core.events import Event
@@ -28,9 +30,8 @@ class JoinResult:
     message: str
     is_reserve: bool
 
-class RosterService(BaseService):
+class RosterService:
     def __init__(self, game_repo: GameRepository):
-        super().__init__()
         self.game_repo = game_repo
 
     async def join_player(self, game_id: int, user: User, ignore_limit: bool = False) -> JoinResult:
