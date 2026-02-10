@@ -6,8 +6,8 @@ from app.core.repositories.user_repository import UserRepository
 
 class UnitOfWork:
     """
-    Unit of Work pattern to handle transactions atomically.
-    Serves as a factory for Repositories ensuring they share the same session.
+    Unit of Work pattern.
+    Обеспечивает единую транзакцию для работы с Играми и Пользователями.
     """
     def __init__(self, session_factory=async_session_maker):
         self._session_factory = session_factory
@@ -15,7 +15,7 @@ class UnitOfWork:
         
     async def __aenter__(self) -> Self:
         self._session = self._session_factory()
-        # Initialize Repositories with shared session
+        # Инициализация всех репозиториев с одной сессией
         self.game_repo = GameRepository(self._session)
         self.user_repo = UserRepository(self._session)
         return self
@@ -33,7 +33,7 @@ class UnitOfWork:
     async def rollback(self):
         if self._session:
             await self._session.rollback()
-            
+
     @property
     def session(self) -> AsyncSession:
         if not self._session:
