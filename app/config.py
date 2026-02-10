@@ -23,6 +23,19 @@ class Settings:
                 print(f"Warning: Failed to parse or normalize ADMIN_IDS: {admin_ids_str}")
                 self.admin_ids = []
 
+            # Feature Flags - Strangler Fig
+            debug_ids_str = os.getenv("DEBUG_NEW_LOGIC_USER_IDS", "[]")
+            try:
+                self.debug_new_logic_user_ids = json.loads(debug_ids_str)
+                if isinstance(self.debug_new_logic_user_ids, list):
+                    self.debug_new_logic_user_ids = [int(i) for i in self.debug_new_logic_user_ids]
+                else:
+                    self.debug_new_logic_user_ids = []
+            except:
+                self.debug_new_logic_user_ids = []
+
+            self.use_new_roster_logic = os.getenv("USE_NEW_ROSTER_LOGIC", "True").lower() == "true"
+
             self.webhook_url = os.getenv("WEBHOOK_URL", "")
             
             # Seeding
