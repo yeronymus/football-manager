@@ -2,7 +2,7 @@ from aiogram import Router, F, types
 from aiogram.filters import CommandStart, CommandObject
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.user_service import UserService
+from app.core.repositories.user_repository import UserRepository
 from app.bot.fsm import Registration
 from app.bot.keyboards import get_cancel_keyboard
 from app.config import settings
@@ -77,8 +77,9 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 pass
 
     # Check if user exists
-    user_service = UserService(session)
-    user = await user_service.get_user(message.from_user.id)
+    user_repo = UserRepository(session)
+
+    user = await user_repo.get_user(message.from_user.id)
     
     if user:
         await message.answer(f"С возвращением, {user.full_name}! ⚽\nИспользуйте меню для управления.", reply_markup=types.ReplyKeyboardRemove())

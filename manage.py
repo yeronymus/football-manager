@@ -30,6 +30,12 @@ async def main():
     kick_parser.add_argument("--game-id", type=int, required=True, help="Game ID")
     kick_parser.add_argument("--user-id", type=int, required=True, help="User ID")
 
+    # Restore Command
+    subparsers.add_parser("restore", help="Restore January 2026 Data")
+
+    # Monitor Command
+    subparsers.add_parser("remote-logs", help="Monitor Remote Logs")
+
     args = parser.parse_args()
 
     if args.command == "roster":
@@ -39,6 +45,15 @@ async def main():
         await add_player_command(args.game_id, args.user_id, args.force)
     elif args.command == "kick_player":
         await kick_player_command(args.game_id, args.user_id)
+    elif args.command == "restore":
+        from app.cli.restore import restore_january_2026
+        await restore_january_2026()
+    elif args.command == "remote-logs":
+        from app.cli.monitor import monitor_remote_logs
+        # Interactive, monitoring need to be sync or handled carefully if nested in async main
+        # But run_interactive uses os.read/write blocking.
+        # Since it's a CLI tool, we can just call it.
+        monitor_remote_logs()
 
 if __name__ == "__main__":
     try:

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from app.db.models import User, Position, Game, Signup, SignupStatus, GameStats, GameStatus, RatingHistory, Team
 from app.config import settings
-from app.services.user_service import UserService
+from app.core.repositories.user_repository import UserRepository
 from app.bot.fsm import EditingProfile
 from app.bot.keyboards import get_profile_edit_keyboard, get_edit_choice_keyboard, get_primary_select_keyboard, get_multiselect_keyboard, get_cancel_keyboard
 import re
@@ -40,8 +40,8 @@ async def cmd_my_profile(message: types.Message, session: AsyncSession):
     await render_profile(message, message.from_user.id, session)
 
 async def render_profile(messageable: types.Message, user_id: int, session: AsyncSession):
-    user_service = UserService(session)
-    user = await user_service.get_user(user_id)
+    user_repo = UserRepository(session)
+    user = await user_repo.get_user(user_id)
     
     if not user:
         if isinstance(messageable, types.Message):
@@ -51,7 +51,7 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
         return
 
     # Calculate total goals
-    stats = await user_service.get_user_stats(user_id)
+    stats = await user_repo.get_user_stats(user_id)
     total_goals = stats.get("goals", 0)
 
     text = f"👤 <b>Профиль игрока</b>\n\n"
@@ -221,8 +221,8 @@ async def process_edit_name_input(message: types.Message, state: FSMContext, ses
     # For now, let's just proceed. The "Enter Name" message will function as the new "Success" message if we edit it?
     # We can't edit it because we don't have the object.
     
-    user_service = UserService(session)
-    user = await user_service.update_profile(message.from_user.id, full_name=message.text)
+    user_repo = UserRepository(session)
+    user = await user_repo.update_profile(message.from_user.id, full_name=message.text)
     await session.commit()
     
     await message.answer(f"✅ Имя обновлено на: {user.full_name}")
@@ -243,8 +243,8 @@ async def cb_edit_position(callback: types.CallbackQuery, state: FSMContext):
 async def process_edit_position_choice(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
     position_value = callback.data.split("_")[1]
     
-    user_service = UserService(session)
-    user = await user_service.update_profile(callback.from_user.id, position=Position(position_value))
+    user_repo = UserRepository(session)
+    user = await user_repo.update_profile(callback.from_user.id, position=Position(position_value))
     await session.commit()
     
     full_pos = position_value
@@ -264,8 +264,8 @@ async def process_edit_position_choice(callback: types.CallbackQuery, state: FSM
     
 @router.callback_query(F.data == "edit_alt_positions")
 async def cb_edit_alt_positions(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
-    user_service = UserService(session)
-    user = await user_service.get_user(callback.from_user.id)
+    user_repo = UserRepository(session)
+    user = await user_repo.get_user(callback.from_user.id)
     if not user:
         return
     
@@ -305,8 +305,8 @@ async def process_edit_alt_done(callback: types.CallbackQuery, state: FSMContext
         await callback.answer("Выберите хотя бы одну или нажмите Отмена в меню, если передумали.", show_alert=True)
         return
 
-    user_service = UserService(session)
-    user = await user_service.update_profile(callback.from_user.id, alt_positions=selected)
+    user_repo = UserRepository(session)
+    user = await user_repo.update_profile(callback.from_user.id, alt_positions=selected)
     await session.commit()
     
     await callback.answer(f"✅ Доп. позиции обновлены: {', '.join(selected)}", show_alert=False)

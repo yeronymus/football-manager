@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.models import User, Game
 from app.config import settings
-from app.services.user_service import UserService
+from app.core.repositories.user_repository import UserRepository
 from app.bot.keyboards import get_game_keyboard
 from app.bot.fsm import Registration
 import logging
@@ -184,8 +184,8 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
     args = command.args
     
     # 1. Check User Existence
-    user_service = UserService(session)
-    user = await user_service.get_user(message.from_user.id)
+    user_repo = UserRepository(session)
+    user = await user_repo.get_user(message.from_user.id)
 
     # 2. Logic for Deep Link "reg" (if used explicitly)
     if args == "reg":

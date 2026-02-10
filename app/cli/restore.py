@@ -1,19 +1,10 @@
 import asyncio
 import logging
-import sys
-import os
 from datetime import datetime
-from sqlalchemy import select, delete, text
-from sqlalchemy import func
-
-# Setup Path
-sys.path.insert(0, os.getcwd())
-
+from sqlalchemy import select, delete, text, func
 from app.db.database import async_session_maker
 from app.db.models import User, Game, Signup, SignupStatus, Team, GameStats, GameStatus, Chat, RatingHistory, Vote
 
-# Configure Logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==========================================
@@ -99,7 +90,8 @@ async def resolve_user(session, ident):
     
     return None
 
-async def run_reset_and_restore():
+async def restore_january_2026():
+    """Restores data for January 2026."""
     async with async_session_maker() as session:
         print("=== 🚨 STARTING HARD RESET FOR JANUARY 2026 🚨 ===")
         
@@ -234,6 +226,3 @@ async def run_reset_and_restore():
                 print(f"  🔹 {u.full_name}: Games: {u.games_played}, Rating: {u.rating} (Expected: Check T-Z)")
             else:
                 print(f"  ❌ {name} not found in DB")
-
-if __name__ == "__main__":
-    asyncio.run(run_reset_and_restore())
