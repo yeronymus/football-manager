@@ -10,6 +10,10 @@ class UserRepository:
         """Fetch a user by Telegram ID."""
         return await self.session.get(User, user_id)
 
+    async def get_by_id(self, user_id: int) -> User | None:
+        """Alias for get_user."""
+        return await self.get_user(user_id)
+
     async def create_user(self, user_id: int, full_name: str, username: str | None, position: Position | str, alt_positions: list[str] = None) -> User:
         """Create a new user. Does not commit automatically to allow transaction grouping."""
         

@@ -2,6 +2,7 @@ from typing import Self
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import async_session_maker
 from app.core.repositories.game_repo import GameRepository
+from app.core.repositories.user_repository import UserRepository
 
 class UnitOfWork:
     """
@@ -16,7 +17,7 @@ class UnitOfWork:
         self._session = self._session_factory()
         # Initialize Repositories with shared session
         self.game_repo = GameRepository(self._session)
-        # Add other repositories here as they are created
+        self.user_repo = UserRepository(self._session)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
