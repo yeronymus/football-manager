@@ -15,9 +15,7 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
     game_id = int(callback.data.split("_")[1])
     user_id = callback.from_user.id
     
-    # Check if user is registered (basic check before Service call, or let Service handle?)
-    # Service expects user to exist.
-    # existing check logic kept for UX (redirect to reg)
+    # Check if user is registered
     result = await session.execute(select(User).where(User.user_id == user_id))
     user = result.scalar_one_or_none()
     
@@ -27,15 +25,30 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
         await callback.answer("Переходим к регистрации...", url=f"https://t.me/{bot_username}?start=reg")
         return
 
-    from app.services.game_service import GameService, GameActionError, GameFullError, AlreadySignedUpError
+    # --- ROSTER SERVICE (ALL USERS) ---
+    from app.core.services.roster import RosterService
+    from app.core.repositories.game_repo import GameRepository
     
-    game_service = GameService(session)
+    repo = GameRepository(session)
+    service = RosterService(repo)
     
+    # Service call
+    result = await service.join_player(game_id, user)
+    
+    if not result.success:
+        await callback.answer(result.message, show_alert=True)
+        return
+
+    # Commit Transaction
+    await session.commit()
+    alert_msg = result.message
+
+    # --- UI UPDATE LOGIC ---
     try:
-        signup, alert_msg = await game_service.join_game(game_id, user_id)
-        
-        # Success! Update UI
-        game = await game_service.get_game(game_id)
+        # Fetch Game for UI
+        game = await session.get(Game, game_id)
+        if not game: return
+
         text = await format_game_message(game, session)
         
         # --- Multi-Sync Logic ---
@@ -66,37 +79,74 @@ async def process_join(callback: types.CallbackQuery, session: AsyncSession):
         # Dashboard Update
         from app.bot.admin_dashboard import update_dashboard_message
         try:
-             await update_dashboard_message(callback.bot, game.id, session)
+                await update_dashboard_message(callback.bot, game.id, session)
         except Exception as e:
-             logging.warning(f"Failed to update dashboard: {e}")
+                logging.warning(f"Failed to update dashboard: {e}")
 
         await callback.answer(alert_msg if alert_msg else "Вы записаны!")
-
-    except AlreadySignedUpError:
-        await callback.answer("Вы уже записаны!")
-        # Optional: Refresh message
-    except GameActionError as e:
-        await callback.answer(str(e), show_alert=True)
+        
     except Exception as e:
-        logging.error(f"Join Error: {e}", exc_info=True)
-        await callback.answer("Произошла ошибка при записи.")
+         logging.error(f"UI Update Error: {e}", exc_info=True)
+         if not alert_msg:
+             await callback.answer("Записан, но не удалось обновить сообщение.")
 
 @router.callback_query(F.data.startswith("leave_"))
 async def process_leave(callback: types.CallbackQuery, session: AsyncSession):
     game_id = int(callback.data.split("_")[1])
     user_id = callback.from_user.id
     
-    from app.services.game_service import GameService, GameActionError, CancellationLockedError
-    
-    game_service = GameService(session)
-    # Refined admin check including strings if necessary, though IDs should be ints
+    # Determine Admin Status
     is_admin = int(callback.from_user.id) in settings.admin_ids or callback.from_user.id == settings.system_owner_id
-    logging.warning(f"DEBUG_LEAVE: user={callback.from_user.id} game={game_id} is_admin={is_admin}")
+    
+    alert_msg = None
     
     try:
-        game, was_active = await game_service.leave_game(game_id, user_id, is_admin=is_admin)
+        # --- ROSTER SERVICE (ALL USERS) ---
+        from app.core.services.roster import RosterService
+        from app.core.repositories.game_repo import GameRepository
         
-        # Success! Update UI
+        repo = GameRepository(session)
+        service = RosterService(repo)
+        
+        # Pass is_admin to service to determine if we can bypass locking
+        success, msg, promoted_user = await service.leave_player(game_id, user_id, is_admin=is_admin)
+        
+        if not success:
+             await callback.answer(msg, show_alert=True)
+             
+             # Notify Admin if it was a late cancellation attempt by a regular user
+             if not is_admin and ("поздно" in msg.lower() or "lock" in msg.lower()):
+                 try:
+                     game_obj = await session.get(Game, game_id)
+                     chat_obj = await session.get(Chat, game_obj.chat_id) if game_obj else None
+                     if chat_obj and chat_obj.admin_chat_id:
+                         await callback.bot.send_message(
+                             chat_obj.admin_chat_id,
+                             f"⚠️ <b>Попытка отмены!</b>\nИгрок <a href='tg://user?id={user_id}'>{callback.from_user.full_name}</a> пытался выписаться, но поздно.",
+                             parse_mode="HTML"
+                         )
+                 except: pass
+             return
+
+        await session.commit()
+        
+        # Handle Promoted User Notification
+        if promoted_user:
+            try:
+                await callback.bot.send_message(
+                    promoted_user.user_id,
+                    f"🎉 <b>Вас перевели в основной состав!</b>\nКто-то выписался из игры.",
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
+
+        # --- COMMON UI UPDATE ---
+        game = await session.get(Game, game_id)
+        if not game:
+             await callback.answer("Игра не найдена / Ошибка данных.")
+             return
+
         text = await format_game_message(game, session)
         
         # --- Multi-Sync Logic ---
@@ -130,34 +180,9 @@ async def process_leave(callback: types.CallbackQuery, session: AsyncSession):
         except Exception as e:
              logging.warning(f"Failed to update dashboard: {e}")
 
-        await callback.answer("Вы выписались.")
+        await callback.answer(msg)
 
-    except CancellationLockedError as e:
-        # Notify Admin Chat
-        chat_id = callback.message.chat.id
-        user_name = callback.from_user.full_name
-        
-        # Try to find admin chat
-        try:
-             chat_stmt = select(Chat).where(Chat.chat_id == game_id) # Wait, game.chat_id
-             # We need game object here. Let's fetch it if error occurs or fetch before.
-             # Actually we can just inform the chat where button was clicked if it's admin or get it from Chat model
-             from app.db.models import Game, Chat
-             game_obj = await session.get(Game, game_id)
-             if game_obj:
-                 chat_obj = await session.get(Chat, game_obj.chat_id)
-                 if chat_obj and chat_obj.admin_chat_id:
-                     await callback.bot.send_message(
-                         chat_obj.admin_chat_id,
-                         f"⚠️ <b>Попытка отмены!</b>\nИгрок <a href='tg://user?id={user_id}'>{user_name}</a> пытался выписаться из игры #{game_id}, но уже слишком поздно.",
-                         parse_mode="HTML"
-                     )
-        except Exception as ex:
-             logging.warning(f"Failed to notify admin of late cancellation: {ex}")
-
-        await callback.answer(str(e), show_alert=True)
-    except GameActionError as e:
-        await callback.answer(str(e), show_alert=True)
     except Exception as e:
+        error_str = str(e)
         logging.error(f"Leave Error: {e}", exc_info=True)
-        await callback.answer("Произошла ошибка при отмене записи.")
+        await callback.answer(f"Ошибка: {error_str}", show_alert=True)

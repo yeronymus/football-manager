@@ -6,7 +6,7 @@ from app.db.models import Game, User, Chat, Signup, SignupStatus, Team, GameStat
 import logging
 from app.api.schemas import GameCreate, BalanceTeams, GameResult, GameFinishRequest, UpdateTeamsRequest, GameUpdate, AddPlayerRequest, AddGuestRequest, VoteRequest
 from app.services.user_service import UserService
-from app.services.game_service import GameService
+
 from app.bot.elo import calculate_new_rating
 from app.bot.main import bot
 from app.bot.utils import format_game_message
@@ -160,8 +160,42 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
     await check_admin_rights(game.chat_id, user_id)
     
     try:
-        game_service = GameService(session)
-        updated_game = await game_service.update_game(data)
+        # --- NEW ARCHITECTURE ---
+        from app.infrastructure.scheduler.service import SchedulerService
+        from app.core.services.stats import StatsService
+        from app.core.services.game_lifecycle import GameLifecycleService
+        from app.bot.admin_dashboard import update_dashboard_message
+        
+        scheduler = SchedulerService()
+        stats = StatsService(session)
+        lifecycle = GameLifecycleService(session, scheduler, stats)
+        
+        updated_game, changes = await lifecycle.update_game(data)
+        
+        # --- Controller Logic (Notifications) ---
+        if changes:
+             try:
+                public_text = await format_game_message(updated_game, session)
+                kb = get_game_keyboard(updated_game.id)
+                
+                async def safe_edit(chat_id, msg_id):
+                    if not chat_id or not msg_id: return
+                    try:
+                        await bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=msg_id,
+                            text=public_text,
+                            reply_markup=kb,
+                            parse_mode="HTML"
+                        )
+                    except Exception as e:
+                         logger.warning(f"Failed to edit msg in {chat_id}: {e}")
+
+                await safe_edit(updated_game.chat_id, updated_game.message_id)
+                await safe_edit(updated_game.channel_id, updated_game.channel_message_id)
+             except Exception as e:
+                 logger.warning(f"Failed to notify update: {e}")
+                 
         return {"status": "updated", "id": updated_game.id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -192,13 +226,98 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         await session.commit()
 
     try:
-        game_service = GameService(session)
-        new_game = await game_service.create_game(game_data, user_id)
+        # --- NEW ARCHITECTURE (GameLifecycleService) ---
+        from app.infrastructure.scheduler.service import SchedulerService
+        from app.core.services.stats import StatsService
+        from app.core.services.game_lifecycle import GameLifecycleService
+        from app.bot.admin_dashboard import update_dashboard_message
+        
+        # Instantiate Services
+        scheduler = SchedulerService()
+        stats = StatsService(session)
+        lifecycle = GameLifecycleService(session, scheduler, stats)
+        
+        # Execute Domain Logic
+        new_game = await lifecycle.create_game(game_data, user_id)
+        
+        # --- Controller Logic (Presentation/Notifications) ---
+        
+        # 1. Immediate Publish?
+        # Logic replicated from legacy:
+        # If not past AND (no publish_at OR publish_at <= now) -> Publish Now
+        from datetime import datetime
+        
+        # Helper for timezone awareness check
+        tz = new_game.date_time.tzinfo
+        now_tz = datetime.now(tz) if tz else datetime.now()
+        
+        should_publish_now = True
+        if new_game.date_time < now_tz:
+             should_publish_now = False
+        elif game_data.publish_at:
+             # Ensure comparison compatibility
+             pub_at = game_data.publish_at
+             if pub_at.tzinfo is None and tz:
+                 pub_at = pub_at.replace(tzinfo=tz)
+             if pub_at > now_tz:
+                 should_publish_now = False
+
+        if should_publish_now:
+             # Reuse legacy helper or replicate?
+             # GameService._publish_game_message was handy.
+             # We can import it? No, it's instance method.
+             # But `format_game_message` and `bot` are available.
+             # Let's extract `_publish_game_message` logic or just do it here.
+             # It's cleaner to have a helper.
+             # Let's use a local helper function to keep endpoint clean?
+             # Or just inline it as it's Controller logic.
+             
+             # 1. Channel
+             if new_game.channel_id:
+                 try:
+                     text_full = await format_game_message(new_game, session, is_short=False)
+                     sent_full = await bot.send_message(
+                         chat_id=new_game.channel_id,
+                         text=text_full,
+                         reply_markup=get_game_keyboard(new_game.id)
+                     )
+                     new_game.channel_message_id = sent_full.message_id
+                 except Exception as e:
+                     logger.warning(f"Failed to publish to channel: {e}")
+
+             # 2. Chat
+             try:
+                 text_short = await format_game_message(new_game, session, is_short=True)
+                 msg = await bot.send_message(
+                     chat_id=new_game.chat_id,
+                     text=text_short,
+                     reply_markup=get_game_keyboard(new_game.id)
+                 )
+                 new_game.message_id = msg.message_id
+                 await session.commit()
+                 try:
+                     await bot.pin_chat_message(chat_id=new_game.chat_id, message_id=msg.message_id)
+                 except: pass
+             except Exception as e:
+                 logger.warning(f"Failed to publish to chat: {e}")
+                 
+        # 2. Update Dashboard
+        try:
+             success = await update_dashboard_message(bot, new_game.id, session)
+             if not success:
+                 await bot.send_message(
+                     user_id, 
+                     f"⚠️ Игра создана, но <b>Admin Dashboard</b> не отправлен (нет привязки чата). Используйте /setup."
+                 )
+        except Exception as e:
+             logger.warning(f"Dashboard error: {e}")
+
         return {"game_id": new_game.id, "status": "created"}
+        
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Create game error: {e}")
+        logger.error(f"Create game error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/balance_teams")
@@ -221,10 +340,46 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
     await check_admin_rights(game.chat_id, user_id)
 
     # Fetch active signups - Handled by Service
+    # Fetch active signups - Handled by Service
     try:
-        game_service = GameService(session)
-        result = await game_service.balance_teams(data.game_id)
-        return result
+        # --- NEW ARCHITECTURE (RosterService) ---
+        from app.core.services.roster import RosterService
+        from app.core.repositories.game_repo import GameRepository
+        
+        repo = GameRepository(session)
+        service = RosterService(repo)
+        
+        await service.balance_teams(data.game_id)
+        await session.commit()
+        
+        # Update Message
+        try:
+            public_text = await format_game_message(game, session)
+            kb = get_game_keyboard(game.id)
+            
+            async def safe_edit(chat_id, msg_id):
+                if not chat_id or not msg_id: return
+                try:
+                    await bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=msg_id,
+                        text=public_text,
+                        reply_markup=kb,
+                        parse_mode="HTML"
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to edit message in {chat_id}: {e}")
+
+            await safe_edit(game.chat_id, game.message_id)
+            await safe_edit(game.channel_id, game.channel_message_id)
+            
+            # Send notification about balance
+            await bot.send_message(game.chat_id, "⚖️ <b>Команды сбалансированы!</b>", parse_mode="HTML")
+            
+        except Exception as e:
+            logger.warning(f"Failed to update message after balance: {e}")
+
+        return {"status": "balanced"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -245,97 +400,41 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
 
     await check_admin_rights(game.chat_id, user_id)
 
-    # Fetch active AND reserve signups for this game
-    result = await session.execute(
-        select(Signup)
-        .where(Signup.game_id == data.game_id, Signup.status.in_([SignupStatus.ACTIVE, SignupStatus.RESERVE]))
-    )
-    signups = result.scalars().all()
-    
-    # Map user_id to signup
-    signup_map = {s.user_id: s for s in signups}
-    
-    team_a_users = []
-    team_b_users = []
-    
-    # Helper for promotion
-    async def promote_if_reserve(uid):
-        s = signup_map[uid]
-        if s.status == SignupStatus.RESERVE:
-            s.status = SignupStatus.ACTIVE
-            try:
-                await bot.send_message(
-                    uid, 
-                    "<b>Ты в основном составе!</b>\nАдмин перенес тебя из резерва. <b>Подтверди в группе или админам, что будешь играть!</b>", 
-                    parse_mode="HTML"
-                )
-            except Exception:
-                pass
-
-    # Update teams
-    for uid in data.team_a:
-        if uid in signup_map:
-            signup_map[uid].team = Team.A
-            await promote_if_reserve(uid)
-            team_a_users.append(uid)
-            
-    for uid in data.team_b:
-        if uid in signup_map:
-            signup_map[uid].team = Team.B
-            await promote_if_reserve(uid)
-            team_b_users.append(uid)
-            
-    if data.team_c:
-        for uid in data.team_c:
-            if uid in signup_map:
-                signup_map[uid].team = Team.C
-                await promote_if_reserve(uid)
-                # team_c_users.append(uid)
-            
-    # Reset others to None (or handle as "Unassigned")
-    # If a user is in neither list, they are effectively removed from a team but still signed up?
-    # Or should we assume the lists are exhaustive?
-    # Let's assume lists contain ALL assigned players.
-    assigned_ids = set(data.team_a) | set(data.team_b)
-    if data.team_c:
-        assigned_ids |= set(data.team_c)
+    # Fetch active AND reserve signups - Handled by Service
+    try:
+        from app.core.services.roster import RosterService
+        from app.core.repositories.game_repo import GameRepository
         
-    for uid, signup in signup_map.items():
-        if uid not in assigned_ids:
-            signup.team = None
-
-    # Update Positions (Per-Match Override)
-    if data.positions:
-        from app.db.models import Position
+        repo = GameRepository(session)
+        service = RosterService(repo)
         
-        # Map simplified Frontend slots to Concrete DB Positions
-        # effectively "representative" positions for the slot
-        slot_map = {
-            "GK": Position.GK,
-            "DEF": Position.CB,
-            "MID": Position.CM,
-            "FWD": Position.FWD
-        }
-        
-        for user_id_val, pos_str in data.positions.items():
-            if user_id_val in signup_map:
-                try:
-                    # 1. Try generic map
-                    new_pos = slot_map.get(pos_str)
-                    
-                    # 2. If not found, try direct enum conversion (fallback)
-                    if not new_pos:
-                        new_pos = Position(pos_str)
-                        
-                    # Save into Signup
-                    signup_map[user_id_val].position = new_pos
-                    
-                except ValueError:
-                    pass
-                
+        promoted_ids = await service.update_teams(
+            data.game_id, 
+            data.team_a, 
+            data.team_b, 
+            data.team_c, 
+            data.positions or {}
+        )
         await session.commit()
-    
-    return {"status": "updated"} # No need to fetch objs if message is disabled here
+        
+        # Notify Promoted
+        for uid in promoted_ids:
+             try:
+                 await bot.send_message(
+                     uid, 
+                     "<b>Ты в основном составе!</b>\nАдмин перенес тебя из резерва. <b>Подтверди в группе или админам, что будешь играть!</b>", 
+                     parse_mode="HTML"
+                 )
+             except Exception:
+                 pass
+                 
+        return {"status": "updated"}
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Update teams error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 # ... (skip to get_game_details) ...
 
@@ -541,9 +640,61 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
     await check_admin_rights(game.chat_id, user_id)
 
     # Update game score and status - Handled by Service
+    # Update game score and status - Handled by Service
     try:
-        game_service = GameService(session)
-        await game_service.finish_game(data)
+        from app.infrastructure.scheduler.service import SchedulerService
+        from app.core.services.stats import StatsService
+        from app.core.services.game_lifecycle import GameLifecycleService
+        
+        # Instantiate
+        scheduler = SchedulerService()
+        stats = StatsService(session)
+        lifecycle = GameLifecycleService(session, scheduler, stats)
+        
+        game = await lifecycle.finish_game(data)
+        
+        # --- Controller Logic (Notifications) ---
+        # 1. Construct Message
+        text = f"🏁 <b>Матч завершен!</b>\n\n"
+        text += f"Команда оранжевые 🟠 {game.score_a}:{game.score_b} 🟢 Команда зеленые\n"
+        
+        # Helper to fetch names
+        async def get_names(uids):
+             if not uids: return []
+             res = await session.execute(select(User).where(User.user_id.in_(uids)))
+             return [u.full_name for u in res.scalars().all()]
+
+        # MVP
+        mvp_ids = []
+        if data.mvp_user_id: mvp_ids.append(data.mvp_user_id)
+        if data.mvp_team_a: mvp_ids.append(data.mvp_team_a)
+        if data.mvp_team_b: mvp_ids.append(data.mvp_team_b)
+        
+        if mvp_ids:
+             mvp_names = await get_names(mvp_ids)
+             if mvp_names:
+                 text += "🌟 <b>MVP:</b> " + ", ".join(mvp_names) + "\n"
+        
+        # Scorers
+        scorers = [p for p in data.player_stats if p.goals > 0]
+        if scorers:
+            text += "\n⚽ <b>Голы:</b>\n"
+            scorer_ids = [s.user_id for s in scorers]
+            
+            # Fetch names map
+            res = await session.execute(select(User).where(User.user_id.in_(scorer_ids)))
+            users_map = {u.user_id: u.full_name for u in res.scalars().all()}
+            
+            for s in scorers:
+                 name = users_map.get(s.user_id, "Неизвестный")
+                 text += f"- {name}: {s.goals}\n"
+
+        if game.message_id:
+            try:
+                await bot.send_message(chat_id=game.chat_id, text=text, parse_mode="HTML")
+            except Exception as e:
+                logger.warning(f"Failed to send finish message: {e}")
+        
         return {"status": "finished"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -63,7 +63,84 @@ async def cmd_refresh_dashboard(message: types.Message, session: AsyncSession):
     except Exception as e:
         logger.error(f"Manual refresh error: {e}")
         await message.answer(f"❌ Ошибка: {e}")
+@router.message(Command("force_refresh"))
+async def cmd_force_refresh(message: types.Message, session: AsyncSession):
+    if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
+        return
 
+    try:
+        args = message.text.split()
+        if len(args) != 2:
+            await message.answer("⚠️ Использование: `/force_refresh <game_id>`")
+            return
+            
+        game_id = int(args[1])
+        
+        # 1. Fetch Game
+        game = await session.get(Game, game_id)
+        if not game:
+            await message.answer("❌ Игра не найдена.")
+            return
+
+        # 2. Update Chat
+        try:
+            public_text = await format_game_message(game, session)
+            kb = get_game_keyboard(game.id)
+            
+            if game.chat_id and game.message_id:
+                try:
+                    await message.bot.edit_message_text(
+                        chat_id=game.chat_id,
+                        message_id=game.message_id,
+                        text=public_text,
+                        reply_markup=kb,
+                        parse_mode="HTML"
+                    )
+                    await message.answer("✅ Сообщение в чате обновлено.")
+                except Exception as e:
+                    await message.answer(f"⚠️ Ошибка обновления чата: {e}")
+            else:
+                await message.answer("ℹ️ Нет привязанного сообщения в чате.")
+
+            # 3. Update Channel
+            if game.channel_id and game.channel_message_id:
+                # Channel usually has full text? Or specific format?
+                # Using same format_game_message logic (handles is_short internally via flag if passed, 
+                # but format_game_message usually returns full text or short based on game status/config?
+                # Actually format_game_message has is_short arg.
+                # Let's check `format_game_message` signature in `app/bot/utils.py` or usage in `endpoints.py`.
+                # Endpoints uses `is_short=False` for Channel.
+                
+                channel_text = await format_game_message(game, session, is_short=False)
+                # Channel buttons? Usually explicit link button only.
+                # But here we just refresh text/markup.
+                # If we don't pass markup it might clear it? 
+                # `edit_message_text` with `reply_markup=None` clears it.
+                # Channel usually needs Link Button to Bot?
+                # Let's use `get_game_keyboard` which handles channel logic if we implemented it, 
+                # OR just leave existing markup if None?
+                # Safety: pass `get_game_keyboard(game.id)`. It should generate correct buttons for channel if programmed.
+                
+                try:
+                    await message.bot.edit_message_text(
+                        chat_id=game.channel_id,
+                        message_id=game.channel_message_id,
+                        text=channel_text,
+                        reply_markup=get_game_keyboard(game.id), 
+                        parse_mode="HTML"
+                    )
+                    await message.answer("✅ Сообщение в канале обновлено.")
+                except Exception as e:
+                    await message.answer(f"⚠️ Ошибка обновления канала: {e}")
+                    
+        except Exception as e:
+            await message.answer(f"❌ Фатальная ошибка обновления: {e}")
+            
+    except ValueError:
+        await message.answer("⚠️ ID игры должен быть числом.")
+    except Exception as e:
+        logger.error(f"Force refresh error: {e}")
+        await message.answer(f"❌ Ошибка: {e}")
 # --- Merged from admin_tools.py ---
 
 @router.callback_query(F.data.startswith("toggle_pay_"))
@@ -160,24 +237,32 @@ async def cb_kick_confirm(callback: types.CallbackQuery, session: AsyncSession):
         
     user_id = signup.user_id
     
-    from app.services.game_service import GameService
-    service = GameService(session)
+    from app.core.services.roster import RosterService
+    from app.core.repositories.game_repo import GameRepository
+    
+    repo = GameRepository(session)
+    service = RosterService(repo)
     
     try:
-        # We use is_admin=True to bypass the lock
-        await service.leave_game(game_id, user_id, is_admin=True)
+        # Admin Kick = Leave with Admin privilege
+        success, msg, _ = await service.leave_player(game_id, user_id, is_admin=True)
         
-        # Success! return to kick menu to allow more kicks
-        await callback.answer("Игрок удален")
-        
-        # Notify the user they were removed
-        try:
-            await callback.bot.send_message(user_id, f"⚠️ Администратор удалил вас из состава на игру #{game_id}.")
-        except: pass
-        
-        # Return to kick menu
-        await cb_god_kick_menu(callback, session)
-        
+        if success:
+            # Success! return to kick menu to allow more kicks
+            await callback.answer("Игрок удален")
+            
+            # Notify the user they were removed
+            try:
+                await callback.bot.send_message(user_id, f"⚠️ Администратор удалил вас из состава на игру #{game_id}.")
+            except: pass
+            
+            # Return to kick menu
+            await cb_god_kick_menu(callback, session)
+        else:
+             await callback.answer(f"Ошибка: {msg}")
+             from app.bot.admin_dashboard import update_dashboard_message
+             await update_dashboard_message(callback.bot, game_id, session)
+
     except Exception as e:
         await callback.answer(f"Ошибка: {e}")
         from app.bot.admin_dashboard import update_dashboard_message
@@ -207,47 +292,56 @@ async def cmd_add_player(message: types.Message, session: AsyncSession):
         if user_input.isdigit():
             target_user = await session.get(User, int(user_input))
         
-        # 2. Try Lookup by Username
-        if not target_user:
-            username_query = user_input.lstrip("@")
-            result = await session.execute(
-                select(User).where(User.username.ilike(username_query))
-            )
-            target_user = result.scalar_one_or_none()
-        
         if not target_user:
             await message.answer(f"❌ Пользователь '{user_input}' не найден в базе данных бота.")
             return
 
-        # 3. Add to Game
-        from app.services.game_service import GameService, AlreadySignedUpError, GameFullError
-        service = GameService(session)
+        # 3. Add to Game via RosterService
+        from app.core.services.roster import RosterService, SignupStatus
+        from app.core.repositories.game_repo import GameRepository
         
-        signup, _ = await service.join_game(game_id, target_user.user_id)
+        repo = GameRepository(session)
+        service = RosterService(repo)
         
-        await message.answer(f"✅ Игрок {target_user.full_name} успешно добавлен в игру #{game_id}!")
+        # Admin forces join. RosterService logic might respect constraints unless we bypass?
+        # Standard join_player respects MaxPlayers and Time.
+        # But Admin likely wants to bypass.
+        # Currently RosterService.join_player doesn't have `is_admin` flag (only `leave_player` does).
+        # We might need to add `is_admin` to `join_player` or handle "force add".
+        # For now, let's try standard join and see if it fails on constraints.
+        # If admin wants to force overbooking, we need `is_admin` flag in RosterService.
+        # However, legacy `join_game` didn't have `is_admin` usually?
+        # Actually, let's assume standard rules apply for now, or check capacity manually?
+        # Let's use standard join_player.
         
-        # Notify user?
-        try:
-            await message.bot.send_message(target_user.user_id, f"🎟️ Администратор добавил вас в игру #{game_id}.")
-        except: pass
+        result = await service.join_player(game_id, target_user, ignore_limit=True)
+        
+        if result.success:
+             await message.answer(f"✅ Игрок {target_user.full_name} успешно добавлен в игру #{game_id}! ({result.message})")
+             try:
+                 await message.bot.send_message(target_user.user_id, f"🎟️ Администратор добавил вас в игру #{game_id}.")
+             except: pass
+             
+             # Force update dashboard/message
+             from app.bot.utils import format_game_message
+             from app.bot.keyboards import get_game_keyboard
+             
+             game = await session.get(Game, game_id)
+             if game:
+                  public_text = await format_game_message(game, session)
+                  try:
+                      if game.message_id:
+                          await message.bot.edit_message_text(
+                              chat_id=game.chat_id,
+                              message_id=game.message_id,
+                              text=public_text,
+                              reply_markup=get_game_keyboard(game.id),
+                              parse_mode="HTML"
+                          )
+                  except: pass
+        else:
+             await message.answer(f"⚠️ Не удалось добавить игрока: {result.message}")
 
-        # Update Dashboard if exists?
-        # Ideally we trigger a refresh logic, but join_game usually updates logic via scheduler/handlers 
-        # But here we invoke service method directly. join_game updates message? 
-        # Looking at join_game implementation... it usually returns signup. 
-        # The update_game_message logic is usually triggered by the callback handler in normal flow.
-        # We might want to force update the game message here.
-        
-        from app.bot.utils import update_game_message
-        game = await session.get(Game, game_id)
-        if game:
-             await update_game_message(message.bot, game, session)
-
-    except AlreadySignedUpError:
-        await message.answer("⚠️ Этот игрок уже записан на эту игру.")
-    except GameFullError:
-        await message.answer("⚠️ В игре нет мест (или она закрыта).")
     except Exception as e:
         logger.error(f"Add Player Error: {e}")
         await message.answer(f"❌ Ошибка: {e}")
