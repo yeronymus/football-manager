@@ -9,14 +9,19 @@ from app.bot.middlewares import DbSessionMiddleware, InstanceAccessMiddleware
 # Configure logging
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
+from aiogram.fsm.storage.redis import RedisStorage
+
 # Initialize Bot
 bot = Bot(
     token=settings.bot_token,
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
 
+# Initialize Storage (Redis)
+storage = RedisStorage.from_url(settings.REDIS_URL)
+
 # Initialize Dispatcher
-dp = Dispatcher()
+dp = Dispatcher(storage=storage)
 dp.message.outer_middleware(InstanceAccessMiddleware())
 dp.callback_query.outer_middleware(InstanceAccessMiddleware())
 
@@ -129,6 +134,7 @@ async def stop_bot():
     Function to stop the bot (e.g. delete webhook).
     """
     await bot.delete_webhook()
+    await dp.storage.close()
     await bot.session.close()
     logging.info("Bot stopped")
 
