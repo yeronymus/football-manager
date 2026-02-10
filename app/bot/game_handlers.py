@@ -3,7 +3,6 @@ from app.config import settings
 from app.core.uow import UnitOfWork
 from app.core.services.roster import RosterService, PlayerJoinedEvent, PlayerLeftEvent
 from app.core.events import EventBus
-from app.db.models import Game
 import logging
 
 router = Router()
@@ -11,77 +10,80 @@ router = Router()
 @router.callback_query(F.data.startswith("join_"))
 async def process_join(callback: types.CallbackQuery):
     game_id = int(callback.data.split("_")[1])
-    telegram_user_id = callback.from_user.id
+    tg_id = callback.from_user.id
     
-    # Feature Flag для Strangler Fig Pattern
-    use_new_logic = settings.use_new_roster_logic or (telegram_user_id in settings.debug_new_logic_user_ids)
-
-    if not use_new_logic:
-        await callback.answer("Легаси режим отключен. Используйте новую логику.", show_alert=True)
+    # --- STRANGLER ROUTER ---
+    # Legacy Games (ID <= 5) use the old logic
+    if game_id <= settings.last_legacy_game_id:
+        from app.bot.legacy_handlers import process_join as legacy_join
+        await legacy_join(callback)
         return
 
+    # --- NEW ARCHITECTURE ---
     alert_msg = None
     event_payload = None
 
     try:
-        # Вся работа с БД строго внутри контекста UoW
+        # ЗАПУСК ТРАНЗАКЦИИ
         async with UnitOfWork() as uow:
-            # 1. Проверка регистрации (через репозиторий, а не SQL!)
-            user = await uow.user_repo.get_by_id(telegram_user_id)
+            # 1. Получаем пользователя (БЕЗ сырого SQL, через репозиторий)
+            user = await uow.user_repo.get_by_id(tg_id)
             
             if not user:
-                me = await callback.bot.get_me()
-                await callback.answer("Переходим к регистрации...", url=f"https://t.me/{me.username}?start=reg")
+                bot_user = await callback.bot.get_me()
+                await callback.answer("Нужна регистрация!", url=f"https://t.me/{bot_user.username}?start=reg")
                 return
 
-            # 2. Работа сервиса
-            service = RosterService(uow.game_repo)
+            # 2. Вызываем сервис
+            service = RosterService(uow)
             result = await service.join_player(game_id, user)
             
             if not result.success:
                 await callback.answer(result.message, show_alert=True)
-                # Нет commit(), транзакция откатится автоматически при выходе
-                return
+                return # Выход без commit (авто-rollback)
 
-            # 3. Подготовка данных для события (до коммита)
+            # 3. Подготовка события (side-effect)
             alert_msg = result.message
             if result.signup:
                 event_payload = PlayerJoinedEvent(
-                    game_id=game_id, 
-                    user_id=telegram_user_id, 
-                    signup=result.signup, 
-                    is_reserve=result.is_reserve, 
+                    game_id=game_id,
+                    user_id=tg_id,
+                    signup=result.signup,
+                    is_reserve=result.is_reserve,
                     message=alert_msg
                 )
 
-            # 4. Фиксация транзакции
+            # 4. ФИКСАЦИЯ ИЗМЕНЕНИЙ
             await uow.commit()
 
-        # --- Side Effects (События отправляем ПОСЛЕ успешного коммита) ---
+        # --- ЗА ПРЕДЕЛАМИ ТРАНЗАКЦИИ ---
+        # Отправляем события только если commit прошел успешно
         if event_payload:
             await EventBus.publish(event_payload)
 
-        # Обновление UI (убрана логика dashboard отсюда, она должна быть в listener)
         await callback.answer(alert_msg)
 
     except Exception as e:
-        logging.error(f"New Roster Logic Failed: {e}", exc_info=True)
-        await callback.answer("Произошла системная ошибка", show_alert=True)
-
+        logging.error(f"Critical Join Error: {e}", exc_info=True)
+        await callback.answer("Ошибка системы. Мы уже чиним.", show_alert=True)
 
 @router.callback_query(F.data.startswith("leave_"))
 async def process_leave(callback: types.CallbackQuery):
     game_id = int(callback.data.split("_")[1])
-    telegram_user_id = callback.from_user.id
-    is_admin = telegram_user_id in settings.admin_ids or telegram_user_id == settings.system_owner_id
+    tg_id = callback.from_user.id
+    is_admin = tg_id in settings.admin_ids or tg_id == settings.system_owner_id
     
+    # --- STRANGLER ROUTER ---
+    if game_id <= settings.last_legacy_game_id:
+        from app.bot.legacy_handlers import process_leave as legacy_leave
+        await legacy_leave(callback)
+        return
+
+    # --- NEW ARCHITECTURE ---
     try:
         async with UnitOfWork() as uow:
-            service = RosterService(uow.game_repo)
-            
-            success, msg, promoted_user = await service.leave_player(
-                game_id, telegram_user_id, is_admin=is_admin
-            )
+            service = RosterService(uow)
+            success, msg, promoted = await service.leave_player(game_id, tg_id, is_admin)
             
             if not success:
                 await callback.answer(msg, show_alert=True)
@@ -89,26 +91,15 @@ async def process_leave(callback: types.CallbackQuery):
 
             await uow.commit()
             
-        # --- Side Effects ---
-        if promoted_user:
+        # Side Effects
+        if promoted:
             try:
-                await callback.bot.send_message(
-                    promoted_user.user_id,
-                    "🎉 <b>Вас перевели в основной состав!</b>",
-                    parse_mode="HTML"
-                )
-            except Exception:
-                pass
+                await callback.bot.send_message(promoted.user_id, "🚀 Вы переведены в основной состав!")
+            except: pass
 
-        await EventBus.publish(PlayerLeftEvent(
-            game_id=game_id, 
-            user_id=telegram_user_id, 
-            message=msg, 
-            promoted_user=promoted_user
-        ))
-
+        await EventBus.publish(PlayerLeftEvent(game_id, tg_id, msg, promoted))
         await callback.answer(msg)
 
     except Exception as e:
-        logging.error(f"Leave Error: {e}", exc_info=True)
-        await callback.answer("Ошибка при выходе.", show_alert=True)
+        logging.error(f"Critical Leave Error: {e}", exc_info=True)
+        await callback.answer("Ошибка выхода.", show_alert=True)
