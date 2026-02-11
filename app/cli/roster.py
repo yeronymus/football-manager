@@ -17,7 +17,7 @@ async def fix(game_id: int):
     async with UnitOfWork() as uow:
         print(f"Fixing Roster for Game #{game_id}...")
         
-        service = RosterService(uow.game_repo)
+        service = RosterService(uow)
         
         # 1. Recalculate
         success = await service.recalculate_roster(game_id)
