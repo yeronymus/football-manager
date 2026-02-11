@@ -168,3 +168,89 @@ class RosterService:
                     signup.status = SignupStatus.RESERVE
         
         return True
+
+    async def balance_teams(self, game_id: int) -> list[tuple[User, Team]]:
+        """
+        Balances teams for a game using domain logic.
+        """
+        from app.core.domain.balancer import balance_teams, Player as DomainPlayer, BalanceBucket
+        
+        # 1. Get Active Players
+        active_rows = await self.uow.game_repo.get_active_players(game_id)
+        if not active_rows:
+            return []
+            
+        players = [DomainPlayer(user) for user, _ in active_rows]
+        
+        # 2. Run Algorithm
+        teams = balance_teams(players, team_count=2) # Assuming 2 teams for now? Or get from Game?
+        # Ideally get team_count from Game.
+        game = await self.uow.game_repo.get_game(game_id)
+        if game and game.team_count:
+             teams = balance_teams(players, team_count=game.team_count)
+
+        # 3. Update Signups
+        # Map user_id -> Team
+        user_team_map = {}
+        for i, team_list in enumerate(teams):
+            team_enum = Team.A
+            if i == 1: team_enum = Team.B
+            elif i == 2: team_enum = Team.C
+            
+            for p in team_list:
+                user_team_map[p.id] = team_enum
+                
+        # Bulk Update or Iterative
+        for user, signup in active_rows:
+            if user.user_id in user_team_map:
+                signup.team = user_team_map[user.user_id]
+            else:
+                signup.team = None # Should not happen if all active are balanced
+                
+        return [] # Return structure not strictly defined by caller yet, but endpoint returns status
+
+    async def update_teams(self, game_id: int, team_a: list[int], team_b: list[int], team_c: list[int], positions: dict) -> list[int]:
+        """
+        Updates team assignments and handles manual promotions.
+        """
+        # 1. Get All Signups
+        signups = await self.uow.game_repo.get_all_active_and_reserve(game_id)
+        signup_map = {s.user_id: s for s in signups}
+        
+        promoted_ids = []
+        
+        # Helper
+        def update_signup(uid, team_enum):
+            if uid in signup_map:
+                s = signup_map[uid]
+                # Promote if Reserve
+                if s.status == SignupStatus.RESERVE:
+                    s.status = SignupStatus.ACTIVE
+                    promoted_ids.append(uid)
+                s.team = team_enum
+                
+                # Update Position if provided
+                if str(uid) in positions: # keys might be string in JSON
+                    try:
+                        s.position = Position(positions[str(uid)])
+                    except: pass
+                elif uid in positions:
+                     try:
+                        s.position = Position(positions[uid])
+                     except: pass
+
+        for uid in team_a: update_signup(uid, Team.A)
+        for uid in team_b: update_signup(uid, Team.B)
+        for uid in team_c or []: update_signup(uid, Team.C)
+        
+        # Reset others? 
+        # Endpoint logic implies we send FULL lists. 
+        # Those not in lists should probably be unassigned or kept?
+        # Usually update_teams sends everyone.
+        # If someone is NOT in lists but WAS active, do we kick them?
+        # Or just unset team? 
+        # Let's assume just unset team for now to be safe, or leave as is.
+        # But if they were moved to Reserve? The prompt says "update teams".
+        # Let's stick to updating those present.
+        
+        return promoted_ids

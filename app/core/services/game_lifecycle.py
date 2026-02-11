@@ -8,6 +8,7 @@ from app.db.models import Game, Chat, Signup, SignupStatus, GameStatus, GameStat
 from app.api.schemas import GameCreate, GameUpdate, GameFinishRequest
 from app.core.services.stats import StatsService
 from app.infrastructure.scheduler.service import SchedulerService
+from app.config import settings
 
 if TYPE_CHECKING:
     from app.core.uow import UnitOfWork
@@ -69,7 +70,10 @@ class GameLifecycleService:
         now_tz = datetime.now(tz) if tz else datetime.now()
         is_past = game.date_time < now_tz
         
-        if not is_past:
+        # Strangler Fig: Skip scheduling for legacy games
+        is_legacy = game.id <= settings.last_legacy_game_id
+        
+        if not is_past and not is_legacy:
             if data.publish_at:
                 pub_at = data.publish_at
                 # Ensure compare aware vs aware
@@ -109,11 +113,12 @@ class GameLifecycleService:
                  game.date_time = data.date_time
                  
                  # Reschedule
-                 self.scheduler.cancel_game_tasks(game.id)
-                 now_tz = datetime.now(game.date_time.tzinfo) if game.date_time.tzinfo else datetime.now()
-                 if game.date_time > now_tz:
-                     self.scheduler.schedule_voting(game.id, game.date_time)
-                     self.scheduler.schedule_admin_reminder(game.id, game.date_time)
+                 if game.id > settings.last_legacy_game_id:
+                     self.scheduler.cancel_game_tasks(game.id)
+                     now_tz = datetime.now(game.date_time.tzinfo) if game.date_time.tzinfo else datetime.now()
+                     if game.date_time > now_tz:
+                         self.scheduler.schedule_voting(game.id, game.date_time)
+                         self.scheduler.schedule_admin_reminder(game.id, game.date_time)
         
         if data.max_players and data.max_players != game.max_players:
              changes.append(f"👥 Мест: {game.max_players} -> {data.max_players}")
