@@ -1,61 +1,46 @@
-
 import asyncio
 import sys
 import os
+from sqlalchemy import text
+sys.path.append(os.getcwd())
+from app.db.database import async_session_maker
 
-# Add /app to sys.path
-sys.path.append('/app')
+async def renumber_game():
+    async with async_session_maker() as session:
+        print("Starting Game ID Correction...")
+        
+        # 1. Verify Game 47 exists and Game 5 does NOT
+        res_47 = await session.execute(text("SELECT id FROM games WHERE id = 47"))
+        if not res_47.scalar():
+            print("Game 47 not found. Aborting.")
+            return
 
-try:
-    from sqlalchemy import text
-    from app.db.database import async_session_maker
-except ImportError as e:
-    print(f"CRITICAL IMPORT ERROR: {e}", file=sys.stderr)
-    sys.exit(1)
+        res_5 = await session.execute(text("SELECT id FROM games WHERE id = 5"))
+        if res_5.scalar():
+            print("Game 5 ALREADY exists. Cannot overwrite. Aborting.")
+            return
 
-async def renumber():
-    print("Starting renumbering...", file=sys.stderr)
-    try:
-        async with async_session_maker() as session:
-            # 1. Disable constraints (if any hard ones, usually ok with cascade but let's be safe)
-            # Actually, we should just update IDs. 
-            # Order matters to avoid collision. 
-            # Logic: 2->999, 44->1, 45->2, 46->3, 999->4
-            
-            # Map: {OldID: NewID}
-            # We must do this carefully.
-            
-            # Step 1: Move 2 to 999 (Temp) to free up 2 for 45
-            print("Moving Game 2 -> 999...", file=sys.stderr)
-            await session.execute(text("UPDATE games SET id=999 WHERE id=2"))
-            
-            # Step 2: Move 44 -> 1
-            print("Moving Game 44 -> 1...", file=sys.stderr)
-            await session.execute(text("UPDATE games SET id=1 WHERE id=44"))
-            
-            # Step 3: Move 45 -> 2
-            print("Moving Game 45 -> 2...", file=sys.stderr)
-            await session.execute(text("UPDATE games SET id=2 WHERE id=45"))
-            
-            # Step 4: Move 46 -> 3
-            print("Moving Game 46 -> 3...", file=sys.stderr)
-            await session.execute(text("UPDATE games SET id=3 WHERE id=46"))
-            
-            # Step 5: Move 999 -> 4
-            print("Moving Game 999 -> 4...", file=sys.stderr)
-            await session.execute(text("UPDATE games SET id=4 WHERE id=999"))
-            
-            # Step 6: Reset Sequence to 5
-            print("Resetting sequence to 5...", file=sys.stderr)
-            await session.execute(text("ALTER SEQUENCE games_id_seq RESTART WITH 5"))
-            
-            await session.commit()
-            print("Renumbering complete!", file=sys.stderr)
-            
-    except Exception as e:
-        print(f"Error renumbering: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
+        print("Renaming Game 47 -> 5...")
+        
+        # 2. Update Foreign Keys first
+        print("Updating related tables...")
+        await session.execute(text("UPDATE signups SET game_id = 5 WHERE game_id = 47"))
+        await session.execute(text("UPDATE votes SET game_id = 5 WHERE game_id = 47"))
+        await session.execute(text("UPDATE rating_history SET game_id = 5 WHERE game_id = 47"))
+        await session.execute(text("UPDATE game_stats SET game_id = 5 WHERE game_id = 47"))
+        
+        # 3. Update Game itself
+        await session.execute(text("UPDATE games SET id = 5 WHERE id = 47"))
+        
+        # 4. Reset Sequence to 6
+        print("Resetting sequence to 6...")
+        await session.execute(text("ALTER SEQUENCE games_id_seq RESTART WITH 6"))
+        
+        await session.commit()
+        print("SUCCESS: Game 47 is now Game 5. Next game will be 6.")
 
 if __name__ == "__main__":
-    asyncio.run(renumber())
+    try:
+        asyncio.run(renumber_game())
+    except Exception as e:
+        print(f"Error: {e}")

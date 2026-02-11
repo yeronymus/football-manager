@@ -18,7 +18,7 @@ async def add_player_command(game_id: int, user_id: int, force: bool = False):
     async with UnitOfWork() as uow:
         print(f"Adding player {user_id} to Game #{game_id}...")
         
-        service = RosterService(uow.game_repo)
+        service = RosterService(uow)
         
         # We need a User object. If it doesn't exist, we might fail or need to create?
         # For CLI, we assume user exists or we create a dummy wrapper if service allows.
@@ -43,7 +43,7 @@ async def kick_player_command(game_id: int, user_id: int):
     async with UnitOfWork() as uow:
         print(f"Kicking player {user_id} from Game #{game_id}...")
         
-        service = RosterService(uow.game_repo)
+        service = RosterService(uow)
         
         success, msg, promoted = await service.leave_player(game_id, user_id, is_admin=True)
         
