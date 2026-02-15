@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/home/yeronym/Documents/fmBot/football-manager/manage_past_games.py", line 6, in <module>
-    from sqlalchemy import select, delete, text
-ModuleNotFoundError: No module named 'sqlalchemy'

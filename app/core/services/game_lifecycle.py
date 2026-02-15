@@ -115,10 +115,10 @@ class GameLifecycleService:
                  # Reschedule
                  if game.id > settings.last_legacy_game_id:
                      self.scheduler.cancel_game_tasks(game.id)
-                     now_tz = datetime.now(game.date_time.tzinfo) if game.date_time.tzinfo else datetime.now()
-                     if game.date_time > now_tz:
-                         self.scheduler.schedule_voting(game.id, game.date_time)
-                         self.scheduler.schedule_admin_reminder(game.id, game.date_time)
+                     # Always attempt to schedule voting/reminder. 
+                     # The scheduler methods themselves check if run_date is in the future.
+                     self.scheduler.schedule_voting(game.id, game.date_time)
+                     self.scheduler.schedule_admin_reminder(game.id, game.date_time)
         
         if data.max_players and data.max_players != game.max_players:
              changes.append(f"👥 Мест: {game.max_players} -> {data.max_players}")

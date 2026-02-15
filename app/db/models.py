@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, BigInteger, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, BigInteger, UniqueConstraint, Float
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -82,7 +82,7 @@ class Game(Base):
     payment_info = Column(String, default="2924402033/0800")
     team_count = Column(Integer, default=2)
     gk_hours = Column(Integer, default=48)
-    duration = Column(Integer, default=2) # Match duration in hours
+    duration = Column(Float, default=2.0) # Match duration in hours
     status = Column(Enum(GameStatus), default=GameStatus.OPEN)
     winner_team = Column(Enum(Team), nullable=True)
     score_a = Column(Integer, nullable=True)

@@ -1,3 +1,0 @@
-kex_exchange_identification: read: Connection reset by peer
-Connection reset by 195.179.229.119 port 22
-Error: Command 'ssh root@195.179.229.119 'docker logs --tail 100 football-prod_app_1'' returned non-zero exit status 255.

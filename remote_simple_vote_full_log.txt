@@ -1,8 +1,0 @@
-kex_exchange_identification: read: Connection reset by peer
-Connection reset by 195.179.229.119 port 22
-scp: Connection closed
-Packaging app and script...
-EXEC: tar -czf full_vote_deploy.tar.gz app force_simple_vote.py
-Uploading...
-EXEC: scp full_vote_deploy.tar.gz root@195.179.229.119:~/football-prod/full_vote_deploy.tar.gz
-Error executing scp full_vote_deploy.tar.gz root@195.179.229.119:~/football-prod/full_vote_deploy.tar.gz: Command 'scp full_vote_deploy.tar.gz root@195.179.229.119:~/football-prod/full_vote_deploy.tar.gz' returned non-zero exit status 255.

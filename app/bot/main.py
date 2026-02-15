@@ -66,17 +66,29 @@ async def start_bot():
 
     
     # Run Schema Migration
+    # MIGRATION: Schema Updated
     try:
-        logging.warning("MIGRATION: Schema Check...")
+        logging.warning("MIGRATION: Chat ID Check...")
         from sqlalchemy import text
         from app.db.database import async_session_maker
+        from app.db.models import Chat, Game
         async with async_session_maker() as session:
-             # Add position column if not exists
-             await session.execute(text("ALTER TABLE signups ADD COLUMN IF NOT EXISTS position VARCHAR(10)"))
-             await session.commit()
-             logging.warning("MIGRATION: Schema Updated (position column added).")
+             # Find all chats
+             res = await session.execute(select(Chat))
+             chats = res.scalars().all()
+             chat_list = "\n".join([f"{c.chat_id}: {c.title}" for c in chats])
+             
+             # Find Game 5 IDs
+             res = await session.execute(select(Game).where(Game.id == 5))
+             g5 = res.scalar_one_or_none()
+             g5_info = f"Game 5: chat_id={g5.chat_id} channel_id={g5.channel_id}" if g5 else "Game 5 not found"
+             
+             for admin_id in settings.admin_ids:
+                 try:
+                     await bot.send_message(admin_id, f"🔍 <b>DIAGNOSIS</b>\n{g5_info}\n\n<b>Registered Chats:</b>\n{chat_list}")
+                 except: pass
     except Exception as e:
-        logging.error(f"SCHEMA MIGRATION FAILED: {e}")
+        logging.error(f"DIAGNOSIS FAILED: {e}")
 
     # Rating fix migration removed (now handled via management scripts)
 

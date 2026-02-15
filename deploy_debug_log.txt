@@ -1,4 +1,0 @@
-common_handlers.py                              0%    0     0.0KB/s   --:-- ETAcommon_handlers.py                            100% 4208    20.8KB/s   00:00    
-minimal.html                                    0%    0     0.0KB/s   --:-- ETAminimal.html                                  100%  416     2.1KB/s   00:00    
-Restarting football-prod_app_1 ... 
-Restarting football-prod_app_1 ... done

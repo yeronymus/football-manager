@@ -1,7 +1,0 @@
-○ docker.service - Docker Application Container Engine
-     Loaded: loaded (/usr/lib/systemd/system/docker.service; disabled; preset: disabled)
-    Drop-In: /usr/lib/systemd/system/service.d
-             └─10-timeout-abort.conf
-     Active: inactive (dead)
-TriggeredBy: ● docker.socket
-       Docs: https://docs.docker.com

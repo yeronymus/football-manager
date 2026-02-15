@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/ru.js"></script>
+    <style>
+        body {
+            font-family: var(--tg-theme-font-family, sans-serif);
+            background-color: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+            padding: 20px;
+            margin: 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--tg-theme-hint-color, #ccc);
+            border-radius: 8px;
+            box-sizing: border-box;
+            background-color: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #000);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #fff);
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Редактировать игру</h1>
+
+    <div id="loader">Загрузка...</div>
+    <div id="form-content" style="display:none;">
+        <div class="form-group">
+            <label for="date_time">Дата и Время</label>
+            <input type="text" id="date_time" placeholder="Выберите дату и время" required>
+        </div>
+        <div class="form-group">
+            <label for="location">Локация</label>
+            <input type="text" id="location" required>
+        </div>
+        <div class="form-group">
+            <label for="max_players">Кол-во мест</label>
+            <input type="number" id="max_players" min="5" max="30" inputmode="numeric">
+        </div>
+        <div class="form-group">
+            <label for="price">Взнос (CZK)</label>
+            <input type="number" id="price" min="0" step="10" inputmode="numeric">
+        </div>
+        <div class="form-group">
+            <label for="payment_info">Номер счета</label>
+            <input type="text" id="payment_info">
+        </div>
+        <div class="form-group">
+            <label for="gk_hours">Бронь вратарей (часов)</label>
+            <input type="number" id="gk_hours" min="0" max="168" inputmode="numeric">
+            <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - отключить</small>
+        </div>
+
+        <button id="submitBtn" onclick="updateGame()">Сохранить изменения</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // Get game_id from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameId = urlParams.get('game_id');
+
+        const dateTimeInput = document.getElementById('date_time');
+        const locationInput = document.getElementById('location');
+        const maxPlayersInput = document.getElementById('max_players');
+        const priceInput = document.getElementById('price');
+        const paymentInput = document.getElementById('payment_info');
+        const gkHoursInput = document.getElementById('gk_hours');
+
+        let fp; // Flatpickr instance
+
+        function initDatePicker(defaultDateStr) {
+            fp = flatpickr("#date_time", {
+                enableTime: true,
+                dateFormat: "Y-m-dTH:i",
+                altInput: true,
+                altFormat: "d.m.Y H:i",
+                defaultDate: defaultDateStr,
+                time_24hr: true,
+                locale: "ru"
+            });
+        }
+
+        async function loadGame() {
+            if (!gameId) {
+                document.getElementById('loader').innerText = "Ошибка: ID игры не указан";
+                return;
+            }
+
+            try {
+                const url = `/api/game/${gameId}?initData=${encodeURIComponent(tg.initData)}`;
+                const res = await fetch(url);
+                if (res.ok) {
+                    const game = await res.json();
+
+                    // Fill basic inputs
+                    locationInput.value = game.location;
+                    maxPlayersInput.value = game.max_players;
+                    priceInput.value = game.price;
+                    paymentInput.value = game.payment_info;
+                    gkHoursInput.value = game.gk_hours;
+
+                    // Init DatePicker with game date
+                    initDatePicker(game.date);
+
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('form-content').style.display = 'block';
+                } else {
+                    document.getElementById('loader').innerText = "Ошибка загрузки игры";
+                }
+            } catch (e) {
+                document.getElementById('loader').innerText = "Ошибка сети: " + e.message;
+            }
+        }
+
+        loadGame();
+
+        async function updateGame() {
+            const dateTime = dateTimeInput.value;
+            const location = locationInput.value;
+            const maxPlayers = maxPlayersInput.value;
+
+            if (!dateTime || !location) {
+                tg.showAlert("Заполните обязательные поля!");
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = "Сохранение...";
+
+            try {
+                const payload = {
+                    game_id: parseInt(gameId),
+                    date_time: new Date(dateTime).toISOString(),
+                    location: location,
+                    max_players: parseInt(maxPlayers),
+                    price: parseInt(priceInput.value) || 0,
+                    payment_info: paymentInput.value,
+                    gk_hours: parseInt(gkHoursInput.value) || 0,
+                    initData: tg.initData
+                };
+
+                const response = await fetch('/api/update_game', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    tg.showAlert("Игра обновлена!");
+                    tg.close();
+                } else {
+                    const error = await response.json();
+                    tg.showAlert("Ошибка: " + (error.detail || "Unknown error"));
+                }
+            } catch (e) {
+                tg.showAlert("Ошибка сети: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Сохранить изменения";
+            }
+        }
+    </script>
+</body>
+
+</html>

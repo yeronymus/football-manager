@@ -1,5 +1,0 @@
-kex_exchange_identification: read: Connection reset by peer
-Connection reset by 195.179.229.119 port 22
-scp: Connection closed
-Uploading vote_deploy.tar.gz -> root@195.179.229.119:~/football-prod/vote_deploy.tar.gz
-Error executing scp vote_deploy.tar.gz root@195.179.229.119:~/football-prod/vote_deploy.tar.gz: Command 'scp vote_deploy.tar.gz root@195.179.229.119:~/football-prod/vote_deploy.tar.gz' returned non-zero exit status 255.

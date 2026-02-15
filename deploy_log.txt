@@ -1,25 +1,0 @@
-Starting deploy...
-Deploying app/bot/utils.py...
-utils.py                                        0%    0     0.0KB/s   --:-- ETA
-utils.py                                      100% 8500    38.6KB/s   00:00    
-
-Deploying app/bot/admin_handlers.py...
-admin_handlers.py                               0%    0     0.0KB/s   --:-- ETA
-admin_handlers.py                             100%   10KB  48.7KB/s   00:00    
-
-Deploying app/services/game_service.py...
-game_service.py                                 0%    0     0.0KB/s   --:-- ETA
-game_service.py                               100%   30KB  59.2KB/s   00:00    
-
-Deploying app/scheduler/tasks.py...
-tasks.py                                        0%    0     0.0KB/s   --:-- ETA
-tasks.py                                      100%   10KB  49.9KB/s   00:00    
-
-Deploying app/web/index.html...
-index.html                                      0%    0     0.0KB/s   --:-- ETA
-index.html                                    100%   13KB  64.3KB/s   00:00    
-
-Restarting...
-football-prod_app_1
-
-Done.

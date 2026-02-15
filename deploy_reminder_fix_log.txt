@@ -1,8 +1,0 @@
-Uploading app/services/game_service.py -> ~/football-prod/app/services/game_service.py
->>> PATCHING GAME SERVICE (Reminder Logic)...
-Remote EXEC: docker cp ~/football-prod/app/services/game_service.py football-prod_app_1:/app/app/services/game_service.py
-
->>> RESTARTING CONTAINER...
-Remote EXEC: docker restart football-prod_app_1
-football-prod_app_1
-

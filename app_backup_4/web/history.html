@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История Матчей</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+            padding: 15px;
+        }
+
+        .match-card {
+            background-color: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .match-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .date {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .location {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .score-box {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #fff);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .empty {
+            text-align: center;
+            color: var(--tg-theme-hint-color);
+            margin-top: 50px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2 style="margin-top: 0;">Архив Игр</h2>
+    <div id="list">Загрузка...</div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // 1. Достаем chat_id, который передал бот
+        const urlParams = new URLSearchParams(window.location.search);
+        const chatId = urlParams.get('chat_id');
+
+        async function load() {
+            if (!chatId) {
+                document.getElementById('list').innerHTML = '<div class="empty">Ошибка: Чат не выбран</div>';
+                return;
+            }
+
+            try {
+                // 2. Делаем запрос к нашему API
+                const res = await fetch(`/api/history/${chatId}?initData=${encodeURIComponent(tg.initData)}`);
+
+                if (!res.ok) throw new Error("Ошибка доступа");
+
+                const games = await res.json();
+
+                if (games.length === 0) {
+                    document.getElementById('list').innerHTML = '<div class="empty">Матчей пока не было ⚽</div>';
+                    return;
+                }
+
+                // 3. Рендерим карточки
+                const html = games.map(g => `
+                    <div class="match-card">
+                        <div class="match-info">
+                            <span class="date">${g.date}</span>
+                            <span class="location">${g.location}</span>
+                            <span style="font-size: 12px;">${g.winner}</span>
+                        </div>
+                        <div class="score-box">
+                            ${g.score_a} : ${g.score_b}
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('list').innerHTML = html;
+
+            } catch (e) {
+                document.getElementById('list').innerHTML = `<div class="empty">Не удалось загрузить историю<br><small>${e.message}</small></div>`;
+            }
+        }
+
+        load();
+    </script>
+</body>
+
+</html>

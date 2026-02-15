@@ -1,1 +1,0 @@
-INFO:     172.18.0.1:34430 - "GET /.git/config HTTP/1.1" 404 Not Found

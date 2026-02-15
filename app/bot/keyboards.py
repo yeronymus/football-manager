@@ -170,3 +170,39 @@ def get_cancel_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="🔙 Отмена", callback_data="edit_cancel")]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def get_voting_keyboard(game_id: int, team_a: list, team_b: list) -> InlineKeyboardMarkup:
+    buttons = []
+    
+    # Team A Header
+    buttons.append([InlineKeyboardButton(text="🟠 --- КОМАНДА А --- 🟠", callback_data="noop")])
+    
+    # Team A Players (2 per row)
+    row = []
+    for user in team_a:
+        # User object or Signup object with user relation
+        name = user.full_name
+        uid = user.user_id
+        row.append(InlineKeyboardButton(text=name, callback_data=f"vote_{game_id}_{uid}"))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+        
+    # Team B Header
+    buttons.append([InlineKeyboardButton(text="🟢 --- КОМАНДА Б --- 🟢", callback_data="noop")])
+    
+    # Team B Players (2 per row)
+    row = []
+    for user in team_b:
+        name = user.full_name
+        uid = user.user_id
+        row.append(InlineKeyboardButton(text=name, callback_data=f"vote_{game_id}_{uid}"))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+        
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
