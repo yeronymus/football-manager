@@ -1,5 +1,0 @@
-common_handlers.py                              0%    0     0.0KB/s   --:-- ETAcommon_handlers.py                            100% 4206    21.0KB/s   00:00    
-common.py                                       0%    0     0.0KB/s   --:-- ETAcommon.py                                     100%   13KB  61.1KB/s   00:00    
-draft.html                                      0%    0     0.0KB/s   --:-- ETAdraft.html                                    100%   33KB  81.3KB/s   00:00    
-Restarting football-prod_app_1 ... 
-Restarting football-prod_app_1 ... done

@@ -1,5 +1,0 @@
-kex_exchange_identification: read: Connection reset by peer
-Connection reset by 195.179.229.119 port 22
-scp: Connection closed
-Uploading force_voting_msg.py -> root@195.179.229.119:~/football-prod/force_voting_msg.py
-Error executing scp force_voting_msg.py root@195.179.229.119:~/football-prod/force_voting_msg.py: Command 'scp force_voting_msg.py root@195.179.229.119:~/football-prod/force_voting_msg.py' returned non-zero exit status 255.

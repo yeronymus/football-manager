@@ -1,5 +1,0 @@
-DRIVER    VOLUME NAME
-local     football-manager_postgres_data
-local     football-manager_redis_data
-local     football_postgres_data
-local     football_redis_data

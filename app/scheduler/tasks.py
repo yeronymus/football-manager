@@ -18,35 +18,41 @@ async def send_voting_message(game_id: int):
             return
 
         # Get active players
+        # Get active players with team info
         result = await session.execute(
-            select(User)
+            select(User, Signup.team)
             .join(Signup)
             .where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
         )
-        players = result.scalars().all()
+        players_data = result.all()
         
-        if not players:
+        if not players_data:
             return
 
-        # Create keyboard with single WebApp button
-        from app.config import settings
-        vote_url = f"{settings.webapp_url}/web/vote.html?game_id={game_id}"
+        team_a = []
+        team_b = []
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text="🏆 Голосование (MVP)", web_app=types.WebAppInfo(url=vote_url))
-        ]])
+        for user, team in players_data:
+            if team == Team.A:
+                team_a.append(user)
+            elif team == Team.B:
+                team_b.append(user)
+
+        # Create inline keyboard with players
+        from app.bot.keyboards import get_voting_keyboard
+        keyboard = get_voting_keyboard(game_id, team_a, team_b)
         
         await bot.send_message(
             chat_id=game.chat_id,
-            text=f"Матч в <b>{game.location}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды) по кнопке ниже.\n<i>(Результаты через 5 часов)</i>\n\nП.С. Отправляйте свои голы @yeronym для внесения в статистику",
+            text=f"Матч в <b>{game.location}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды), нажав на кнопки ниже.\n<i>(Результаты через 15 часов)</i>\n\nП.С. Отправляйте свои голы @yeronym для внесения в статистику",
             reply_markup=keyboard,
             parse_mode="HTML"
         )
         
-        # Schedule calculation in 5 hours
+        # Schedule calculation in 15 hours
         from app.scheduler.main import scheduler
         from datetime import datetime, timedelta
-        run_date = datetime.now() + timedelta(hours=5)
+        run_date = datetime.now() + timedelta(hours=15)
         scheduler.add_job(calculate_mvp, 'date', run_date=run_date, args=[game_id], id=f"mvp_calc_{game_id}", replace_existing=True)
 
 async def calculate_mvp(game_id: int):

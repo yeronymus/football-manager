@@ -1,3 +1,0 @@
-utils.py                                        0%    0     0.0KB/s   --:-- ETAutils.py                                      100% 7097    33.9KB/s   00:00    
-Restarting football-prod_app_1 ... 
-Restarting football-prod_app_1 ... done

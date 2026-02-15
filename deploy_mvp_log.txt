@@ -1,24 +1,0 @@
-models.py                                       0%    0     0.0KB/s   --:-- ETAmodels.py                                     100% 6619    31.8KB/s   00:00    
-endpoints.py                                    0%    0     0.0KB/s   --:-- ETAendpoints.py                                  100%   29KB  56.5KB/s   00:00    
-scp: write remote "football-prod/app/api/endpoints.py": Failure
-scp: failed to upload file app/api/endpoints.py to ~/football-prod/app/api/endpoints.py
-schemas.py                                      0%    0     0.0KB/s   --:-- ETAschemas.py                                    100% 1691     8.1KB/s   00:00    
-keyboards.py                                    0%    0     0.0KB/s   --:-- ETAkeyboards.py                                  100% 6291    20.0KB/s   00:00    
-vote.html                                       0%    0     0.0KB/s   --:-- ETAvote.html                                     100% 7036    21.2KB/s   00:00    
-scp: write remote "football-prod/app/web/vote.html": Failure
-scp: failed to upload file app/web/vote.html to ~/football-prod/app/web/vote.html
-game_service.py                                 0%    0     0.0KB/s   --:-- ETAgame_service.py                               100%   30KB  73.4KB/s   00:00    
-migrate_votes.py                                0%    0     0.0KB/s   --:-- ETAmigrate_votes.py                              100%  369     1.2KB/s   00:00    
-scp: write remote "football-prod/migrate_votes.py": Failure
-scp: failed to upload file migrate_votes.py to ~/football-prod/migrate_votes.py
-Creating football-prod_app_run ... 
-Creating football-prod_app_run ... error
-
-ERROR: for football-prod_app_run  Cannot create container for service app: mkdir /var/lib/docker/overlay2/b7e1fea618f7f4d6b58ca57aec9bb32698970a40d7d84ed72a1be94b0699df34-init: no space left on device
-
-ERROR: for app  Cannot create container for service app: mkdir /var/lib/docker/overlay2/b7e1fea618f7f4d6b58ca57aec9bb32698970a40d7d84ed72a1be94b0699df34-init: no space left on device
-Encountered errors while bringing up the project.
-Restarting football-prod_app_1 ... 
-Restarting football-prod_app_1 ... error
-
-ERROR: for football-prod_app_1  Cannot restart container 24c53284736556fbac507a24c676bbb996713d5cf14ea0565d1660764ac938d8: mkdir /var/lib/docker/overlay2/97568a8795f4852280708605e5d8e07994fc4119516bc6ea958c8acbc15a56c8/merged: no space left on device

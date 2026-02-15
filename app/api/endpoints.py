@@ -360,8 +360,7 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
         from app.core.uow import UnitOfWork
         
         async with UnitOfWork() as uow:
-            repo = GameRepository(uow.session)
-            service = RosterService(repo)
+            service = RosterService(uow)
             
             await service.balance_teams(data.game_id)
             await uow.commit()
@@ -388,8 +387,8 @@ async def balance_teams_endpoint(data: BalanceTeams, session: AsyncSession = Dep
             await safe_edit(game.chat_id, game.message_id)
             await safe_edit(game.channel_id, game.channel_message_id)
             
-            # Send notification about balance
-            await bot.send_message(game.chat_id, "⚖️ <b>Команды сбалансированы!</b>", parse_mode="HTML")
+            # Send notification about balance - REMOVED per user request
+            # await bot.send_message(game.chat_id, "⚖️ <b>Команды сбалансированы!</b>", parse_mode="HTML")
             
         except Exception as e:
             logger.warning(f"Failed to update message after balance: {e}")
@@ -423,8 +422,7 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
         
         promoted_ids = []
         async with UnitOfWork() as uow:
-            repo = GameRepository(uow.session)
-            service = RosterService(repo)
+            service = RosterService(uow) # Pass UOW, not Repo
             
             promoted_ids = await service.update_teams(
                 data.game_id, 
@@ -453,7 +451,10 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Update teams error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        if settings.debug:
+            import traceback
+            raise HTTPException(status_code=500, detail=f"Internal Error: {str(e)} | {traceback.format_exc()[:200]}")
+        raise HTTPException(status_code=500, detail=f"Internal Error: {str(e)}")
 
 # ... (skip to get_game_details) ...
 
@@ -593,7 +594,8 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
             
         # Notification logic
         if not is_update:
-             await bot.send_message(game.chat_id, "📢 <b>Составы утверждены!</b>")
+             # await bot.send_message(game.chat_id, "📢 <b>Составы утверждены!</b>")
+             pass
         else:
              # If strictly updating, maybe silent? User sometimes wants confirmation.
              # "Changes published"
@@ -800,6 +802,19 @@ async def search_users(query: str, initData: str, session: AsyncSession = Depend
         }
         for u in users
     ]
+
+@router.post("/debug/trigger_voting/{game_id}")
+async def debug_trigger_voting(game_id: int):
+    """
+    Manually triggers voting for a specific game.
+    """
+    try:
+        from app.scheduler.tasks import send_voting_message
+        await send_voting_message(game_id)
+        return {"status": "triggered", "game_id": game_id}
+    except Exception as e:
+        logger.error(f"Debug trigger failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 from app.api.schemas import AddPlayerRequest
 
