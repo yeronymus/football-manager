@@ -22,5 +22,15 @@ redis_data/
 .vscode/
 *.swp
 
+
 # Agent Rules
 .gemini_rules.md
+
+# Private Data
+backups/
+scripts/legacy/
+*.log
+*.bak
+*.tar.gz
+*.txt
+!requirements.txt
