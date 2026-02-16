@@ -14,13 +14,13 @@ Refuse to generate code that violates these rules, explaining the violation.
 - **Pattern:** Use the "Unit of Work" pattern. The Controller (Bot Handler) initializes the transaction, calls the Service, and commits/rollbacks based on the result.
 - **Exception:** Long-running background tasks (Scheduler) may manage their own transactions explicitly.
 - **Concurrency:** Any method modifying shared state (game slots, money) MUST use `with_for_update()` (SELECT FOR UPDATE) to prevent race conditions.
-    - *Bad:* check count -> insert.
     - *Good:* lock row -> check count -> insert.
 
 ## 3. NO "GOD OBJECTS" (SRP)
 - **Refactoring Mandate:** `GameService` is currently a God Object. Do not add new features to it directly.
 - **Strategy:** Break down logic into specialized domains:
-    - `RosterService`: managing signups/teams.
+
+    - `GameLifecycleService`: Creation, status changes, task scheduling.
     - `GameLifecycleService`: create/finish/cancel.
     - `StatsService`: ELO/history.
 
@@ -35,6 +35,25 @@ Refuse to generate code that violates these rules, explaining the violation.
 ## 6. EXPLICIT DEPENDENCIES
 - **No Global Imports:** Do not rely on global `scheduler` or `bot` instances inside function bodies.
 - **Injection:** Pass dependencies via `__init__` or method arguments.
+
+## 7. DATABASE MIGRATIONS
+- **Rule:** Code changes affecting the database schema (adding columns, changing types) MUST be accompanied by a migration.
+- **Production Safety:** Always verify that migrations have run before the application starts. 
+- **Learning Case:** The Game #6 crash occurred because local code expected `registration_hours`, but the production DB (`football_prod`) was not updated.
+- **Verification:** Use `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` in manual or automated scripts to ensure idempotency.
+
+## 8. PERFORMANCE & LOGGING
+- **Production Logging:** `echo=True` in SQLAlchemy MUST be disabled in production. It causes massive I/O overhead.
+- **Redundant Queries:** Minimize DB round-trips. If a task requires formatting multiple messages, fetch data once and pass it down.
+- **I/O Awareness:** Avoid frequent `logging.warning` for debug data in hot paths (like message formatting).
+
+## 9. INFRASTRUCTURE-FIRST MINDSET
+- **Habit:** Before adding a feature, ask: "Does this change the DB schema or .env?".
+- **Checklist:**
+    1. Update `models.py`.
+    2. Create/Verify Migration script.
+    3. Update `production.env` documentation.
+    4. Deploy Infrastructure (DB changes) *before* App code if possible.
 
 ---
 

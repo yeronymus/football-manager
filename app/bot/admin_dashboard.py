@@ -8,6 +8,8 @@ from app.config import settings
 import logging
 import html
 
+logger = logging.getLogger(__name__)
+
 async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession, target_chat_id: int = None) -> bool:
     """
     Updates (or sends) the Admin Dashboard message in the linked Admin Chat.
@@ -16,13 +18,13 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
     """
     try:
         # 1. Fetch Game with Chat
-        logging.warning(f"DEBUG: update_dashboard START game_id={game_id}")
+        logger.debug(f"update_dashboard START game_id={game_id}")
         result = await session.execute(
             select(Game).where(Game.id == game_id)
         )
         game = result.scalar_one_or_none()
         if not game:
-            logging.warning(f"DEBUG: Game {game_id} not found")
+            logger.debug(f"Game {game_id} not found")
             return False
             
         await session.refresh(game) # CRITICAL: Refresh BEFORE accessing any attributes
@@ -38,11 +40,11 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
             # Check if this game's chat has a linked Admin Chat
             chat_result = await session.get(Chat, game.chat_id)
             if not chat_result or not chat_result.admin_chat_id:
-                logging.warning(f"DEBUG: No linked admin chat for game {game_id}")
+                logger.debug(f"No linked admin chat for game {game_id}")
                 return False # No admin chat linked, do nothing
             admin_chat_id = chat_result.admin_chat_id
         
-        logging.warning(f"DEBUG: update_dashboard gID={game_id} gameChat={game.chat_id} target={admin_chat_id}")
+        logger.debug(f"update_dashboard gID={game_id} gameChat={game.chat_id} target={admin_chat_id}")
 
         # 2. Fetch Signups with Users (Freshly)
         stmt = (
@@ -62,15 +64,15 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
         ]
         
         # Detailed Logging for debugging empty lists
-        logging.warning(f"DEBUG_DASHBOARD: Game {game_id} - Fetched {len(rows)} active rows.")
+        logger.debug(f"Game {game_id} - Fetched {len(rows)} active rows.")
         if len(rows) == 0:
             # Check for ANY signups for this game (not just active)
             count_res = await session.execute(select(func.count(Signup.id)).where(Signup.game_id == game_id))
             total_count = count_res.scalar()
-            logging.warning(f"DEBUG_DASHBOARD: Total signups (any status) for game {game_id}: {total_count}")
+            logger.debug(f"Total signups (any status) for game {game_id}: {total_count}")
         else:
             for s, u in rows:
-                logging.warning(f"DEBUG_DASHBOARD: Found Active Signup ID {s.id} for user {u.full_name} (ID: {u.user_id})")
+                logger.debug(f"Found Active Signup ID {s.id} for user {u.full_name} (ID: {u.user_id})")
         
         # 3. Format Text
         try:
@@ -98,10 +100,10 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
             text += f"�👥 Игроков: {len(rows)}/{game.max_players} | 💰 Оплачено: {paid_count}\n\n"
             text += "🔽 <i>Нажмите на имя для смены статуса оплаты:</i>"
         except Exception as e:
-            logging.error(f"Error formatting dashboard text: {e}")
+            logger.error(f"Error formatting dashboard text: {e}")
             text = f"🎮 <b>Game #{game.id}</b>\nError formatting details."
 
-        logging.warning(f"DEBUG_DASHBOARD_TEXT: {text!r}")
+        logger.debug(f"Dashboard text built for game {game_id}")
 
         # 4. Build Keyboard (Grid of Players + Actions)
         buttons = []

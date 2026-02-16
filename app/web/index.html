@@ -81,7 +81,9 @@
     </div>
     <div class="form-group">
         <label for="max_players">Кол-во мест</label>
-        <input type="number" id="max_players" value="18" min="5" max="30" inputmode="numeric">
+        <input type="number" id="max_players" value="18" min="5" max="999" inputmode="numeric">
+        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">999 = Безлимитная
+            запись</small>
     </div>
     <div class="form-group">
         <label for="team_count">Количество команд</label>
@@ -120,6 +122,13 @@
         <label for="gk_hours">Бронь вратарей (часов)</label>
         <input type="number" id="gk_hours" value="24" min="0" max="168" inputmode="numeric">
         <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - отключить</small>
+    </div>
+
+    <div class="form-group">
+        <label for="registration_hours">Окно записи (часов)</label>
+        <input type="number" id="registration_hours" value="0" min="0" max="720" inputmode="numeric">
+        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - без ограничений
+            (рекомендуется 24 для 24ч)</small>
     </div>
 
     <button id="submitBtn" onclick="createGame()">Опубликовать</button>
@@ -301,6 +310,7 @@
                     payment_info: document.getElementById('payment_info').value || "2924402033/0800",
                     team_count: parseInt(document.getElementById('team_count').value) || 2,
                     gk_hours: parseInt(document.getElementById('gk_hours').value) || 24,
+                    registration_hours: parseInt(document.getElementById('registration_hours').value) || 0,
                     duration: parseInt(document.getElementById('duration').value) || 2,
                     auto_join_ids: checkedAdmins,
                     initData: tg.initData

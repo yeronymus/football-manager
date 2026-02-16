@@ -74,7 +74,9 @@
         </div>
         <div class="form-group">
             <label for="max_players">Кол-во мест</label>
-            <input type="number" id="max_players" min="5" max="30" inputmode="numeric">
+            <input type="number" id="max_players" min="5" max="999" inputmode="numeric">
+            <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">999 = Безлимитная
+                запись</small>
         </div>
         <div class="form-group">
             <label for="price">Взнос (CZK)</label>
@@ -88,6 +90,12 @@
             <label for="gk_hours">Бронь вратарей (часов)</label>
             <input type="number" id="gk_hours" min="0" max="168" inputmode="numeric">
             <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - отключить</small>
+        </div>
+        <div class="form-group">
+            <label for="registration_hours">Окно записи (часов)</label>
+            <input type="number" id="registration_hours" min="0" max="720" inputmode="numeric">
+            <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - без
+                ограничений</small>
         </div>
 
         <button id="submitBtn" onclick="updateGame()">Сохранить изменения</button>
@@ -108,6 +116,7 @@
         const priceInput = document.getElementById('price');
         const paymentInput = document.getElementById('payment_info');
         const gkHoursInput = document.getElementById('gk_hours');
+        const registrationHoursInput = document.getElementById('registration_hours');
 
         let fp; // Flatpickr instance
 
@@ -141,6 +150,7 @@
                     priceInput.value = game.price;
                     paymentInput.value = game.payment_info;
                     gkHoursInput.value = game.gk_hours;
+                    registrationHoursInput.value = game.registration_hours || 0;
 
                     // Init DatePicker with game date
                     initDatePicker(game.date);
@@ -180,6 +190,7 @@
                     price: parseInt(priceInput.value) || 0,
                     payment_info: paymentInput.value,
                     gk_hours: parseInt(gkHoursInput.value) || 0,
+                    registration_hours: parseInt(registrationHoursInput.value) || 0,
                     initData: tg.initData
                 };
 

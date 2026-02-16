@@ -45,6 +45,7 @@ class GameLifecycleService:
             payment_info=data.payment_info,
             team_count=data.team_count,
             gk_hours=data.gk_hours,
+            registration_hours=data.registration_hours,
             duration=data.duration,
             status=GameStatus.OPEN
         )
@@ -142,6 +143,9 @@ class GameLifecycleService:
              
         if data.duration is not None and data.duration != game.duration:
              game.duration = data.duration
+              
+        if data.registration_hours is not None and data.registration_hours != game.registration_hours:
+             game.registration_hours = data.registration_hours
              
         # No Commit.
         return game, changes
