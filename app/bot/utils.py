@@ -3,19 +3,20 @@ from sqlalchemy import select
 from app.db.models import Game, Signup, User, SignupStatus, Position, Team, GameStatus
 import html
 
-async def format_game_message(game: Game, session: AsyncSession, is_short: bool = False) -> str:
+async def format_game_message(game: Game, session: AsyncSession, is_short: bool = False, signups: list = None) -> str:
     """
     Generates the text for the Live Message.
     If is_short=True, returns a minimal version for group chats.
     """
-    # Fetch signups with user data
-    result = await session.execute(
-        select(Signup, User)
-        .join(User)
-        .where(Signup.game_id == game.id)
-        .order_by(Signup.created_at)
-    )
-    signups = result.all()
+    if signups is None:
+        # Fetch signups with user data if not provided
+        result = await session.execute(
+            select(Signup, User)
+            .join(User)
+            .where(Signup.game_id == game.id)
+            .order_by(Signup.created_at)
+        )
+        signups = result.all()
 
     active_players = [s for s in signups if s[0].status == SignupStatus.ACTIVE]
     reserve_players = [s for s in signups if s[0].status == SignupStatus.RESERVE]
@@ -156,9 +157,18 @@ async def update_game_message(bot, game, session: AsyncSession):
     """
     from app.bot.keyboards import get_game_keyboard
     
+    # Pre-fetch signups once for performance
+    result = await session.execute(
+        select(Signup, User)
+        .join(User)
+        .where(Signup.game_id == game.id)
+        .order_by(Signup.created_at)
+    )
+    signups = result.all()
+    
     # 1. Update Channel (Full mode)
     if game.channel_id and game.channel_message_id:
-        text_full = await format_game_message(game, session, is_short=False)
+        text_full = await format_game_message(game, session, is_short=False, signups=signups)
         try:
             await bot.edit_message_text(
                 chat_id=game.channel_id,
@@ -172,7 +182,7 @@ async def update_game_message(bot, game, session: AsyncSession):
             logging.warning(f"Failed to edit message in channel {game.channel_id}: {e}")
 
     # 2. Update Primary Chat (Short mode)
-    text_short = await format_game_message(game, session, is_short=True)
+    text_short = await format_game_message(game, session, is_short=True, signups=signups)
     try:
         await bot.edit_message_text(
             chat_id=game.chat_id,
@@ -188,6 +198,7 @@ async def update_game_message(bot, game, session: AsyncSession):
     # 3. Trigger Admin Dashboard Update
     from app.bot.admin_dashboard import update_dashboard_message
     try:
+         # Note: Dashboard currently does its own fetching to ensure freshness and different filtering
          await update_dashboard_message(bot, game.id, session)
     except Exception as e:
          import logging
