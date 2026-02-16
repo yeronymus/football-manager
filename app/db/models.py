@@ -96,6 +96,8 @@ class Game(Base):
     has_active_gk_b = Column(Boolean, default=True)
     has_active_gk_c = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # Registration Window (0 = Unlimited, 24 = 24 hours from creation)
+    registration_hours = Column(Integer, default=0)
     
     chat = relationship("Chat", back_populates="games")
     creator = relationship("User", back_populates="games_created")

@@ -13,6 +13,7 @@ class GameCreate(BaseModel):
     team_count: int = 2
     gk_hours: int = 48
     duration: float = 2.0
+    registration_hours: int = 0
     auto_join_ids: List[int] = []
     publish_at: Optional[datetime] = None
     initData: str
@@ -26,6 +27,7 @@ class GameUpdate(BaseModel):
     payment_info: Optional[str] = None
     gk_hours: Optional[int] = None
     duration: Optional[float] = None
+    registration_hours: Optional[int] = None
     initData: str
     initData: str
 

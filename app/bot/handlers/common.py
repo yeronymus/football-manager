@@ -24,21 +24,24 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
     
     game_id = None
     
-    # Strategy 1: Look for Text Links in Entities
-    if message.entities:
-        for entity in message.entities:
-            if entity.type == "text_link" and entity.url:
-                match = re.search(r"start=game_(\d+)", entity.url)
-                if match:
-                    game_id = int(match.group(1))
-                    break
+    # Check both text and caption entities
+    all_entities = (message.entities or []) + (message.caption_entities or [])
     
-    # Strategy 2: If no entity link, maybe it's in the text (unlikely for hidden link, but possible if raw link posted)
-    if not game_id and message.text:
-            match = re.search(r"start=game_(\d+)", message.text)
+    for entity in all_entities:
+        if entity.type == "text_link" and entity.url:
+            # Check for deep link format
+            match = re.search(r"start=game_(\d+)", entity.url)
             if match:
                 game_id = int(match.group(1))
+                break
                 
+    # Fallback: Check raw text/caption for the link string (less reliable for hidden links)
+    if not game_id:
+        text_to_check = message.text or message.caption or ""
+        match = re.search(r"start=game_(\d+)", text_to_check)
+        if match:
+            game_id = int(match.group(1))
+            
     if not game_id:
         return
     

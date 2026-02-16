@@ -249,6 +249,20 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
             
             # Execute Domain Logic
             new_game = await lifecycle.create_game(game_data, user_id)
+            
+            # Channel Detection Logic
+            try:
+                chat_info = await bot.get_chat(game_data.chat_id)
+                if chat_info.type == "channel":
+                    new_game.channel_id = game_data.chat_id
+                    # We leave new_game.chat_id as the channel ID for now.
+                    # When Telegram auto-forwards to the Group, common.py will:
+                    # 1. Detect the message via hidden link
+                    # 2. Add buttons
+                    # 3. Update new_game.chat_id to the Group ID
+            except Exception as e:
+                logger.warning(f"Failed to check chat type: {e}")
+
             await uow.commit() # Commit Game Creation
 
         
@@ -298,20 +312,23 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
                      logger.warning(f"Failed to publish to channel: {e}")
 
              # 2. Chat
-             try:
-                 text_short = await format_game_message(new_game, session, is_short=True)
-                 msg = await bot.send_message(
-                     chat_id=new_game.chat_id,
-                     text=text_short,
-                     reply_markup=get_game_keyboard(new_game.id)
-                 )
-                 new_game.message_id = msg.message_id
-                 await session.commit()
+             # Only send if Chat is DIFFERENT from Channel.
+             # If they are same, it means we created IN Channel, and we wait for Auto-Forward.
+             if new_game.chat_id != new_game.channel_id:
                  try:
-                     await bot.pin_chat_message(chat_id=new_game.chat_id, message_id=msg.message_id)
-                 except: pass
-             except Exception as e:
-                 logger.warning(f"Failed to publish to chat: {e}")
+                     text_short = await format_game_message(new_game, session, is_short=True)
+                     msg = await bot.send_message(
+                         chat_id=new_game.chat_id,
+                         text=text_short,
+                         reply_markup=get_game_keyboard(new_game.id)
+                     )
+                     new_game.message_id = msg.message_id
+                     await session.commit()
+                     try:
+                         await bot.pin_chat_message(chat_id=new_game.chat_id, message_id=msg.message_id)
+                     except: pass
+                 except Exception as e:
+                     logger.warning(f"Failed to publish to chat: {e}")
                  
         # 2. Update Dashboard
         try:
