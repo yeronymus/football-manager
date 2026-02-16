@@ -52,8 +52,12 @@ Refuse to generate code that violates these rules, explaining the violation.
 - **Checklist:**
     1. Update `models.py`.
     2. Create/Verify Migration script.
-    3. Update `production.env` documentation.
     4. Deploy Infrastructure (DB changes) *before* App code if possible.
+
+## 10. SESSION CONTINUITY & IMPROVEMENT
+- **Rule:** At the end of each session, the Assistant MUST document a brief "Session Conclusion" in the repository (e.g., in a `JOURNAL.md` or as a summary in `ARCHITECTURE.md`).
+- **Goal:** To ensure the project's evolution is understood and to identify areas for future optimization without re-learning the same lessons.
+- **Content:** What was fixed, what "traps" were found, and what should be improved next.
 
 ---
 
