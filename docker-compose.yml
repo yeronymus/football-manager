@@ -39,7 +39,7 @@ services:
 volumes:
   postgres_data:
     external: true
-    name: football_postgres_data
+    name: football-prod_postgres_data
   redis_data:
     external: true
-    name: football_redis_data
+    name: football-prod_redis_data
