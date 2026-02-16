@@ -1,7 +1,4 @@
-from typing import TYPE_CHECKING
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from app.db.models import Game, Chat, Signup, SignupStatus, GameStatus, GameStats, User, Team
@@ -84,6 +81,10 @@ class GameLifecycleService:
                     self.scheduler.schedule_publish(game.id, pub_at)
             
             self.scheduler.schedule_game_lifecycle(game)
+            
+            # Schedule MVP Calc
+            mvp_time = game.date_time + timedelta(hours=7, minutes=30)
+            self.scheduler.schedule_mvp_calculation_at(game.id, mvp_time)
         
         # No Commit here. Caller must commit.
         return game
@@ -119,6 +120,11 @@ class GameLifecycleService:
                      # The scheduler methods themselves check if run_date is in the future.
                      self.scheduler.schedule_voting(game.id, game.date_time)
                      self.scheduler.schedule_admin_reminder(game.id, game.date_time)
+                     
+                     # NEW: Schedule MVP Calc (Game Start + 7.5h)
+                     from datetime import timedelta
+                     mvp_time = game.date_time + timedelta(hours=7, minutes=30)
+                     self.scheduler.schedule_mvp_calculation_at(game.id, mvp_time)
         
         if data.max_players and data.max_players != game.max_players:
              changes.append(f"👥 Мест: {game.max_players} -> {data.max_players}")

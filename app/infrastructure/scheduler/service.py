@@ -104,13 +104,35 @@ class SchedulerService:
             )
 
     def schedule_mvp_calculation(self, game_id: int):
-        """Schedules MVP calc 5h after NOW (usually called when sending voting msg)."""
-        # Note: logic in tasks.py says 'datetime.now() + 5h'.
-        # That logic is inside 'send_voting_message'. 
-        # So 'send_voting_message' schedules ANOTHER task.
-        # Ideally, we should pull that out too, but for now let's leave it 
-        # as it's a chain reaction.
+        """
+        Schedules MVP calculation 5h after voting starts.
+        Typically called by send_voting_message handler, but we expose it here
+        for manual scheduling or recovery.
+        """
+        # Voting opens 2.5h after game. MVP calc is 5h after THAT (total 7.5h).
+        # We need to know specific time.
+        # Ideally, we calculate it from game_time. 
+        # But this method signature only has game_id? 
+        # Let's change signature or fetch game.
+        # Fetching game inside infrastructure service is discouraged (circular dependency risk).
+        # Better: pass date_time.
         pass
+
+    def schedule_mvp_calculation_at(self, game_id: int, run_date: datetime):
+        """Schedules MVP calculation at specific time."""
+        now_tz = datetime.now(run_date.tzinfo) if run_date.tzinfo else datetime.now()
+        
+        if run_date > now_tz:
+            job_id = f"mvp_calc_{game_id}"
+            scheduler.add_job(
+                calculate_mvp,
+                'date',
+                run_date=run_date,
+                args=[game_id],
+                id=job_id,
+                replace_existing=True
+            )
+            logger.info(f"Scheduled MVP calculation for game {game_id} at {run_date}")
 
     def cancel_game_tasks(self, game_id: int):
         """Cancels all tasks for a game."""

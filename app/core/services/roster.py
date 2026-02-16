@@ -50,13 +50,21 @@ class RosterService:
             # Если уже записан, возвращаем успех, но помечаем что ничего не изменилось
             return JoinResult(False, existing, "Вы уже записаны!", existing.status == SignupStatus.RESERVE)
 
-        # 3. Проверка времени
+        # 3. Проверка времени (Game Date limits)
         if game.date_time:
-             # Приводим к naive datetime для сравнения, если нужно
              now = datetime.now().replace(tzinfo=None)
              game_dt = game.date_time.replace(tzinfo=None)
              if game_dt < now:
                  return JoinResult(False, None, "Игра уже прошла!", False)
+
+        # 3.1 Configurable Registration Window (Game #6+)
+        # If registration_hours is set (> 0), we enforce it.
+        if game.created_at and game.registration_hours and game.registration_hours > 0 and not ignore_limit:
+             now_ts = datetime.now().replace(tzinfo=None)
+             created_at = game.created_at.replace(tzinfo=None)
+             diff = (now_ts - created_at).total_seconds() / 3600
+             if diff > float(game.registration_hours):
+                  return JoinResult(False, None, f"⏳ Запись закрыта (прошло {game.registration_hours} ч.)", False)
 
         # 4. Логика слотов (Основной vs Резерв)
         active_count = await self.uow.game_repo.get_active_signups_count(game_id)

@@ -33,8 +33,12 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
         date_str = date_str.replace(eng, rus)
 
     # Header
+    # Hidden Link for Auto-Forward Detection (Zero-width space)
+    # This allows common.py to detect the game_id in channel forwards
+    hidden_link = f'<a href="https://t.me/fm_metabot?start=game_{game.id}">&#8203;</a>'
+    
     duration_str = f" 🕒 {game.duration} часа" if game.duration else ""
-    text = f"⚽ <b>{date_str}{duration_str}</b>\n"
+    text = f"{hidden_link}⚽ <b>{date_str}{duration_str}</b>\n"
     text += f"📍 <b>{html.escape(game.location)}</b>\n"
     
     if is_short:
