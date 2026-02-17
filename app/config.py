@@ -52,6 +52,7 @@ class Settings:
 
             self.redis_host = os.getenv("REDIS_HOST", "redis")
             self.redis_port = int(os.getenv("REDIS_PORT", "6379"))
+            self.redis_password = os.getenv("REDIS_PASSWORD", None)
 
             # ELO
             self.elo_k_factor_base = int(os.getenv("ELO_K_FACTOR_BASE", "25"))

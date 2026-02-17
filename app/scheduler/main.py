@@ -6,6 +6,7 @@ jobstores = {
     'default': RedisJobStore(
         host=settings.redis_host,
         port=settings.redis_port,
+        password=settings.redis_password,
         db=0
     )
 }
