@@ -49,7 +49,8 @@ class GameLifecycleService:
             gk_hours=data.gk_hours,
             registration_hours=data.registration_hours,
             duration=data.duration,
-            status=GameStatus.OPEN
+            status=GameStatus.OPEN,
+            game_type=data.game_type
         )
         self.session.add(game)
         await self.session.flush() # To get ID

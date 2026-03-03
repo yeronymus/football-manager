@@ -38,9 +38,18 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
     # This allows common.py to detect the game_id in channel forwards
     hidden_link = f'<a href="https://t.me/fm_metabot?start=game_{game.id}">&#8203;</a>'
     
+    # Game Type Label
+    try:
+        is_draft = game.game_type and game.game_type.value == "draft"
+    except AttributeError:
+        is_draft = False
+        
+    type_label = "🎯 <b>Драфт</b>" if is_draft else "🟢 <b>Общая игра</b>"
+    
     duration_val = f"{game.duration:g}" if game.duration else ""
     duration_str = f" 🕒 {duration_val} часа" if duration_val else ""
-    text = f"{hidden_link}⚽ <b>{date_str}{duration_str}</b>\n"
+    text = f"{hidden_link}{type_label}\n"
+    text += f"⚽ <b>{date_str}{duration_str}</b>\n"
     text += f"📍 <b>{html.escape(game.location)}</b>\n"
     
     if is_short:
@@ -167,17 +176,19 @@ async def update_game_message(bot, game, session: AsyncSession):
     # 1. Update Channel (Full mode)
     if game.channel_id and game.channel_message_id:
         text_full = await format_game_message(game, session, is_short=False, signups=signups)
+        text_full += "\n\n👇 <b>Запись ведется в прикрепленном чате!</b>"
         try:
             await bot.edit_message_text(
                 chat_id=game.channel_id,
                 message_id=game.channel_message_id,
                 text=text_full,
-                reply_markup=get_game_keyboard(game.id),
+                reply_markup=None,
                 parse_mode="HTML"
             )
         except Exception as e:
             import logging
             logging.warning(f"Failed to edit message in channel {game.channel_id}: {e}")
+
 
     # 2. Update Primary Chat (Short mode)
     text_short = await format_game_message(game, session, is_short=True, signups=signups)

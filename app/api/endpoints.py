@@ -302,10 +302,11 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
              if new_game.channel_id:
                  try:
                      text_full = await format_game_message(new_game, session, is_short=False)
+                     text_full += "\n\n👇 <b>Запись ведется в прикрепленном чате!</b>"
                      sent_full = await bot.send_message(
                          chat_id=new_game.channel_id,
                          text=text_full,
-                         reply_markup=get_game_keyboard(new_game.id)
+                         reply_markup=None
                      )
                      new_game.channel_message_id = sent_full.message_id
                  except Exception as e:

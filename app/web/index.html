@@ -94,6 +94,14 @@
     </div>
 
     <div class="form-group">
+        <label for="game_type">Формат игры</label>
+        <select id="game_type">
+            <option value="regular" selected>Общая игра</option>
+            <option value="draft">Драфт</option>
+        </select>
+    </div>
+
+    <div class="form-group">
         <label for="team_count">Количество команд</label>
         <select id="team_count">
             <option value="2" selected>2 Команды</option>
@@ -345,6 +353,7 @@
                     price: parseInt(document.getElementById('price').value) || 0,
                     payment_info: document.getElementById('payment_info').value || "",
                     team_count: parseInt(document.getElementById('team_count').value) || 2,
+                    game_type: document.getElementById('game_type').value || "regular",
                     gk_hours: parseInt(document.getElementById('gk_hours').value) || 24,
                     registration_hours: parseInt(document.getElementById('registration_hours').value) || 0,
                     duration: parseFloat(document.getElementById('duration').value) || 2,
