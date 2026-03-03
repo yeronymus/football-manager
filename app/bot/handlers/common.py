@@ -156,6 +156,7 @@ async def cmd_help(message: types.Message):
         parse_mode="HTML"
     )
 
+@router.message(CommandStart())
 async def cmd_start(message: types.Message, command: CommandObject, state: FSMContext, session: AsyncSession):
     """
     Unified /start handler.
@@ -207,17 +208,24 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 game_id = int(args.split("_")[1])
                 action_type = "game"
             except ValueError: pass
-        elif args.startswith("edit_"):
+        elif args.startswith("finish_") or args.startswith("edit_"):
             try:
                 game_id = int(args.split("_")[1])
-                action_type = "edit"
-            except ValueError: pass
-            except ValueError: pass
-        elif args.startswith("finish_"):
-            try:
-                game_id = int(args.split("_")[1])
-                action_type = "finish"
-            except ValueError: pass
+                # Constructed correct WebApp URL (mode=edit for finish.html)
+                base = settings.webapp_url.rstrip("/")
+                if args.startswith("finish_"):
+                    web_url = f"{base}/web/finish.html?game_id={game_id}&mode=edit"
+                    label = "🏁 Заполнить результаты"
+                else:
+                    web_url = f"{base}/web/edit_game.html?game_id={game_id}"
+                    label = "✏️ Открыть редактор"
+                
+                kb = types.InlineKeyboardMarkup(inline_keyboard=[
+                    [types.InlineKeyboardButton(text=label, web_app=types.WebAppInfo(url=web_url))]
+                ])
+                await message.answer(f"🛠 Управление игрой #{game_id}:", reply_markup=kb)
+                return
+            except (ValueError, IndexError): pass
         elif args.startswith("vote_"):
             try:
                 game_id = int(args.split("_")[1])
@@ -284,22 +292,20 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     from app.bot.utils import format_game_message
                     text = await format_game_message(game, session)
                     
-                    # 2. Get standard keyboard (which has Deep Link URL for draft)
+                    # 2. Keyboards
+                    # Standard Join/Leave
                     kb = get_game_keyboard(game_id)
-                    
-                    # 3. If Admin (Calculated dynamically above)
-                    
-                    if is_admin:
-                        # Clean UX: No Join/Leave buttons, just the tool they asked for.
-                        web_app_url = f"{settings.webapp_url}/web/draft.html?game_id={game_id}&v=1.9"
-                        kb = types.InlineKeyboardMarkup(inline_keyboard=[
-                            [types.InlineKeyboardButton(text="🛠 Составы (Draft) [WebApp]", web_app=types.WebAppInfo(url=web_app_url))]
-                        ])
-                    else:
-                        # Non-admins gets standard view
-                        kb = get_game_keyboard(game_id)
-
                     await message.answer(text, reply_markup=kb)
+
+                    # 3. If Admin -> Extra Dash
+                    if is_admin:
+                        base = settings.webapp_url.rstrip("/")
+                        web_url = f"{base}/web/draft.html?game_id={game_id}&v=1.9"
+                        kb_draft = types.InlineKeyboardMarkup(inline_keyboard=[
+                            [types.InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=web_url))]
+                        ])
+                        await message.answer("🔧 Админ-панель:", reply_markup=kb_draft)
+                    
                     return
                 else:
                     await message.answer("Игра не найдена. 🤷‍♂️")

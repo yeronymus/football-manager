@@ -2,7 +2,7 @@ from aiogram import Router, F, types
 from app.config import settings
 from app.core.uow import UnitOfWork
 from app.core.services.roster import RosterService, PlayerJoinedEvent, PlayerLeftEvent
-from app.core.events import EventBus
+from app.core.events import event_bus
 import logging
 
 router = Router()
@@ -59,7 +59,7 @@ async def process_join(callback: types.CallbackQuery):
         # --- ЗА ПРЕДЕЛАМИ ТРАНЗАКЦИИ ---
         # Отправляем события только если commit прошел успешно
         if event_payload:
-            await EventBus.publish(event_payload)
+            await event_bus.publish(event_payload)
 
         await callback.answer(alert_msg)
 
@@ -97,7 +97,7 @@ async def process_leave(callback: types.CallbackQuery):
                 await callback.bot.send_message(promoted.user_id, "🚀 Вы переведены в основной состав!")
             except: pass
 
-        await EventBus.publish(PlayerLeftEvent(game_id, tg_id, msg, promoted))
+        await event_bus.publish(PlayerLeftEvent(game_id, tg_id, msg, promoted))
         await callback.answer(msg)
 
     except Exception as e:

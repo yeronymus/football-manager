@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 import logging
 
 from app.db.models import Game, Chat, Signup, SignupStatus, GameStatus, GameStats, User, Team
@@ -6,6 +7,7 @@ from app.api.schemas import GameCreate, GameUpdate, GameFinishRequest
 from app.core.services.stats import StatsService
 from app.infrastructure.scheduler.service import SchedulerService
 from app.config import settings
+from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
     from app.core.uow import UnitOfWork

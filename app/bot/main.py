@@ -41,8 +41,8 @@ dp.include_router(vote_router)
 from app.bot.admin_system import router as system_router
 dp.include_router(system_router)
 
-from app.bot.common_handlers import router as common_router
-dp.include_router(common_router)
+# from app.bot.common_handlers import router as common_router
+# dp.include_router(common_router)
 
 from app.bot.stats_handlers import router as stats_router
 dp.include_router(stats_router)

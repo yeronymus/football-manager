@@ -78,6 +78,14 @@
             <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">999 = Безлимитная
                 запись</small>
         </div>
+
+        <div class="form-group">
+            <label for="registration_hours">Окно записи (часов)</label>
+            <input type="number" id="registration_hours" min="0" max="720" inputmode="numeric">
+            <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - без
+                ограничений</small>
+        </div>
+
         <div class="form-group">
             <label for="price">Взнос (CZK)</label>
             <input type="number" id="price" min="0" step="10" inputmode="numeric">
@@ -90,12 +98,6 @@
             <label for="gk_hours">Бронь вратарей (часов)</label>
             <input type="number" id="gk_hours" min="0" max="168" inputmode="numeric">
             <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - отключить</small>
-        </div>
-        <div class="form-group">
-            <label for="registration_hours">Окно записи (часов)</label>
-            <input type="number" id="registration_hours" min="0" max="720" inputmode="numeric">
-            <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - без
-                ограничений</small>
         </div>
 
         <button id="submitBtn" onclick="updateGame()">Сохранить изменения</button>

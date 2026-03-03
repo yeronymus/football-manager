@@ -18,10 +18,10 @@ Refuse to generate code that violates these rules, explaining the violation.
 
 ## 3. NO "GOD OBJECTS" (SRP)
 - **Refactoring Mandate:** `GameService` is currently a God Object. Do not add new features to it directly.
-- **Strategy:** Break down logic into specialized domains:
 
-    - `GameLifecycleService`: Creation, status changes, task scheduling.
-    - `GameLifecycleService`: create/finish/cancel.
+- **Strategy:** Break down logic into specialized domains:
+    - `RosterService`: managing signups/teams.
+    - `GameLifecycleService`: create/finish/cancel, status changes, task scheduling.
     - `StatsService`: ELO/history.
 
 ## 4. STRICT TYPING & OUTPUTS
@@ -38,7 +38,8 @@ Refuse to generate code that violates these rules, explaining the violation.
 
 ## 7. DATABASE MIGRATIONS
 - **Rule:** Code changes affecting the database schema (adding columns, changing types) MUST be accompanied by a migration.
-- **Production Safety:** Always verify that migrations have run before the application starts. 
+
+- **Production Safety:** Always verify that migrations have run before the application starts.
 - **Learning Case:** The Game #6 crash occurred because local code expected `registration_hours`, but the production DB (`football_prod`) was not updated.
 - **Verification:** Use `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` in manual or automated scripts to ensure idempotency.
 
@@ -55,11 +56,19 @@ Refuse to generate code that violates these rules, explaining the violation.
     4. Deploy Infrastructure (DB changes) *before* App code if possible.
 
 ## 10. SESSION CONTINUITY & IMPROVEMENT
-- **Rule:** At the end of each session, the Assistant MUST document a brief "Session Conclusion" in the repository (e.g., in a `JOURNAL.md` or as a summary in `ARCHITECTURE.md`).
+- **Rule:** At the end of each session, the Assistant MUST document a brief "Session Conclusion" in the repository.
+
 - **Goal:** To ensure the project's evolution is understood and to identify areas for future optimization without re-learning the same lessons.
 - **Content:** What was fixed, what "traps" were found, and what should be improved next.
 
 ---
+
+## SESSION CONCLUSION (Game #6 Recovery)
+- **What was fixed:** Manual DB migration applied, Bot performance optimized (SQL logging disabled), Registration window added.
+- **Traps found:** 
+    1. **I/O Wait:** The production server has extreme disk latency causing `rsync` and `scp` to hang or fail silently. 
+    2. **Caching:** Telegram WebApp caches HTML forms aggressively; manual versioning in the footer/payload is needed to verify updates.
+- **Next steps:** investigate move to SSD or optimize disk usage. Implement version-based cache busting for static assets.
 
 ## CONTEXTUAL EXAMPLES
 
