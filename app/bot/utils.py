@@ -176,7 +176,7 @@ async def update_game_message(bot, game, session: AsyncSession):
     # 1. Update Channel (Full mode)
     if game.channel_id and game.channel_message_id:
         text_full = await format_game_message(game, session, is_short=False, signups=signups)
-        text_full += "\n\n👇 <b>Запись ведется в прикрепленном чате!</b>"
+        text_full += "\n\n<b>Запись открыта. Переходите в чат.</b>"
         try:
             await bot.edit_message_text(
                 chat_id=game.channel_id,
