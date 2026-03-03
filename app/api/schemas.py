@@ -14,6 +14,7 @@ class GameCreate(BaseModel):
     gk_hours: int = 48
     duration: float = 2.0
     registration_hours: int = 0
+    game_type: str = "regular"
     auto_join_ids: List[int] = []
     publish_at: Optional[datetime] = None
     initData: str

@@ -58,21 +58,41 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
                 game.channel_id = message.forward_from_chat.id
                 game.channel_message_id = message.forward_from_message_id
             
-            # --- Attempt to add buttons to the forward itself ---
-            # If the bot posted the message in the channel and is an admin in the group, 
-            # it can edit the forward in the group directly. This avoids duplicate messages.
+            # --- Attempt to replace the forward with our own message ---
             try:
-                kb = get_game_keyboard(game_id)
-                await message.edit_reply_markup(reply_markup=kb)
-                logger.info(f"Successfully added buttons to auto-forward message {message.message_id} in {message.chat.id}")
+                from app.bot.keyboards import get_game_keyboard
+                from app.bot.utils import format_game_message
                 
-                # Use this message as the primary one for this chat
+                # Удаляем пересланное сообщение из канала
+                await message.delete()
+                
+                # Формируем и отправляем новое сообщение с кнопками
+                text_short = await format_game_message(game, session, is_short=True)
+                kb = get_game_keyboard(game_id)
+                
+                sent_msg = await message.bot.send_message(
+                    chat_id=message.chat.id,
+                    text=text_short,
+                    reply_markup=kb,
+                    parse_mode="HTML"
+                )
+                
+                logger.info(f"Successfully replaced auto-forward with message {sent_msg.message_id} in {message.chat.id}")
+                
+                # Обновляем ID сообщения в базе, чтобы бот мог его редактировать при записи
                 game.chat_id = message.chat.id
-                game.message_id = message.message_id
+                game.message_id = sent_msg.message_id
                 await session.commit()
-                return # No need to reply, we have buttons on the list!
+                
+                # Пробуем закрепить
+                try:
+                    await message.bot.pin_chat_message(chat_id=message.chat.id, message_id=sent_msg.message_id)
+                except:
+                    pass
+                    
+                return
             except Exception as e:
-                logger.info(f"Failed to edit auto-forward markup: {e}. Falling back to reply.")
+                logger.info(f"Failed to replace auto-forward: {e}. Falling back to reply.")
 
             # --- Avoid Duplicates ---
             # If we already have a reasonably fresh message in this chat, or if this is the FIRST time we see it here:
@@ -167,6 +187,9 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
         await message.delete()
     except:
         pass
+
+    # Always reset any stale FSM state (e.g. stuck registration in Redis)
+    await state.clear()
 
     # Security: Prevent /start in groups from triggering registration flow
     if message.chat.type != "private":
@@ -319,7 +342,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
         # 2. Send Welcome Message
         await message.answer(
             "✅ <b>Вы уже зарегистрированы!</b>\n\n"
-            "Вы можете посмотреть свои матчи (/history) и профиль (/profile) через меню команд.",
+            "Вы можете посмотреть свои матчи (/my_history) и профиль (/my_profile) через меню команд.",
             reply_markup=types.ReplyKeyboardRemove()
         )
         return

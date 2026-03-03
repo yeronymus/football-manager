@@ -31,6 +31,10 @@ class GameStatus(str, enum.Enum):
     FINISHED = "finished"
     CANCELLED = "cancelled"
 
+class GameType(str, enum.Enum):
+    REGULAR = "regular"   # Общая игра
+    DRAFT = "draft"       # Драфт
+
 class SignupStatus(str, enum.Enum):
     ACTIVE = "active"
     RESERVE = "reserve"
@@ -84,6 +88,7 @@ class Game(Base):
     gk_hours = Column(Integer, default=48)
     duration = Column(Float, default=2.0) # Match duration in hours
     status = Column(Enum(GameStatus), default=GameStatus.OPEN)
+    game_type = Column(Enum(GameType, name="game_type_enum"), default=GameType.REGULAR)
     winner_team = Column(Enum(Team), nullable=True)
     score_a = Column(Integer, nullable=True)
     score_b = Column(Integer, nullable=True)
