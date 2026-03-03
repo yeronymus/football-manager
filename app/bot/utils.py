@@ -38,7 +38,8 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
     # This allows common.py to detect the game_id in channel forwards
     hidden_link = f'<a href="https://t.me/fm_metabot?start=game_{game.id}">&#8203;</a>'
     
-    duration_str = f" 🕒 {game.duration} часа" if game.duration else ""
+    duration_val = f"{game.duration:g}" if game.duration else ""
+    duration_str = f" 🕒 {duration_val} часа" if duration_val else ""
     text = f"{hidden_link}⚽ <b>{date_str}{duration_str}</b>\n"
     text += f"📍 <b>{html.escape(game.location)}</b>\n"
     
@@ -125,10 +126,7 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
             for i, (signup, user) in enumerate(unassigned, 1):
                 text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
     else:
-        count = game.team_count if game.team_count else 2
-        per_team = game.max_players // count
-        fmt = " на ".join([str(per_team)] * count)
-        text += f"👥 <b>Состав</b> ({len(active_players)}/{game.max_players}) ({fmt}):\n"
+        text += f"👥 <b>Состав</b> ({len(active_players)}/{game.max_players}):\n"
 
         if active_players:
             text += "\n🏃 <b>Игроки:</b>\n"

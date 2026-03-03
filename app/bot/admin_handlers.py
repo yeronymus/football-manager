@@ -209,9 +209,9 @@ async def cb_kick_confirm(callback: types.CallbackQuery, session: AsyncSession):
             except: pass
             
             # Publish Event for UI Update
-            from app.core.events import EventBus
+            from app.core.events import event_bus
             from app.core.services.roster import PlayerLeftEvent
-            await EventBus.publish(PlayerLeftEvent(game_id, user_id, "Администратор удалил игрока", None))
+            await event_bus.publish(PlayerLeftEvent(game_id, user_id, "Администратор удалил игрока", None))
 
             # Return to kick menu
             await cb_god_kick_menu(callback, session)
@@ -273,11 +273,11 @@ async def cmd_add_player(message: types.Message, session: AsyncSession):
              except: pass
              
              # Publish Event
-             from app.core.events import EventBus
+             from app.core.events import event_bus
              from app.core.services.roster import PlayerJoinedEvent
              
              if result.signup:
-                 await EventBus.publish(PlayerJoinedEvent(
+                 await event_bus.publish(PlayerJoinedEvent(
                      game_id=game_id, 
                      user_id=target_user.user_id, 
                      signup=result.signup, 

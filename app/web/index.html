@@ -77,7 +77,8 @@
     </div>
     <div class="form-group">
         <label for="location">Локация</label>
-        <input type="text" id="location" value="Pankrac" placeholder="Например, Pankrac" required>
+        <input type="text" id="location" value="Plamínkové 1539, Praha 4-Nusle" placeholder="Например, Pankrac"
+            required>
     </div>
     <div class="form-group">
         <label for="max_players">Кол-во мест</label>
@@ -85,6 +86,13 @@
         <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">999 = Безлимитная
             запись</small>
     </div>
+
+    <div class="form-group">
+        <label for="registration_hours">Окно записи (часов)</label>
+        <input type="number" id="registration_hours" value="24" min="0" max="720" inputmode="numeric">
+        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - без ограничений</small>
+    </div>
+
     <div class="form-group">
         <label for="team_count">Количество команд</label>
         <select id="team_count">
@@ -110,18 +118,7 @@
 
     <div class="form-group">
         <label for="duration">Длительность (часов)</label>
-        <input type="number" id="duration" value="2" min="1" max="5" inputmode="numeric">
-    </div>
-
-    <div class="form-group">
-        <label for="publish_at">Отложенная публикация (опционально)</label>
-        <input type="text" id="publish_at" placeholder="Сразу">
-    </div>
-
-    <div class="form-group">
-        <label for="registration_hours">Окно записи (часов)</label>
-        <input type="number" id="registration_hours" value="0" min="0" max="720" inputmode="numeric">
-        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - без ограничений (рекомендуется 24)</small>
+        <input type="number" id="duration" value="2" min="0.5" max="5" step="0.5" inputmode="decimal">
     </div>
 
     <div class="form-group">
@@ -130,8 +127,13 @@
         <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - отключить</small>
     </div>
 
+    <div class="form-group">
+        <label for="publish_at">Отложенная публикация (опционально)</label>
+        <input type="text" id="publish_at" placeholder="Сразу">
+    </div>
+
     <button id="submitBtn" onclick="createGame()">Опубликовать</button>
-    <div style="text-align: center; margin-top: 10px; font-size: 10px; color: var(--tg-theme-hint-color);">v1.2.1</div>
+    <div style="text-align: center; margin-top: 10px; font-size: 10px; color: var(--tg-theme-hint-color);">v1.3.0</div>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -300,23 +302,58 @@
             btn.innerText = "Публикация...";
 
             try {
+                // Force interpret as Prague time (Europe/Prague)
+                function toPragueISO(localDateStr) {
+                    // localDateStr is like "2026-02-22T19:00" from flatpickr
+                    // We need to interpret it as Prague time, not device local time
+                    const pragueDate = new Date(localDateStr);
+                    // Get the offset difference between device and Prague
+                    const deviceOffset = pragueDate.getTimezoneOffset(); // in minutes, e.g. -300 for UTC+5
+                    const pragueStr = pragueDate.toLocaleString('en-US', { timeZone: 'Europe/Prague' });
+                    const pragueLocal = new Date(pragueStr);
+                    const pragueOffset = pragueLocal.getTimezoneOffset();
+                    // The user picked this time meaning Prague time
+                    // So we create a date that represents "localDateStr in Prague"
+                    const utcDate = new Date(localDateStr + ':00');
+                    // Get Prague's UTC offset by comparing
+                    const formatter = new Intl.DateTimeFormat('en-US', {
+                        timeZone: 'Europe/Prague',
+                        timeZoneName: 'shortOffset'
+                    });
+                    const parts = formatter.formatToParts(new Date());
+                    const tzPart = parts.find(p => p.type === 'timeZoneName');
+                    // Parse offset like "GMT+1" or "GMT+2"
+                    let pragueOffsetHours = 1; // default CET
+                    if (tzPart) {
+                        const match = tzPart.value.match(/GMT([+-]\d+)/);
+                        if (match) pragueOffsetHours = parseInt(match[1]);
+                    }
+                    // Build ISO string: treat input as Prague time
+                    // e.g. "2026-02-22T19:00" in Prague (UTC+1) = "2026-02-22T18:00:00.000Z"
+                    const [datePart, timePart] = localDateStr.split('T');
+                    const [hours, minutes] = timePart.split(':').map(Number);
+                    const d = new Date(datePart + 'T' + timePart + ':00Z');
+                    d.setUTCHours(d.getUTCHours() - pragueOffsetHours);
+                    return d.toISOString();
+                }
+
                 const payload = {
                     chat_id: parseInt(chatId),
-                    date_time: new Date(dateTime).toISOString(),
+                    date_time: toPragueISO(dateTime),
                     location: location,
                     max_players: parseInt(maxPlayers),
-                    price: parseInt(document.getElementById('price').value) || 100,
-                    payment_info: document.getElementById('payment_info').value || "2924402033/0800",
+                    price: parseInt(document.getElementById('price').value) || 0,
+                    payment_info: document.getElementById('payment_info').value || "",
                     team_count: parseInt(document.getElementById('team_count').value) || 2,
                     gk_hours: parseInt(document.getElementById('gk_hours').value) || 24,
                     registration_hours: parseInt(document.getElementById('registration_hours').value) || 0,
-                    duration: parseInt(document.getElementById('duration').value) || 2,
+                    duration: parseFloat(document.getElementById('duration').value) || 2,
                     auto_join_ids: checkedAdmins,
                     initData: tg.initData
                 };
 
                 if (publishAtInput.value) {
-                    payload.publish_at = new Date(publishAtInput.value).toISOString();
+                    payload.publish_at = toPragueISO(publishAtInput.value);
                 }
 
                 const response = await fetch('/api/create_game', {

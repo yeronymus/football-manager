@@ -84,6 +84,8 @@ class Settings:
 
     @property
     def REDIS_URL(self) -> str:
+        if self.redis_password:
+            return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/0"
         return f"redis://{self.redis_host}:{self.redis_port}/0"
 
 # Singleton

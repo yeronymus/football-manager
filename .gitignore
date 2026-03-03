@@ -67,3 +67,7 @@ scripts/legacy/
 /votes_schema.txt
 /docker_ps.txt
 /docker_status_check.txt
+*.xlsx
+*.csv
+*.b64
+Draft_Stats*.md

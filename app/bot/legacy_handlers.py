@@ -23,7 +23,7 @@ from app.core.services.legacy_roster import PlayerJoinedEvent, PlayerLeftEvent #
 # So they expect them in roster.py probably.
 # I will append them to roster.py or ensure they are there.
 
-from app.core.events import EventBus, Event
+from app.core.events import event_bus, Event
 import logging
 
 router = Router()
@@ -78,7 +78,7 @@ async def process_join(callback: types.CallbackQuery):
 
         # --- Side Effects ---
         if event_payload:
-            await EventBus.publish(event_payload)
+            await event_bus.publish(event_payload)
 
         await callback.answer(alert_msg)
 
@@ -135,7 +135,7 @@ async def process_leave(callback: types.CallbackQuery):
 
         # Publish Event
         from app.core.services.roster import PlayerLeftEvent
-        await EventBus.publish(PlayerLeftEvent(
+        await event_bus.publish(PlayerLeftEvent(
             game_id=game_id, 
             user_id=telegram_user_id, 
             message=msg, 
