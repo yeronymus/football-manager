@@ -145,6 +145,7 @@ async def cb_god_game_detail(callback: types.CallbackQuery, session: AsyncSessio
         
     text = f"⚽ <b>Игра #{game.id}</b>\n📍 {game.location}\n📅 {game.date_time}\n📊 Статус: {game.status}\n👥 Игроков: {len(game.signups)}"
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="📢 Запостить в канал", callback_data=f"god_publish_chan_{game.id}")],
         [types.InlineKeyboardButton(text="🧨 Режим Удаления", callback_data=f"god_del_wait_{game.id}")],
         [types.InlineKeyboardButton(text="🔙 Назад", callback_data="god_menu_games")]
     ])
@@ -230,3 +231,39 @@ async def cb_setup_refresh(callback: types.CallbackQuery, session: AsyncSession)
     try: await callback.message.edit_reply_markup(reply_markup=kb)
     except: pass
     await callback.answer("Обновлено")
+
+@router.callback_query(F.data.startswith("god_publish_chan_"))
+async def cb_god_publish_chan(callback: types.CallbackQuery, session: AsyncSession):
+    game_id = int(callback.data.split("_")[3])
+    game = await session.get(Game, game_id)
+    if not game:
+        await callback.answer("Игра не найдена", show_alert=True)
+        return
+        
+    if not game.channel_id:
+        # Pопытаемся найти привязанный канал через Chat
+        chat = await session.get(Chat, game.chat_id)
+        if chat and chat.channel_id:
+            game.channel_id = chat.channel_id
+        else:
+            await callback.answer("У этой игры или чата не настроен channel_id. Чтобы публиковать, нужно привязать канал.", show_alert=True)
+            return
+
+    from app.bot.utils import format_game_message
+    from app.bot.keyboards import get_game_keyboard
+
+    try:
+        text = await format_game_message(game, session, is_short=False)
+        msg = await callback.bot.send_message(
+            chat_id=game.channel_id,
+            text=text,
+            reply_markup=get_game_keyboard(game.id),
+            parse_mode="HTML"
+        )
+        game.channel_message_id = msg.message_id
+        await session.commit()
+        await callback.answer("✅ Анонс успешно отправлен в канал!")
+    except Exception as e:
+         import logging
+         logging.error(f"Failed to publish to channel: {e}")
+         await callback.answer(f"❌ Ошибка отправки: {e}", show_alert=True)
