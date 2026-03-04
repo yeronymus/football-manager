@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 import logging
 
+from sqlalchemy import select
 from app.db.models import Game, Chat, Signup, SignupStatus, GameStatus, GameStats, User, Team
 from app.api.schemas import GameCreate, GameUpdate, GameFinishRequest
 from app.core.services.stats import StatsService

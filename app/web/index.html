@@ -96,8 +96,8 @@
     <div class="form-group">
         <label for="game_type">Формат игры</label>
         <select id="game_type">
-            <option value="regular" selected>Общая игра</option>
-            <option value="draft">Драфт</option>
+            <option value="regular">Общая игра</option>
+            <option value="draft" selected>Драфт</option>
         </select>
     </div>
 
@@ -131,7 +131,7 @@
 
     <div class="form-group">
         <label for="gk_hours">Бронь вратарей (часов)</label>
-        <input type="number" id="gk_hours" value="24" min="0" max="168" inputmode="numeric">
+        <input type="number" id="gk_hours" value="0" min="0" max="168" inputmode="numeric">
         <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - отключить</small>
     </div>
 

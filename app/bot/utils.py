@@ -38,12 +38,9 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
     # This allows common.py to detect the game_id in channel forwards
     hidden_link = f'<a href="https://t.me/fm_metabot?start=game_{game.id}">&#8203;</a>'
     
-    # Game Type Label
-    try:
-        is_draft = game.game_type and game.game_type.value == "draft"
-    except AttributeError:
-        is_draft = False
-        
+    # Game Type Label - handle both str and Enum
+    game_type_val = (game.game_type.value if hasattr(game.game_type, 'value') else str(game.game_type or "")).lower()
+    is_draft = game_type_val == "draft"
     type_label = "🎯 <b>Драфт</b>" if is_draft else "🟢 <b>Общая игра</b>"
     
     duration_val = f"{game.duration:g}" if game.duration else ""

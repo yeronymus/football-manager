@@ -79,6 +79,10 @@ admin_rights_cache = {}
 CACHE_TTL = 300  # 5 minutes
 
 async def check_admin_rights(chat_id: int, user_id: int):
+    # System admins bypass all checks
+    if user_id in settings.admin_ids or user_id == settings.system_owner_id:
+        return True
+
     # 1. Check Cache
     current_time = time.time()
     cache_key = (chat_id, user_id)
@@ -101,10 +105,11 @@ async def check_admin_rights(chat_id: int, user_id: int):
         if not is_admin:
              raise HTTPException(status_code=403, detail="You must be an admin of the chat")
              
+    except HTTPException:
+        raise
     except Exception as e:
-        # If API fails, maybe trust cache if strictly needed? 
-        # For now, just fail safe.
         raise HTTPException(status_code=400, detail=f"Cannot verify user rights: {str(e)}")
+
 
 @router.get("/chat/{chat_id}/admins")
 async def get_chat_admins(chat_id: int, initData: str, session: AsyncSession = Depends(get_session)):
@@ -289,48 +294,22 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
                  should_publish_now = False
 
         if should_publish_now:
-             # Reuse legacy helper or replicate?
-             # GameService._publish_game_message was handy.
-             # We can import it? No, it's instance method.
-             # But `format_game_message` and `bot` are available.
-             # Let's extract `_publish_game_message` logic or just do it here.
-             # It's cleaner to have a helper.
-             # Let's use a local helper function to keep endpoint clean?
-             # Or just inline it as it's Controller logic.
-             
-             # 1. Channel
-             if new_game.channel_id:
+             # Publish to Chat (with signup buttons)
+             try:
+                 text = await format_game_message(new_game, session, is_short=False)
+                 msg = await bot.send_message(
+                     chat_id=new_game.chat_id,
+                     text=text,
+                     reply_markup=get_game_keyboard(new_game.id)
+                 )
+                 new_game.message_id = msg.message_id
+                 await session.commit()
                  try:
-                     text_full = await format_game_message(new_game, session, is_short=False)
-                     text_full += "\n\n<b>Запись открыта. Переходите в чат.</b>"
-                     sent_full = await bot.send_message(
-                         chat_id=new_game.channel_id,
-                         text=text_full,
-                         reply_markup=None
-                     )
-                     new_game.channel_message_id = sent_full.message_id
-                 except Exception as e:
-                     logger.warning(f"Failed to publish to channel: {e}")
+                     await bot.pin_chat_message(chat_id=new_game.chat_id, message_id=msg.message_id)
+                 except: pass
+             except Exception as e:
+                 logger.warning(f"Failed to publish to chat: {e}")
 
-             # 2. Chat
-             # Only send if Chat is DIFFERENT from Channel.
-             # If they are same, it means we created IN Channel, and we wait for Auto-Forward.
-             if new_game.chat_id != new_game.channel_id:
-                 try:
-                     text_short = await format_game_message(new_game, session, is_short=True)
-                     msg = await bot.send_message(
-                         chat_id=new_game.chat_id,
-                         text=text_short,
-                         reply_markup=get_game_keyboard(new_game.id)
-                     )
-                     new_game.message_id = msg.message_id
-                     await session.commit()
-                     try:
-                         await bot.pin_chat_message(chat_id=new_game.chat_id, message_id=msg.message_id)
-                     except: pass
-                 except Exception as e:
-                     logger.warning(f"Failed to publish to chat: {e}")
-                 
         # 2. Update Dashboard
         try:
              success = await update_dashboard_message(bot, new_game.id, session)
