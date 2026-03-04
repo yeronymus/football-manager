@@ -70,3 +70,34 @@ async def cmd_list_chats(message: types.Message, session: AsyncSession):
         text += f"▪️ <b>{chat.title}</b> (ID: <code>{chat.chat_id}</code>)\n"
 
     await message.answer(text)
+
+@router.message(Command("merge_users"))
+async def cmd_merge_users(message: types.Message, session: AsyncSession):
+    if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
+        return
+
+    args = message.text.split()
+    if len(args) != 3:
+        await message.answer("Использование: `/merge_users <старый_ID> <новый_ID>`", parse_mode="Markdown")
+        return
+
+    try:
+        old_id = int(args[1])
+        new_id = int(args[2])
+    except ValueError:
+        await message.answer("ID должны быть числами.")
+        return
+
+    from app.core.repositories.user_repository import UserRepository
+    repo = UserRepository(session)
+    
+    try:
+        await repo.merge_users(old_id, new_id)
+        await session.commit()
+        await message.answer(f"✅ Успешно смержили аккаунт {old_id} в {new_id}.")
+    except ValueError as e:
+        await message.answer(f"❌ Ошибка: {e}")
+    except Exception as e:
+        import traceback
+        await session.rollback()
+        await message.answer(f"❌ Ошибка при слиянии: {e}\n\n```{traceback.format_exc()[:500]}```", parse_mode="Markdown")
