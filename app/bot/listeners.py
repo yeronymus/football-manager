@@ -59,20 +59,6 @@ async def update_game_ui(game_id: int):
                 if "message is not modified" not in str(e):
                     logger.warning(f"Failed to update chat message: {e}")
 
-        # 3. Update Channel
-        if game.channel_id and game.channel_message_id:
-             try:
-                await _bot.edit_message_text(
-                    chat_id=game.channel_id,
-                    message_id=game.channel_message_id,
-                    text=text,
-                    reply_markup=get_channel_game_keyboard(game.id),
-                    parse_mode="HTML"
-                )
-             except Exception as e:
-                if "message is not modified" not in str(e):
-                    logger.warning(f"Failed to update channel message: {e}")
-
         # 4. Update Dashboard
         from app.bot.admin_dashboard import update_dashboard_message
         try:

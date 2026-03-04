@@ -70,6 +70,7 @@ class Chat(Base):
     chat_id = Column(BigInteger, primary_key=True, index=True)
     title = Column(String, nullable=False)
     admin_chat_id = Column(BigInteger, nullable=True) # Linked Admin Chat
+    channel_id = Column(BigInteger, nullable=True)    # Linked Announcement Channel
 
     games = relationship("Game", back_populates="chat")
 
