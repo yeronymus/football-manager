@@ -802,11 +802,15 @@
         }
 
         async function publishTeams() {
-            if (!confirm("Опубликовать составы?")) return;
-            // First save
-            await saveTeams();
+            const btn = document.querySelector('.btn-publish');
+            if (!btn) return;
+            const orig = btn.innerText;
+            btn.innerText = "⏳ Публикуем...";
+            btn.disabled = true;
 
             try {
+                await saveTeams();
+
                 const response = await fetch('/api/publish_teams', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -818,9 +822,13 @@
                     throw new Error(err.detail || "Ошибка публикации");
                 }
 
-                tg.showAlert("Опубликовано!");
+                tg.showAlert("✅ Опубликовано!");
                 tg.close();
-            } catch (e) { tg.showAlert("Ошибка: " + e.message); }
+            } catch (e) {
+                tg.showAlert("❌ Ошибка: " + e.message);
+                btn.innerText = orig;
+                btn.disabled = false;
+            }
         }
 
         async function showGameSelector() {

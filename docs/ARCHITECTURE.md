@@ -107,6 +107,30 @@ Refuse to generate code that violates these rules, explaining the violation.
 - [ ] **DB schema migrations**: Still no Alembic. Every schema change requires manual `ALTER TABLE` and hand-edited `models.py`. High risk of desync.
 
 
+---
+
+## SESSION CONCLUSION (Game #8 Draft Day)
+**Date:** 2026-03-07
+
+### What was fixed:
+1. **CloudFlare Tunnel URL expired** (`trees-boost-breach-sides` → `process-silver-solving-portable`). The tunnel process was dead, started a new one. Updated `WEBAPP_URL` in `.env` and forced container reread via `docker compose up -d` (NOT `docker restart`).
+2. **Admin kick notifications disabled**: When kicking players from draft, bot was sending them personal messages. Commented out the notification in `cb_kick_confirm()` in `admin_handlers.py`.
+3. **HTML parse error in `format_game_message`**: A "hidden link" `<a href="...?start=game_8">` was embedded in message text with `parse_mode=HTML`. Telegram parsed `game_8` in the URL as an HTML tag `<game_8>` and rejected the message with "Unsupported start tag". **Fix:** removed the hidden link entirely.
+4. **`publishTeams()` button silently did nothing**: Root cause was `confirm()` (standard browser dialog) being blocked by Telegram WebApp. Dialog flashed briefly then `confirm()` returned `false`, causing immediate function exit. **Fix:** replaced with direct call, no confirmation dialog needed in a dedicated admin app.
+5. **Admins couldn't sign up past registration window**: `join_player()` never received `ignore_limit=True` for admins. **Fix:** detect `is_admin` in `game_handlers.py` and pass `ignore_limit=is_admin`.
+6. **Telegram Mini App HTML cache**: After deploying new `draft.html`, old version was still served. **Fix:** bump `?v=X.X` in the draft URL in `handlers/common.py` to force cache invalidation.
+
+### Unexpected Findings (Ловушки):
+1. **`docker restart` does NOT re-read `.env`** (already known, confirmed again). Always use `docker compose up -d --force-recreate app`.
+2. **`sudo` in non-interactive SSH hangs with `get_pty=False`** — `sudo -S` reads password from stdin but hangs waiting for tty. Use `sshpass` + `scp` for file transfers, and have admin run restart manually.
+3. **Telegram blocks `window.confirm()` in Mini App WebView** — any native browser dialog (`alert`, `confirm`, `prompt`) silently fails. Always use `tg.showAlert()`, `tg.showConfirm()`, or custom HTML modals.
+
+### Known Issues (to fix):
+- [ ] **Guest player links** in published team message show raw `tg://user?id=-XXXXX` text — negative IDs (guests) are not valid Telegram user links. Need to detect guests and omit the `<a>` tag.
+- [ ] **CloudFlare tunnel is still temporary** — URL changes on each restart. Long-term: use a named tunnel with `dmc12.sin.cvut.cz` domain.
+- [ ] **`docker compose restart`** habit — team must use `up -d` not `restart` to pick up `.env` changes.
+
+
 ## CONTEXTUAL EXAMPLES
 
 ### BAD (Refuse to do this):

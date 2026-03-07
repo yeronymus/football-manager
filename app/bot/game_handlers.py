@@ -36,7 +36,8 @@ async def process_join(callback: types.CallbackQuery):
 
             # 2. Вызываем сервис
             service = RosterService(uow)
-            result = await service.join_player(game_id, user)
+            is_admin = tg_id in settings.admin_ids or tg_id == settings.system_owner_id
+            result = await service.join_player(game_id, user, ignore_limit=is_admin)
             
             if not result.success:
                 await callback.answer(result.message, show_alert=True)
