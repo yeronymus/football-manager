@@ -323,7 +323,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     # 3. If Admin -> Extra Dash
                     if is_admin:
                         base = settings.webapp_url.rstrip("/")
-                        web_url = f"{base}/web/draft.html?game_id={game_id}&v=1.9"
+                        web_url = f"{base}/web/draft.html?game_id={game_id}&v=2.0"
                         kb_draft = types.InlineKeyboardMarkup(inline_keyboard=[
                             [types.InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=web_url))]
                         ])
