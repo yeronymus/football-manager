@@ -204,9 +204,10 @@ async def cb_kick_confirm(callback: types.CallbackQuery, session: AsyncSession):
             await callback.answer("Игрок удален")
             
             # Notify the user they were removed
-            try:
-                await callback.bot.send_message(user_id, f"⚠️ Администратор удалил вас из состава на игру #{game_id}.")
-            except: pass
+            # DISABLED PER MVP/DRAFT SPECIFICS
+            # try:
+            #     await callback.bot.send_message(user_id, f"⚠️ Администратор удалил вас из состава на игру #{game_id}.")
+            # except: pass
             
             # Publish Event for UI Update
             from app.core.events import event_bus

@@ -71,3 +71,20 @@ scripts/legacy/
 *.csv
 *.b64
 Draft_Stats*.md
+
+# Custom deployment/temp scripts
+/deploy*.py
+/generate*.py
+/restore*.py
+/compile*.py
+/apply*.py
+/merge*.py
+/ssh_*.py
+/query*.py
+/update*.py
+/import*.py
+/parse*.py
+/scan*.py
+/manage*.py
+/emergency*.py
+*.sql
