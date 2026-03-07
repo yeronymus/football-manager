@@ -88,3 +88,5 @@ Draft_Stats*.md
 /manage*.py
 /emergency*.py
 *.sql
+/fuzzy_*.py
+*.sh
