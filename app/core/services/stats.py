@@ -44,17 +44,61 @@ class StatsService:
         Calculates and applies rating changes, updates user stats, and records history.
         Assumes GameStats (goals) already saved by caller.
         """
-        # Determine Ranks for 3-team games
-        ranking = []
-        if game.team_count == 3:
+        # Determine Ranks and Points for players
+        team_points = {} # Team -> Base Point Change
+
+        if game.team_count == 2:
+            if game.score_a == game.score_b:
+                # Draw: 0 points for both
+                team_points[Team.A] = 0
+                team_points[Team.B] = 0
+            elif game.winner_team == Team.A:
+                team_points[Team.A] = 10
+                team_points[Team.B] = -5
+            elif game.winner_team == Team.B:
+                team_points[Team.A] = -5
+                team_points[Team.B] = 10
+            else:
+                # Fallback if winner_team is not set but scores are different
+                # (should not happen with good API usage, but let's be safe)
+                if (game.score_a or 0) > (game.score_b or 0):
+                    team_points[Team.A] = 10
+                    team_points[Team.B] = -5
+                elif (game.score_b or 0) > (game.score_a or 0):
+                    team_points[Team.A] = -5
+                    team_points[Team.B] = 10
+                else:
+                    team_points[Team.A] = 0
+                    team_points[Team.B] = 0
+
+        elif game.team_count == 3:
+            # 3 Teams logic with tie handling
             scores = [
                 (Team.A, game.score_a or 0),
                 (Team.B, game.score_b or 0),
                 (Team.C, game.score_c or 0)
             ]
+            # Custom ranking: if scores equal, they get same points
+            # Sort by score descending
             scores.sort(key=lambda x: x[1], reverse=True)
-            ranking = [s[0] for s in scores] # [1st, 2nd, 3rd]
-
+            
+            # Simple rank points: 1st:+10, 2nd:0, 3rd:-5
+            # We assign points based on unique score positions
+            unique_scores = sorted(list(set(s[1] for s in scores)), reverse=True)
+            
+            for t, score in scores:
+                if len(unique_scores) == 1:
+                    # All tied
+                    team_points[t] = 0
+                else:
+                    rank = unique_scores.index(score)
+                    if rank == 0: # 1st
+                        team_points[t] = 10
+                    elif rank == 1: # 2nd
+                        team_points[t] = 0
+                    else: # 3rd or lower
+                        team_points[t] = -5
+        
         # Fetch all active players with their teams
         result = await self.session.execute(
             select(User, Signup.team)
@@ -65,34 +109,13 @@ class StatsService:
         
         for user, team in players_data:
             old_rating = user.rating
-            change = -5 # Default
             
-            if game.team_count == 2:
-                if team == game.winner_team:
-                    change = 10
-                else:
-                    change = -5
-            else:
-                # 3 Teams logic: 1st:+10, 2nd:0, 3rd:-5
-                if team == ranking[0]:
-                    change = 10
-                elif team == ranking[1]:
-                    change = 0
-                else:
-                    change = -5
+            # Get base change from team_points
+            change = team_points.get(team, -5) # Default to -5 if team unassigned (safety)
             
             is_mvp = (user.user_id in mvp_ids)
             if is_mvp:
                 change += 5
-                # Note: User stats_mvp incremented by Caller when saving GameStats? 
-                # Or should we do it?
-                # GameService.finish_game does it.
-                # If we move it here, we need to know if we should increment.
-                # Let's rely on Caller for `GameStats` and `User.stats_mvp` for now, 
-                # OR move full responsibility here.
-                # Better: StatsService handles ALL User stat updates.
-                # But `GameStats` record creation requires Input Data (goals).
-                # So Caller creates `GameStats`, `StatsService` updates `User` and `RatingHistory`.
             
             user.rating += change
             user.games_played += 1
@@ -106,3 +129,4 @@ class StatsService:
                 new_rating=user.rating,
                 change=change
             ))
+
