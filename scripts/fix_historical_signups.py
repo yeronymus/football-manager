@@ -185,6 +185,7 @@ async def main():
         await s.execute(text("UPDATE users SET rating=100, games_played=0, stats_mvp=0, stats_matches=0"))
         await s.execute(delete(RatingHistory))
         await s.flush()
+        s.expire_all()  # ← Clear session cache so raw SQL changes are visible
 
         games_res = await s.execute(
             select(Game).where(Game.status == GameStatus.FINISHED).order_by(Game.date_time.asc())
