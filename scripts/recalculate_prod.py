@@ -157,18 +157,21 @@ async def recalculate():
             mvp_str = f"⭐{u.stats_mvp}" if u.stats_mvp else ""
             print(f"{i:<4} {u.full_name:<28} {u.rating:<8} {u.games_played:<7} {mvp_str}")
 
-if __name__ == "__main__":
-    import sys
-    mode = sys.argv[1] if len(sys.argv) > 1 else "dry"
+async def main(mode):
     if mode == "dry":
         print("\n🔍 DRY RUN MODE (no changes)\n")
-        asyncio.run(dry_run())
+        await dry_run()
         print("\n💡 Run with '--go' to apply changes")
     elif mode == "--go":
-        asyncio.run(dry_run())
+        await dry_run()
         print("\n⚠️  ABOUT TO WRITE CHANGES TO DB!")
         confirm = input("Type 'YES' to confirm: ").strip()
         if confirm == "YES":
-            asyncio.run(recalculate())
+            await recalculate()
         else:
             print("Cancelled.")
+
+if __name__ == "__main__":
+    import sys
+    mode = sys.argv[1] if len(sys.argv) > 1 else "dry"
+    asyncio.run(main(mode))
