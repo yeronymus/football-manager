@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
 """
-Dry-run + Recalculate all ratings from scratch via direct DB connection.
-Connects to production DB through SSH tunnel port 5433.
+Dry-run + Recalculate all ratings from scratch.
+Run inside Docker: docker compose exec app python3 scripts/recalculate_prod.py dry
 """
 import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, delete, text
 from app.db.models import User, Game, Signup, SignupStatus, Team, GameStats, GameStatus, RatingHistory
-
-DB_URL = "postgresql+asyncpg://postgres:8a47fcee9fae364e8853de6fee2823b1c5508526c6a18d3e@10.50.109.14:5433/football_prod"
-
-engine = create_async_engine(DB_URL, echo=False)
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+from app.db.database import async_session_maker as AsyncSessionLocal
 
 async def dry_run():
     async with AsyncSessionLocal() as s:
