@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Драфт v1.9 (Debug)</title>
+    <title>Драфт v2.0</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
@@ -534,6 +534,7 @@
                 const game = await response.json();
 
                 document.getElementById('gameTitle').innerText = game.location;
+                document.getElementById('gameSelector').style.display = 'none';
                 allPlayers = {};
 
                 // Determine Teams
@@ -875,7 +876,8 @@
             const q = document.getElementById('searchInput').value;
             if (q.length < 2) return;
             try {
-                const response = await fetch(`/api/users/search?query=${encodeURIComponent(q)}&initData=${encodeURIComponent(tg.initData)}`);
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/api/users/search?query=${encodeURIComponent(q)}&initData=${encodeURIComponent(tg.initData)}&_v=${timestamp}`);
                 if (!response.ok) {
                     const err = await response.json();
                     throw new Error(err.detail || "Search failed");
