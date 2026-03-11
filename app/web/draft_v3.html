@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Драфт v2.0</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --card-bg: #2d2d2d;
+            --text-color: #ffffff;
+            --accent-color: #4CAF50;
+            --danger-color: #f44336;
+            --team-a-color: #FF9800;
+            --team-b-color: #4CAF50;
+            --team-c-color: #43a047;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            font-size: 16px;
+            margin-top: 0;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .gk-toggles {
+            display: flex;
+            gap: 10px;
+        }
+
+        .gk-toggle {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        /* Layout Container */
+        .game-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        /* Grid for Teams */
+        .teams-grid {
+            display: grid;
+            gap: 8px;
+            flex-grow: 1;
+            overflow: hidden;
+            /* grid-template-columns will be set by JS */
+        }
+
+        .column {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #444;
+        }
+
+        .column-header {
+            font-weight: bold;
+            font-size: 13px;
+            text-align: center;
+            padding: 6px 4px;
+            cursor: pointer;
+        }
+
+        .col-a .column-header {
+            background-color: var(--team-a-color);
+        }
+
+        .col-b .column-header {
+            background-color: var(--team-b-color);
+        }
+
+        .col-c .column-header {
+            background-color: var(--team-c-color);
+        }
+
+        /* Tactic Sections */
+        .tactic-board {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pos-group {
+            border-bottom: 1px solid #444;
+            min-height: 40px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pos-group.hidden {
+            display: none;
+        }
+
+        .pos-header {
+            font-size: 10px;
+            color: #888;
+            padding: 2px 4px;
+            background: rgba(0, 0, 0, 0.2);
+            text-transform: uppercase;
+        }
+
+        .player-list {
+            flex-grow: 1;
+            padding: 2px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        /* Unassigned Drawer */
+        .unassigned-section {
+            background-color: #333;
+            border-radius: 8px;
+            padding: 6px;
+            max-height: 12vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .unassigned-header {
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+
+        .unassigned-list {
+            overflow-y: auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .player-card {
+            background-color: #3d3d3d;
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            border: 1px solid transparent;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            overflow: hidden;
+            flex-grow: 1;
+        }
+
+        .player-pos {
+            font-size: 9px;
+            font-weight: bold;
+            padding: 1px 2px;
+            border-radius: 3px;
+            background: #555;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .pos-GK {
+            background: #FF9800;
+            color: #000;
+        }
+
+        /* DEF: Blue */
+        .pos-DEF,
+        .pos-LB,
+        .pos-CB,
+        .pos-RB,
+        .pos-LWB,
+        .pos-RWB {
+            background: #2196F3;
+        }
+
+        /* MID: Green */
+        .pos-MID,
+        .pos-CDM,
+        .pos-CM,
+        .pos-CAM,
+        .pos-LM,
+        .pos-RM {
+            background: #4CAF50;
+        }
+
+        .pos-CDM {
+            background: #388E3C;
+        }
+
+        .pos-CAM {
+            background: #8BC34A;
+            color: #000;
+        }
+
+        /* FWD: Red */
+        .pos-FWD,
+        .pos-LW,
+        .pos-RW,
+        .pos-ST,
+        .pos-CF {
+            background: #f44336;
+        }
+
+        .player-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-grow: 1;
+            /* Take remaining space */
+            min-width: 0;
+            /* Enable shrinking */
+        }
+
+        .player-rating {
+            font-size: 10px;
+            color: #aaa;
+            background: #222;
+            padding: 1px 3px;
+            border-radius: 3px;
+        }
+
+        .selected {
+            border: 1px solid #FFEB3B;
+            background: #505050;
+        }
+
+        .stats-panel {
+            padding: 8px;
+            background: #252525;
+            border-radius: 8px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            margin-top: auto;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding-top: 4px;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .btn-balance {
+            background-color: #FF9800;
+            color: white;
+        }
+
+        .btn-save {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .btn-publish {
+            background-color: #2196F3;
+            color: white;
+            grid-column: span 2;
+        }
+
+        #searchModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 1px solid #555;
+            background: #333;
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        #searchResults {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .search-result-item {
+            background: #444;
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .search-close-btn {
+            margin-top: 10px;
+            background: #f44336;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="gameSelector">
+        <h2>Выберите игру</h2>
+        <div id="gameList"></div>
+    </div>
+
+    <!-- ADD SEARCH MODAL -->
+    <div id="searchModal">
+        <h3>🔍 Добавить игрока</h3>
+        <input type="text" id="searchInput" placeholder="Имя или @username..." oninput="debounceSearch()">
+        <div id="searchResults"></div>
+        <button class="search-close-btn" onclick="closeSearch()">Закрыть</button>
+    </div>
+
+    <div class="top-bar">
+        <div class="gk-toggles" id="gkToggles">
+            <!-- Generated by JS -->
+        </div>
+        <span id="gameTitle" style="font-weight: bold; font-size:14px;">...</span>
+    </div>
+
+    <div class="game-container">
+        <div class="unassigned-section">
+            <div class="unassigned-header">
+                Нераспределенные
+                <span onclick="openSearch()"
+                    style="cursor:pointer; background:#2196F3; padding:2px 6px; border-radius:4px; margin-left:8px; font-size:10px;">➕
+                    Поиск</span>
+                <span onclick="openGuestModal()"
+                    style="cursor:pointer; background:#4CAF50; padding:2px 6px; border-radius:4px; margin-left:4px; font-size:10px;">👤
+                    Гость</span>
+            </div>
+            <div class="unassigned-list" id="list-unassigned" onclick="handleListClick(event, 'list-unassigned')"></div>
+        </div>
+
+        <div class="teams-grid" id="teamsGrid">
+            <!-- Columns generated by JS -->
+        </div>
+    </div>
+
+    <div class="stats-panel">
+        <span>Разница (MMR): <b id="diff-mmr">0</b></span>
+        <span>Игроки: <b id="count-total">0</b></span>
+    </div>
+
+    <div class="controls">
+        <button id="btn-balance" class="btn-balance" onclick="autoBalance()">⚖️ Баланс</button>
+        <button class="btn-save" onclick="saveTeams()">💾 Сохранить</button>
+        <button class="btn-publish" onclick="publishTeams()">✅ Опубликовать</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let gameId = urlParams.get('game_id');
+        let allPlayers = {};
+        let selectedPlayer = null;
+        let selectedElement = null;
+        let activeTeams = ['a', 'b']; // default
+
+        // --- Init ---
+        if (!gameId) {
+            showGameSelector();
+        } else {
+            loadGame(gameId);
+        }
+
+        // --- Interactions ---
+        function handleListClick(e, slotId) {
+            // Check if clicked on player-card
+            const card = e.target.closest('.player-card');
+            if (card) {
+                // Select player
+                if (selectedElement) selectedElement.classList.remove('selected');
+                selectedElement = card;
+                selectedElement.classList.add('selected');
+                const pid = selectedElement.id.replace('player-', '');
+                selectedPlayer = allPlayers[pid];
+            } else if (selectedPlayer) {
+                // Determine target slot... actually unassigned list is simple append
+                // But for lists, we want to tap to move? 
+                // Let's keep logic: Click player to select, click header/slot to move
+            }
+        }
+
+        // Generic Move Logic
+        function addPlayerToSlot(p, slotId) {
+            const list = document.getElementById(slotId);
+            if (!list && slotId === 'list-unassigned') return; // Should always exist
+
+            // If slotId is a specific team slot (a-GK), we need to ensure the list inside
+            const targetList = list.classList.contains('player-list') ? list : (list.querySelector('.player-list') || list);
+
+            const div = document.createElement('div');
+            div.className = 'player-card';
+            div.id = `player-${p.id}`;
+            div.onclick = (e) => {
+                e.stopPropagation();
+                if (selectedElement) selectedElement.classList.remove('selected');
+                if (selectedElement === div) {
+                    selectedElement = null;
+                    selectedPlayer = null;
+                    return;
+                }
+                selectedElement = div;
+                selectedElement.classList.add('selected');
+                selectedPlayer = p;
+            };
+
+            const alts = (p.alt_positions && p.alt_positions.length) ? ` <span style="color:#aaa; font-size:10px;">(${p.alt_positions.join(', ')})</span>` : '';
+
+            // Use original_position for color/badge if available
+            const dispPos = p.original_position || p.position;
+
+            div.innerHTML = `
+                <div class="player-info">
+                    <div class="player-pos pos-${dispPos}">${dispPos}</div>
+                    <div class="player-name">${p.name}${alts}</div>
+                </div>
+                <div class="player-rating">${p.rating || '-'}</div>
+            `;
+            targetList.appendChild(div);
+        }
+
+        window.moveSelectedToSlot = (slotId, posType) => {
+            if (!selectedPlayer || !selectedElement) return;
+            // Remove from old
+            selectedElement.remove();
+            selectedElement = null;
+            // Add to new
+            // Note: Currently we don't update player object's internal position override, just visual
+            // But if we move to 'a-GK', we imply pos is GK? 
+            // Or just slot? The visual slot implies the role.
+            addPlayerToSlot(selectedPlayer, slotId);
+            selectedPlayer = null;
+            updateStats();
+        };
+
+        window.moveSelectedToTeam = (teamPrefix) => {
+            // Heuristic: Move to Unassigned? No, header click usually does something else.
+            // Maybe auto-assign to best slot for their position?
+            if (!selectedPlayer || !selectedElement) return;
+            const targetSlot = `${teamPrefix}-${selectedPlayer.position}`;
+            let el = document.getElementById(targetSlot);
+            if (!el) el = document.getElementById(`${teamPrefix}-MID`); // Fallback
+
+            selectedElement.remove();
+            selectedElement = null;
+
+            // Find list inside
+            let list = el.querySelector('.player-list');
+            addPlayerToSlot(selectedPlayer, list ? list.parentElement.id : el.id); // Hacky ID passing
+            selectedPlayer = null;
+            updateStats();
+        };
+
+        // Handle Unassigned Click (Move back to pool)
+        document.querySelector('.unassigned-section').onclick = (e) => {
+            if (e.target.closest('.player-card')) return; // handled by card
+            if (selectedPlayer && selectedElement) {
+                selectedElement.remove();
+                selectedElement = null;
+                addPlayerToSlot(selectedPlayer, 'list-unassigned');
+                selectedPlayer = null;
+                updateStats();
+            }
+        };
+
+        // --- Core ---
+
+        async function loadGame(id) {
+            try {
+                const response = await fetch(`/api/game/${id}?initData=${encodeURIComponent(tg.initData)}`);
+                if (!response.ok) throw new Error("Load failed");
+                const game = await response.json();
+
+                document.getElementById('gameTitle').innerText = game.location;
+                document.getElementById('gameSelector').style.display = 'none';
+                allPlayers = {};
+
+                // Determine Teams
+                // We use game.team_c to decide if we need C
+                // Determine Teams based on team_count (if available) or existing data
+                activeTeams = ['a', 'b'];
+                const count = game.team_count || (game.team_c && game.team_c.length > 0 ? 3 : 2);
+                if (count >= 3) activeTeams.push('c');
+
+                // Render Grid
+                const grid = document.getElementById('teamsGrid');
+                grid.innerHTML = '';
+                grid.style.gridTemplateColumns = `repeat(${activeTeams.length}, 1fr)`;
+
+                // Render Columns
+                activeTeams.forEach(key => {
+                    const col = document.createElement('div');
+                    col.className = `column col-${key}`;
+                    const teamName = key.toUpperCase();
+
+                    const emojis = { a: '🟠', b: '🟢', c: '🔵' };
+                    col.innerHTML = `
+                        <div class="column-header" onclick="moveSelectedToTeam('${key}')">${emojis[key] || ''} Команда ${teamName} <span id="rating-${key}"></span></div>
+                        <div class="tactic-board">
+                             ${renderPosGroup(key, 'GK')}
+                             ${renderPosGroup(key, 'DEF', 'Защита')}
+                             ${renderPosGroup(key, 'MID', 'Полузащита')}
+                             ${renderPosGroup(key, 'FWD', 'Нападение')}
+                        </div>
+                    `;
+                    grid.appendChild(col);
+                });
+
+                // Render GK Toggles
+                const toggleContainer = document.getElementById('gkToggles');
+                toggleContainer.innerHTML = '';
+                activeTeams.forEach(key => {
+                    const label = document.createElement('label');
+                    label.className = 'gk-toggle';
+                    const checked = game[`has_active_gk_${key}`] !== false;
+                    label.innerHTML = `<input type="checkbox" id="chk-gk-${key}" onchange="toggleGK('${key}')" ${checked ? 'checked' : ''}> GK ${key.toUpperCase()}`;
+                    toggleContainer.appendChild(label);
+                });
+
+                // Populate Players
+                document.getElementById('list-unassigned').innerHTML = '';
+
+                game.unassigned.forEach(p => {
+                    allPlayers[p.id] = p;
+                    addPlayerToSlot(p, 'list-unassigned');
+                });
+
+                const loadTeam = (list, key) => {
+                    if (!list) return;
+                    // Check if team has a primary GK to know if we need to promote an alt
+                    let hasPrimaryGK = list.some(p => p.position === 'GK');
+
+                    list.forEach(p => {
+                        allPlayers[p.id] = p;
+
+                        let pos = p.position;
+                        // Promotion logic: if team lacks GK and player has GK alt, put them in GK slot
+                        if (!hasPrimaryGK && p.alt_positions && p.alt_positions.includes('GK')) {
+                            pos = 'GK';
+                            hasPrimaryGK = true; // One promoted is enough
+                        }
+
+                        // Map specific positions to general categories for UI headers
+                        let posCat = 'DEF';
+                        if (pos === 'GK') posCat = 'GK';
+                        else if (['LB', 'CB', 'RB', 'LWB', 'RWB'].includes(pos)) posCat = 'DEF';
+                        else if (['LM', 'CM', 'RM', 'CDM', 'CAM'].includes(pos)) posCat = 'MID';
+                        else if (['LW', 'RW', 'FWD', 'ST', 'CF'].includes(pos)) posCat = 'FWD';
+
+                        addPlayerToSlot(p, `${key}-${posCat}`);
+                    });
+                };
+
+                loadTeam(game.team_a, 'a');
+                loadTeam(game.team_b, 'b');
+                if (game.team_c) loadTeam(game.team_c, 'c');
+
+                // Init visibility
+                activeTeams.forEach(k => toggleGK(k));
+
+                // --- Initialize SortableJS ---
+                // 1. Unassigned List
+                new Sortable(document.getElementById('list-unassigned'), {
+                    group: 'players',
+                    animation: 150,
+                    onEnd: (evt) => { updateStats(); }
+                });
+
+                // 2. Team Slots
+                activeTeams.forEach(key => {
+                    ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                        const el = document.getElementById(`${key}-${pos}`).querySelector('.player-list');
+                        new Sortable(el, {
+                            group: 'players',
+                            animation: 150,
+                            onEnd: (evt) => { updateStats(); }
+                        });
+                    });
+                });
+
+                updateStats();
+
+            } catch (e) {
+                console.error(e);
+                alert("Ошибка загрузки данных (Load Error): " + e.message);
+                tg.showAlert("Ошибка: " + e.message);
+            }
+        }
+
+        function renderPosGroup(prefix, pos, label) {
+            const labelHtml = label ? `<div class="pos-header">${label}</div>` : `<div class="pos-header">${pos}</div>`;
+            const extraClass = pos === 'GK' ? 'group-GK' : '';
+            return `
+                <div class="pos-group ${extraClass}" id="${prefix}-${pos}" onclick="moveSelectedToSlot('${prefix}-${pos}', '${pos}')">
+                    ${labelHtml}
+                    <div class="player-list"></div>
+                </div>
+            `;
+        }
+
+        function toggleGK(team) {
+            const chk = document.getElementById(`chk-gk-${team}`);
+            const el = document.getElementById(`${team}-GK`);
+            if (chk && el) {
+                el.style.display = chk.checked ? 'flex' : 'none';
+            }
+        }
+
+        function updateStats() {
+            let total = 0;
+            const rates = {};
+
+            activeTeams.forEach(key => {
+                let sum = 0;
+                let count = 0;
+                ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                    const slot = document.getElementById(`${key}-${pos}`);
+                    if (!slot) return;
+                    slot.querySelectorAll('.player-card').forEach(c => {
+                        const pid = c.id.replace('player-', '');
+                        const p = allPlayers[pid];
+                        if (p) {
+                            sum += (p.rating || 1200);
+                            count++;
+                            total++;
+                        }
+                    });
+                });
+                const avg = count > 0 ? Math.round(sum / count) : 0;
+                document.getElementById(`rating-${key}`).innerText = count > 0 ? `(${avg})` : '';
+                rates[key] = avg;
+            });
+
+            document.getElementById('count-total').innerText = total;
+
+            // Diff MMR (Max - Min)
+            const vals = Object.values(rates).filter(v => v > 0);
+            if (vals.length > 1) {
+                const max = Math.max(...vals);
+                const min = Math.min(...vals);
+                document.getElementById('diff-mmr').innerText = (max - min);
+            } else {
+                document.getElementById('diff-mmr').innerText = '0';
+            }
+        }
+
+        // --- Actions ---
+
+        async function autoBalance() {
+            // Debug: Prove function is called
+            // alert("Debug: Starting autoBalance"); 
+
+            const btn = document.getElementById('btn-balance');
+            const originalText = btn.innerText;
+            btn.innerText = "⌛ Обчисляем...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/balance_teams', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ initData: tg.initData, game_id: parseInt(gameId) })
+                });
+
+                if (!response.ok) {
+                    let errorMessage = "Ошибка сервера";
+                    try {
+                        const err = await response.json();
+                        errorMessage = err.detail || errorMessage;
+                    } catch (jsonErr) {
+                        errorMessage += " (Invalid JSON)";
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                await loadGame(gameId);
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            } catch (e) {
+                console.error(e);
+                alert("Ошибка: " + e.message); // Fallback alert
+                tg.showAlert("Ошибка: " + e.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function saveTeams() {
+            const data = {
+                initData: tg.initData,
+                game_id: parseInt(gameId),
+                team_a: [],
+                team_b: [],
+                team_c: [],
+                positions: {}
+            };
+
+            const gather = (prefix) => {
+                const list = [];
+                ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                    const slot = document.getElementById(`${prefix}-${pos}`);
+                    if (!slot) return;
+                    slot.querySelectorAll('.player-card').forEach(c => {
+                        const pid = parseInt(c.id.replace('player-', ''));
+                        list.push(pid);
+                        // Record position based on slot
+                        data.positions[pid] = pos;
+                    });
+                });
+                return list;
+            };
+
+            data.team_a = gather('a');
+            data.team_b = gather('b');
+            if (activeTeams.includes('c')) data.team_c = gather('c');
+
+            // Flags
+            activeTeams.forEach(k => {
+                data[`has_active_gk_${k}`] = document.getElementById(`chk-gk-${k}`).checked;
+            });
+
+            try {
+                const response = await fetch('/api/update_teams', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Ошибка сохранения");
+                }
+
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                const btn = document.querySelector('.btn-save');
+                btn.innerText = "OK!";
+                setTimeout(() => btn.innerText = "💾 Сохранить", 1000);
+            } catch (e) {
+                tg.showAlert("Ошибка: " + e.message);
+            }
+        }
+
+        async function publishTeams() {
+            const btn = document.querySelector('.btn-publish');
+            if (!btn) return;
+            const orig = btn.innerText;
+            btn.innerText = "⏳ Публикуем...";
+            btn.disabled = true;
+
+            try {
+                await saveTeams();
+
+                const response = await fetch('/api/publish_teams', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ initData: tg.initData, game_id: parseInt(gameId) })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Ошибка публикации");
+                }
+
+                tg.showAlert("✅ Опубликовано!");
+                tg.close();
+            } catch (e) {
+                tg.showAlert("❌ Ошибка: " + e.message);
+                btn.innerText = orig;
+                btn.disabled = false;
+            }
+        }
+
+        async function showGameSelector() {
+            document.getElementById('gameSelector').style.display = 'flex';
+            try {
+                const response = await fetch(`/api/games/editable?initData=${encodeURIComponent(tg.initData)}`);
+                if (!response.ok) throw new Error("API Error");
+                const games = await response.json();
+                const list = document.getElementById('gameList');
+                list.innerHTML = '';
+                games.forEach(g => {
+                    const btn = document.createElement('div');
+                    btn.className = 'game-option';
+                    const d = new Date(g.date_time);
+                    btn.innerHTML = `${g.location} (${d.getDate()}.${d.getMonth() + 1})`;
+                    btn.onclick = () => {
+                        gameId = g.id;
+                        document.getElementById('gameSelector').style.display = 'none';
+                        loadGame(gameId);
+                    };
+                    list.appendChild(btn);
+                });
+            } catch (e) { tg.showAlert("Ошибка: " + e.message); }
+        }
+
+        // --- Search Logic ---
+        let searchTimeout;
+
+        function openSearch() {
+            document.getElementById('searchModal').style.display = 'flex';
+            document.getElementById('searchInput').focus();
+        }
+
+        function closeSearch() {
+            document.getElementById('searchModal').style.display = 'none';
+        }
+
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(searchPlayers, 300);
+        }
+
+        async function searchPlayers() {
+            const q = document.getElementById('searchInput').value;
+            if (q.length < 2) return;
+            try {
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/api/users/search?query=${encodeURIComponent(q)}&initData=${encodeURIComponent(tg.initData)}&_v=${timestamp}`);
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Search failed");
+                }
+                const users = await response.json();
+                const res = document.getElementById('searchResults');
+                res.innerHTML = '';
+                if (users.length === 0) {
+                    res.innerHTML = '<div style="color: #aaa; text-align: center; padding: 10px;">Ничего не найдено</div>';
+                }
+                users.forEach(u => {
+                    const div = document.createElement('div');
+                    div.className = 'search-result-item';
+                    div.innerHTML = `
+                        <span>${u.name} (@${u.username || ''})</span>
+                        <button onclick="addPlayerToGame(${u.id})" style="width:auto; padding:5px 10px;">➕</button>
+                    `;
+                    res.appendChild(div);
+                });
+            } catch (e) {
+                console.error(e);
+                // Show error to user so we know why it's empty
+                const res = document.getElementById('searchResults');
+                res.innerHTML = `<div style="color: #f44336; padding: 10px;">Ошибка: ${e.message}</div>`;
+            }
+        }
+
+        async function addPlayerToGame(uid) {
+            try {
+                const response = await fetch('/api/admin/add_player', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        initData: tg.initData,
+                        game_id: parseInt(gameId),
+                        user_id: uid
+                    })
+                });
+                if (response.ok) {
+                    closeSearch();
+                    await loadGame(gameId);
+                    tg.showAlert("Добавлен!");
+                } else {
+                    const err = await response.json();
+                    alert(err.detail || "Error");
+                }
+            } catch (e) { alert(e.message); }
+        }
+
+        // --- Guest Logic ---
+        function openGuestModal() {
+            document.getElementById('guestModal').style.display = 'flex';
+        }
+
+        async function submitGuest() {
+            const name = document.getElementById('guestName').value;
+            const pos = document.getElementById('guestPos').value;
+            if (!name) return alert("Введите имя!");
+
+            try {
+                const response = await fetch('/api/admin/add_guest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        initData: tg.initData,
+                        game_id: parseInt(gameId),
+                        name: name,
+                        position: pos
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Error");
+                }
+
+                document.getElementById('guestModal').style.display = 'none';
+                document.getElementById('guestName').value = '';
+                await loadGame(gameId);
+                tg.showAlert("Гость добавлен!");
+            } catch (e) {
+                alert("Ошибка: " + e.message);
+            }
+        }
+    </script>
+
+    <!-- ADD GUEST MODAL -->
+    <div id="guestModal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); z-index:2001; flex-direction:column; padding:20px;">
+        <h3 style="color:white">👤 Гость</h3>
+        <input type="text" id="guestName" placeholder="Имя (Name)"
+            style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:none;">
+        <select id="guestPos" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:none;">
+            <option value="GK">GK (Вратарь)</option>
+            <option value="CB">CB (Центр. Защ)</option>
+            <option value="LB">LB (Левый Защ)</option>
+            <option value="RB">RB (Правый Защ)</option>
+            <option value="CDM">CDM (Опорник)</option>
+            <option value="CM" selected>CM (Центр. Пз)</option>
+            <option value="CAM">CAM (Атак. Пз)</option>
+            <option value="LW">LW (Левый Нап)</option>
+            <option value="RW">RW (Правый Нап)</option>
+            <option value="FWD">FWD (Нападающий)</option>
+        </select>
+        <button class="btn-save" onclick="submitGuest()">Добавить</button>
+        <button class="search-close-btn" onclick="document.getElementById('guestModal').style.display='none'"
+            style="margin-top:10px;">Отмена</button>
+    </div>
+</body>
+
+</html>

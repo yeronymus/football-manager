@@ -64,7 +64,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     is_admin = message.from_user.id in settings.admin_ids or message.from_user.id == settings.system_owner_id
                     if is_admin:
                          base = settings.webapp_url.rstrip("/")
-                         web_url = f"{base}/web/draft.html?game_id={game_id}&v=1.8"
+                         web_url = f"{base}/web/draft_v3.html?game_id={game_id}&v=3.0"
                          kb_draft = types.InlineKeyboardMarkup(inline_keyboard=[
                              [types.InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=web_url))]
                          ])
