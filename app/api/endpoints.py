@@ -788,8 +788,10 @@ async def search_users(query: str, initData: str, session: AsyncSession = Depend
     # Let's trust authentication for now, or check generic admin status if we had it.
     # We will just proceed since we validate initData.
     
+    logger.info(f"Searching users: query='{query}', user_id={user_id}")
     user_repo = UserRepository(session)
     users = await user_repo.search_users(query)
+    logger.info(f"Found {len(users)} users for query '{query}'")
     
     return [
         {
