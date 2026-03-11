@@ -121,7 +121,7 @@ PLAYER_PROPS = {
     "Nurislam": {"pos": "CM", "alt": "LB"},
     "nurken samigullin": {"pos": "RB", "alt": "LB, CM"}, # lowercase version mapping
     "Beka": {"pos": "CM", "alt": ""},
-    "Daulet Bekmolda": {"pos": "CM", "alt": ""}
+    "Daulet Bekmolda": {"pos": "CB", "alt": ""}
 }
 
 FAST_SET = {

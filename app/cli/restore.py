@@ -176,23 +176,29 @@ async def restore_january_2026():
                     
                     # CALCULATE MMR CHANGE
                     change = 0
-                    # Base Points
                     if game.team_count == 2:
-                        # Winner +10, Loser -5
-                        if team_enum == g_data["winner_team"]:
+                        if game.score_a == game.score_b:
+                            change = 0
+                        elif team_enum == g_data["winner_team"]:
                             change = 10
                         else:
                             change = -5
                     else:
-                        # 3 Teams: 1st +10, 2nd 0, 3rd -5
-                        if team_enum == ranking[0]: # 1st
-                            change = 10
-                        elif team_enum == ranking[1]: # 2nd
+                        # 3 Teams logic with tie handling
+                        scores = [(Team.A, g_data["score_a"] or 0), (Team.B, g_data["score_b"] or 0), (Team.C, g_data["score_c"] or 0)]
+                        unique_scores = sorted(list(set(s[1] for s in scores)), reverse=True)
+                        score = t_info.get("score") or (g_data["score_a"] if team_enum == Team.A else g_data["score_b"] if team_enum == Team.B else g_data["score_c"])
+                        
+                        if len(unique_scores) == 1:
                             change = 0
-                        else: # 3rd
-                            change = -5
+                        else:
+                            rank = unique_scores.index(score)
+                            if rank == 0: change = 10
+                            elif rank == 1: change = 0
+                            else: change = -5
                             
                     # MVP Bonus
+
                     if is_mvp:
                         change += 5
                         user.stats_mvp += 1

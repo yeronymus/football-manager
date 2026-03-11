@@ -30,12 +30,13 @@ async def seed_chats(session: AsyncSession):
     for chat_data in settings.initial_chats:
         chat_id = chat_data["id"]
         title = chat_data["title"]
+        admin_chat_id = chat_data.get("admin_chat_id")
         
         # Check if exists
         chat = await session.get(Chat, chat_id)
         if not chat:
             print(f"Adding initial chat: {title} ({chat_id})")
-            chat = Chat(chat_id=chat_id, title=title)
+            chat = Chat(chat_id=chat_id, title=title, admin_chat_id=admin_chat_id)
             session.add(chat)
     
     await session.commit()
