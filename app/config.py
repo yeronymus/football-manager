@@ -40,8 +40,9 @@ class Settings:
             
             # Seeding
             self.initial_chats = [
-                {"id": -1001234567890, "title": "Test Chat"},
-                {"id": -1009876543210, "title": "Main Chat"}
+                {"id": -1003437568976, "title": "FM Chat", "admin_chat_id": -1003652516810},
+                {"id": -1003652516810, "title": "FM Admin", "admin_chat_id": None},
+                {"id": -1003625911268, "title": "FM Channel", "admin_chat_id": None},
             ]
 
             self.postgres_user = os.getenv("POSTGRES_USER", "postgres")

@@ -875,7 +875,7 @@
             const q = document.getElementById('searchInput').value;
             if (q.length < 2) return;
             try {
-                const response = await fetch(`/api/admin/find_users?q=${encodeURIComponent(q)}&initData=${encodeURIComponent(tg.initData)}`);
+                const response = await fetch(`/api/users/search?query=${encodeURIComponent(q)}&initData=${encodeURIComponent(tg.initData)}`);
                 const users = await response.json();
                 const res = document.getElementById('searchResults');
                 res.innerHTML = '';
@@ -883,8 +883,8 @@
                     const div = document.createElement('div');
                     div.className = 'search-result-item';
                     div.innerHTML = `
-                        <span>${u.full_name} (@${u.username || ''})</span>
-                        <button onclick="addPlayerToGame(${u.user_id})" style="width:auto; padding:5px 10px;">➕</button>
+                        <span>${u.name} (@${u.username || ''})</span>
+                        <button onclick="addPlayerToGame(${u.id})" style="width:auto; padding:5px 10px;">➕</button>
                     `;
                     res.appendChild(div);
                 });
@@ -893,7 +893,7 @@
 
         async function addPlayerToGame(uid) {
             try {
-                const response = await fetch('/api/admin/add_to_game', {
+                const response = await fetch('/api/admin/add_player', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

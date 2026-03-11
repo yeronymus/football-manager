@@ -505,6 +505,7 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
         "payment_info": game.payment_info,
         "team_count": game.team_count,
         "gk_hours": game.gk_hours,
+        "registration_hours": getattr(game, 'registration_hours', 0),
         "chat_id": game.chat_id,
         "team_a": team_a,
         "team_b": team_b,

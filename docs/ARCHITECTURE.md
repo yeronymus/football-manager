@@ -163,3 +163,35 @@ class RosterService:
         # 4. Return Data
         return JoinResult(success=True, is_reserve=False, game=game)
 ```
+---
+
+---
+
+## SESSION CONCLUSION (Rating Calculation & Data Restoration)
+
+**Date:** 2026-03-10
+
+### What was fixed
+
+1. **Draws in 2-team games:** Fixed logic in `stats.py` where draws incorrectly gave -5 to all players. Now they give 0.
+2. **3-team game ties:** Improved tie-breaking logic. If multiple teams have the same score, they receive the same points based on their unique rank (e.g., if two teams have the highest score, both are treated as "1st place").
+3. **Data Integrity:**
+    - Fixed incorrect winners for Game #3 and #5 in the production DB (were swapped).
+    - Restored historical signups for Games 1-7 using `fix_historical_signups.py`. Previously, Games 1-7 only had players who signed up via the bot, which was ~20% of the actual roster.
+4. **Rating Recalculation:** Successfully reset all ratings to 100 and re-processed all 8 games chronologically. Ratings are now mathematically sound (Yernar 115, Yernur 125, etc.).
+5. **Session Cache Bug:** Added `s.expire_all()` to the recalculation script. Raw SQL `UPDATE` queries don't update SQLAlchemy's identity map, leading to "ghost" data if not cleared.
+
+### Unexpected Findings (Ловушки)
+
+1. **Database state != Reality:** Historical games were often recorded with "Orange wins" by default even when Green won, because the admin button was clicked carelessly. Always verify `winner_team` against `score_a/b`.
+2. **Incomplete Signups:** Early in the project, we didn't save the full roster to the DB at the end of the game. For future accuracy, `GameStats` and `Signup` records must be immutable once the game is closed.
+
+### Roadmap for Future (Dashboard & Architecture)
+
+- **Live Dashboard:** Transition `docs/rating.html` from a static file to a dynamic Mini App.
+  - *Architecture:* Add FastAPI endpoint `/api/v1/stats/leaderboard` returning JSON from the DB.
+  - *Frontend:* Use `fetch()` in the HTML to get live data.
+- **Domain & DNS:** Move away from Cloudflare Quick Tunnels to a stable domain (e.g., `fm.sin.cvut.cz`).
+- **Alembic Migrations:** Priority #1. Manual SQL fixes are unsustainable. We need version-controlled schema changes.
+- **Immutable History:** Once a game is "Finished", the roster and scores should be locked or versioned to prevent accidental rating shifts.
+
