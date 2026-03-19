@@ -3,7 +3,7 @@ from aiogram import Router, F, types
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_session
-from app.db.models import Vote, Signup, SignupStatus
+from app.db.models import Vote, Signup, SignupStatus, Team
 
 router = Router()
 
@@ -59,8 +59,25 @@ async def process_vote(callback: types.CallbackQuery, session: AsyncSession):
     )
     session.add(vote)
     await session.commit()
-    
-    await callback.answer(f"Голос за {target_team.value} принят! (Осталось выбрать вторую команду)")
+
+    # Check how many teams the voter has now voted for
+    voted_result = await session.execute(
+        select(Vote.vote_team).where(
+            Vote.game_id == game_id,
+            Vote.voter_id == voter_id
+        )
+    )
+    voted_teams = {row[0] for row in voted_result.all()}
+
+    all_teams = {Team.A, Team.B}
+    remaining = all_teams - voted_teams
+
+    if not remaining:
+        await callback.answer("✅ Вы проголосовали за обе команды! Спасибо!")
+    else:
+        remaining_team = next(iter(remaining))
+        team_label = "Команду А 🟠" if remaining_team == Team.A else "Команду Б 🟢"
+        await callback.answer(f"Голос за команду {target_team.value} принят! Осталось выбрать MVP {team_label}.")
 
     # Voting continues until scheduled task or manual trigger.
     # We removed early trigger here to avoid spamming the chat with results after every vote.

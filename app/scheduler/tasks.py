@@ -44,7 +44,7 @@ async def send_voting_message(game_id: int):
         
         await bot.send_message(
             chat_id=game.chat_id,
-            text=f"Матч в <b>{game.location}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды), нажав на кнопки ниже.\n<i>(Результаты через 15 часов)</i>\n\nП.С. Отправляйте свои голы @yeronym для внесения в статистику",
+            text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды), нажав на кнопки ниже.\n<i>(Результаты через 15 часов)</i>\n\nП.С. Отправляйте свои голы @yeronym для внесения в статистику",
             reply_markup=keyboard,
             parse_mode="HTML"
         )
@@ -138,8 +138,9 @@ async def remind_admin_to_finish(game_id: int):
         try:
             await bot.send_message(
                 chat_id=creator_id,
-                text=f"⏰ Матч в <b>{game.location}</b> уже должен закончиться.\n\nПожалуйста, внесите счет и авторов голов, чтобы обновить статистику!",
-                reply_markup=kb
+                text=f"⏰ Матч <b>#{game.id}</b> уже должен закончиться.\n\nПожалуйста, внесите счет и авторов голов, чтобы обновить статистику!",
+                reply_markup=kb,
+                parse_mode="HTML"
             )
         except Exception as e:
             # Админ мог заблочить бота
@@ -183,7 +184,7 @@ async def release_gk_slots(game_id: int):
                     try:
                         await bot.send_message(
                             signup.user_id, 
-                            f"🧤 Бронь вратарей снята (24ч)!\nВы переведены в основной состав на игру в {game.location}!"
+                            f"🧤 Бронь вратарей снята (24ч)!\nВы переведены в основной состав на матч #{game.id}!"
                         )
                     except Exception as e:
                         print(f"Failed to notify user {signup.user_id}: {e}")
