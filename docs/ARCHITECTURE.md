@@ -195,3 +195,34 @@ class RosterService:
 - **Alembic Migrations:** Priority #1. Manual SQL fixes are unsustainable. We need version-controlled schema changes.
 - **Immutable History:** Once a game is "Finished", the roster and scores should be locked or versioned to prevent accidental rating shifts.
 
+
+---
+
+## SESSION CONCLUSION (UX Fixes & Project Audit)
+**Date:** 2026-03-19
+
+### What was fixed
+1. **Voting popup bug**: Popup always said "Осталось выбрать вторую команду" regardless of progress. Fixed in `vote_handlers.py` — now shows correct remaining team or "Спасибо!" when both voted.
+2. **"Матч в {location}" → "Матч #{id}"**: Scheduler messages now reference game by number. Fixed in 3 places in `tasks.py`.
+3. **Debug DIAGNOSIS block removed** from `start_bot()` — was sending Game 5 info + full chat list to admins on every bot restart.
+4. **`/debug/trigger_voting` secured**: Was completely open (no auth). Now requires valid `initData` + admin check.
+5. **Duplicate `return history`** removed from `endpoints.py` (dead code on line 770).
+
+### Deployment (Current)
+- **Server:** `yernur@10.50.109.14` (dmc12)
+- **Folder:** `~/football-manager`
+- **Deploy flow:** `git push` locally → `git pull` on server → `docker compose restart app`
+- **⚠️ Use `docker compose` (with space)**, not `docker-compose`.
+- **⚠️ Use `docker compose up -d --force-recreate app`** (not `restart`) when `.env` changes.
+
+### Architecture Status
+- **`legacy_handlers.py` / `legacy_roster.py`**: Strangler Fig pattern, active for games ID ≤ `LAST_LEGACY_GAME_ID` (default: 5). Can be removed once those games are frozen.
+- **`endpoints.py`**: 995 lines — too large. TODO: split into `routers/games.py`, `routers/admin.py`, `routers/voting.py`.
+
+### Known Issues / TODOs
+- [ ] **`endpoints.py` refactor**: Split into multiple routers by domain.
+- [ ] **Remove `legacy_handlers.py`**: When games 1-5 are permanently frozen.
+- [ ] **DB Backups**: No automated backup. Explore `pg_dump` cron → local machine.
+- [ ] **`payment_info` hardcoded in model**: `default="2924402033/0800"` — move to Chat settings.
+- [ ] **Rate limiting on `/game/vote`**: No throttle currently.
+- [ ] **Alembic**: Still manual SQL migrations. High desync risk.

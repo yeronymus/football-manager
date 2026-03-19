@@ -260,68 +260,61 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
                 chat_info = await bot.get_chat(game_data.chat_id)
                 if chat_info.type == "channel":
                     new_game.channel_id = game_data.chat_id
-                    # We leave new_game.chat_id as the channel ID for now.
-                    # When Telegram auto-forwards to the Group, common.py will:
-                    # 1. Detect the message via hidden link
-                    # 2. Add buttons
-                    # 3. Update new_game.chat_id to the Group ID
             except Exception as e:
                 logger.warning(f"Failed to check chat type: {e}")
 
-            await uow.commit() # Commit Game Creation
-
-        
-        # --- Controller Logic (Presentation/Notifications) ---
-        
-        # 1. Immediate Publish?
-        # Logic replicated from legacy:
-        # If not past AND (no publish_at OR publish_at <= now) -> Publish Now
-        from datetime import datetime
-        
-        # Helper for timezone awareness check
-        tz = new_game.date_time.tzinfo
-        now_tz = datetime.now(tz) if tz else datetime.now()
-        
-        should_publish_now = True
-        if new_game.date_time < now_tz:
-             should_publish_now = False
-        elif game_data.publish_at:
-             # Ensure comparison compatibility
-             pub_at = game_data.publish_at
-             if pub_at.tzinfo is None and tz:
-                 pub_at = pub_at.replace(tzinfo=tz)
-             if pub_at > now_tz:
+            await uow.commit() # Commit Initial Game Creation
+            
+            # --- Controller Logic (Presentation/Notifications) ---
+            
+            from datetime import datetime
+            tz = new_game.date_time.tzinfo
+            now_tz = datetime.now(tz) if tz else datetime.now()
+            
+            should_publish_now = True
+            if new_game.date_time < now_tz:
                  should_publish_now = False
+            elif game_data.publish_at:
+                 pub_at = game_data.publish_at
+                 if pub_at.tzinfo is None and tz:
+                     pub_at = pub_at.replace(tzinfo=tz)
+                 if pub_at > now_tz:
+                     should_publish_now = False
 
-        if should_publish_now:
-             # Publish to Chat (with signup buttons)
-             try:
-                 text = await format_game_message(new_game, session, is_short=False)
-                 msg = await bot.send_message(
-                     chat_id=new_game.chat_id,
-                     text=text,
-                     reply_markup=get_game_keyboard(new_game.id)
-                 )
-                 new_game.message_id = msg.message_id
-                 await session.commit()
-                 try:
-                     await bot.pin_chat_message(chat_id=new_game.chat_id, message_id=msg.message_id)
-                 except: pass
-             except Exception as e:
-                 logger.warning(f"Failed to publish to chat: {e}")
+            if should_publish_now:
+                try:
+                    text = await format_game_message(new_game, uow.session, is_short=False)
+                    msg = await bot.send_message(
+                        chat_id=new_game.chat_id,
+                        text=text,
+                        reply_markup=get_game_keyboard(new_game.id),
+                        parse_mode="HTML"
+                    )
+                    new_game.message_id = msg.message_id
+                    if new_game.channel_id == new_game.chat_id:
+                        new_game.channel_message_id = msg.message_id
+                        
+                    await uow.commit()  # Save message_id to DB
+                    
+                    try:
+                        await bot.pin_chat_message(chat_id=new_game.chat_id, message_id=msg.message_id)
+                    except: 
+                        pass
+                except Exception as e:
+                    logger.warning(f"Failed to publish to chat: {e}")
 
-        # 2. Update Dashboard
-        try:
-             success = await update_dashboard_message(bot, new_game.id, session)
-             if not success:
-                 await bot.send_message(
-                     user_id, 
-                     f"⚠️ Игра создана, но <b>Admin Dashboard</b> не отправлен (нет привязки чата). Используйте /setup."
-                 )
-        except Exception as e:
-             logger.warning(f"Dashboard error: {e}")
+            # 2. Update Dashboard
+            try:
+                 success = await update_dashboard_message(bot, new_game.id, uow.session)
+                 if not success:
+                     await bot.send_message(
+                         user_id, 
+                         f"⚠️ Игра создана, но <b>Admin Dashboard</b> не отправлен (нет привязки чата). Используйте /setup."
+                     )
+            except Exception as e:
+                 logger.warning(f"Dashboard error: {e}")
 
-        return {"game_id": new_game.id, "status": "created"}
+            return {"game_id": new_game.id, "status": "created"}
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -774,7 +767,6 @@ async def get_chat_history(chat_id: int, initData: str, session: AsyncSession = 
         })
         
     return history
-    return history
 
 @router.get("/users/search")
 async def search_users(query: str, initData: str, session: AsyncSession = Depends(get_session)):
@@ -804,10 +796,15 @@ async def search_users(query: str, initData: str, session: AsyncSession = Depend
     ]
 
 @router.post("/debug/trigger_voting/{game_id}")
-async def debug_trigger_voting(game_id: int):
+async def debug_trigger_voting(game_id: int, initData: str = "", session: AsyncSession = Depends(get_session)):
     """
-    Manually triggers voting for a specific game.
+    Manually triggers voting for a specific game. Admin only.
     """
+    if not validate_init_data(initData, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+    user_id = get_user_from_init_data(initData)
+    if user_id not in settings.admin_ids and user_id != settings.system_owner_id:
+        raise HTTPException(status_code=403, detail="Admins only")
     try:
         from app.scheduler.tasks import send_voting_message
         await send_voting_message(game_id)
