@@ -529,7 +529,8 @@
 
         async function loadGame(id) {
             try {
-                const response = await fetch(`/api/game/${id}?initData=${encodeURIComponent(tg.initData)}`);
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/api/game/${id}?initData=${encodeURIComponent(tg.initData)}&_v=${timestamp}`);
                 if (!response.ok) throw new Error("Load failed");
                 const game = await response.json();
 
@@ -835,7 +836,8 @@
         async function showGameSelector() {
             document.getElementById('gameSelector').style.display = 'flex';
             try {
-                const response = await fetch(`/api/games/editable?initData=${encodeURIComponent(tg.initData)}`);
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/api/games/editable?initData=${encodeURIComponent(tg.initData)}&_v=${timestamp}`);
                 if (!response.ok) throw new Error("API Error");
                 const games = await response.json();
                 const list = document.getElementById('gameList');

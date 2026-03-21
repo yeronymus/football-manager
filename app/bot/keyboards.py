@@ -12,7 +12,6 @@ def get_position_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="🔙 Отмена", callback_data="delete_msg")]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_multiselect_keyboard(selected: list[str]) -> InlineKeyboardMarkup:
     buttons = []

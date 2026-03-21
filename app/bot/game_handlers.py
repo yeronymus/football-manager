@@ -11,15 +11,7 @@ router = Router()
 async def process_join(callback: types.CallbackQuery):
     game_id = int(callback.data.split("_")[1])
     tg_id = callback.from_user.id
-    
-    # --- STRANGLER ROUTER ---
-    # Legacy Games (ID <= 5) use the old logic
-    if game_id <= settings.last_legacy_game_id:
-        from app.bot.legacy_handlers import process_join as legacy_join
-        await legacy_join(callback)
-        return
 
-    # --- NEW ARCHITECTURE ---
     alert_msg = None
     event_payload = None
 
@@ -73,14 +65,7 @@ async def process_leave(callback: types.CallbackQuery):
     game_id = int(callback.data.split("_")[1])
     tg_id = callback.from_user.id
     is_admin = tg_id in settings.admin_ids or tg_id == settings.system_owner_id
-    
-    # --- STRANGLER ROUTER ---
-    if game_id <= settings.last_legacy_game_id:
-        from app.bot.legacy_handlers import process_leave as legacy_leave
-        await legacy_leave(callback)
-        return
 
-    # --- NEW ARCHITECTURE ---
     try:
         async with UnitOfWork() as uow:
             service = RosterService(uow)
