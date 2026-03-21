@@ -1,136 +1,79 @@
 # 📦 Deployment Guide
 
-Запуск бота настроен через Docker Compose. Процесс развертывания максимально автоматизирован с помощью скрипта `deploy.sh`.
+Бот работает в Docker на сервере. Деплой — через git push/pull.
 
-## 🏗 Архитектура деплоя
+## 🖥 Сервер
 
-У нас есть два окружения:
-1.  **Production (prod)**: `football-prod`
-    *   Работает с боевой базой данных.
-    *   Запускается через `prod.sh` (обертка над `deploy.sh prod`).
-    *   Использует `.env` файл `production.env`.
-2.  **Development (dev)**: `football-dev`
-    *   Песочница.
-    *   Запускается через `deploy.sh dev`.
-    *   Использует `.env` файл `development.env`.
+| Параметр | Значение |
+|---|---|
+| SSH | `ssh yernur@10.50.109.14` |
+| Папка проекта | `~/football-manager` |
+| Docker контейнеры | `football-manager-app-1`, `football-manager-db-1`, `football-manager-redis-1` |
 
-## 🚀 Быстрый Деплой
+> [!IMPORTANT]
+> Docker Compose установлен как плагин Docker. Используй `docker compose` (с пробелом), **не** `docker-compose`.
 
-### 1. Обычное обновление кода
-Если вы изменили только python-файлы или шаблоны, просто запустите:
+---
 
+## 🚀 Деплой (обновление кода)
+
+**Локально:**
 ```bash
-# Для продакшена
-./prod.sh
-
-# Для дев-стенда
-./deploy.sh dev
+git add .
+git commit -m "описание изменений"
+git push
 ```
 
-Скрипт:
-1.  Скопирует файлы на сервер (без остановки текущего контейнера).
-2.  Пересоберет образ `app`.
-3.  Перезапустит контейнер `app` (Docker Compose Up -d).
-
-### 2. Деплой с миграциями БД
-Если вы добавили новые поля в модели или таблицы:
-
+**На сервере:**
 ```bash
-# Добавьте флаг --migrate
-./prod.sh --migrate
+ssh yernur@10.50.109.14
+cd ~/football-manager && git pull
+docker compose restart app
 ```
 
-Скрипт дополнительно выполнит:
-1.  Запуск временного контейнера для выполнения всех скриптов миграции (`migrate_db.py`, `migrate_admin.py`, и любых новых файлов `migrate_*.py`).
+---
 
-**💡 Важно:** Миграции запускаются _после_ обновления кода, но _до_ финального рестарта основного сервиса (хотя архитектурно они могут идти параллельно, мы используем безопасный `run` метод).
+## 🗃 База данных
 
-## 🗃 Работа с Базой Данных
-
-### Бэкапы (WIP)
-_Планируется добавление скрипта backup.sh_
-
-### Ручной доступ к БД
-Подключиться к psql внутри контейнера:
-
+**Подключиться к psql:**
 ```bash
-# Прямая команда для подключения (скопируйте и запустите в терминале):
-ssh ubuntu@yernur-vm1.sin.cvut.cz "cd ~/football-prod && docker-compose exec -u postgres db psql -U postgres -d football"
+ssh yernur@10.50.109.14
+cd ~/football-manager
+docker compose exec -u postgres db psql -U postgres -d football
 ```
 
-### Полезные SQL команды (для администратора)
-Если нужно сбросить статистику или проверить данные:
+**Полезные SQL:**
 ```sql
--- Проверить последние игры
+-- Последние игры
 SELECT id, date_time, status FROM games ORDER BY date_time DESC LIMIT 5;
 
--- Проверить рейтинг топ-5 игроков
+-- Рейтинг топ-5
 SELECT full_name, rating FROM users ORDER BY rating DESC LIMIT 5;
 ```
 
-## 🛠 Администрирование Сервера
+---
 
-### Доступ (SSH)
-Агент (и вы) подключается к серверу по следующей команде:
+## 🐞 Troubleshooting
+
+**Проверить логи:**
 ```bash
-ssh ubuntu@yernur-vm1.sin.cvut.cz
-```
-Папка проекта: `~/football-prod`
-
-### Управление Docker
-```bash
-# Посмотреть статус контейнеров
-ssh ubuntu@yernur-vm1.sin.cvut.cz "cd football-prod && docker-compose ps"
-
-# Перезагрузить только бота
-ssh ubuntu@yernur-vm1.sin.cvut.cz "cd football-prod && docker-compose restart app"
+ssh yernur@10.50.109.14
+cd ~/football-manager && docker compose logs --tail=50 app
 ```
 
-## 🐞 Устранение неполадок (Troubleshooting)
+**Бот упал / перезапускается:**
+```bash
+docker compose logs --tail=100 app  # найти причину
+docker compose restart app
+```
 
-### "Прод упал!"
-1.  **Проверьте логи**:
-    ```bash
-    ssh ubuntu@<server> "cd ~/football-prod && docker-compose logs --tail=100 app"
-    ```
-2.  **Контейнер перезагружается (Restarting)?**
-    *   Скорее всего ошибка при старте (ImportError, SyntaxError, DB connection). Логи покажут причину.
-    *   Если ошибка в коде: исправьте локально -> `./prod.sh`.
-    *   Если ошибка в БД (нет колонки): `./prod.sh --migrate`.
+**Если меняли модели БД** — создай скрипт `migrate_xyz.py` и запусти:
+```bash
+docker compose exec app python3 migrate_xyz.py
+```
 
-### Миграция упала
-Если `./prod.sh --migrate` завершился с ошибкой:
-1.  Подключитесь к серверу.
-2.  Запустите руками, чтобы увидеть полный трейс:
-    ```bash
-    cd ~/football-prod
-    docker-compose run --rm app python migrate_your_script.py
-    ```
+---
 
-## ⚠️ Изменение схемы базы данных
+## ⚠️ Изменение схемы БД
 
-> [!IMPORTANT]
-> **Будьте предельно осторожны при изменении моделей БД!**
-
-Поля в `app/db/models.py` не обновляются в базе данных автоматически. 
-1. Если вы добавили поле (например, в `GameStats`), обязательно создайте скрипт миграции `migrate_stats.py`.
-2. Запустите его на сервере: `docker-compose exec app python3 migrate_stats.py`.
-3. Без миграции бот упадет с ошибкой `UndefinedColumnError` при первом же запросе к этим данным.
-
-## 🐞 Частые ошибки (Troubleshooting)
-
-### TelegramConflictError
-Если в логах "Conflict: terminated by setWebhook request":
-- Это значит, что бот пытается использовать Polling, пока активен Webhook.
-- **Решение**: Код в `app/api/main.py` теперь автоматически удаляет вебхук при старте в режиме Polling. Проверьте, что `USE_POLLING=True` в `.env`.
-
-### ModuleNotFoundError / Permission Denied
-Если контейнер не видит папку `app` или файлы:
-- Это может быть связано с SELinux на сервере.
-- **Решение**: Убедитесь, что в `docker-compose.yml` у тома стоит флаг `:z` (например, `- .:/app:z`).
-
-## 📝 Чек-лист перед выкаткой в Прод
-1.  [x] Код работает локально.
-2.  [x] Если меняли модели -> создали `migrate_xyz.py` и протестировали его.
-3.  [x] `./prod.sh` (автоматически подхватит изменения кода).
-4.  [x] **После деплоя**: Запустить миграцию вручную, если это необходимо.
+Поля в `app/db/models.py` **не** применяются автоматически. При добавлении новых колонок нужна ручная миграция, иначе бот упадёт с `UndefinedColumnError`.

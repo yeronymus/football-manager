@@ -41,23 +41,12 @@ async def update_game_ui(game_id: int):
         game = await session.get(Game, game_id)
         if not game: return
         
-        # 1. Format Message
-        text = await format_game_message(game, session)
-        
-        # 2. Update Chat
-        if game.chat_id and game.message_id:
-            try:
-                await _bot.edit_message_text(
-                    chat_id=game.chat_id,
-                    message_id=game.message_id,
-                    text=text,
-                    reply_markup=get_game_keyboard(game.id),
-                    parse_mode="HTML"
-                )
-            except Exception as e:
-                # Ignore "message is not modified"
-                if "message is not modified" not in str(e):
-                    logger.warning(f"Failed to update chat message: {e}")
+        # 1. Update Game Messages (Chat & Channel)
+        from app.bot.utils import update_game_message
+        try:
+            await update_game_message(_bot, game, session)
+        except Exception as e:
+            logger.warning(f"Failed to update game messages: {e}")
 
         # 4. Update Dashboard
         from app.bot.admin_dashboard import update_dashboard_message

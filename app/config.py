@@ -70,10 +70,7 @@ class Settings:
             owner = os.getenv("SYSTEM_OWNER_ID")
             self.system_owner_id = int(owner) if owner else None
             
-            # Strangler Fig: Legacy Game Barrier
-            # Games with ID <= this value will use old logic
-            self.last_legacy_game_id = int(os.getenv("LAST_LEGACY_GAME_ID", "5"))
-            
+
         except Exception as e:
             print(f"Config Init Error: {e}", file=sys.stderr)
             # Default empty to prevent crash, check health for error

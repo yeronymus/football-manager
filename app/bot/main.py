@@ -54,9 +54,7 @@ dp.update.middleware(DbSessionMiddleware(session_pool=async_session_maker))
 
 async def start_bot():
     """
-    Function to start the bot (e.g. set webhook).
-    This will be called from the FastAPI startup event.
-    This will be called from the FastAPI startup event.
+    Function to start the bot. Called from FastAPI startup event.
     """
     if settings.webhook_url and not settings.use_polling:
         webhook_info = await bot.get_webhook_info()
