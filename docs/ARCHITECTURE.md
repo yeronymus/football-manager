@@ -226,3 +226,52 @@ class RosterService:
 - [ ] **`payment_info` hardcoded in model**: `default="2924402033/0800"` — move to Chat settings.
 - [ ] **Rate limiting on `/game/vote`**: No throttle currently.
 - [ ] **Alembic**: Still manual SQL migrations. High desync risk.
+
+---
+
+## 📋 OPERATIONS NOTES (Практические уроки)
+
+### Shell — Fish vs Bash
+На локале используется **fish shell**. Wildcards в remote путях не работают:
+```bash
+# ❌ Fish — не работает
+scp user@host:~/files_*.sql ~/
+
+# ✅ Указывай точное имя
+scp user@host:/home/yernur/football_backup_20260321.sql ~/Documents/fmBot/
+
+# ❌ Fish — не работает
+git clean -fdx --exclude=".env.*"
+
+# ✅ Оборачивай в bash
+bash -c 'git clean -fdx --exclude=".env.*"'
+```
+
+### Docker
+```bash
+# Используй docker compose (с пробелом), не docker-compose
+docker compose restart app     # Перезапуск (НЕ перечитывает .env)
+docker compose up -d --force-recreate app  # Перезапуск С перечиткой .env
+
+# Имя БД — football_prod (не football!)
+docker compose exec -u postgres db psql -U postgres -l
+```
+
+### Бэкап и восстановление БД
+```bash
+# Бэкап (на сервере)
+docker compose exec -u postgres db pg_dump -U postgres football_prod > ~/football_backup_$(date +%Y%m%d).sql
+
+# Скопировать на локал (точное имя, без wildcards в fish)
+scp yernur@10.50.109.14:/home/yernur/football_backup_YYYYMMDD.sql ~/Documents/fmBot/
+
+# Восстановление на новом сервере
+docker compose exec -u postgres db psql -U postgres -c "CREATE DATABASE football_prod;"
+cat football_backup_YYYYMMDD.sql | docker compose exec -i -u postgres db psql -U postgres football_prod
+```
+
+### .env при миграции сервера
+После переноса нужно обновить:
+- `WEBHOOK_URL` — новый Cloudflare туннель или домен
+- `WEBAPP_URL` — то же самое
+- Остальное (токены, пароли, ID) — копируется как есть
