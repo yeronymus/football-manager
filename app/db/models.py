@@ -24,6 +24,7 @@ class Position(str, enum.Enum):
     LW = "LW"
     RW = "RW"
     FWD = "FWD" # General Forward
+    SUB = "SUB" # Substitute
 
 class GameStatus(str, enum.Enum):
     OPEN = "open"
@@ -104,6 +105,10 @@ class Game(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     # Registration Window (0 = Unlimited, 24 = 24 hours from creation)
     registration_hours = Column(Integer, default=0)
+    
+    # New Format Fields
+    main_players_count = Column(Integer, default=22) # Number of players in "Main Roster"
+    signup_limit = Column(Integer, default=999)      # Total players allowed (Active + Reserve)
     
     chat = relationship("Chat", back_populates="games")
     creator = relationship("User", back_populates="games_created")

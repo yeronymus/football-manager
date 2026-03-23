@@ -6,7 +6,7 @@ import logging
 
 from app.config import settings
 from app.bot.main import bot, dp, start_bot, stop_bot
-from app.api.endpoints import router as game_router
+from app.api.routers import games, admin, voting, users
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -80,8 +80,12 @@ async def on_startup():
 async def on_shutdown():
     await stop_bot()
 
-# Routes
-app.include_router(game_router, prefix="/api")
+# Routers
+app.include_router(games.router, prefix="/api", tags=["Games"])
+app.include_router(admin.router, prefix="/api", tags=["Admin"])
+app.include_router(voting.router, prefix="/api", tags=["Voting"])
+app.include_router(users.router, prefix="/api", tags=["Users"])
+
 app.mount("/web", StaticFiles(directory="app/web", html=True), name="web")
 
 @app.get("/health")

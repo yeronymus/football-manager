@@ -235,8 +235,8 @@ async def publish_game_task(game_id: int):
             except Exception as e:
                 print(f"Failed to publish to channel {game.channel_id}: {e}")
 
-        # 2. Publish to Group (Short)
-        text_short = await format_game_message(game, session, is_short=True)
+        # 2. Publish to Group (Full mode per user request)
+        text_short = await format_game_message(game, session, is_short=False)
         try:
             sent_message = await bot.send_message(
                 chat_id=game.chat_id,

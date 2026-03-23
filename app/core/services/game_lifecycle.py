@@ -51,7 +51,9 @@ class GameLifecycleService:
             registration_hours=data.registration_hours,
             duration=data.duration,
             status=GameStatus.OPEN,
-            game_type=data.game_type
+            game_type=data.game_type,
+            main_players_count=data.main_players_count,
+            signup_limit=data.signup_limit
         )
         self.session.add(game)
         await self.session.flush() # To get ID
@@ -150,6 +152,12 @@ class GameLifecycleService:
               
         if data.registration_hours is not None and data.registration_hours != game.registration_hours:
              game.registration_hours = data.registration_hours
+
+        if data.main_players_count is not None and data.main_players_count != game.main_players_count:
+             game.main_players_count = data.main_players_count
+
+        if data.signup_limit is not None and data.signup_limit != game.signup_limit:
+             game.signup_limit = data.signup_limit
              
         # No Commit.
         return game, changes

@@ -563,6 +563,7 @@
                              ${renderPosGroup(key, 'DEF', 'Защита')}
                              ${renderPosGroup(key, 'MID', 'Полузащита')}
                              ${renderPosGroup(key, 'FWD', 'Нападение')}
+                             ${renderPosGroup(key, 'SUB', 'Замена')}
                         </div>
                     `;
                     grid.appendChild(col);
@@ -608,6 +609,7 @@
                         else if (['LB', 'CB', 'RB', 'LWB', 'RWB'].includes(pos)) posCat = 'DEF';
                         else if (['LM', 'CM', 'RM', 'CDM', 'CAM'].includes(pos)) posCat = 'MID';
                         else if (['LW', 'RW', 'FWD', 'ST', 'CF'].includes(pos)) posCat = 'FWD';
+                        else if (pos === 'SUB') posCat = 'SUB';
 
                         addPlayerToSlot(p, `${key}-${posCat}`);
                     });
@@ -630,7 +632,7 @@
 
                 // 2. Team Slots
                 activeTeams.forEach(key => {
-                    ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                    ['GK', 'DEF', 'MID', 'FWD', 'SUB'].forEach(pos => {
                         const el = document.getElementById(`${key}-${pos}`).querySelector('.player-list');
                         new Sortable(el, {
                             group: 'players',
@@ -675,7 +677,7 @@
             activeTeams.forEach(key => {
                 let sum = 0;
                 let count = 0;
-                ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                ['GK', 'DEF', 'MID', 'FWD', 'SUB'].forEach(pos => {
                     const slot = document.getElementById(`${key}-${pos}`);
                     if (!slot) return;
                     slot.querySelectorAll('.player-card').forEach(c => {
@@ -759,7 +761,7 @@
 
             const gather = (prefix) => {
                 const list = [];
-                ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                ['GK', 'DEF', 'MID', 'FWD', 'SUB'].forEach(pos => {
                     const slot = document.getElementById(`${prefix}-${pos}`);
                     if (!slot) return;
                     slot.querySelectorAll('.player-card').forEach(c => {
