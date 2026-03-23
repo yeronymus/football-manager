@@ -17,6 +17,8 @@ class GameCreate(BaseModel):
     game_type: str = "regular"
     auto_join_ids: List[int] = []
     publish_at: Optional[datetime] = None
+    main_players_count: Optional[int] = 22
+    signup_limit: Optional[int] = 999
     initData: str
 
 class GameUpdate(BaseModel):
@@ -29,6 +31,8 @@ class GameUpdate(BaseModel):
     gk_hours: Optional[int] = None
     duration: Optional[float] = None
     registration_hours: Optional[int] = None
+    main_players_count: Optional[int] = None
+    signup_limit: Optional[int] = None
     initData: str
     initData: str
 

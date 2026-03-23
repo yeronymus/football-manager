@@ -66,6 +66,12 @@ class RosterService:
              if diff > float(game.registration_hours):
                   return JoinResult(False, None, f"⏳ Запись закрыта (прошло {game.registration_hours} ч.)", False)
 
+        # 3.2 Total Signup Limit
+        if getattr(game, 'signup_limit', None) and game.signup_limit > 0 and not ignore_limit:
+             total_count = await self.uow.game_repo.get_total_signups_count(game_id)
+             if total_count >= game.signup_limit:
+                  return JoinResult(False, None, f"❌ Мест нет! (Лимит {game.signup_limit})", False)
+
         # 4. Логика слотов (Основной vs Резерв)
         active_count = await self.uow.game_repo.get_active_signups_count(game_id)
         status = SignupStatus.ACTIVE
@@ -251,14 +257,11 @@ class RosterService:
         for uid in team_b: update_signup(uid, Team.B)
         for uid in team_c or []: update_signup(uid, Team.C)
         
-        # Reset others? 
-        # Endpoint logic implies we send FULL lists. 
-        # Those not in lists should probably be unassigned or kept?
-        # Usually update_teams sends everyone.
-        # If someone is NOT in lists but WAS active, do we kick them?
-        # Or just unset team? 
-        # Let's assume just unset team for now to be safe, or leave as is.
-        # But if they were moved to Reserve? The prompt says "update teams".
-        # Let's stick to updating those present.
-        
+        # Demote others to Reserve (this handles the "draft 26 out of 40" requirement)
+        picked_ids = set(team_a) | set(team_b) | set(team_c or [])
+        for uid, s in signup_map.items():
+            if uid not in picked_ids:
+                s.status = SignupStatus.RESERVE
+                s.team = None
+
         return promoted_ids

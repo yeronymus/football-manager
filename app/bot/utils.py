@@ -115,6 +115,10 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
                 for signup, user in plist:
                     if cat == "GK": has_gk = True
                     text += f"{team_counter}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
+                    # Add subs separator if needed (assuming 11 per team for 11x11/22 format)
+                    m_per_team = (getattr(game, 'main_players_count', 22) or 22) // (game.team_count or 2)
+                    if team_counter == m_per_team:
+                         text += "   --- замена ---\n"
                     team_counter += 1
             
             needed_gk = team_gk_flags[i] if i < len(team_gk_flags) else True
@@ -128,13 +132,25 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
             for i, (signup, user) in enumerate(unassigned, 1):
                 text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
     else:
+        main_count = getattr(game, 'main_players_count', 22) or 22
+        
+        # Split active players based on main_players_count
+        main_players = active_players[:main_count]
+        substitutes = active_players[main_count:]
+        
         text += f"👥 <b>Состав</b> ({len(active_players)}/{game.max_players}):\n"
 
-        if active_players:
-            text += "\n🏃 <b>Игроки:</b>\n"
-            for i, (signup, user) in enumerate(active_players, 1):
+        if main_players:
+            text += f"\n🔥 <b>Основной состав</b> ({len(main_players)}/{min(len(active_players), main_count)}):\n"
+            for i, (signup, user) in enumerate(main_players, 1):
                  text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
-        else:
+        
+        if substitutes:
+            text += f"\n🔁 <b>Замены</b> ({len(substitutes)}):\n"
+            for i, (signup, user) in enumerate(substitutes, main_count + 1):
+                 text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
+        
+        if not active_players:
             text += "\nПока никого... 🦗\n"
 
     if reserve_players:
@@ -183,8 +199,8 @@ async def update_game_message(bot, game, session: AsyncSession):
             logging.warning(f"Failed to edit message in channel {game.channel_id}: {e}")
 
 
-    # 2. Update Primary Chat (Short mode)
-    text_short = await format_game_message(game, session, is_short=True, signups=signups)
+    # 2. Update Primary Chat (Full mode by default per user request)
+    text_short = await format_game_message(game, session, is_short=False, signups=signups)
     try:
         await bot.edit_message_text(
             chat_id=game.chat_id,

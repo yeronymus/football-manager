@@ -81,10 +81,21 @@
             required>
     </div>
     <div class="form-group">
-        <label for="max_players">Кол-во мест</label>
-        <input type="number" id="max_players" value="18" min="5" max="999" inputmode="numeric">
-        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">999 = Безлимитная
-            запись</small>
+        <label for="max_players">Мест в основе (+ замены)</label>
+        <input type="number" id="max_players" value="26" min="5" max="999" inputmode="numeric">
+        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Например: 26 (22 + 4 на замену)</small>
+    </div>
+    
+    <div class="form-group">
+        <label for="main_players_count">Игроков на поле (всего)</label>
+        <input type="number" id="main_players_count" value="22" min="2" max="999" inputmode="numeric">
+        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Например: 22 для 11х11</small>
+    </div>
+
+    <div class="form-group">
+        <label for="signup_limit">Лимит записи (всё вкл.)</label>
+        <input type="number" id="signup_limit" value="40" min="5" max="999" inputmode="numeric">
+        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">После этого запись закроется полностью</small>
     </div>
 
     <div class="form-group">
@@ -350,6 +361,8 @@
                     date_time: toPragueISO(dateTime),
                     location: location,
                     max_players: parseInt(maxPlayers),
+                    main_players_count: parseInt(document.getElementById('main_players_count').value) || 22,
+                    signup_limit: parseInt(document.getElementById('signup_limit').value) || 999,
                     price: parseInt(document.getElementById('price').value) || 0,
                     payment_info: document.getElementById('payment_info').value || "",
                     team_count: parseInt(document.getElementById('team_count').value) || 2,

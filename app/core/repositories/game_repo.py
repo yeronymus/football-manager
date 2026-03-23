@@ -14,6 +14,14 @@ class GameRepository(BaseRepository[Game]):
         )
         return result.scalar() or 0
     
+    async def get_total_signups_count(self, game_id: int) -> int:
+        result = await self.session.execute(
+            select(func.count(Signup.id))
+            .where(Signup.game_id == game_id)
+            .where(Signup.status.in_([SignupStatus.ACTIVE, SignupStatus.RESERVE]))
+        )
+        return result.scalar() or 0
+    
     async def get_signup(self, game_id: int, user_id: int) -> Signup | None:
         result = await self.session.execute(
             select(Signup)
