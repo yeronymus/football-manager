@@ -41,8 +41,14 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
     
     duration_val = f"{game.duration:g}" if game.duration else ""
     duration_str = f" 🕒 {duration_val} часа" if duration_val else ""
-    text = f"{type_label}\n"
-    text += f"⚽ <b>{date_str}{duration_str}</b>\n"
+    
+    # 11x11 / 9x9 / etc format based on main_players_count
+    mpc = getattr(game, 'main_players_count', 22) or 22
+    team_format = f"{mpc // 2}x{mpc // 2}"
+    
+    text = f"{type_label} <b>#{game.id}</b>\n"
+    text += f"⚽ <b>Формат: {team_format}</b> (нужно {game.max_players} человек)\n"
+    text += f"📅 <b>{date_str}{duration_str}</b>\n"
     text += f"📍 <b>{html.escape(game.location)}</b>\n"
     
     if is_short:
