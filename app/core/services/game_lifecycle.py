@@ -74,10 +74,7 @@ class GameLifecycleService:
         now_tz = datetime.now(tz) if tz else datetime.now()
         is_past = game.date_time < now_tz
         
-        # Strangler Fig: Skip scheduling for legacy games
-        is_legacy = game.id <= settings.last_legacy_game_id
-        
-        if not is_past and not is_legacy:
+        if not is_past:
             if data.publish_at:
                 pub_at = data.publish_at
                 # Ensure compare aware vs aware
