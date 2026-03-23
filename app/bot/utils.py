@@ -138,7 +138,8 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
             for i, (signup, user) in enumerate(unassigned, 1):
                 text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
     else:
-        text += f"👥 <b>Игроки</b> ({len(active_players)}/{game.max_players}):\n"
+        limit = getattr(game, 'signup_limit', game.max_players) or game.max_players
+        text += f"👥 <b>Игроки</b> ({len(active_players)}/{limit}):\n"
 
         if active_players:
             for i, (signup, user) in enumerate(active_players, 1):
