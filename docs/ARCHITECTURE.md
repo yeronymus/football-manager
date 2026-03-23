@@ -216,13 +216,13 @@ class RosterService:
 - **⚠️ Use `docker compose up -d --force-recreate app`** (not `restart`) when `.env` changes.
 
 ### Architecture Status
-- **`legacy_handlers.py` / `legacy_roster.py`**: Strangler Fig pattern, active for games ID ≤ `LAST_LEGACY_GAME_ID` (default: 5). Can be removed once those games are frozen.
-- **`endpoints.py`**: 995 lines — too large. TODO: split into `routers/games.py`, `routers/admin.py`, `routers/voting.py`.
+- **`legacy_handlers.py` / `legacy_roster.py`**: REMOVED. All games now use the new architecture. Strangler Fig period is over.
+- **`endpoints.py`**: Refactored into modular routers (`app/api/routers/`). All logic was preserved but split into `games.py`, `admin.py`, `voting.py`, and `users.py`. Shared auth logic moved to `app/api/auth.py`.
 
 ### Known Issues / TODOs
-- [ ] **`endpoints.py` refactor**: Split into multiple routers by domain.
-- [ ] **Remove `legacy_handlers.py`**: When games 1-5 are permanently frozen.
-- [ ] **DB Backups**: No automated backup. Explore `pg_dump` cron → local machine.
+- [x] **Remove `legacy_handlers.py`**: Done.
+- [x] **`endpoints.py` refactor**: Done. Split into modular routers.
+- [x] **DB Backups**: Done. Created `scripts/backup_db.sh` for automated backups.
 - [ ] **`payment_info` hardcoded in model**: `default="2924402033/0800"` — move to Chat settings.
 - [ ] **Rate limiting on `/game/vote`**: No throttle currently.
 - [ ] **Alembic**: Still manual SQL migrations. High desync risk.
@@ -275,3 +275,67 @@ cat football_backup_YYYYMMDD.sql | docker compose exec -i -u postgres db psql -U
 - `WEBHOOK_URL` — новый Cloudflare туннель или домен
 - `WEBAPP_URL` — то же самое
 - Остальное (токены, пароли, ID) — копируется как есть
+
+---
+
+## 🖥 INFRASTRUCTURE (Proxmox Setup)
+**Date:** 2026-03-23
+
+### Сетевая карта
+
+| Сервис | Внешний адрес | Внутренний адрес | Назначение |
+|---|---|---|---|
+| Proxmox GUI | https://147.32.107.65:8006 | Хост (pve-node) | Управление CT/VM |
+| NPM Admin | http://147.32.107.65:81 | 192.168.10.2:81 | Nginx Proxy Manager — SSL и домены |
+| SSH контейнера | ssh root@147.32.107.65 -p 2222 | 192.168.10.2:22 | Основной вход для работы |
+| Mini App (WebApp) | https://football-bot-yeronym.duckdns.org | 192.168.10.2:8000 | То, что видит юзер в Telegram |
+
+### Бот на сервере
+
+- **Папка:** `/root/football-bot` (или `~/football-bot`)
+- **Запуск:** `docker compose up -d --build`
+- **Логи:** `docker compose logs -f`
+- **Git:** SSH-ключи настроены, `git pull` без пароля
+
+### DNS и SSL
+
+- **DuckDNS:** `football-bot-yeronym.duckdns.org` → `147.32.107.65`
+  - ⚠️ Если IP ноута изменится — обновить на duckdns.org
+- **SSL:** через NPM (Nginx Proxy Manager) + Let's Encrypt
+  - Если SSL-ошибка: сначала запусти бот (`docker compose up -d`), потом жми Save в NPM — LE увидит живой ответ на порту 8000
+
+### .env для нового сервера
+
+```env
+WEBAPP_URL=https://football-bot-yeronym.duckdns.org
+WEBHOOK_URL=  # оставь пустым, USE_POLLING=True
+USE_POLLING=True
+```
+
+### Безопасность
+
+- **Proxmox:** `root@pam` + 2FA (TOTP через **Ente Auth**). Не удалять аккаунт из приложения — без него в GUI не войти!
+- **SSH контейнера:** пароль задан через `passwd root`, порт `2222`
+- **NPM:** стандартный пароль сменён. Если забудешь — сброс через Docker DB
+
+### Восстановление БД на новом сервере
+
+```bash
+# После docker compose up -d
+docker compose exec -u postgres db psql -U postgres -c "CREATE DATABASE football_prod;"
+cat football_backup_20260321.sql | docker compose exec -i -u postgres db psql -U postgres football_prod
+```
+
+### Automated Backups
+
+В систему добавлен скрипт `scripts/backup_db.sh`, который делает дамп и хранит копии за последние 7 дней.
+
+**Установка крона (на сервере):**
+
+```bash
+# Открыть редактор крона
+crontab -e
+
+# Добавить строку (бекап каждый день в 03:00)
+0 3 * * * cd /root/football-bot && ./scripts/backup_db.sh >> /var/log/db_backup.log 2>&1
+```
