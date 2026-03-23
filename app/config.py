@@ -35,6 +35,7 @@ class Settings:
                 self.debug_new_logic_user_ids = []
 
             self.use_new_roster_logic = os.getenv("USE_NEW_ROSTER_LOGIC", "True").lower() == "true"
+            self.last_legacy_game_id = int(os.getenv("LAST_LEGACY_GAME_ID", "0"))
 
             self.webhook_url = os.getenv("WEBHOOK_URL", "")
             
