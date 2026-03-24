@@ -232,7 +232,7 @@ class RosterService:
 To prevent production crashes and maintain technical health, we follow this GitFlow:
 
 ### 1. The Branches
-- **`main`**: Production-ready code ONLY. Direct push is **strictly forbidden**.
+- **`Main`**: Production-ready code ONLY. Note the **capital 'M'**. Direct push is **strictly forbidden**.
 - **`dev`**: The main integration branch. All features are merged here first. Use this for testing and staging.
 - **`feature/name-of-feature`**: Short-lived branches for specific tasks.
 
