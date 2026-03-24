@@ -33,6 +33,11 @@ async def main():
     # Restore Command
     subparsers.add_parser("restore", help="Restore January 2026 Data")
 
+    # Stats Command
+    stats_parser = subparsers.add_parser("stats", help="Generate statistics")
+    stats_parser.add_argument("--game-id", type=int, default=7, help="Max Game ID to include")
+    stats_parser.add_argument("--output", type=str, default="FM_Player_Stats.xlsx", help="Output filename")
+
     # Monitor Command
     subparsers.add_parser("remote-logs", help="Monitor Remote Logs")
 
@@ -48,6 +53,9 @@ async def main():
     elif args.command == "restore":
         from app.cli.restore import restore_january_2026
         await restore_january_2026()
+    elif args.command == "stats":
+        from app.cli.stats import generate_stats_command
+        await generate_stats_command(args.game_id, args.output)
     elif args.command == "remote-logs":
         from app.cli.monitor import monitor_remote_logs
         # Interactive, monitoring need to be sync or handled carefully if nested in async main
