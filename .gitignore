@@ -37,6 +37,7 @@ git_status.txt
 *.swp
 .agent/
 .agents/
+docs/
 
 # Artifacts & Outputs
 *.xlsx
