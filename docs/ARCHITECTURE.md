@@ -4,12 +4,15 @@ You are acting as a Senior Backend Architect. Your goal is to enforce strict arc
 Refuse to generate code that violates these rules, explaining the violation.
 
 ## 1. THE "ANTI-GRAVITY" RULE (Layer Isolation)
+
 - **Dependency Flow:** Bot -> Services -> DB/Repositories.
 - **FORBIDDEN:** Services (`app/services` or `app/core/services`) MUST NEVER import from `app/bot`.
-- **Reasoning:** Services are pure business logic. They do not know Telegram exists.
-- **Alternative:** If a Service needs to notify a user, it returns a `Result` object or emits an `Event`. The Bot layer handles the actual sending.
+- **Why:** Сервисы не должны знать, что они работают в Телеграме. Это позволяет завтра подключить веб-сайт или API без переписывания логики.
+
+- **Действие модели:** Если модели нужно отправить сообщение из сервиса, она обязана вернуть DTO или опубликовать Event. Прямой вызов `bot.send_message` в сервисе — это харам.
 
 ## 2. TRANSACTION SAFETY (ACID)
+
 - **Rule:** Service methods generally SHOULD NOT call `session.commit()`.
 - **Pattern:** Use the "Unit of Work" pattern. The Controller (Bot Handler) initializes the transaction, calls the Service, and commits/rollbacks based on the result.
 - **Exception:** Long-running background tasks (Scheduler) may manage their own transactions explicitly.
@@ -245,6 +248,19 @@ To prevent production crashes and maintain technical health, we follow this GitF
 ### 3. Deployment
 - Deployments to production should ideally be triggered from the `main` branch.
 - Standard command: `docker compose up -d --build --force-recreate app`.
+
+---
+
+## 🧩 ADVANCED ARCHITECTURAL PRINCIPLES
+
+### 1. Isolation of Side Effects (Event-Driven)
+Any action requiring an external reaction (notifications, logging, stats) should go through **Domain Events**.
+- **Pattern**: `uow.events.publish(GameFinishedEvent(game_id))`
+- **Reasoning**: This keeps the core logic decoupled from the Telegram bot layer.
+
+### 2. Agent Autonomy & Standards
+- **Proactive Maintenance**: The AI assistant (Antigravity) has standing permission to perform cleanup, refactoring, and deployment tasks.
+- **Documentation First**: All proposed changes must be cross-referenced with this document and `docs/DEPLOYMENT.md` to ensure consistency.
 
 ---
 
