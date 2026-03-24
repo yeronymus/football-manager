@@ -220,12 +220,31 @@ class RosterService:
 - **`endpoints.py`**: Refactored into modular routers (`app/api/routers/`). All logic was preserved but split into `games.py`, `admin.py`, `voting.py`, and `users.py`. Shared auth logic moved to `app/api/auth.py`.
 
 ### Known Issues / TODOs
-- [x] **Remove `legacy_handlers.py`**: Done.
 - [x] **`endpoints.py` refactor**: Done. Split into modular routers.
 - [x] **DB Backups**: Done. Created `scripts/backup_db.sh` for automated backups.
-- [ ] **`payment_info` hardcoded in model**: `default="2924402033/0800"` — move to Chat settings.
-- [ ] **Rate limiting on `/game/vote`**: No throttle currently.
+- [x] **Clean Root & Global CLI**: Done. Unified under `manage.py stats` and `tools/`.
 - [ ] **Alembic**: Still manual SQL migrations. High desync risk.
+
+---
+
+## 🏗 GITFLOW STANDARDS
+
+To prevent production crashes and maintain technical health, we follow this GitFlow:
+
+### 1. The Branches
+- **`main`**: Production-ready code ONLY. Direct push is **strictly forbidden**.
+- **`dev`**: The main integration branch. All features are merged here first. Use this for testing and staging.
+- **`feature/name-of-feature`**: Short-lived branches for specific tasks.
+
+### 2. The Workflow
+1. Create a branch: `git checkout -b feature/cool-new-logic`.
+2. Commit and Push: `git push origin feature/cool-new-logic`.
+3. Open a **Pull Request** to `dev`.
+4. Once `dev` is verified stable, merge `dev` into `main` for release.
+
+### 3. Deployment
+- Deployments to production should ideally be triggered from the `main` branch.
+- Standard command: `docker compose up -d --build --force-recreate app`.
 
 ---
 
