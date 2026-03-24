@@ -39,6 +39,37 @@ async def add_player_command(game_id: int, user_id: int, force: bool = False):
         else:
             print(f"Failed: {result.message}")
 
+async def renumber_game_command(old_id: int, new_id: int):
+    """Renumber a game ID and all related records."""
+    async with async_session_maker() as session:
+        from sqlalchemy import text
+        print(f"Renumbering Game {old_id} -> {new_id}...")
+        
+        # 1. Verify IDs
+        res_old = await session.execute(text(f"SELECT id FROM games WHERE id = {old_id}"))
+        if not res_old.scalar():
+            print(f"Game {old_id} not found. Aborting.")
+            return
+
+        res_new = await session.execute(text(f"SELECT id FROM games WHERE id = {new_id}"))
+        if res_new.scalar():
+            print(f"Game {new_id} ALREADY exists. Aborting.")
+            return
+
+        # 2. Update Foreign Keys
+        tables = ["signups", "votes", "rating_history", "game_stats"]
+        for table in tables:
+            await session.execute(text(f"UPDATE {table} SET game_id = {new_id} WHERE game_id = {old_id}"))
+        
+        # 3. Update Game
+        await session.execute(text(f"UPDATE games SET id = {new_id} WHERE id = {old_id}"))
+        
+        # 4. Optional: Reset sequence if new_id is the latest
+        await session.execute(text(f"SELECT setval('games_id_seq', (SELECT MAX(id) FROM games))"))
+        
+        await session.commit()
+        print(f"SUCCESS: Game {old_id} is now Game {new_id}.")
+
 async def kick_player_command(game_id: int, user_id: int):
     async with UnitOfWork() as uow:
         print(f"Kicking player {user_id} from Game #{game_id}...")

@@ -1,0 +1,23 @@
+name: Deploy Bot
+
+on:
+  push:
+    branches: [ Main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd ~/football-manager
+            git pull origin Main
+            docker compose up -d --build --force-recreate app
+            # Run migrations
+            docker compose exec -T app alembic upgrade head
+            echo "Deployment successful"
