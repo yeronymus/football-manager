@@ -5,119 +5,81 @@
 ![Aiogram](https://img.shields.io/badge/Aiogram-3.x-2ca5e0?style=for-the-badge&logo=telegram&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ed?style=for-the-badge&logo=docker&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Production-success?style=for-the-badge)
 
-**Automated system for organizing amateur football matches.**
-The bot acts as a digital captain, handling roster management, team balancing, payment tracking, and statistics.
+An automated management system for amateur football matches, handling rosters, team balancing, and statistics tracking through a Telegram Bot and a WebApp dashboard.
 
 ---
 
-## 🌟 Key Features
+## 🏗 Project Structure
 
-### 🎮 Game Management
+The project follows a **Modular Monolith** architecture with strict layer isolation:
 
-- **Automated Rosters**: People join via buttons. No more "I'm in" spam.
-- **Queue System**: If the game is full (e.g., 14/14), new players go to the `Reserve` list.
-- **Smart Balancing**: Algorithms balance teams based on player ratings (ELO-like system).
-- **Payment Tracking**: Mark who paid via an Admin Dashboard.
-
-### 📊 Stats & MVP
-
-- **Rating System**: Players earn/lose points based on match results and individual performance.
-- **MVP Voting**: Post-match voting integration.
-- **Detailed History**: WebApp interface to view past games and personal stats.
-
----
-
-## 🏗 Architecture (Modular Monolith)
-
-This project has evolved from a simple script to a production-grade **Modular Monolith**.
-
-### 1. Layers (`The Anti-Gravity Rule`)
-
-We strictly enforce layer isolation to prevent spaghetti code:
-
-- **Presentation (`app/bot`, `app/api`)**: Handles Telegram updates and WebApp requests. **Never** touches the DB directly.
-- **Application (`app/core/services`)**: Pure business logic (e.g., "Joining a game", "Calculating ELO"). agnostic of the UI.
-- **Domain (`app/core/domain`)**: Core entities and algorithms (e.g., Team Balancing logic).
-- **Infrastructure (`app/infrastructure`, `app/db`)**: Databases, Schedulers available via repositories.
-
-### 2. Transaction Management
-
-We use the **Unit of Work (UoW)** pattern to ensure data consistency.
-
-```python
-async with UnitOfWork() as uow:
-    service = RosterService(uow)
-    await service.join_player(game_id, user_id)
-    await uow.commit() # Atomic Commit
+```text
+├── app/
+│   ├── api/          # FastAPI WebApp & Auth logic
+│   ├── bot/          # Telegram Bot handlers & logic (Aiogram)
+│   ├── cli/          # Administrative CLI commands (manage.py)
+│   ├── core/
+│   │   ├── domain/   # Core entities, algorithms & historical data
+│   │   ├── services/ # Business logic (Pure Python, UI agnostic)
+│   │   └── uow.py    # Unit of Work for database transactions
+│   ├── db/           # Database models & session management
+│   └── infrastructure/ # External integrations & schedulers
+├── alembic/          # Database migrations
+├── tools/            # Legitimate utility scripts (not in CLI)
+├── scripts/          # Operational & deployment scripts
+└── manage.py         # Primary administrative interface
 ```
 
-### 3. The Strangler Fig Pattern 🪴
-
-We are currently migrating from a Legacy architecture to the New Core.
-
-- **Legacy Games (ID <= 5)**: Handled by old monolithic scripts.
-- **New Games (ID > 5)**: Handled by the new Service Layer.
-- **Router**: Automatically directs user actions to the correct logic based on Game ID.
-
 ---
 
-### 🚀 Deployment
+## 🚀 Quick Start
 
 ### Prerequisites
-
 - Docker & Docker Compose
-- Python 3.11+ (for local dev)
+- Python 3.11+
 
-### Quick Start
+### Installation & Local Setup
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yeronym/football-manager.git
+   cd football-manager
+   ```
 
-```bash
-# 1. Clone the repo
-git clone https://github.com/your-username/football-manager-bot.git
-cd football-manager-bot
+2. **Configure Environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your BOT_TOKEN, DB credentials, and URLs
+   ```
 
-# 2. Configure Environment
-cp .env.example .env
-# Edit .env with your BOT_TOKEN and DB credentials
-
-# 3. Running
-./scripts/ops/run_local.sh # or ./scripts/ops/prod.sh
-```
-
-### Documentation
-See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for full details.
-
-### Management CLI
-
-We use `manage.py` for administrative tasks:
-
-```bash
-# Run inside container
-docker-compose exec app python manage.py --help
-
-# Example: Fix roster for a game
-docker-compose exec app python manage.py roster fix --game-id 15
-```
+3. **Run with Docker:**
+   ```bash
+   docker compose up -d --build
+   ```
 
 ---
 
-## 🛠 Tech Stack
+## 🛠 Management CLI
 
-- **Backend**: Python 3.11, Aiogram 3, SQLAlchemy (Async), FastAPI
-- **Database**: PostgreSQL (Data), Redis (FSM & Cache)
-- **Frontend**: Telegram WebApps (HTML/JS)
-- **Infrastructure**: Docker Compose, Nginx (Reverse Proxy)
+The project uses `manage.py` as a centralized tool for administrative tasks. Run these commands inside the app container:
 
----
-
-## 🛡 Security Note
-
-This repository contains the **Source Code** of the bot.
-
-- **Secrets** (Tokens, Passwords) are loaded from `.env` files (excluded from git).
-- **Database Backups** are excluded.
-- **Personal Data**: The production database is NOT included.
+### Common Commands
+- **Check Help:**  
+  `python manage.py --help`
+- **Generate Statistics (Excel):**  
+  `python manage.py stats --game-id 7 --output FM_Stats_G7.xlsx`
+- **Fix Roster for a Game:**  
+  `python manage.py roster fix --game-id 15`
+- **Add/Kick Player:**  
+  `python manage.py add_player --game-id 15 --user-id 12345`
+  `python manage.py kick_player --game-id 15 --user-id 12345`
 
 ---
-*Created by Yeronym. Open for engineering contributions.*
+
+## 🛡 Security & Best Practices
+- **Secrets:** Never commit `.env` files. Use `.env.example` for templates.
+- **Layers:** Business logic stays in `app/core/services`. Handlers (Bot/API) only manage presentation.
+- **Database:** All schema changes must go through Alembic migrations.
+
+---
+*Developed for amateur football enthusiasts. Open for contributions.*
