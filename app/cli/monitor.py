@@ -3,9 +3,10 @@ import os
 import sys
 import time
 
-SERVER_USER = "ubuntu"
-SERVER_HOST = "yernur-vm1.sin.cvut.cz"
-PASSWORD = "Omnibus1"
+SERVER_USER = "root"
+SERVER_HOST = "147.32.107.65"
+SERVER_PORT = "2222"
+PASSWORD = "" # Should be provided via env or prompt
 
 def run_interactive(cmd_list):
     print(f"[INFO] Running: {' '.join(cmd_list)}")
@@ -47,6 +48,6 @@ def run_interactive(cmd_list):
 
 def monitor_remote_logs():
     # Check status and last 100 logs of app
-    print("\n=== CHECKING LOGS ===_")
-    remote_cmd = "cd ~/football-prod && docker-compose logs --tail=100 app"
-    run_interactive(["ssh", "-o", "StrictHostKeyChecking=no", f"{SERVER_USER}@{SERVER_HOST}", remote_cmd])
+    print("\n=== CHECKING LOGS ===\n")
+    remote_cmd = "cd ~/football-bot && docker compose logs --tail=100 app"
+    run_interactive(["ssh", "-p", SERVER_PORT, "-o", "StrictHostKeyChecking=no", f"{SERVER_USER}@{SERVER_HOST}", remote_cmd])
