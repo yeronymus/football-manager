@@ -33,10 +33,39 @@ async def main():
     # Restore Command
     subparsers.add_parser("restore", help="Restore January 2026 Data")
 
-    # Stats Command
-    stats_parser = subparsers.add_parser("stats", help="Generate statistics")
-    stats_parser.add_argument("--game-id", type=int, default=7, help="Max Game ID to include")
-    stats_parser.add_argument("--output", type=str, default="FM_Player_Stats.xlsx", help="Output filename")
+    # Stats commands
+    stats_parser = subparsers.add_parser('stats', help='Statistics and ratings')
+    stats_sub = stats_parser.add_subparsers(dest='stats_cmd')
+    
+    gen_stats = stats_sub.add_parser('generate', help='Generate Excel stats')
+    gen_stats.add_argument('--game-id', type=int, required=True)
+    gen_stats.add_argument('--output', type=str, default='FM_Player_Stats.xlsx')
+    
+    recalc = stats_sub.add_parser('recalculate', help='Recalculate all ratings')
+    recalc.add_argument('--go', action='store_true', help='Actually apply changes')
+
+    export_csv = stats_sub.add_parser('export-csv', help='Export stats to CSV')
+    export_csv.add_argument('--output', type=str, default='FM_Player_Stats.csv')
+
+    # DB commands
+    db_parser = subparsers.add_parser('db', help='Database operations')
+    db_sub = db_parser.add_subparsers(dest='db_cmd')
+    db_sub.add_parser('seed-history', help='Seed historical Games 1-7')
+    db_sub.add_parser('reset-stats', help='Reset all user ratings')
+
+    # Admin commands
+    admin_parser = subparsers.add_parser('admin', help='Admin tools')
+    admin_sub = admin_parser.add_subparsers(dest='admin_cmd')
+    
+    renumber = admin_sub.add_parser('renumber-game', help='Renumber a game ID')
+    renumber.add_argument('--old-id', type=int, required=True)
+    renumber.add_argument('--new-id', type=int, required=True)
+
+    # Draft commands
+    draft_parser = subparsers.add_parser('draft', help='Draft operations')
+    draft_sub = draft_parser.add_subparsers(dest='draft_cmd')
+    gen_draft = draft_sub.add_parser('generate', help='Generate draft report')
+    gen_draft.add_argument('--output', type=str, default='Draft_Stats.md')
 
     # Monitor Command
     subparsers.add_parser("remote-logs", help="Monitor Remote Logs")
@@ -54,13 +83,28 @@ async def main():
         from app.cli.restore import restore_january_2026
         await restore_january_2026()
     elif args.command == "stats":
-        from app.cli.stats import generate_stats_command
-        await generate_stats_command(args.game_id, args.output)
+        from app.cli.stats import generate_stats_command, recalculate_stats_command, export_stats_csv_command
+        if args.stats_cmd == "generate":
+            await generate_stats_command(args.game_id, args.output)
+        elif args.stats_cmd == "recalculate":
+            await recalculate_stats_command(dry_run=not args.go)
+        elif args.stats_cmd == "export-csv":
+            await export_stats_csv_command(args.output)
+    elif args.command == "db":
+        from app.cli.db import seed_history_command, reset_db_command
+        if args.db_cmd == "seed-history":
+            await seed_history_command(args)
+        elif args.db_cmd == "reset-stats":
+            await reset_db_command(args)
+    elif args.command == "admin":
+        if args.admin_cmd == "renumber-game":
+            from app.cli.admin import renumber_game_command
+            await renumber_game_command(args.old_id, args.new_id)
+    elif args.command == "draft":
+        from app.cli.draft import generate_draft_report_command
+        await generate_draft_report_command(args)
     elif args.command == "remote-logs":
         from app.cli.monitor import monitor_remote_logs
-        # Interactive, monitoring need to be sync or handled carefully if nested in async main
-        # But run_interactive uses os.read/write blocking.
-        # Since it's a CLI tool, we can just call it.
         monitor_remote_logs()
 
 if __name__ == "__main__":
