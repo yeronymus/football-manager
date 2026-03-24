@@ -12,22 +12,19 @@ An automated management system for amateur football matches, handling rosters, t
 
 ## 🏗 Project Structure
 
-The project follows a **Modular Monolith** architecture with strict layer isolation:
+A clean, modular architecture focusing on layer isolation and business logic integrity:
 
 ```text
-├── app/
-│   ├── api/          # FastAPI WebApp & Auth logic
-│   ├── bot/          # Telegram Bot handlers & logic (Aiogram)
-│   ├── cli/          # Administrative CLI commands (manage.py)
-│   ├── core/
-│   │   ├── domain/   # Core entities, algorithms & historical data
-│   │   ├── services/ # Business logic (Pure Python, UI agnostic)
-│   │   └── uow.py    # Unit of Work for database transactions
-│   ├── db/           # Database models & session management
-│   └── infrastructure/ # External integrations & schedulers
-├── alembic/          # Database migrations
-├── tools/            # Legitimate utility scripts (not in CLI)
-├── scripts/          # Operational & deployment scripts
+├── app/              # Core application logic
+│   ├── api/          # FastAPI WebApp & Auth
+│   ├── bot/          # Telegram Bot handlers (Aiogram)
+│   ├── cli/          # Unified CLI subcommands
+│   ├── core/         # Business logic & Domain entities
+│   └── db/           # Models & Migrations
+├── scripts/          # Operational & backup scripts
+├── tools/            # Data processing utility scripts
+├── Dockerfile        # Container specification
+├── docker-compose.yml # Infrastructure orchestration
 └── manage.py         # Primary administrative interface
 ```
 
@@ -39,20 +36,14 @@ The project follows a **Modular Monolith** architecture with strict layer isolat
 - Docker & Docker Compose
 - Python 3.11+
 
-### Installation & Local Setup
-1. **Clone the repository:**
+### Local Setup
+1. **Clone & Configure:**
    ```bash
    git clone https://github.com/yeronym/football-manager.git
    cd football-manager
-   ```
-
-2. **Configure Environment:**
-   ```bash
    cp .env.example .env
-   # Edit .env with your BOT_TOKEN, DB credentials, and URLs
    ```
-
-3. **Run with Docker:**
+2. **Launch:**
    ```bash
    docker compose up -d --build
    ```
@@ -61,25 +52,28 @@ The project follows a **Modular Monolith** architecture with strict layer isolat
 
 ## 🛠 Management CLI
 
-The project uses `manage.py` as a centralized tool for administrative tasks. Run these commands inside the app container:
-
-### Common Commands
-- **Check Help:**  
-  `python manage.py --help`
-- **Generate Statistics (Excel):**  
-  `python manage.py stats --game-id 7 --output FM_Stats_G7.xlsx`
-- **Fix Roster for a Game:**  
-  `python manage.py roster fix --game-id 15`
-- **Add/Kick Player:**  
-  `python manage.py add_player --game-id 15 --user-id 12345`
-  `python manage.py kick_player --game-id 15 --user-id 12345`
+Use `manage.py` for all administrative tasks. Available commands:
+- **Stats**: `python manage.py stats --game-id [N]`
+- **Roster**: `python manage.py roster fix --game-id [N]`
+- **Admin**: `python manage.py add_player --game-id [N] --user-id [ID]`
 
 ---
 
-## 🛡 Security & Best Practices
-- **Secrets:** Never commit `.env` files. Use `.env.example` for templates.
-- **Layers:** Business logic stays in `app/core/services`. Handlers (Bot/API) only manage presentation.
-- **Database:** All schema changes must go through Alembic migrations.
+## 🖥 Deployment & Operations
+
+### Production Release
+Deploy the latest code from the **`Main`** branch (capital 'M'):
+
+```bash
+ssh yernur@10.50.109.14
+cd ~/football-manager
+git pull origin Main
+docker compose up -d --build --force-recreate app
+```
+
+### Database Maintenance
+- **Backups**: `./scripts/backup_db.sh`
+- **Shell**: `docker compose exec -u postgres db psql -U postgres -d football_prod`
 
 ---
-*Developed for amateur football enthusiasts. Open for contributions.*
+*A streamlined solution for football communities. Simple, reliable, automated.*
