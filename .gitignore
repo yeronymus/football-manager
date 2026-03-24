@@ -1,7 +1,11 @@
-
-# Secrets
+# Secrets & Environment
 .env
 .env.*
+*.env
+development.env
+production.env
+local.env
+remote.env
 
 # Python
 __pycache__/
@@ -11,29 +15,33 @@ venv/
 .venv/
 env/
 
-# Database
+# Database & Data
 *.db
 *.sqlite3
 postgres_data/
 redis_data/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-
-
-# Agent Rules
-.gemini_rules.md
-
-# Private Data
 backups/
-scripts/legacy/
+*.sql
+
+# Logs & Temp
 *.log
 *.bak
 *.tar.gz
 *.txt
 !requirements.txt
+git_status.txt
+
+# IDE & Hidden
+.idea/
+.vscode/
+*.swp
+.agent/
+.agents/
+
+# Artifacts & Outputs
+*.xlsx
+*.csv
+Draft_Stats*.md
 
 # Temporary and diagnostic scripts
 /debug_*.py
@@ -46,33 +54,6 @@ scripts/legacy/
 /fix_*.py
 /hunt_*.py
 /list_*.py
-/_output_*.txt
-/_results_*.txt
-/_remote_*.txt
-/db_*.txt
-/output_*.txt
-/results_*.txt
-/remote_*.txt
-/hello.txt
-/current_dir.txt
-/dc_up.txt
-/error.txt
-/error_venv.txt
-/file_info.txt
-/listing.txt
-/test_output.txt
-/which_dc.txt
-/which_python.txt
-/venv_info.txt
-/votes_schema.txt
-/docker_ps.txt
-/docker_status_check.txt
-*.xlsx
-*.csv
-*.b64
-Draft_Stats*.md
-
-# Custom deployment/temp scripts
 /deploy*.py
 /generate*.py
 /restore*.py
@@ -85,8 +66,6 @@ Draft_Stats*.md
 /import*.py
 /parse*.py
 /scan*.py
-/manage*.py
 /emergency*.py
-*.sql
 /fuzzy_*.py
 *.sh
