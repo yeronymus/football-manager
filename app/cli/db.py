@@ -1,5 +1,5 @@
-# app/cli/db.py
-import asyncio
+import os
+import subprocess
 import datetime
 from datetime import timezone
 from sqlalchemy import text, select, delete
@@ -122,3 +122,37 @@ async def reset_db_command(args):
         await db.execute(delete(RatingHistory))
         await db.commit()
         print("Database reset complete.")
+
+async def backup_db_command(args):
+    """Create a database backup using pg_dump."""
+    from app.config import settings
+    
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"backup_{timestamp}.sql"
+    
+    print(f"Creating backup: {filename}...")
+    
+    # Set PGPASSWORD environment variable for pg_dump
+    env = os.environ.copy()
+    env["PGPASSWORD"] = settings.postgres_password
+    
+    cmd = [
+        "pg_dump",
+        "-h", settings.postgres_host,
+        "-p", str(settings.postgres_port),
+        "-U", settings.postgres_user,
+        "-d", settings.postgres_db,
+        "-f", filename
+    ]
+    
+    try:
+        # Note: pg_dump must be installed (added to Dockerfile)
+        result = subprocess.run(cmd, env=env, capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"Backup created successfully: {filename}")
+        else:
+            print(f"Error creating backup: {result.stderr}")
+    except FileNotFoundError:
+        print("ERROR: pg_dump not found. Ensure postgresql-client is installed.")
+    except Exception as e:
+        print(f"Failed to run pg_dump: {e}")
