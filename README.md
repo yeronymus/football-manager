@@ -21,11 +21,9 @@ A clean, modular architecture focusing on layer isolation and business logic int
 │   ├── cli/          # Unified CLI subcommands
 │   ├── core/         # Business logic & Domain entities
 │   └── db/           # Models & Migrations
-├── scripts/          # Operational & backup scripts
-├── tools/            # Data processing utility scripts
-├── Dockerfile        # Container specification
-├── docker-compose.yml # Infrastructure orchestration
-└── manage.py         # Primary administrative interface
+├── alembic/          # Database versioning
+├── manage.py         # Primary administrative interface
+└── .github/          # CI/CD Workflows (GitHub Actions)
 ```
 
 ---
@@ -53,27 +51,22 @@ A clean, modular architecture focusing on layer isolation and business logic int
 ## 🛠 Management CLI
 
 Use `manage.py` for all administrative tasks. Available commands:
-- **Stats**: `python manage.py stats --game-id [N]`
-- **Roster**: `python manage.py roster fix --game-id [N]`
-- **Admin**: `python manage.py add_player --game-id [N] --user-id [ID]`
+- **Stats**: `python manage.py stats recalculate --go`
+- **Backup**: `python manage.py db backup`
+- **History**: `python manage.py db seed-history`
 
 ---
 
 ## 🖥 Deployment & Operations
 
-### Production Release
-Deploy the latest code from the **`Main`** branch (capital 'M'):
+### CI/CD Deployment
+This project uses **GitHub Actions** for automated deployment. 
+- Pushing to the **`Main`** branch (capital 'M') triggers an automatic update on the production server.
+- Ensure `DEPLOY_HOST`, `DEPLOY_USER`, and `DEPLOY_SSH_KEY` are set in GitHub Secrets.
 
-```bash
-ssh yernur@10.50.109.14
-cd ~/football-manager
-git pull origin Main
-docker compose up -d --build --force-recreate app
-```
-
-### Database Maintenance
-- **Backups**: `./scripts/backup_db.sh`
-- **Shell**: `docker compose exec -u postgres db psql -U postgres -d football_prod`
+### Manual Maintenance
+- **Backups**: `python manage.py db backup` (creates an `.sql` dump)
+- **Database Shell**: `docker compose exec -u postgres db psql -U postgres -d football_prod`
 
 ---
 *A streamlined solution for football communities. Simple, reliable, automated.*
