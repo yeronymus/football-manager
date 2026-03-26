@@ -400,28 +400,54 @@ async def admin_add_player(data: AddPlayerRequest, session: AsyncSession = Depen
 @router.post("/add_guest")
 async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(data.initData, settings.bot_token):
+        logger.warning(f"Invalid initData in add_guest for game {data.game_id}")
         raise HTTPException(status_code=403, detail="Invalid initData")
+    
     user_id = get_user_from_init_data(data.initData)
     result = await session.execute(select(Game).where(Game.id == data.game_id))
     game = result.scalar_one_or_none()
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
+    
     await check_admin_rights(game.chat_id, user_id)
     
-    guest_id = -int(time.time() * 1000000)
+    # Generate unique negative ID for guest
+    guest_id = -int(time.time() * 1000) # Reduced precision to stay safe within some JS limits, but still unique enough
+    
     try:
         from app.db.models import Position
         pos_str = data.position.upper().strip()
-        if pos_str not in Position.__members__: pos_str = "CM"
-        user = User(user_id=guest_id, full_name=f"{data.name} (Guest)", username=None, player_position=Position[pos_str], rating=100)
-        session.add(user)
-        signup = Signup(game_id=data.game_id, user_id=guest_id, status=SignupStatus.ACTIVE)
-        session.add(signup)
+        if pos_str not in Position.__members__:
+            pos_str = "CM"
+        
+        logger.info(f"Adding guest '{data.name}' to game {data.game_id} with ID {guest_id}")
+        
+        new_guest = User(
+            user_id=guest_id, 
+            full_name=f"{data.name} (Guest)", 
+            username=None, 
+            player_position=Position[pos_str], 
+            rating=100
+        )
+        session.add(new_guest)
+        
+        # Use relationship-aware signup
+        new_signup = Signup(
+            game_id=data.game_id, 
+            user_id=guest_id, 
+            status=SignupStatus.ACTIVE
+        )
+        session.add(new_signup)
+        
         await session.commit()
+        logger.info(f"Guest {guest_id} successfully added and committed")
+        
+        return {"status": "added", "user_id": guest_id}
+        
     except Exception as e:
-        logger.error(f"Add Guest Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    return {"status": "added", "user_id": guest_id}
+        logger.error(f"Add Guest Error for game {data.game_id}: {e}", exc_info=True)
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @router.post("/trigger_voting/{game_id}")
 async def debug_trigger_voting(game_id: int, initData: str = "", session: AsyncSession = Depends(get_session)):

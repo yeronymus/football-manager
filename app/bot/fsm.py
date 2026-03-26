@@ -10,3 +10,6 @@ class EditingProfile(StatesGroup):
     waiting_for_name = State()
     waiting_for_position = State()
     waiting_for_alt_positions = State()
+class GuestAddition(StatesGroup):
+    waiting_for_name = State()
+    waiting_for_position = State()

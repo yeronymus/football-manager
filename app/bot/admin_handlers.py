@@ -2,12 +2,14 @@ from aiogram import Router, F, types
 from aiogram.filters import Command
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.models import Game, Signup, User, SignupStatus, GameStatus, Team, Chat
+from app.db.models import Game, Signup, User, SignupStatus, GameStatus, Team, Chat, Position
 from app.core.uow import UnitOfWork
 from app.config import settings
-from app.core.domain.balancer import balance_teams, Player
 from app.bot.utils import format_game_message, update_game_message
-from app.bot.keyboards import get_game_keyboard
+from app.bot.keyboards import get_game_keyboard, get_position_keyboard
+from app.bot.fsm import GuestAddition
+from aiogram.fsm.context import FSMContext
+import time
 
 import logging
 
@@ -292,3 +294,80 @@ async def cmd_add_player(message: types.Message, session: AsyncSession):
     except Exception as e:
         logger.error(f"Add Player Error: {e}")
         await message.answer(f"❌ Ошибка: {e}")
+
+# --- Guest Addition Flow ---
+
+@router.message(GuestAddition.waiting_for_name)
+async def process_guest_name(message: types.Message, state: FSMContext):
+    name = message.text.strip()
+    if not name:
+        await message.answer("⚠️ Имя не может быть пустым. Введите имя гостя:")
+        return
+    
+    await state.update_data(guest_name=name)
+    await state.set_state(GuestAddition.waiting_for_position)
+    
+    from app.bot.keyboards import get_position_keyboard
+    await message.answer(
+        f"👤 Гость: <b>{name}</b>\n\nВыберите позицию игрока:",
+        reply_markup=get_position_keyboard(),
+        parse_mode="HTML"
+    )
+
+@router.callback_query(GuestAddition.waiting_for_position, F.data.startswith("pos_"))
+async def process_guest_position(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
+    data = await state.get_data()
+    game_id = data.get("guest_game_id")
+    name = data.get("guest_name")
+    pos_str = callback.data.split("_")[1]
+    
+    if not game_id or not name:
+        await callback.answer("❌ Ошибка данных. Попробуйте снова.")
+        await state.clear()
+        return
+
+    guest_id = -int(time.time() * 1000)
+    
+    try:
+        # Create Guest User
+        new_guest = User(
+            user_id=guest_id,
+            full_name=f"{name} (Guest)",
+            username=None,
+            player_position=Position(pos_str),
+            rating=100
+        )
+        session.add(new_guest)
+        
+        # Create Signup
+        new_signup = Signup(
+            game_id=game_id,
+            user_id=guest_id,
+            status=SignupStatus.ACTIVE
+        )
+        session.add(new_signup)
+        
+        await session.commit()
+        
+        await callback.message.edit_text(f"✅ Гость <b>{name}</b> успешно добавлен в игру #{game_id}!", parse_mode="HTML")
+        await state.clear()
+        
+        # Update Dashboard
+        from app.bot.admin_dashboard import update_dashboard_message
+        await update_dashboard_message(callback.bot, game_id, session)
+        
+        # Update Game UI if needed
+        from app.bot.listeners import update_game_ui
+        await update_game_ui(game_id)
+        
+    except Exception as e:
+        logger.error(f"Bot Guest Addition Error: {e}")
+        await session.rollback()
+        await callback.message.answer(f"❌ Ошибка при добавлении гостя: {e}")
+        await state.clear()
+
+@router.callback_query(GuestAddition.waiting_for_position, F.data == "delete_msg")
+async def cancel_guest_addition(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.delete()
+    await callback.answer("Отменено")

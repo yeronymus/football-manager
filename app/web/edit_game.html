@@ -213,7 +213,7 @@
                     initData: tg.initData
                 };
 
-                const response = await fetch('/api/update_game', {
+                const response = await fetch('/api/admin/update_game', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)

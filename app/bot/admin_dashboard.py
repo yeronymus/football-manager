@@ -140,12 +140,11 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
         row_1.append(InlineKeyboardButton(text="🔀 Составы (Draft)", url=draft_deep_link))
         buttons.append(row_1)
         
-        # Row 2: Kick Menu, Finish
+        # Row 2: Kick Menu, Finish, Add Guest
         row_2 = []
-        row_2.append(InlineKeyboardButton(text="💣 Убрать игрока", callback_data=f"god_kick_menu_{game.id}"))
-        
-        finish_deep_link = f"tg://resolve?domain={bot_username}&start=finish_{game.id}"
-        row_2.append(InlineKeyboardButton(text="🏁 Завершить матч", url=finish_deep_link))
+        row_2.append(InlineKeyboardButton(text="💣 Убрать", callback_data=f"god_kick_menu_{game.id}"))
+        row_2.append(InlineKeyboardButton(text="👤 +Гость", url=f"tg://resolve?domain={bot_username}&start=addguest_{game.id}"))
+        row_2.append(InlineKeyboardButton(text="🏁 Завершить", url=finish_deep_link))
         buttons.append(row_2)
         
         # Row 3: Delete
