@@ -82,7 +82,8 @@ async def on_shutdown():
 
 # Routers
 app.include_router(games.router, prefix="/api", tags=["Games"])
-app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+app.include_router(admin.router, prefix="/api", tags=["Admin"])
+app.include_router(admin.router, prefix="/api/admin", tags=["AdminNew"])
 app.include_router(voting.router, prefix="/api", tags=["Voting"])
 app.include_router(users.router, prefix="/api", tags=["Users"])
 
