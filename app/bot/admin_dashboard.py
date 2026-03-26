@@ -140,6 +140,8 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
         row_1.append(InlineKeyboardButton(text="🔀 Составы (Draft)", url=draft_deep_link))
         buttons.append(row_1)
         
+        finish_deep_link = f"tg://resolve?domain={bot_username}&start=finish_{game.id}"
+        
         # Row 2: Kick Menu, Finish, Add Guest
         row_2 = []
         row_2.append(InlineKeyboardButton(text="💣 Убрать", callback_data=f"god_kick_menu_{game.id}"))
@@ -182,11 +184,15 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
             
         return True
     except Exception as e:
-        logging.error(f"CRITICAL ERROR updating dashboard: {e}", exc_info=True)
+        logger.error(f"CRITICAL ERROR updating dashboard: {e}", exc_info=True)
         try:
-            target = target_chat_id or admin_chat_id
-            if target:
-                await bot.send_message(target, f"⚠️ <b>Dashboard Error:</b>\n{html.escape(str(e))}", parse_mode="HTML")
-        except:
-            pass
+            # Never send logs to the group chat as per user instruction
+            if settings.system_owner_id:
+                await bot.send_message(
+                    settings.system_owner_id, 
+                    f"⚠️ <b>Dashboard Error (Game #{game_id}):</b>\n<code>{html.escape(str(e))}</code>", 
+                    parse_mode="HTML"
+                )
+        except Exception as log_err:
+            logger.error(f"Failed to send error notification to owner: {log_err}")
         return False

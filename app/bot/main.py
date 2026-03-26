@@ -8,7 +8,14 @@ from app.config import settings
 from app.bot.middlewares import DbSessionMiddleware, InstanceAccessMiddleware
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("bot.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 
 from aiogram.fsm.storage.redis import RedisStorage
 from app.bot.listeners import setup_listeners

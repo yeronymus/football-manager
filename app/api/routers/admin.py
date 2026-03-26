@@ -16,6 +16,7 @@ from app.bot.main import bot
 from app.bot.utils import format_game_message
 from app.bot.keyboards import get_game_keyboard
 
+from app.bot.admin_dashboard import update_dashboard_message
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -45,7 +46,6 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         from app.infrastructure.scheduler.service import SchedulerService
         from app.core.services.stats import StatsService
         from app.core.services.game_lifecycle import GameLifecycleService
-        from app.bot.admin_dashboard import update_dashboard_message
         from app.core.uow import UnitOfWork
         
         new_game = None
@@ -170,6 +170,7 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
              except Exception as e:
                  logger.warning(f"Failed to notify update: {e}")
                  
+        await update_dashboard_message(bot, updated_game.id, session)
         return {"status": "updated", "id": updated_game.id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -216,6 +217,7 @@ async def balance_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
         except Exception as e:
             logger.warning(f"Failed to update message after balance: {e}")
 
+        await update_dashboard_message(bot, game.id, session)
         return {"status": "balanced"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -251,6 +253,7 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
                  await bot.send_message(uid, "<b>Ты в основном составе!</b>\nАдмин перенес тебя из резерва. <b>Подтверди в группе или админам, что будешь играть!</b>", parse_mode="HTML")
              except: pass
                  
+        await update_dashboard_message(bot, data.game_id, session)
         return {"status": "updated"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -365,6 +368,7 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
             except Exception as e:
                 logger.warning(f"Failed to send finish message: {e}")
         
+        await update_dashboard_message(bot, game.id, session)
         return {"status": "finished"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -395,6 +399,7 @@ async def admin_add_player(data: AddPlayerRequest, session: AsyncSession = Depen
     signup = Signup(game_id=data.game_id, user_id=data.user_id, status=SignupStatus.ACTIVE)
     session.add(signup)
     await session.commit()
+    await update_dashboard_message(bot, data.game_id, session)
     return {"status": "added"}
 
 @router.post("/add_guest")
@@ -442,6 +447,7 @@ async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends
         await session.commit()
         logger.info(f"Guest {guest_id} successfully added and committed")
         
+        await update_dashboard_message(bot, data.game_id, session)
         return {"status": "added", "user_id": guest_id}
         
     except Exception as e:
