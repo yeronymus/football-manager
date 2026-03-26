@@ -170,6 +170,7 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
              except Exception as e:
                  logger.warning(f"Failed to notify update: {e}")
                  
+        from app.bot.main import bot
         await update_dashboard_message(bot, updated_game.id, session)
         return {"status": "updated", "id": updated_game.id}
     except ValueError as e:
@@ -217,6 +218,7 @@ async def balance_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
         except Exception as e:
             logger.warning(f"Failed to update message after balance: {e}")
 
+        from app.bot.main import bot
         await update_dashboard_message(bot, game.id, session)
         return {"status": "balanced"}
     except ValueError as e:
@@ -253,6 +255,7 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
                  await bot.send_message(uid, "<b>Ты в основном составе!</b>\nАдмин перенес тебя из резерва. <b>Подтверди в группе или админам, что будешь играть!</b>", parse_mode="HTML")
              except: pass
                  
+        from app.bot.main import bot
         await update_dashboard_message(bot, data.game_id, session)
         return {"status": "updated"}
     except ValueError as e:
@@ -368,6 +371,7 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
             except Exception as e:
                 logger.warning(f"Failed to send finish message: {e}")
         
+        from app.bot.main import bot
         await update_dashboard_message(bot, game.id, session)
         return {"status": "finished"}
     except ValueError as e:
@@ -399,6 +403,7 @@ async def admin_add_player(data: AddPlayerRequest, session: AsyncSession = Depen
     signup = Signup(game_id=data.game_id, user_id=data.user_id, status=SignupStatus.ACTIVE)
     session.add(signup)
     await session.commit()
+    from app.bot.main import bot
     await update_dashboard_message(bot, data.game_id, session)
     return {"status": "added"}
 
@@ -447,6 +452,7 @@ async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends
         await session.commit()
         logger.info(f"Guest {guest_id} successfully added and committed")
         
+        from app.bot.main import bot
         await update_dashboard_message(bot, data.game_id, session)
         return {"status": "added", "user_id": guest_id}
         
