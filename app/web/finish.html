@@ -292,7 +292,7 @@
             };
 
             try {
-                const response = await fetch('/api/finish_game', {
+                const response = await fetch('/api/admin/finish_game', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)

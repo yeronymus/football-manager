@@ -378,7 +378,7 @@
                     payload.publish_at = toPragueISO(publishAtInput.value);
                 }
 
-                const response = await fetch('/api/create_game', {
+                const response = await fetch('/api/admin/create_game', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)

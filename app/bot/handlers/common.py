@@ -7,7 +7,7 @@ from app.db.models import User, Game
 from app.config import settings
 from app.core.repositories.user_repository import UserRepository
 from app.bot.keyboards import get_game_keyboard
-from app.bot.fsm import Registration
+from app.bot.fsm import Registration, GuestAddition
 import logging
 import re
 import html
@@ -249,11 +249,12 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 await message.answer(f"🛠 Управление игрой #{game_id}:", reply_markup=kb)
                 return
             except (ValueError, IndexError): pass
-        elif args.startswith("vote_"):
+            except ValueError: pass
+        elif args.startswith("addguest_"):
             try:
                 game_id = int(args.split("_")[1])
-                action_type = "vote"
-            except ValueError: pass
+                action_type = "addguest"
+            except (ValueError, IndexError): pass
 
     # 3. If User Exists -> Show Menu OR Game Action
     if user:
@@ -303,6 +304,15 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     [types.InlineKeyboardButton(text="🏆 Голосовать (WebApp)", web_app=types.WebAppInfo(url=web_app_url))]
                 ])
                 await message.answer(f"🏆 <b>Голосование за MVP (Игра #{game_id})</b>\nНажмите кнопку ниже, чтобы выбрать игроков.", reply_markup=kb)
+                return
+
+            elif action_type == "addguest":
+                if not is_admin:
+                    await message.answer("⛔ Только для админов.")
+                    return
+                await state.update_data(guest_game_id=game_id)
+                await state.set_state(GuestAddition.waiting_for_name)
+                await message.answer(f"👤 <b>Добавление гостя в игру #{game_id}</b>\n\nВведите имя гостя:")
                 return
 
             # Show Game Interface (default "game_" action)

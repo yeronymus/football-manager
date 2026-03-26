@@ -14,8 +14,9 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 2222
           script: |
-            cd ~/football-manager
+            cd ~/football-bot
             git pull origin Main
             docker compose up -d --build --force-recreate app
             # Run migrations
