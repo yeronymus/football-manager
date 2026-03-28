@@ -91,6 +91,30 @@ async def cmd_force_refresh(message: types.Message, session: AsyncSession):
         logger.error(f"Force refresh error: {e}")
         await message.answer(f"❌ Ошибка: {e}")
 
+@router.message(Command("start_voting"))
+async def cmd_start_voting(message: types.Message, session: AsyncSession):
+    if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
+        return
+
+    try:
+        args = message.text.split()
+        if len(args) != 2:
+            await message.answer("⚠️ Использование: `/start_voting <game_id>`")
+            return
+            
+        game_id = int(args[1])
+        
+        from app.scheduler.tasks import send_voting_message
+        await send_voting_message(game_id)
+        
+        await message.answer(f"✅ Голосование для игры #{game_id} отправлено!")
+            
+    except ValueError:
+        await message.answer("⚠️ ID игры должен быть числом.")
+    except Exception as e:
+        logger.error(f"Manual voting trigger error: {e}")
+        await message.answer(f"❌ Ошибка: {e}")
+
 # --- Merged from admin_tools.py ---
 
 @router.callback_query(F.data.startswith("toggle_pay_"))
