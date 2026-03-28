@@ -5,7 +5,8 @@ from fastapi.staticfiles import StaticFiles
 import logging
 
 from app.config import settings
-from app.bot.main import bot, dp, start_bot, stop_bot
+from app.bot.instance import bot
+from app.bot.main import dp, start_bot, stop_bot
 from app.api.routers import games, admin, voting, users
 
 # Setup logging

@@ -81,7 +81,7 @@ async def get_chat_history(chat_id: int, initData: str, session: AsyncSession = 
     
     user_id = get_user_from_init_data(initData)
     
-    from app.bot.main import bot
+    from app.bot.instance import bot
     try:
         member = await bot.get_chat_member(chat_id, user_id)
         if member.status in ["left", "kicked"]:

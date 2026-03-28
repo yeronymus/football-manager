@@ -6,7 +6,7 @@ import time
 import logging
 from fastapi import HTTPException
 from app.config import settings
-from app.bot.main import bot
+from app.bot.instance import bot
 
 logger = logging.getLogger(__name__)
 
