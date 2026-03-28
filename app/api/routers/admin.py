@@ -12,6 +12,7 @@ from app.api.auth import validate_init_data, get_user_from_init_data, check_admi
 from app.api.schemas import GameCreate, BalanceTeams, GameFinishRequest, UpdateTeamsRequest, GameUpdate, AddPlayerRequest, AddGuestRequest
 from app.core.repositories.user_repository import UserRepository
 from app.config import settings
+from app.bot.instance import bot
 from app.bot.utils import format_game_message
 from app.bot.keyboards import get_game_keyboard
 
@@ -21,8 +22,6 @@ router = APIRouter()
 
 @router.post("/create_game")
 async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get_session)):
-    from app.bot.main import bot
-    from app.bot.main import bot
     if not validate_init_data(game_data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
@@ -119,12 +118,10 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
 
 @router.post("/update_game")
 async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_session)):
-    from app.bot.main import bot
     if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
         
     user_id = get_user_from_init_data(data.initData)
-    from app.bot.main import bot
     
     result = await session.execute(select(Game).where(Game.id == data.game_id))
     game = result.scalar_one_or_none()
@@ -183,13 +180,10 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
 
 @router.post("/balance_teams")
 async def balance_teams(data: BalanceTeams, session: AsyncSession = Depends(get_session)):
-    from app.bot.main import bot
-    from app.bot.main import bot
     if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
     user_id = get_user_from_init_data(data.initData)
-    from app.bot.main import bot
     
     result = await session.execute(select(Game).where(Game.id == data.game_id))
     game = result.scalar_one_or_none()
@@ -233,8 +227,6 @@ async def balance_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
 
 @router.post("/update_teams")
 async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends(get_session)):
-    from app.bot.main import bot
-    from app.bot.main import bot
     if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
@@ -243,9 +235,6 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
     game = result.scalar_one_or_none()
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
-
-    await check_admin_rights(game.chat_id, user_id)
-
     try:
         from app.core.services.roster import RosterService
         from app.core.uow import UnitOfWork
@@ -257,11 +246,15 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
             await uow.commit()
 
         for uid in promoted_ids:
-             try:
-                 await bot.send_message(uid, "<b>Ты в основном составе!</b>\nАдмин перенес тебя из резерва. <b>Подтверди в группе или админам, что будешь играть!</b>", parse_mode="HTML")
-             except: pass
-                 
-        from app.bot.main import bot
+            try:
+                await bot.send_message(
+                    uid, 
+                    "<b>Ты в основном составе!</b>\nАдмин перенес тебя из резерва. <b>Подтверди в группе или админам, что будешь играть!</b>", 
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to notify promoted user {uid}: {e}")
+                  
         await update_dashboard_message(bot, data.game_id, session)
         return {"status": "updated"}
     except ValueError as e:
@@ -319,8 +312,6 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
 
 @router.post("/finish_game")
 async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(get_session)):
-    from app.bot.main import bot
-    from app.bot.main import bot
     if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
@@ -389,9 +380,6 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
 
 @router.post("/add_player")
 async def admin_add_player(data: AddPlayerRequest, session: AsyncSession = Depends(get_session)):
-    from app.bot.main import bot
-    from app.bot.main import bot
-    from app.bot.main import bot
     if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
     user_id = get_user_from_init_data(data.initData)
@@ -418,8 +406,6 @@ async def admin_add_player(data: AddPlayerRequest, session: AsyncSession = Depen
 
 @router.post("/add_guest")
 async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends(get_session)):
-    from app.bot.main import bot
-    from app.bot.main import bot
     if not validate_init_data(data.initData, settings.bot_token):
         logger.warning(f"Invalid initData in add_guest for game {data.game_id}")
         raise HTTPException(status_code=403, detail="Invalid initData")
@@ -463,7 +449,6 @@ async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends
         await session.commit()
         logger.info(f"Guest {guest_id} successfully added and committed")
         
-        from app.bot.main import bot
         await update_dashboard_message(bot, data.game_id, session)
         return {"status": "added", "user_id": guest_id}
         

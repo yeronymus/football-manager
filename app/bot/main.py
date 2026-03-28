@@ -18,11 +18,7 @@ from aiogram.fsm.storage.redis import RedisStorage
 from app.bot.listeners import setup_listeners
 
 
-# Initialize Bot
-bot = Bot(
-    token=settings.bot_token,
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-)
+from app.bot.instance import bot
 
 # Initialize Storage (Redis)
 storage = RedisStorage.from_url(settings.REDIS_URL)

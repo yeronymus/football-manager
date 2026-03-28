@@ -42,6 +42,7 @@ async def update_game_ui(game_id: int):
         if not game: return
         
         # 1. Update Game Messages (Chat & Channel)
+        from app.bot.instance import bot as bot_instance
         from app.bot.utils import update_game_message
         try:
             await update_game_message(_bot, game, session)

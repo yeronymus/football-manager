@@ -32,7 +32,7 @@ async def fix(game_id: int):
         # 2. Refresh Messages
         print("Refreshing messages...")
         try:
-            from app.bot.main import bot
+            from app.bot.instance import bot
             from app.bot.utils import format_game_message
             from app.bot.keyboards import get_game_keyboard
             

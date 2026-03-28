@@ -7,7 +7,7 @@ from app.db.models import Chat, User
 from app.api.auth import validate_init_data, get_user_from_init_data
 from app.core.repositories.user_repository import UserRepository
 from app.config import settings
-from app.bot.main import bot
+from app.bot.instance import bot
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
