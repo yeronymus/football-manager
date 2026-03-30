@@ -22,8 +22,14 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
     reserve_players = [s for s in signups if s[0].status == SignupStatus.RESERVE]
 
     # Localize Date
-    from datetime import timedelta
-    local_dt = game.date_time + timedelta(hours=1)
+    try:
+        import zoneinfo
+        tz = zoneinfo.ZoneInfo("Europe/Prague")
+    except ImportError:
+        from datetime import timezone, timedelta
+        tz = timezone(timedelta(hours=2)) # Fallback to CEST if zoneinfo fails, or +1 if CET. Better use +2 for now as we are in CEST.
+    
+    local_dt = game.date_time.astimezone(tz)
     
     days_map = {
         "Mon": "Пн", "Tue": "Вт", "Wed": "Ср", "Thu": "Чт",
