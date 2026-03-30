@@ -14,7 +14,12 @@ async def process_vote(callback: types.CallbackQuery, session: AsyncSession):
     target_id = int(target_id)
     voter_id = callback.from_user.id
     
-    # Check if voter played in the game
+    # 0. Check for self-voting
+    if voter_id == target_id:
+        await callback.answer("Вы не можете голосовать за себя! 🤔", show_alert=True)
+        return
+    
+    # 1. Check if voter played in the game
     result = await session.execute(
         select(Signup).where(
             Signup.game_id == game_id, 

@@ -116,6 +116,7 @@ async def get_chat_history(chat_id: int, initData: str, session: AsyncSession = 
         
     return history
 
+@router.get("/games/open")
 @router.get("/games/editable")
 async def get_editable_games(initData: str, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(initData, settings.bot_token):
