@@ -119,6 +119,8 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
         
+    await check_admin_rights(game.chat_id, user_id)
+    
     try:
         from app.infrastructure.scheduler.service import SchedulerService
         from app.core.services.stats import StatsService
