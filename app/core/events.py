@@ -1,6 +1,6 @@
 import asyncio
 from typing import Callable, Any, Dict, List, Type
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 @dataclass
 class Event:
