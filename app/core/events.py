@@ -14,20 +14,42 @@ class Event:
 @dataclass
 class GameStateChangedEvent(Event):
     """
-    Fired by the API after any state-changing operation
-    (create, update, balance, finish, add_player, etc.).
-
-    The bot layer listens to this and refreshes the Telegram UI.
-    The API layer does NOT know about the bot — it only publishes this event.
+    Generic: fired after any state-changing operation.
+    Listeners refresh dashboard + public message.
     """
     game_id: int
 
 @dataclass
 class GameMessageNeedsUpdateEvent(Event):
-    """
-    Fired when only the public group/channel message needs a refresh
-    (e.g. player joined/left), without a full dashboard update.
-    """
+    """Only the public group/channel message needs a refresh."""
+    game_id: int
+
+@dataclass
+class GameCreatedEvent(Event):
+    """Fired after a new game is created and committed."""
+    game_id: int
+    chat_id: int
+    creator_id: int
+    should_publish: bool = False
+    publish_at: object = None  # Optional[datetime], kept as object to avoid circular
+
+@dataclass
+class GameFinishedEvent(Event):
+    """Fired after a game is finished. Listeners send the result summary to chat."""
+    game_id: int
+    chat_id: int
+    message_id: int | None = None
+    result_text: str = ""
+
+@dataclass
+class GameUpdatedEvent(Event):
+    """Fired after game details are updated. Listeners edit the public message."""
+    game_id: int
+    changes: list = field(default_factory=list)
+
+@dataclass
+class TeamsPublishedEvent(Event):
+    """Fired after teams/rosters are published. Listeners send/edit team message."""
     game_id: int
 
 # ---------------------------------------------------------------------------

@@ -12,7 +12,11 @@ from app.api.auth import validate_init_data, get_user_from_init_data, check_admi
 from app.api.schemas import GameCreate, BalanceTeams, GameFinishRequest, UpdateTeamsRequest, GameUpdate, AddPlayerRequest, AddGuestRequest
 from app.core.repositories.user_repository import UserRepository
 from app.config import settings
-from app.core.events import event_bus, GameStateChangedEvent
+from app.core.events import (
+    event_bus, GameStateChangedEvent, GameCreatedEvent, 
+    GameFinishedEvent, GameUpdatedEvent, TeamsPublishedEvent
+)
+from app.core.domain.dto import CreateGameDTO, UpdateGameDTO, FinishGameDTO, PlayerStatDTO
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -44,64 +48,56 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         from app.core.services.stats import StatsService
         from app.core.services.game_lifecycle import GameLifecycleService
         from app.core.uow import UnitOfWork
-        from app.bot.instance import bot
-        from app.bot.utils import format_game_message
-        from app.bot.keyboards import get_game_keyboard
         
+        # Map Pydantic schema -> Domain DTO
+        dto = CreateGameDTO(
+            chat_id=game_data.chat_id,
+            date_time=game_data.date_time,
+            location=game_data.location,
+            max_players=game_data.max_players,
+            price=game_data.price,
+            payment_info=game_data.payment_info,
+            team_count=game_data.team_count,
+            gk_hours=game_data.gk_hours,
+            duration=game_data.duration,
+            registration_hours=game_data.registration_hours,
+            game_type=game_data.game_type,
+            auto_join_ids=game_data.auto_join_ids,
+            publish_at=game_data.publish_at,
+            main_players_count=game_data.main_players_count,
+            signup_limit=game_data.signup_limit,
+        )
+
         new_game = None
         async with UnitOfWork() as uow:
             scheduler = SchedulerService()
             stats = StatsService(uow.session)
             lifecycle = GameLifecycleService(uow, scheduler, stats)
-            
-            new_game = await lifecycle.create_game(game_data, user_id)
-            
-            try:
-                chat_info = await bot.get_chat(game_data.chat_id)
-                if chat_info.type == "channel":
-                    new_game.channel_id = game_data.chat_id
-            except Exception as e:
-                logger.warning(f"Failed to check chat type: {e}")
-
+            new_game = await lifecycle.create_game(dto, user_id)
             await uow.commit()
-            
+
             from datetime import datetime
             tz = new_game.date_time.tzinfo
             now_tz = datetime.now(tz) if tz else datetime.now()
             
             should_publish_now = True
             if new_game.date_time < now_tz:
-                 should_publish_now = False
+                should_publish_now = False
             elif game_data.publish_at:
-                 pub_at = game_data.publish_at
-                 if pub_at.tzinfo is None and tz:
-                     pub_at = pub_at.replace(tzinfo=tz)
-                 if pub_at > now_tz:
-                     should_publish_now = False
+                pub_at = game_data.publish_at
+                if pub_at.tzinfo is None and tz:
+                    pub_at = pub_at.replace(tzinfo=tz)
+                if pub_at > now_tz:
+                    should_publish_now = False
 
-            if should_publish_now:
-                try:
-                    text = await format_game_message(new_game, uow.session, is_short=False)
-                    msg = await bot.send_message(
-                        chat_id=new_game.chat_id,
-                        text=text,
-                        reply_markup=get_game_keyboard(new_game.id),
-                        parse_mode="HTML"
-                    )
-                    new_game.message_id = msg.message_id
-                    if new_game.channel_id == new_game.chat_id:
-                        new_game.channel_message_id = msg.message_id
-                        
-                    await uow.commit()
-                    
-                    try:
-                        await bot.pin_chat_message(chat_id=new_game.chat_id, message_id=msg.message_id)
-                    except: pass
-                except Exception as e:
-                    logger.warning(f"Failed to publish to chat: {e}")
-
-            # Notify bot layer via event (no direct bot import needed here)
-            await event_bus.publish(GameStateChangedEvent(game_id=new_game.id))
+            # Delegate all messaging to bot layer via event
+            await event_bus.publish(GameCreatedEvent(
+                game_id=new_game.id,
+                chat_id=new_game.chat_id,
+                creator_id=user_id,
+                should_publish=should_publish_now,
+                publish_at=game_data.publish_at,
+            ))
             return {"game_id": new_game.id, "status": "created"}
         
     except ValueError as e:
@@ -129,43 +125,32 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
         from app.core.services.game_lifecycle import GameLifecycleService
         from app.core.uow import UnitOfWork
         
+        # Map Pydantic schema -> Domain DTO
+        dto = UpdateGameDTO(
+            game_id=data.game_id,
+            location=data.location,
+            date_time=data.date_time,
+            max_players=data.max_players,
+            price=data.price,
+            payment_info=data.payment_info,
+            gk_hours=data.gk_hours,
+            duration=data.duration,
+            registration_hours=data.registration_hours,
+            main_players_count=data.main_players_count,
+            signup_limit=data.signup_limit,
+        )
+
         updated_game = None
         changes = []
         async with UnitOfWork() as uow:
             scheduler = SchedulerService()
             stats = StatsService(uow.session)
             lifecycle = GameLifecycleService(uow, scheduler, stats)
-            
-            updated_game, changes = await lifecycle.update_game(data)
+            updated_game, changes = await lifecycle.update_game(dto)
             await uow.commit()
 
-        if changes:
-            try:
-                from app.bot.instance import bot
-                from app.bot.utils import format_game_message
-                from app.bot.keyboards import get_game_keyboard
-                public_text = await format_game_message(updated_game, session)
-                kb = get_game_keyboard(updated_game.id)
-                
-                async def safe_edit(chat_id, msg_id):
-                    if not chat_id or not msg_id: return
-                    try:
-                        await bot.edit_message_text(
-                            chat_id=chat_id,
-                            message_id=msg_id,
-                            text=public_text,
-                            reply_markup=kb,
-                            parse_mode="HTML"
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to edit msg in {chat_id}: {e}")
-
-                await safe_edit(updated_game.chat_id, updated_game.message_id)
-                await safe_edit(updated_game.channel_id, updated_game.channel_message_id)
-            except Exception as e:
-                logger.warning(f"Failed to notify update: {e}")
-                 
-        await event_bus.publish(GameStateChangedEvent(game_id=updated_game.id))
+        # Delegate messaging to bot layer
+        await event_bus.publish(GameUpdatedEvent(game_id=updated_game.id, changes=changes))
         return {"status": "updated", "id": updated_game.id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -267,35 +252,9 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
         is_update = False
 
     await session.commit()
-    
-    # publish_teams genuinely needs to send messages (not just refresh UI)
-    # so we keep direct bot usage here, importing locally to stay decoupled
-    try:
-        from app.bot.instance import bot
-        from app.bot.utils import format_game_message
-        from app.bot.keyboards import get_game_keyboard
-        public_text = await format_game_message(game, session)
-        if game.message_id:
-            try:
-                await bot.edit_message_text(chat_id=game.chat_id, message_id=game.message_id, text=public_text, reply_markup=get_game_keyboard(game.id), parse_mode="HTML")
-            except Exception as e:
-                err_str = str(e)
-                if "message is not modified" in err_str: pass
-                elif any(x in err_str for x in ["message to edit not found", "message can't be edited", "BUTTON_TYPE_INVALID"]):
-                    msg = await bot.send_message(chat_id=game.chat_id, text=public_text, reply_markup=get_game_keyboard(game.id), parse_mode="HTML")
-                    game.message_id = msg.message_id
-                    await session.commit()
-                else: raise e
-        else:
-            msg = await bot.send_message(chat_id=game.chat_id, text=public_text, reply_markup=get_game_keyboard(game.id), parse_mode="HTML")
-            game.message_id = msg.message_id
-            await session.commit()
-            
-    except Exception as e:
-        logger.error(f"Publish error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Bot Error: {str(e)}")
 
-    await event_bus.publish(GameStateChangedEvent(game_id=game.id))
+    # Delegate messaging to bot layer
+    await event_bus.publish(TeamsPublishedEvent(game_id=game.id))
     return {"status": "published"}
 
 @router.post("/finish_game")
@@ -316,16 +275,27 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
         from app.core.services.stats import StatsService
         from app.core.services.game_lifecycle import GameLifecycleService
         from app.core.uow import UnitOfWork
-        from app.bot.instance import bot as _bot
         
+        # Map Pydantic schema -> Domain DTO
+        dto = FinishGameDTO(
+            game_id=data.game_id,
+            score_a=data.score_a,
+            score_b=data.score_b,
+            winner_team=data.winner_team,
+            mvp_user_id=data.mvp_user_id,
+            mvp_team_a=data.mvp_team_a,
+            mvp_team_b=data.mvp_team_b,
+            player_stats=[PlayerStatDTO(user_id=p.user_id, goals=p.goals) for p in data.player_stats],
+        )
+
         async with UnitOfWork() as uow:
             scheduler = SchedulerService()
             stats = StatsService(uow.session)
             lifecycle = GameLifecycleService(uow, scheduler, stats)
-            game = await lifecycle.finish_game(data)
+            game = await lifecycle.finish_game(dto)
             await uow.commit()
 
-        # Build result text to post in group chat
+        # Build result text — pure string, no bot needed
         text = f"🏁 <b>Матч завершен!</b>\n\n"
         text += f"Команда оранжевые 🟠 {game.score_a}:{game.score_b} 🟢 Команда зеленые\n"
         
@@ -354,13 +324,13 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
                 name = users_map.get(s.user_id, "Неизвестный")
                 text += f"- {name}: {s.goals}\n"
 
-        if game.message_id:
-            try:
-                await _bot.send_message(chat_id=game.chat_id, text=text, parse_mode="HTML")
-            except Exception as e:
-                logger.warning(f"Failed to send finish message: {e}")
-        
-        await event_bus.publish(GameStateChangedEvent(game_id=game.id))
+        # Delegate messaging to bot layer via event
+        await event_bus.publish(GameFinishedEvent(
+            game_id=game.id,
+            chat_id=game.chat_id,
+            message_id=game.message_id,
+            result_text=text,
+        ))
         return {"status": "finished"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

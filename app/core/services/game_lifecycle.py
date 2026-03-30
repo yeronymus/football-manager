@@ -4,7 +4,7 @@ import logging
 
 from sqlalchemy import select, delete
 from app.db.models import Game, Chat, Signup, SignupStatus, GameStatus, GameStats, User, Team
-from app.api.schemas import GameCreate, GameUpdate, GameFinishRequest
+from app.core.domain.dto import CreateGameDTO, UpdateGameDTO, FinishGameDTO
 from app.core.services.stats import StatsService
 from app.infrastructure.scheduler.service import SchedulerService
 from app.config import settings
@@ -25,7 +25,7 @@ class GameLifecycleService:
     def session(self) -> AsyncSession:
         return self.uow.session
 
-    async def create_game(self, data: GameCreate, creator_id: int) -> Game:
+    async def create_game(self, data: CreateGameDTO, creator_id: int) -> Game:
         """
         Creates a new game, handles auto-joins, and schedules lifecycle tasks.
         """
@@ -93,7 +93,7 @@ class GameLifecycleService:
         # No Commit here. Caller must commit.
         return game
 
-    async def update_game(self, data: GameUpdate) -> tuple[Game, list[str]]:
+    async def update_game(self, data: UpdateGameDTO) -> tuple[Game, list[str]]:
         """
         Updates game and reschedules tasks. Returns (Game, changes_list).
         """
@@ -159,7 +159,7 @@ class GameLifecycleService:
         # No Commit.
         return game, changes
 
-    async def finish_game(self, data: GameFinishRequest) -> Game:
+    async def finish_game(self, data: FinishGameDTO) -> Game:
         """
         Finishes game, saves stats, applies ELO.
         """
