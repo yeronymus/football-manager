@@ -6,7 +6,6 @@ import time
 import logging
 from fastapi import HTTPException
 from app.config import settings
-from app.bot.instance import bot
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +78,7 @@ async def check_admin_rights(chat_id: int, user_id: int):
 
     # 2. Check Real (if not cached or expired)
     try:
+        from app.bot.instance import bot
         user_member = await bot.get_chat_member(chat_id, user_id)
         is_admin = user_member.status in ["administrator", "creator"]
         
