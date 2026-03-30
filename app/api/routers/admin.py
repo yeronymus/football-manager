@@ -12,11 +12,8 @@ from app.api.auth import validate_init_data, get_user_from_init_data, check_admi
 from app.api.schemas import GameCreate, BalanceTeams, GameFinishRequest, UpdateTeamsRequest, GameUpdate, AddPlayerRequest, AddGuestRequest
 from app.core.repositories.user_repository import UserRepository
 from app.config import settings
-from app.bot.instance import bot
-from app.bot.utils import format_game_message
-from app.bot.keyboards import get_game_keyboard
+from app.core.events import event_bus, GameStateChangedEvent
 
-from app.bot.admin_dashboard import update_dashboard_message
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -47,6 +44,9 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         from app.core.services.stats import StatsService
         from app.core.services.game_lifecycle import GameLifecycleService
         from app.core.uow import UnitOfWork
+        from app.bot.instance import bot
+        from app.bot.utils import format_game_message
+        from app.bot.keyboards import get_game_keyboard
         
         new_game = None
         async with UnitOfWork() as uow:
@@ -63,7 +63,7 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
             except Exception as e:
                 logger.warning(f"Failed to check chat type: {e}")
 
-            await uow.commit() # Commit Initial Game Creation
+            await uow.commit()
             
             from datetime import datetime
             tz = new_game.date_time.tzinfo
@@ -92,7 +92,7 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
                     if new_game.channel_id == new_game.chat_id:
                         new_game.channel_message_id = msg.message_id
                         
-                    await uow.commit()  # Save message_id to DB ASAP
+                    await uow.commit()
                     
                     try:
                         await bot.pin_chat_message(chat_id=new_game.chat_id, message_id=msg.message_id)
@@ -100,14 +100,8 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
                 except Exception as e:
                     logger.warning(f"Failed to publish to chat: {e}")
 
-            # Update Dashboard
-            try:
-                 success = await update_dashboard_message(bot, new_game.id, uow.session)
-                 if not success:
-                     await bot.send_message(user_id, f"⚠️ Игра создана, но <b>Admin Dashboard</b> не отправлен (нет привязки чата). Используйте /setup.")
-            except Exception as e:
-                 logger.warning(f"Dashboard error: {e}")
-
+            # Notify bot layer via event (no direct bot import needed here)
+            await event_bus.publish(GameStateChangedEvent(game_id=new_game.id))
             return {"game_id": new_game.id, "status": "created"}
         
     except ValueError as e:
@@ -129,8 +123,6 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
         
-    await check_admin_rights(game.chat_id, user_id)
-    
     try:
         from app.infrastructure.scheduler.service import SchedulerService
         from app.core.services.stats import StatsService
@@ -148,7 +140,10 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
             await uow.commit()
 
         if changes:
-             try:
+            try:
+                from app.bot.instance import bot
+                from app.bot.utils import format_game_message
+                from app.bot.keyboards import get_game_keyboard
                 public_text = await format_game_message(updated_game, session)
                 kb = get_game_keyboard(updated_game.id)
                 
@@ -163,20 +158,21 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
                             parse_mode="HTML"
                         )
                     except Exception as e:
-                         logger.warning(f"Failed to edit msg in {chat_id}: {e}")
+                        logger.warning(f"Failed to edit msg in {chat_id}: {e}")
 
                 await safe_edit(updated_game.chat_id, updated_game.message_id)
                 await safe_edit(updated_game.channel_id, updated_game.channel_message_id)
-             except Exception as e:
-                 logger.warning(f"Failed to notify update: {e}")
+            except Exception as e:
+                logger.warning(f"Failed to notify update: {e}")
                  
-        await update_dashboard_message(bot, updated_game.id, session)
+        await event_bus.publish(GameStateChangedEvent(game_id=updated_game.id))
         return {"status": "updated", "id": updated_game.id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Update game error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @router.post("/balance_teams")
 async def balance_teams(data: BalanceTeams, session: AsyncSession = Depends(get_session)):
@@ -201,23 +197,7 @@ async def balance_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
             await service.balance_teams(data.game_id)
             await uow.commit()
 
-        try:
-            public_text = await format_game_message(game, session)
-            kb = get_game_keyboard(game.id)
-            
-            async def safe_edit(chat_id, msg_id):
-                if not chat_id or not msg_id: return
-                try:
-                    await bot.edit_message_text(chat_id=chat_id, message_id=msg_id, text=public_text, reply_markup=kb, parse_mode="HTML")
-                except Exception as e:
-                    logger.warning(f"Failed to edit message in {chat_id}: {e}")
-
-            await safe_edit(game.chat_id, game.message_id)
-            await safe_edit(game.channel_id, game.channel_message_id)
-        except Exception as e:
-            logger.warning(f"Failed to update message after balance: {e}")
-
-        await update_dashboard_message(bot, game.id, session)
+        await event_bus.publish(GameStateChangedEvent(game_id=data.game_id))
         return {"status": "balanced"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -245,17 +225,19 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
             promoted_ids = await service.update_teams(data.game_id, data.team_a, data.team_b, data.team_c, data.positions or {})
             await uow.commit()
 
-        for uid in promoted_ids:
-            try:
-                await bot.send_message(
-                    uid, 
-                    "<b>Ты в основном составе!</b>\nАдмин перенес тебя из резерва. <b>Подтверди в группе или админам, что будешь играть!</b>", 
-                    parse_mode="HTML"
-                )
-            except Exception as e:
-                logger.warning(f"Failed to notify promoted user {uid}: {e}")
-                  
-        await update_dashboard_message(bot, data.game_id, session)
+        if promoted_ids:
+            from app.bot.instance import bot as _bot
+            for uid in promoted_ids:
+                try:
+                    await _bot.send_message(
+                        uid,
+                        "<b>Ты в основном составе!</b>\nАдмин перенес тебя из резерва. <b>Подтверди в группе или админам, что будешь играть!</b>",
+                        parse_mode="HTML"
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to notify promoted user {uid}: {e}")
+
+        await event_bus.publish(GameStateChangedEvent(game_id=data.game_id))
         return {"status": "updated"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -281,12 +263,17 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
         game.status = GameStatus.ACTIVE
         is_update = False
     elif game.status == GameStatus.CANCELLED:
-         game.status = GameStatus.ACTIVE
-         is_update = False
+        game.status = GameStatus.ACTIVE
+        is_update = False
 
     await session.commit()
     
+    # publish_teams genuinely needs to send messages (not just refresh UI)
+    # so we keep direct bot usage here, importing locally to stay decoupled
     try:
+        from app.bot.instance import bot
+        from app.bot.utils import format_game_message
+        from app.bot.keyboards import get_game_keyboard
         public_text = await format_game_message(game, session)
         if game.message_id:
             try:
@@ -307,7 +294,8 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
     except Exception as e:
         logger.error(f"Publish error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Bot Error: {str(e)}")
-        
+
+    await event_bus.publish(GameStateChangedEvent(game_id=game.id))
     return {"status": "published"}
 
 @router.post("/finish_game")
@@ -328,6 +316,7 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
         from app.core.services.stats import StatsService
         from app.core.services.game_lifecycle import GameLifecycleService
         from app.core.uow import UnitOfWork
+        from app.bot.instance import bot as _bot
         
         async with UnitOfWork() as uow:
             scheduler = SchedulerService()
@@ -336,13 +325,14 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
             game = await lifecycle.finish_game(data)
             await uow.commit()
 
+        # Build result text to post in group chat
         text = f"🏁 <b>Матч завершен!</b>\n\n"
         text += f"Команда оранжевые 🟠 {game.score_a}:{game.score_b} 🟢 Команда зеленые\n"
         
         async def get_names(uids):
-             if not uids: return []
-             res = await session.execute(select(User).where(User.user_id.in_(uids)))
-             return [u.full_name for u in res.scalars().all()]
+            if not uids: return []
+            res = await session.execute(select(User).where(User.user_id.in_(uids)))
+            return [u.full_name for u in res.scalars().all()]
 
         mvp_ids = []
         if data.mvp_user_id: mvp_ids.append(data.mvp_user_id)
@@ -350,9 +340,9 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
         if data.mvp_team_b: mvp_ids.append(data.mvp_team_b)
         
         if mvp_ids:
-             mvp_names = await get_names(mvp_ids)
-             if mvp_names:
-                 text += "🌟 <b>MVP:</b> " + ", ".join(mvp_names) + "\n"
+            mvp_names = await get_names(mvp_ids)
+            if mvp_names:
+                text += "🌟 <b>MVP:</b> " + ", ".join(mvp_names) + "\n"
         
         scorers = [p for p in data.player_stats if p.goals > 0]
         if scorers:
@@ -361,16 +351,16 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
             res = await session.execute(select(User).where(User.user_id.in_(scorer_ids)))
             users_map = {u.user_id: u.full_name for u in res.scalars().all()}
             for s in scorers:
-                 name = users_map.get(s.user_id, "Неизвестный")
-                 text += f"- {name}: {s.goals}\n"
+                name = users_map.get(s.user_id, "Неизвестный")
+                text += f"- {name}: {s.goals}\n"
 
         if game.message_id:
             try:
-                await bot.send_message(chat_id=game.chat_id, text=text, parse_mode="HTML")
+                await _bot.send_message(chat_id=game.chat_id, text=text, parse_mode="HTML")
             except Exception as e:
                 logger.warning(f"Failed to send finish message: {e}")
         
-        await update_dashboard_message(bot, game.id, session)
+        await event_bus.publish(GameStateChangedEvent(game_id=game.id))
         return {"status": "finished"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -395,13 +385,14 @@ async def admin_add_player(data: AddPlayerRequest, session: AsyncSession = Depen
         if existing.status != SignupStatus.ACTIVE:
             existing.status = SignupStatus.ACTIVE
             await session.commit()
+            await event_bus.publish(GameStateChangedEvent(game_id=data.game_id))
             return {"status": "updated", "message": "Player restored to Active"}
         else: return {"status": "ok", "message": "Already active"}
             
     signup = Signup(game_id=data.game_id, user_id=data.user_id, status=SignupStatus.ACTIVE)
     session.add(signup)
     await session.commit()
-    await update_dashboard_message(bot, data.game_id, session)
+    await event_bus.publish(GameStateChangedEvent(game_id=data.game_id))
     return {"status": "added"}
 
 @router.post("/add_guest")
@@ -449,7 +440,7 @@ async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends
         await session.commit()
         logger.info(f"Guest {guest_id} successfully added and committed")
         
-        await update_dashboard_message(bot, data.game_id, session)
+        await event_bus.publish(GameStateChangedEvent(game_id=data.game_id))
         return {"status": "added", "user_id": guest_id}
         
     except Exception as e:

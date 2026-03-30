@@ -7,6 +7,33 @@ class Event:
     """Base class for all events."""
     pass
 
+# ---------------------------------------------------------------------------
+# Domain Events
+# ---------------------------------------------------------------------------
+
+@dataclass
+class GameStateChangedEvent(Event):
+    """
+    Fired by the API after any state-changing operation
+    (create, update, balance, finish, add_player, etc.).
+
+    The bot layer listens to this and refreshes the Telegram UI.
+    The API layer does NOT know about the bot — it only publishes this event.
+    """
+    game_id: int
+
+@dataclass
+class GameMessageNeedsUpdateEvent(Event):
+    """
+    Fired when only the public group/channel message needs a refresh
+    (e.g. player joined/left), without a full dashboard update.
+    """
+    game_id: int
+
+# ---------------------------------------------------------------------------
+# Event Bus
+# ---------------------------------------------------------------------------
+
 class EventBus:
     def __init__(self):
         self._subscribers: Dict[Type[Event], List[Callable[[Event], Any]]] = {}
@@ -16,7 +43,7 @@ class EventBus:
         if event_type not in self._subscribers:
             self._subscribers[event_type] = []
         self._subscribers[event_type].append(handler)
-        
+
     def unsubscribe(self, event_type: Type[Event], handler: Callable[[Event], Any]):
         """Unsubscribe a handler from an event type."""
         if event_type in self._subscribers:
@@ -27,7 +54,6 @@ class EventBus:
         """Publish an event to all subscribers."""
         event_type = type(event)
         if event_type in self._subscribers:
-            # Execute handlers concurrently
             handlers = self._subscribers[event_type]
             await asyncio.gather(*[self._safe_invoke(h, event) for h in handlers])
 
@@ -39,8 +65,10 @@ class EventBus:
             else:
                 handler(event)
         except Exception as e:
-            # In a real app, use logger
-            print(f"Error handling event {event}: {e}")
+            import logging
+            logging.getLogger(__name__).error(
+                f"Error handling event {type(event).__name__}: {e}", exc_info=True
+            )
 
-# Global instance
+# Global singleton
 event_bus = EventBus()
