@@ -78,8 +78,15 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
         try:
             loc = str(game.location) if game.location else "Unknown"
             loc_escaped = html.escape(loc)
-            from datetime import timedelta
-            local_dt = game.date_time + timedelta(hours=1)
+            # Localize Date
+            try:
+                import zoneinfo
+                tz = zoneinfo.ZoneInfo("Europe/Prague")
+            except ImportError:
+                from datetime import timezone, timedelta
+                tz = timezone(timedelta(hours=2))
+            
+            local_dt = game.date_time.astimezone(tz)
             dt_str = local_dt.strftime('%d.%m %H:%M') if game.date_time else "??"
             
             # Status
