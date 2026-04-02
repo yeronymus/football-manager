@@ -84,21 +84,23 @@ def get_primary_select_keyboard(available: list[str]) -> InlineKeyboardMarkup:
             
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_game_keyboard(game_id: int) -> InlineKeyboardMarkup:
+def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = "") -> InlineKeyboardMarkup:
     # Use Deep Link to bypass "WebApp in Channel" restriction
-    # User clicks -> Private Chat -> /start game_id -> We show WebApp button there
     bot_username = "fm_metabot" 
-    deep_link = f"https://t.me/{bot_username}?start=game_{game_id}"
     
-    from app.config import settings
-    vote_url = f"{settings.webapp_url}/web/vote.html?game_id={game_id}"
-
     buttons = [
         [
             InlineKeyboardButton(text="➕ Я в деле", callback_data=f"join_{game_id}"),
             InlineKeyboardButton(text="➖ Сливаюсь", callback_data=f"leave_{game_id}")
         ]
     ]
+    
+    if is_admin and webapp_url:
+        draft_url = f"{webapp_url}/web/draft.html?game_id={game_id}&v=2.0"
+        buttons.append([
+            InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=draft_url))
+        ])
+        
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_channel_game_keyboard(game_id: int) -> InlineKeyboardMarkup:

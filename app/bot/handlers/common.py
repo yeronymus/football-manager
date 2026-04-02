@@ -66,9 +66,14 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
                 # Удаляем пересланное сообщение из канала
                 await message.delete()
                 
+                # Проверка статуса админа (чтобы кнопки появились сразу в группе)
+                is_admin = False
+                if message.from_user.id in settings.admin_ids or message.from_user.id == settings.system_owner_id:
+                    is_admin = True
+                
                 # Формируем и отправляем новое сообщение с кнопками
                 text_short = await format_game_message(game, session, is_short=True)
-                kb = get_game_keyboard(game_id)
+                kb = get_game_keyboard(game_id, is_admin=is_admin, webapp_url=settings.webapp_url)
                 
                 sent_msg = await message.bot.send_message(
                     chat_id=message.chat.id,
@@ -320,24 +325,24 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 result = await session.execute(select(Game).where(Game.id == game_id))
                 game = result.scalar_one_or_none()
                 if game:
-                    # 1. Generate full game message text
+                    if is_admin:
+                        # ULTRA-MINIMALISTIC INTERFACE FOR ADMINS
+                        webapp_url = settings.webapp_url.rstrip("/")
+                        web_url = f"{webapp_url}/web/draft.html?game_id={game_id}&v=2.0"
+                        kb = types.InlineKeyboardMarkup(inline_keyboard=[
+                            [types.InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=web_url))]
+                        ])
+                        await message.answer(f"⚽ <b>Игра #{game_id}: Составы</b>", reply_markup=kb, parse_mode="HTML")
+                        return
+
+                    # 1. Generate full game message text for regular users
                     from app.bot.utils import format_game_message
                     text = await format_game_message(game, session)
                     
-                    # 2. Keyboards
-                    # Standard Join/Leave
+                    # 2. Keyboard (Join/Leave only)
                     kb = get_game_keyboard(game_id)
                     await message.answer(text, reply_markup=kb)
 
-                    # 3. If Admin -> Extra Dash
-                    if is_admin:
-                        base = settings.webapp_url.rstrip("/")
-                        web_url = f"{base}/web/draft.html?game_id={game_id}&v=2.0"
-                        kb_draft = types.InlineKeyboardMarkup(inline_keyboard=[
-                            [types.InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=web_url))]
-                        ])
-                        await message.answer("🔧 Админ-панель:", reply_markup=kb_draft)
-                    
                     return
                 else:
                     await message.answer("Игра не найдена. 🤷‍♂️")
