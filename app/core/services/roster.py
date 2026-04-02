@@ -253,22 +253,32 @@ class RosterService:
                         s.position = Position(positions[uid])
                      except: pass
 
+        # 2. Update Teams (Manual override)
         for uid in team_a: update_signup(uid, Team.A)
         for uid in team_b: update_signup(uid, Team.B)
         for uid in team_c or []: update_signup(uid, Team.C)
         
-        # For Unassigned: just clear their team, but do NOT change status automatically.
-        # This keeps unassigned Pool players Active if they were already Active.
-        # If they were Reserve, they stay Reserve.
-        for uid in unassigned:
-            if uid in signup_map:
-                s = signup_map[uid]
-                s.team = None
-                # Note: We COULD promote someone to ACTIVE just by moving them to Unassigned if we wanted,
-                # but "Preserve Status" is safer to avoid accidental pool overflow.
+        # 3. Handle Unassigned Pool (Auto-filling Active statuses)
+        # Count how many we already have in teams
+        active_count = len(team_a) + len(team_b) + (len(team_c) if team_c else 0)
         
-        # Finally: ONLY demote to Reserve those who were NOT in ANY of the lists (A, B, C, or Pool).
-        # This allows the UI to specifically manage who belongs to the ACTIVE + RESERVE pool.
+        # Sort unassigned pool by registration time to be fair (FIFO)
+        unassigned_signups = [signup_map[uid] for uid in unassigned if uid in signup_map]
+        unassigned_signups.sort(key=lambda s: s.created_at)
+        
+        for s in unassigned_signups:
+            s.team = None
+            if active_count < game.max_players:
+                # If there's space, ensure they are ACTIVE
+                if s.status == SignupStatus.RESERVE:
+                    s.status = SignupStatus.ACTIVE
+                    promoted_ids.append(s.user_id)
+                active_count += 1
+            else:
+                # If no space, ensure they are RESERVE
+                s.status = SignupStatus.RESERVE
+        
+        # Finally: Demote anyone who wasn't in list A, B, C or Unassigned
         picked_ids = set(team_a) | set(team_b) | set(team_c or []) | set(unassigned)
         for uid, s in signup_map.items():
             if uid not in picked_ids:
