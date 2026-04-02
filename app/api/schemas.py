@@ -62,9 +62,10 @@ class GameFinishRequest(BaseModel):
 
 class UpdateTeamsRequest(BaseModel):
     game_id: int
-    team_a: list[int]
-    team_b: list[int]
-    team_c: Optional[list[int]] = None
+    team_a: List[int]
+    team_b: List[int]
+    team_c: Optional[List[int]] = None
+    unassigned: Optional[List[int]] = None
     positions: Optional[dict[int, str]] = None
     initData: str
 

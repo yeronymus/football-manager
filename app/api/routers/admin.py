@@ -43,6 +43,25 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         )
         await session.commit()
 
+    # Interpret naive datetime from WebApp as Prague time
+    game_dt = game_data.date_time
+    if game_dt.tzinfo is None:
+        try:
+            import zoneinfo
+            prague_tz = zoneinfo.ZoneInfo("Europe/Prague")
+            game_dt = game_dt.replace(tzinfo=prague_tz)
+        except ImportError:
+            pass # Fallback to whatever Pydantic did
+    
+    publish_dt = game_data.publish_at
+    if publish_dt and publish_dt.tzinfo is None:
+        try:
+            import zoneinfo
+            prague_tz = zoneinfo.ZoneInfo("Europe/Prague")
+            publish_dt = publish_dt.replace(tzinfo=prague_tz)
+        except ImportError:
+            pass
+
     try:
         from app.infrastructure.scheduler.service import SchedulerService
         from app.core.services.stats import StatsService
@@ -52,7 +71,7 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         # Map Pydantic schema -> Domain DTO
         dto = CreateGameDTO(
             chat_id=game_data.chat_id,
-            date_time=game_data.date_time,
+            date_time=game_dt,
             location=game_data.location,
             max_players=game_data.max_players,
             price=game_data.price,
@@ -63,7 +82,7 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
             registration_hours=game_data.registration_hours,
             game_type=game_data.game_type,
             auto_join_ids=game_data.auto_join_ids,
-            publish_at=game_data.publish_at,
+            publish_at=publish_dt,
             main_players_count=game_data.main_players_count,
             signup_limit=game_data.signup_limit,
         )
@@ -121,6 +140,16 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
         
     await check_admin_rights(game.chat_id, user_id)
     
+    # Interpret naive datetime from WebApp as Prague time
+    game_dt = data.date_time
+    if game_dt and game_dt.tzinfo is None:
+        try:
+            import zoneinfo
+            prague_tz = zoneinfo.ZoneInfo("Europe/Prague")
+            game_dt = game_dt.replace(tzinfo=prague_tz)
+        except ImportError:
+            pass
+
     try:
         from app.infrastructure.scheduler.service import SchedulerService
         from app.core.services.stats import StatsService
@@ -131,7 +160,7 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
         dto = UpdateGameDTO(
             game_id=data.game_id,
             location=data.location,
-            date_time=data.date_time,
+            date_time=game_dt,
             max_players=data.max_players,
             price=data.price,
             payment_info=data.payment_info,
@@ -209,7 +238,7 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
         promoted_ids = []
         async with UnitOfWork() as uow:
             service = RosterService(uow)
-            promoted_ids = await service.update_teams(data.game_id, data.team_a, data.team_b, data.team_c, data.positions or {})
+            promoted_ids = await service.update_teams(data.game_id, data.team_a, data.team_b, data.team_c, data.unassigned or [], data.positions or {})
             await uow.commit()
 
         if promoted_ids:

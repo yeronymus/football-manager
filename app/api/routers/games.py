@@ -41,7 +41,8 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
             "rating": user.rating,
             "position": eff_pos.value if eff_pos else "DEF",
             "original_position": user.player_position.value if user.player_position else "DEF",
-            "alt_positions": user.alt_positions or []
+            "alt_positions": user.alt_positions or [],
+            "status": signup.status.value
         }
     
     team_a = [serialize_player(p) for p in players_data if p[1].team == Team.A]

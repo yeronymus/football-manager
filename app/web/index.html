@@ -323,37 +323,11 @@
             try {
                 // Force interpret as Prague time (Europe/Prague)
                 function toPragueISO(localDateStr) {
-                    // localDateStr is like "2026-02-22T19:00" from flatpickr
-                    // We need to interpret it as Prague time, not device local time
-                    const pragueDate = new Date(localDateStr);
-                    // Get the offset difference between device and Prague
-                    const deviceOffset = pragueDate.getTimezoneOffset(); // in minutes, e.g. -300 for UTC+5
-                    const pragueStr = pragueDate.toLocaleString('en-US', { timeZone: 'Europe/Prague' });
-                    const pragueLocal = new Date(pragueStr);
-                    const pragueOffset = pragueLocal.getTimezoneOffset();
-                    // The user picked this time meaning Prague time
-                    // So we create a date that represents "localDateStr in Prague"
-                    const utcDate = new Date(localDateStr + ':00');
-                    // Get Prague's UTC offset by comparing
-                    const formatter = new Intl.DateTimeFormat('en-US', {
-                        timeZone: 'Europe/Prague',
-                        timeZoneName: 'shortOffset'
-                    });
-                    const parts = formatter.formatToParts(new Date());
-                    const tzPart = parts.find(p => p.type === 'timeZoneName');
-                    // Parse offset like "GMT+1" or "GMT+2"
-                    let pragueOffsetHours = 1; // default CET
-                    if (tzPart) {
-                        const match = tzPart.value.match(/GMT([+-]\d+)/);
-                        if (match) pragueOffsetHours = parseInt(match[1]);
-                    }
-                    // Build ISO string: treat input as Prague time
-                    // e.g. "2026-02-22T19:00" in Prague (UTC+1) = "2026-02-22T18:00:00.000Z"
-                    const [datePart, timePart] = localDateStr.split('T');
-                    const [hours, minutes] = timePart.split(':').map(Number);
-                    const d = new Date(datePart + 'T' + timePart + ':00Z');
-                    d.setUTCHours(d.getUTCHours() - pragueOffsetHours);
-                    return d.toISOString();
+                    // localDateStr is like "2026-04-04T12:00" from flatpickr
+                    // We send it to the server as a string, and let the server handle it
+                    // Or we can convert it to UTC if we know Prague's offset for THAT date.
+                    // But simpler: just return the string with a 'T' and we'll handle it on server.
+                    return localDateStr; 
                 }
 
                 const payload = {
