@@ -140,20 +140,24 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
         # Use tg:// schema to attempt to suppress "Open Link" dialog
         bot_username = "fm_metabot"
         
-        edit_deep_link = f"tg://resolve?domain={bot_username}&start=edit_{game.id}"
-        row_1.append(InlineKeyboardButton(text="✏️ Изменить", url=edit_deep_link))
+        # Use direct WebAppInfo for admin actions to avoid redundant messages
+        base_url = settings.webapp_url.rstrip("/")
         
-        draft_deep_link = f"tg://resolve?domain={bot_username}&start=game_{game.id}"
-        row_1.append(InlineKeyboardButton(text="🔀 Составы (Draft)", url=draft_deep_link))
+        edit_web_url = f"{base_url}/web/edit_game.html?game_id={game.id}&v=1.1"
+        row_1.append(InlineKeyboardButton(text="✏️ Изменить", web_app=WebAppInfo(url=edit_web_url)))
+        
+        draft_web_url = f"{base_url}/web/draft.html?game_id={game.id}&v=2.0"
+        row_1.append(InlineKeyboardButton(text="🔀 Составы (Draft)", web_app=WebAppInfo(url=draft_web_url)))
         buttons.append(row_1)
         
-        finish_deep_link = f"tg://resolve?domain={bot_username}&start=finish_{game.id}"
+        finish_web_url = f"{base_url}/web/finish.html?game_id={game.id}&mode=edit"
         
         # Row 2: Kick Menu, Finish, Add Guest
         row_2 = []
         row_2.append(InlineKeyboardButton(text="💣 Убрать", callback_data=f"god_kick_menu_{game.id}"))
+        # Add Guest remains a deep link because it starts a bot message flow
         row_2.append(InlineKeyboardButton(text="👤 +Гость", url=f"tg://resolve?domain={bot_username}&start=addguest_{game.id}"))
-        row_2.append(InlineKeyboardButton(text="🏁 Завершить", url=finish_deep_link))
+        row_2.append(InlineKeyboardButton(text="🏁 Завершить", web_app=WebAppInfo(url=finish_web_url)))
         buttons.append(row_2)
         
         # Row 3: Delete
