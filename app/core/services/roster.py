@@ -227,7 +227,11 @@ class RosterService:
         """
         Updates team assignments and handles manual promotions.
         """
-        # 1. Get All Signups
+        # 1. Get Game and All Signups
+        game = await self.uow.game_repo.get_game(game_id)
+        if not game:
+            return []
+            
         signups = await self.uow.game_repo.get_all_active_and_reserve(game_id)
         signup_map = {s.user_id: s for s in signups}
         
