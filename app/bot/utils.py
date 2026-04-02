@@ -156,7 +156,7 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
     if reserve_players:
         text += f"\n🕒 <b>Резерв</b> ({len(reserve_players)}):\n"
         for i, (signup, user) in enumerate(reserve_players, 1):
-            text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a>\n"
+            text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
     
     if game.price > 0:
         text += f"——————————————————\n"

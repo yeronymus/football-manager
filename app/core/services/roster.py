@@ -223,7 +223,7 @@ class RosterService:
                 
         return [] # Return structure not strictly defined by caller yet, but endpoint returns status
 
-    async def update_teams(self, game_id: int, team_a: list[int], team_b: list[int], team_c: list[int], positions: dict) -> list[int]:
+    async def update_teams(self, game_id: int, team_a: list[int], team_b: list[int], team_c: list[int], unassigned: list[int], positions: dict) -> list[int]:
         """
         Updates team assignments and handles manual promotions.
         """
@@ -233,18 +233,18 @@ class RosterService:
         
         promoted_ids = []
         
-        # Helper
+        # Helper for assigning teams (always ensures they are ACTIVE)
         def update_signup(uid, team_enum):
             if uid in signup_map:
                 s = signup_map[uid]
-                # Promote if Reserve
+                # Promote to Active if they were Reserve but are now in a team
                 if s.status == SignupStatus.RESERVE:
                     s.status = SignupStatus.ACTIVE
                     promoted_ids.append(uid)
                 s.team = team_enum
                 
                 # Update Position if provided
-                if str(uid) in positions: # keys might be string in JSON
+                if str(uid) in positions:
                     try:
                         s.position = Position(positions[str(uid)])
                     except: pass
@@ -257,8 +257,19 @@ class RosterService:
         for uid in team_b: update_signup(uid, Team.B)
         for uid in team_c or []: update_signup(uid, Team.C)
         
-        # Demote others to Reserve (this handles the "draft 26 out of 40" requirement)
-        picked_ids = set(team_a) | set(team_b) | set(team_c or [])
+        # For Unassigned: just clear their team, but do NOT change status automatically.
+        # This keeps unassigned Pool players Active if they were already Active.
+        # If they were Reserve, they stay Reserve.
+        for uid in unassigned:
+            if uid in signup_map:
+                s = signup_map[uid]
+                s.team = None
+                # Note: We COULD promote someone to ACTIVE just by moving them to Unassigned if we wanted,
+                # but "Preserve Status" is safer to avoid accidental pool overflow.
+        
+        # Finally: ONLY demote to Reserve those who were NOT in ANY of the lists (A, B, C, or Pool).
+        # This allows the UI to specifically manage who belongs to the ACTIVE + RESERVE pool.
+        picked_ids = set(team_a) | set(team_b) | set(team_c or []) | set(unassigned)
         for uid, s in signup_map.items():
             if uid not in picked_ids:
                 s.status = SignupStatus.RESERVE

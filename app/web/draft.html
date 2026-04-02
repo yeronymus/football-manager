@@ -778,6 +778,14 @@
             data.team_b = gather('b');
             if (activeTeams.includes('c')) data.team_c = gather('c');
 
+            // --- GATHER UNASSIGNED ---
+            const unassignedList = document.getElementById('list-unassigned');
+            const unassignedIds = [];
+            unassignedList.querySelectorAll('.player-card').forEach(c => {
+                unassignedIds.push(parseInt(c.id.replace('player-', '')));
+            });
+            data.unassigned = unassignedIds;
+
             // Flags
             activeTeams.forEach(k => {
                 data[`has_active_gk_${k}`] = document.getElementById(`chk-gk-${k}`).checked;
