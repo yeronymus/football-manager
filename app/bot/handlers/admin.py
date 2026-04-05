@@ -95,8 +95,6 @@ async def cmd_merge_users(message: types.Message, session: AsyncSession):
         await repo.merge_users(old_id, new_id)
         await session.commit()
         await message.answer(f"✅ Успешно смержили аккаунт {old_id} в {new_id}.")
-    except ValueError as e:
-        await message.answer(f"❌ Ошибка: {e}")
     except Exception as e:
         import traceback
         await session.rollback()
