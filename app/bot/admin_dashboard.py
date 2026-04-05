@@ -183,9 +183,14 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
                     parse_mode="HTML"
                 )
             except Exception as e:
-                # If message deleted or too old, resend?
-                if "message to edit not found" in str(e).lower():
-                    game.admin_message_id = None # Reset to resend
+                err_lower = str(e).lower()
+                if "message is not modified" in err_lower:
+                    pass
+                else:
+                    # If edit fails for ANY other reason (deleted, bad buttons, context issues),
+                    # reset the ID to force a fresh resend below.
+                    game.admin_message_id = None
+                    logger.warning(f"Resetting admin_message_id for game {game.id} due to edit error: {e}")
         
         if not game.admin_message_id:
             msg = await bot.send_message(
