@@ -57,9 +57,14 @@ async def cmd_fix_game(message: types.Message, command: CommandObject, session: 
             chat.admin_chat_id = message.chat.id
             game.admin_message_id = None
             await session.commit()
-            from app.bot.admin_dashboard import update_dashboard_message
+
+            from app.bot.admin_dashboard import update_dashboard_message, _sent_errors
+            # Bypass error filter for manual fix
+            global _sent_errors
+            _sent_errors = {key for key in _sent_errors if key[0] != game_id}
+            
             await update_dashboard_message(message.bot, game_id, session, target_chat_id=message.chat.id)
-            await message.answer("Fixed.")
+            await message.answer("✅ Game dashboard link and message ID have been reset and refreshed.")
     except Exception as e:
         await message.answer(f"Error: {e}")
 
