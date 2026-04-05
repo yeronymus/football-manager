@@ -10,6 +10,10 @@ import html
 
 logger = logging.getLogger(__name__)
 
+# In-memory storage for deduplication of owner log notifications
+# Format: {(game_id, error_message_hash), ...}
+_sent_errors = set()
+
 async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession, target_chat_id: int = None) -> bool:
     """
     Updates (or sends) the Admin Dashboard message in the linked Admin Chat.
@@ -140,24 +144,24 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
         # Use tg:// schema to attempt to suppress "Open Link" dialog
         bot_username = "fm_metabot"
         
-        # Use direct WebAppInfo for admin actions to avoid redundant messages
-        base_url = settings.webapp_url.rstrip("/")
+        # Use deep links for dashboard buttons because direct WebApp buttons are forbidden in Channels
+        # and since we optimized the bot's /start handler to be minimalistic, it's now very clean.
+        bot_username = "fm_metabot"
         
-        edit_web_url = f"{base_url}/web/edit_game.html?game_id={game.id}&v=1.1"
-        row_1.append(InlineKeyboardButton(text="✏️ Изменить", web_app=WebAppInfo(url=edit_web_url)))
+        edit_deep_link = f"tg://resolve?domain={bot_username}&start=edit_{game.id}"
+        row_1.append(InlineKeyboardButton(text="✏️ Изменить", url=edit_deep_link))
         
-        draft_web_url = f"{base_url}/web/draft.html?game_id={game.id}&v=2.0"
-        row_1.append(InlineKeyboardButton(text="🔀 Составы (Draft)", web_app=WebAppInfo(url=draft_web_url)))
+        draft_deep_link = f"tg://resolve?domain={bot_username}&start=game_{game.id}"
+        row_1.append(InlineKeyboardButton(text="🔀 Составы (Draft)", url=draft_deep_link))
         buttons.append(row_1)
         
-        finish_web_url = f"{base_url}/web/finish.html?game_id={game.id}&mode=edit"
+        finish_deep_link = f"tg://resolve?domain={bot_username}&start=finish_{game.id}"
         
         # Row 2: Kick Menu, Finish, Add Guest
         row_2 = []
         row_2.append(InlineKeyboardButton(text="💣 Убрать", callback_data=f"god_kick_menu_{game.id}"))
-        # Add Guest remains a deep link because it starts a bot message flow
         row_2.append(InlineKeyboardButton(text="👤 +Гость", url=f"tg://resolve?domain={bot_username}&start=addguest_{game.id}"))
-        row_2.append(InlineKeyboardButton(text="🏁 Завершить", web_app=WebAppInfo(url=finish_web_url)))
+        row_2.append(InlineKeyboardButton(text="🏁 Завершить", url=finish_deep_link))
         buttons.append(row_2)
         
         # Row 3: Delete
@@ -193,15 +197,29 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
             game.admin_message_id = msg.message_id
             await session.commit()
             
+        # On success: Clear any cached errors for this game so if it fails LATER, we get notified
+        global _sent_errors
+        _sent_errors = {key for key in _sent_errors if key[0] != game_id}
+        
         return True
     except Exception as e:
+        error_msg = str(e)
+        error_key = (game_id, error_msg)
+        
+        global _sent_errors
+        if error_key in _sent_errors:
+            # Already sent this specific error for this game. Skip.
+            logger.info(f"Supressing duplicate dashboard error for Game #{game_id}")
+            return False
+            
+        _sent_errors.add(error_key)
+        
         logger.error(f"CRITICAL ERROR updating dashboard: {e}", exc_info=True)
         try:
-            # Never send logs to the group chat as per user instruction
             if settings.system_owner_id:
                 await bot.send_message(
                     settings.system_owner_id, 
-                    f"⚠️ <b>Dashboard Error (Game #{game_id}):</b>\n<code>{html.escape(str(e))}</code>", 
+                    f"⚠️ <b>Dashboard Error (Game #{game_id}):</b>\n<code>{html.escape(error_msg)}</code>", 
                     parse_mode="HTML"
                 )
         except Exception as log_err:
