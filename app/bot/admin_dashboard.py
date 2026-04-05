@@ -20,6 +20,7 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
     If target_chat_id is provided, it overrides the DB lookup.
     Returns True if dashboard was sent/updated.
     """
+    global _sent_errors
     try:
         # 1. Fetch Game with Chat
         logger.debug(f"update_dashboard START game_id={game_id}")
@@ -203,7 +204,6 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
             await session.commit()
             
         # On success: Clear any cached errors for this game so if it fails LATER, we get notified
-        global _sent_errors
         _sent_errors = {key for key in _sent_errors if key[0] != game_id}
         
         return True
@@ -211,7 +211,6 @@ async def update_dashboard_message(bot: Bot, game_id: int, session: AsyncSession
         error_msg = str(e)
         error_key = (game_id, error_msg)
         
-        global _sent_errors
         if error_key in _sent_errors:
             # Already sent this specific error for this game. Skip.
             logger.info(f"Supressing duplicate dashboard error for Game #{game_id}")
