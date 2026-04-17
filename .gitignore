@@ -37,7 +37,12 @@ git_status.txt
 *.swp
 .agent/
 .agents/
-docs/
+
+# Documentation & Agent Configs
+AGENTS.md
+PROJECT.md
+BACKLOG.md
+NSS_milestone1.md
 
 # Artifacts & Outputs
 *.xlsx
