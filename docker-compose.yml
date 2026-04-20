@@ -11,9 +11,21 @@ services:
     depends_on:
       - db
       - redis
-    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+    # Entrypoint is now defined in the Dockerfile
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+
+  watchtower:
+    image: containrrr/watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.docker/config.json:/config.json
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+    command: --interval 300 --cleanup
 
   db:
     image: postgres:15-alpine

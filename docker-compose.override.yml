@@ -4,6 +4,11 @@ services:
     volumes:
       # Developer volume injection for hot reloads
       - .:/app:z
+    command: uv run uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
     # Allows pdb / interactive debugging over standard out
     stdin_open: true
     tty: true
+
+  watchtower:
+    # Disable watchtower during local development
+    scale: 0
