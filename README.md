@@ -1,4 +1,4 @@
-# Football Manager Bot ⚽️
+# Football Manager Telegram Bot ⚽️
 [@fm_metabot](https://t.me/fm_metabot)
 
 An industrial-grade multi-tenant SaaS platform for amateur football communities. The system orchestrates player registrations, dynamic ELO balancing, match tracking, and transactional analytics via a high-performance Aiogram client and FastAPI WebApp backend.
@@ -36,10 +36,10 @@ docker compose up -d
 ### 3. Data Seeding
 ```bash
 # Initialize authorized chats from .env
-docker compose exec app python manage.py db seed-chats
+docker compose exec app python app/presentation/cli/manage.py db seed-chats
 
 # Populate match history for testing
-docker compose exec app python manage.py db seed-history
+docker compose exec app python app/presentation/cli/manage.py db seed-history
 ```
 
 ## 🔄 CI/CD & Auto-Deployment
