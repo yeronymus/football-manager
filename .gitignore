@@ -75,3 +75,4 @@ Draft_Stats*.md
 /emergency*.py
 /fuzzy_*.py
 *.sh
+!scripts/
