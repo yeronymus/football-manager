@@ -1,4 +1,4 @@
-# Secrets & Environment
+# --- Secrets & Environment ---
 .env
 .env.*
 *.env
@@ -6,16 +6,28 @@ development.env
 production.env
 local.env
 remote.env
+*.pem
+id_rsa
+secrets.json
+.pypirc
 
-# Python
+# --- Python ---
 __pycache__/
 *.py[cod]
 *$py.class
 venv/
 .venv/
 env/
+dist/
+build/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.tox/
+.coverage
+htmlcov/
 
-# Database & Data
+# --- Database & Data ---
 *.db
 *.sqlite3
 postgres_data/
@@ -23,7 +35,7 @@ redis_data/
 backups/
 *.sql
 
-# Logs & Temp
+# --- Logs & Temp ---
 *.log
 *.bak
 *.tar.gz
@@ -31,49 +43,24 @@ backups/
 !requirements.txt
 git_status.txt
 
-# IDE & Hidden
+# --- IDE & Editors ---
 .idea/
 .vscode/
 *.swp
+*.swo
+.project
+.pydevproject
+.settings/
 .agent/
 .agents/
 
-# Documentation & Agent Configs
-AGENTS.md
-PROJECT.md
-BACKLOG.md
-NSS_milestone1.md
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Artifacts & Outputs
-*.xlsx
-*.csv
-Draft_Stats*.md
-
-# Temporary and diagnostic scripts
-/debug_*.py
-/inspect_*.py
-/get_*.py
-/migrate_*.py
-/scan_*.py
-/test_*.py
-/check_*.py
-/fix_*.py
-/hunt_*.py
-/list_*.py
-/deploy*.py
-/generate*.py
-/restore*.py
-/compile*.py
-/apply*.py
-/merge*.py
-/ssh_*.py
-/query*.py
-/update*.py
-/import*.py
-/parse*.py
-/scan*.py
-/emergency*.py
-/fuzzy_*.py
+# --- Docker & Infrastructure ---
+.docker/
+docker-compose.override.yml
 !scripts/
 *.sh
-docker-compose.override.yml
