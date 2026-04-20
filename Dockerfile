@@ -20,8 +20,11 @@ RUN chmod +x /app/scripts/entrypoint.sh
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# Copy project files
-COPY . .
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy project files and set ownership
+COPY --chown=appuser:appuser . .
 RUN chown -R appuser:appuser /app
 
 # Final user switch
