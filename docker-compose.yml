@@ -23,9 +23,9 @@ services:
       - /root/.docker/config.json:/config.json
     environment:
       - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_POLL_INTERVAL=60
       - WATCHTOWER_INCLUDE_RESTARTING=true
-    command: --interval 300 --cleanup
+    command: --interval 60 --cleanup
 
   db:
     image: postgres:15-alpine
