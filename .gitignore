@@ -54,6 +54,10 @@ git_status.txt
 .agent/
 .agents/
 
+# --- Documentation & Internal ---
+/*.md
+!/README.md
+
 # --- OS Specific ---
 .DS_Store
 Thumbs.db
