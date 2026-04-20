@@ -17,15 +17,14 @@ RUN uv sync --frozen --no-cache
 COPY scripts/entrypoint.sh /app/scripts/entrypoint.sh
 RUN chmod +x /app/scripts/entrypoint.sh
 
-ENTRYPOINT ["/app/scripts/entrypoint.sh"]
-
-# Copy project files
-COPY . .
-
-# Set python path
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# Create non-root user
-RUN useradd -m appuser
+# Copy project files
+COPY . .
+RUN chown -R appuser:appuser /app
+
+# Final user switch
 USER appuser
+
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
