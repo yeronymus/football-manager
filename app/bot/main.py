@@ -56,12 +56,12 @@ async def start_bot():
     """
     Function to start the bot. Called from FastAPI startup event.
     """
+    setup_listeners()
+
     if settings.webhook_url and not settings.use_polling:
         webhook_info = await bot.get_webhook_info()
         if webhook_info.url != settings.webhook_url:
             await bot.set_webhook(settings.webhook_url)
-
-    setup_listeners()
 
 
     logging.info(f"Webhook set to {settings.webhook_url}")

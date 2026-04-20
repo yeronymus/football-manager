@@ -1,72 +1,82 @@
-# ⚽ Football Manager Bot
+# Football Manager Bot
 
-![Python](https://img.shields.io/badge/Python-3.11-blue?style=for-the-badge&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![Aiogram](https://img.shields.io/badge/Aiogram-3.x-2ca5e0?style=for-the-badge&logo=telegram&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791?style=for-the-badge&logo=postgresql&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ed?style=for-the-badge&logo=docker&logoColor=white)
+An automated multi-tenant SaaS platform for amateur football communities, handling player registrations, dynamic ELO balancing, match tracking, and transactional analytics via a Telegram Bot API and a FastAPI-based WebApp backend.
 
-An automated management system for amateur football matches, handling rosters, team balancing, and statistics tracking through a Telegram Bot and a WebApp dashboard.
+## 🏗 System Architecture & Domain Model
 
----
+The system follows a layered monolithic architecture strictly delineating the Telegram Client layer from the internal EventBus and Domain services. The primary entities and relationships form the following domain structure:
 
-## 🏗 Project Structure
+### Database Entities
+- **`User`**: Core identity model encapsulating player statistics (`games_played`, `stats_mvp`, `stats_matches`) and ELO Rating (`rating`). Maps 1:1 with Telegram accounts. Maintains a `player_position` enum (GK, Defenders, Midfielders, Forwards).
+- **`Game`**: The central transactional object representing a match event. Tracks `status` state machine (`OPEN` -> `ACTIVE` -> `FINISHED` | `CANCELLED`), financial details (`price`, `payment_info`), and roster caps (`max_players`, `signup_limit`). Has multiple `Signup` models.
+- **`Signup`**: A many-to-many junction that dictates user availability per `Game`. Subject to state transitions (`ACTIVE`, `RESERVE`, `CANCELLED`) and handles match-specific position overrides.
+- **`Vote`**: Represents peer-to-peer reputation mechanisms within a `Game` context for MVP calculations.
+- **`RatingHistory`**: Immutable append-only ledger tracking ELO fluctuations `old_rating` -> `new_rating` with the calculated `change` delta per `Game`.
 
-A clean, modular architecture focusing on layer isolation and business logic integrity:
+### Architectural Boundaries
+* **Transport Layer:** Commands coming from Aiogram are converted to domain-agnostic DTOs before traversing into the business logic.
+* **Service Layer:** Resolves player balancing algorithms using the ELO rating stored in `User` and generates a state payload.
+* **Storage Layer:** PostgreSQL handled asynchronously via `asyncpg` and SQLAlchemy 2.0 ORM. Uses Alembic for schema versioning.
 
-```text
-├── app/              # Core application logic
-│   ├── api/          # FastAPI WebApp & Auth
-│   ├── bot/          # Telegram Bot handlers (Aiogram)
-│   ├── cli/          # Unified CLI subcommands
-│   ├── core/         # Business logic & Domain entities
-│   └── db/           # Models & Migrations
-├── alembic/          # Database versioning
-├── manage.py         # Primary administrative interface
-└── .github/          # CI/CD Workflows (GitHub Actions)
+## 🚀 Quick Start & Local Setup
+
+### Core Dependencies
+We exclusively rely on modern dependency management tools for deterministic builds. Ensure you have `uv` installed, as this project uses a `pyproject.toml` definition paired with an immutable `uv.lock`. This guarantees zero drift between environments.
+
+### Environment Schema (`.env`)
+You must define the environment exactly, utilizing `.env.example` as a template. Below are critical constraints:
+- `BOT_TOKEN`: The 46-character alphanumeric Telegram Bot token from @BotFather. This is strictly required for application boot.
+- `SYSTEM_OWNER_ID`: 9-10 digit Telegram integer ID of the super-admin. Grants access to `manage.py` webhook overrides and infrastructure alerts.
+- `WEBHOOK_URL`: Required if running in non-polling mode (Production). Format must be `https://<FQDN>/api/v1/webhook`.
+- `POSTGRES_*`: Required connection parameters. Example DSN built internally: `postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}`.
+
+### Spin-Up Command
+1. Clone and seed environment variables.
+2. Build and initiate containers:
+```bash
+docker compose up -d --build
+```
+3. Run schema migrations via container execution:
+```bash
+docker compose exec app alembic upgrade head
+```
+
+### Seeding Test Data
+Generate mock users, completed past matches, and ratings to populate the local WebApp dashboard:
+```bash
+docker compose exec app python manage.py db seed-history
+```
+
+## 🖥 Deployment Infrastructure
+
+The infrastructure guarantees identical bit-for-bit deployment via `uv` strict locking. Operations are fully automated through **GitHub Actions**, triggering on pushes to `Main`.
+
+### Minimal System Requirements (Target VM)
+- **CPU**: 2 vCPUs (1 for DB, 1 for FastAPI App + Redis).
+- **RAM**: 2 GB Minimum (PostgreSQL heap buffer + Python async event loops).
+- **Storage**: 20 GB SSD (Log rotation + DB capacity).
+
+### Security & Networking (Firewall)
+Your cloud VM firewall (e.g. `ufw` or AWS Security Groups) must be strictly partitioned:
+- `ALLOW 22/tcp` (SSH, restricted to safe IP).
+- `ALLOW 443/tcp` (HTTPS Ingress for Webhook and WebApp).
+- `ALLOW 80/tcp` (Let's Encrypt ACME challenges).
+- `DENY EVERYTHING ELSE` (DB port 5432 and Redis port 6379 must remain isolated on localhost bridge `127.0.0.1`).
+
+### Reverse Proxy (Nginx / Traefik)
+The bot webhook requires terminating TLS before passing to the Uvicorn workers. An Nginx configuration must target `http://127.0.0.1:<APP_PORT>` with standard `proxy_set_header X-Forwarded-Proto https` enabled.
+
+### Log Rotation Policy
+Logs emitted by the WebApp and Aiogram workers are captured by the Docker daemon. Ensure `/etc/docker/daemon.json` limits log sprawl:
+```json
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "50m",
+    "max-file": "3"
+  }
+}
 ```
 
 ---
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Docker & Docker Compose
-- Python 3.11+
-
-### Local Setup
-1. **Clone & Configure:**
-   ```bash
-   git clone https://github.com/yeronym/football-manager.git
-   cd football-manager
-   cp .env.example .env
-   ```
-2. **Launch:**
-   ```bash
-   docker compose up -d --build
-   ```
-
----
-
-## 🛠 Management CLI
-
-Use `manage.py` for all administrative tasks. Available commands:
-- **Stats**: `python manage.py stats recalculate --go`
-- **Backup**: `python manage.py db backup`
-- **History**: `python manage.py db seed-history`
-
----
-
-## 🖥 Deployment & Operations
-
-### CI/CD Deployment
-This project uses **GitHub Actions** for automated deployment. 
-- Pushing to the **`Main`** branch (capital 'M') triggers an automatic update on the production server.
-- Ensure `DEPLOY_HOST`, `DEPLOY_USER`, and `DEPLOY_SSH_KEY` are set in GitHub Secrets.
-
-### Manual Maintenance
-- **Backups**: `python manage.py db backup` (creates an `.sql` dump)
-- **Database Shell**: `docker compose exec -u postgres db psql -U postgres -d football_prod`
-
----
-*A streamlined solution for football communities. Simple, reliable, automated.*
+*An industrial-grade solution for amateur football.
