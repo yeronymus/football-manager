@@ -2,7 +2,7 @@
 
 services:
   app:
-    image: ${GHCR_IMAGE:-ghcr.io/yeronym/football-manager:latest}
+    image: ${GHCR_IMAGE:-ghcr.io/yeronymus/football-manager:latest}
     restart: always
     env_file:
       - .env
