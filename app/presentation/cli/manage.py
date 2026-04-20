@@ -3,9 +3,11 @@ import argparse
 import asyncio
 import sys
 import os
+from pathlib import Path
 
-# Add project root to path
-sys.path.append(os.getcwd())
+# Calculate project root (3 levels up from app/presentation/cli/manage.py)
+root_dir = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.append(str(root_dir))
 
 from app.cli.roster import fix_roster_command
 from app.cli.admin import add_player_command, kick_player_command

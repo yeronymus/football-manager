@@ -74,5 +74,6 @@ Draft_Stats*.md
 /scan*.py
 /emergency*.py
 /fuzzy_*.py
-*.sh
 !scripts/
+*.sh
+docker-compose.override.yml
