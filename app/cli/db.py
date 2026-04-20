@@ -7,6 +7,46 @@ from sqlalchemy import text, select, delete
 from app.db.database import async_session_maker
 from app.db.models import Game, Signup, GameStats, Team, GameStatus, User, Chat, SignupStatus, RatingHistory
 from app.core.domain.historical_data import GAMES_1_7
+from sqlalchemy.dialects.postgresql import insert
+import pprint
+
+async def seed_chats_command(args):
+    """Seed configured initial chats into the database via Upsert."""
+    from app.config import settings
+    if not settings.initial_chats:
+        print("No initial_chats configured in .env")
+        return
+
+    async with async_session_maker() as db:
+        print(f"Upserting {len(settings.initial_chats)} defined chats...")
+        
+        for chat_data in settings.initial_chats:
+            chat_id = chat_data.get("id")
+            title = chat_data.get("title", "")
+            admin_chat_id = chat_data.get("admin_chat_id")
+            
+            if chat_id is None:
+                continue
+                
+            stmt = insert(Chat).values(
+                chat_id=chat_id,
+                title=title,
+                admin_chat_id=admin_chat_id
+            )
+            
+            # UPSERT logic protecting from duplicate errors
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['chat_id'],
+                set_={
+                    'title': stmt.excluded.title,
+                    'admin_chat_id': stmt.excluded.admin_chat_id
+                }
+            )
+            
+            await db.execute(stmt)
+        
+        await db.commit()
+        print("Chats seeding completed successfully.")
 
 async def seed_history_command(args):
     """Seed historical games (1-7) into the database."""

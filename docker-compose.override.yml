@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    volumes:
+      # Developer volume injection for hot reloads
+      - .:/app:z
+    # Allows pdb / interactive debugging over standard out
+    stdin_open: true
+    tty: true
