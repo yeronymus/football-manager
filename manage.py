@@ -50,6 +50,7 @@ async def main():
     # DB commands
     db_parser = subparsers.add_parser('db', help='Database operations')
     db_sub = db_parser.add_subparsers(dest='db_cmd')
+    db_sub.add_parser('seed-chats', help='Seed initial configured chats from .env')
     db_sub.add_parser('seed-history', help='Seed historical Games 1-7')
     db_sub.add_parser('reset-stats', help='Reset all user ratings')
     db_sub.add_parser('backup', help='Create database backup (pg_dump)')
@@ -92,8 +93,10 @@ async def main():
         elif args.stats_cmd == "export-csv":
             await export_stats_csv_command(args.output)
     elif args.command == "db":
-        from app.cli.db import seed_history_command, reset_db_command, backup_db_command
-        if args.db_cmd == "seed-history":
+        from app.cli.db import seed_history_command, reset_db_command, backup_db_command, seed_chats_command
+        if args.db_cmd == "seed-chats":
+            await seed_chats_command(args)
+        elif args.db_cmd == "seed-history":
             await seed_history_command(args)
         elif args.db_cmd == "reset-stats":
             await reset_db_command(args)

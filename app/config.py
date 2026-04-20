@@ -1,81 +1,51 @@
-import os
-import json
-import sys
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional, List, Dict, Any
 
-# Load .env explicitly
-load_dotenv(".env")
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env", 
+        env_file_encoding="utf-8", 
+        extra="ignore"
+    )
 
-class Settings:
-    def __init__(self):
-        # Allow fail-safe loading
-        try:
-            self.bot_token = os.getenv("BOT_TOKEN", "")
-            
-            admin_ids_str = os.getenv("ADMIN_IDS", "[]")
-            try:
-                self.admin_ids = json.loads(admin_ids_str)
-                if isinstance(self.admin_ids, list):
-                    self.admin_ids = [int(i) for i in self.admin_ids]
-                else:
-                    self.admin_ids = []
-            except (json.JSONDecodeError, ValueError):
-                print(f"Warning: Failed to parse or normalize ADMIN_IDS: {admin_ids_str}")
-                self.admin_ids = []
+    # Telegram Bot
+    bot_token: str
+    admin_ids: List[int] = []
+    system_owner_id: Optional[int] = None
+    webhook_url: str = ""
 
-            # Feature Flags - Strangler Fig
-            debug_ids_str = os.getenv("DEBUG_NEW_LOGIC_USER_IDS", "[]")
-            try:
-                self.debug_new_logic_user_ids = json.loads(debug_ids_str)
-                if isinstance(self.debug_new_logic_user_ids, list):
-                    self.debug_new_logic_user_ids = [int(i) for i in self.debug_new_logic_user_ids]
-                else:
-                    self.debug_new_logic_user_ids = []
-            except:
-                self.debug_new_logic_user_ids = []
+    # Feature Flags & Debug
+    debug_new_logic_user_ids: List[int] = []
+    use_new_roster_logic: bool = True
+    last_legacy_game_id: int = 0
+    debug: bool = False
 
-            self.use_new_roster_logic = os.getenv("USE_NEW_ROSTER_LOGIC", "True").lower() == "true"
-            self.last_legacy_game_id = int(os.getenv("LAST_LEGACY_GAME_ID", "0"))
+    # PostgreSQL
+    postgres_user: str = "postgres"
+    postgres_password: str = "password"
+    postgres_host: str = "db"
+    postgres_port: int = 5432
+    postgres_db: str = "football"
 
-            self.webhook_url = os.getenv("WEBHOOK_URL", "")
-            
-            # Seeding
-            self.initial_chats = [
-                {"id": -1003437568976, "title": "FM Chat", "admin_chat_id": -1003652516810},
-                {"id": -1003652516810, "title": "FM Admin", "admin_chat_id": None},
-                {"id": -1003625911268, "title": "FM Channel", "admin_chat_id": None},
-            ]
+    # Redis
+    redis_host: str = "redis"
+    redis_port: int = 6379
+    redis_password: Optional[str] = None
 
-            self.postgres_user = os.getenv("POSTGRES_USER", "postgres")
-            self.postgres_password = os.getenv("POSTGRES_PASSWORD", "password")
-            self.postgres_db = os.getenv("POSTGRES_DB", "football")
-            self.postgres_host = os.getenv("POSTGRES_HOST", "db")
-            self.postgres_port = int(os.getenv("POSTGRES_PORT", "5432"))
+    # ELO & Gamification
+    elo_k_factor_base: int = 25
+    elo_k_factor_pro: int = 50
+    elo_pro_threshold: int = 10
+    elo_win_bonus: int = 10
+    elo_loss_penalty: int = 15
+    show_rating: bool = False
 
-            self.redis_host = os.getenv("REDIS_HOST", "redis")
-            self.redis_port = int(os.getenv("REDIS_PORT", "6379"))
-            self.redis_password = os.getenv("REDIS_PASSWORD", None)
-
-            # ELO
-            self.elo_k_factor_base = int(os.getenv("ELO_K_FACTOR_BASE", "25"))
-            self.elo_k_factor_pro = int(os.getenv("ELO_K_FACTOR_PRO", "50"))
-            self.elo_pro_threshold = int(os.getenv("ELO_PRO_THRESHOLD", "10"))
-            self.elo_win_bonus = int(os.getenv("ELO_WIN_BONUS", "10"))
-            self.elo_loss_penalty = int(os.getenv("ELO_LOSS_PENALTY", "15"))
-
-            self.show_rating = os.getenv("SHOW_RATING", "False").lower() == "true"
-            self.use_polling = os.getenv("USE_POLLING", "False").lower() == "true"
-            self.debug = os.getenv("DEBUG", "False").lower() == "true"
-            self.webapp_url = os.getenv("WEBAPP_URL", "https://your-domain.com")
-
-            owner = os.getenv("SYSTEM_OWNER_ID")
-            self.system_owner_id = int(owner) if owner else None
-            
-
-        except Exception as e:
-            print(f"Config Init Error: {e}", file=sys.stderr)
-            # Default empty to prevent crash, check health for error
-            pass
+    # Infrastructure Options
+    use_polling: bool = False
+    webapp_url: str = "https://your-domain.com"
+    
+    # Internal Configuration Seeding (Parsed directly from `.env` string like INITIAL_CHATS='[{"id": -100}]')
+    initial_chats: List[Dict[str, Any]] = []
 
     @property
     def DATABASE_URL(self) -> str:
@@ -87,10 +57,6 @@ class Settings:
             return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/0"
         return f"redis://{self.redis_host}:{self.redis_port}/0"
 
-# Singleton
-try:
-    settings = Settings()
-    print("Config loaded via os.getenv")
-except Exception as e:
-    print(f"FATAL CONFIG ERROR: {e}")
-    raise e
+# Instantiating the Singleton config. 
+# This will Fail-Fast (raise ValidationError) if critical items like `BOT_TOKEN` are omitted in `.env`
+settings = Settings()

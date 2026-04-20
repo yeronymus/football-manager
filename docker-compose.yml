@@ -2,7 +2,7 @@
 
 services:
   app:
-    build: .
+    image: ${GHCR_IMAGE:-ghcr.io/yeronym/football-manager:latest}
     restart: always
     env_file:
       - .env
@@ -14,8 +14,6 @@ services:
     command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-    volumes:
-      - .:/app:z
 
   db:
     image: postgres:15-alpine
