@@ -25,20 +25,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def run_migrations():
-    logger.info("Running database migrations...")
-    from alembic.config import Config
-    from alembic import command
-    alembic_cfg = Config("alembic.ini")
-    command.upgrade(alembic_cfg, "head")
-    logger.info("Migrations completed successfully")
-
 @app.on_event("startup")
 async def on_startup():
     try:
-        # Programmatic Alembic upgrade
-        run_migrations()
-        
         from app.db.database import init_models
         from app.scheduler.main import start_scheduler
         
