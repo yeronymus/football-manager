@@ -27,8 +27,8 @@ RUN chown -R appuser:appuser /app /home/appuser
 # Final user switch
 USER appuser
 
-# Start the application directly (migrations are handled in Python)
-CMD ["uv", "run", "uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start the application (migrations are run first)
+CMD ["sh", "-c", "uv run alembic upgrade head && uv run uvicorn app.api.main:app --host 0.0.0.0 --port 8000"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD python scripts/health_check.py || exit 1
