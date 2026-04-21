@@ -17,12 +17,12 @@ RUN uv sync --frozen --no-cache
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# Create non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Create non-root user with home directory
+RUN groupadd -r appuser && useradd -m -r -g appuser appuser
 
 # Copy project files and set ownership
 COPY --chown=appuser:appuser . .
-RUN chown -R appuser:appuser /app
+RUN chown -R appuser:appuser /app /home/appuser
 
 # Final user switch
 USER appuser
