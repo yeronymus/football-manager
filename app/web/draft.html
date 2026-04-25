@@ -5,37 +5,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Драфт v2.0</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         :root {
-            --bg-color: #1e1e1e;
-            --card-bg: #2d2d2d;
-            --text-color: #ffffff;
-            --accent-color: #4CAF50;
-            --danger-color: #f44336;
-            --team-a-color: #FF9800;
-            --team-b-color: #4CAF50;
-            --team-c-color: #43a047;
+            --bg-color: #0f172a;
+            --surface-color: rgba(30, 41, 59, 0.7);
+            --card-bg: rgba(51, 65, 85, 0.5);
+            --text-color: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-color: #10b981;
+            --danger-color: #ef4444;
+            --team-a-color: #f59e0b;
+            --team-b-color: #10b981;
+            --team-c-color: #3b82f6;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-blur: blur(12px);
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);
             color: var(--text-color);
             margin: 0;
             padding: 12px;
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            min-height: 100vh;
             box-sizing: border-box;
+            overflow-x: hidden;
         }
 
         h1 {
             text-align: center;
-            margin-bottom: 8px;
-            font-size: 16px;
-            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            text-transform: uppercase;
+            background: linear-gradient(to right, #10b981, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         /* Top Bar */
@@ -43,68 +56,76 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 16px;
+            padding: 8px 12px;
+            background: var(--surface-color);
+            backdrop-filter: var(--glass-blur);
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
         }
 
         .gk-toggles {
             display: flex;
-            gap: 10px;
+            gap: 12px;
         }
 
         .gk-toggle {
-            font-size: 12px;
+            font-size: 11px;
+            font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.2s;
+        }
+
+        .gk-toggle:hover {
+            color: var(--text-color);
         }
 
         /* Layout Container */
         .game-container {
-            flex-grow: 1;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            overflow: hidden;
+            gap: 12px;
         }
 
         /* Grid for Teams */
         .teams-grid {
             display: grid;
-            gap: 8px;
-            flex-grow: 1;
-            overflow: hidden;
-            /* grid-template-columns will be set by JS */
+            gap: 10px;
+            width: 100%;
         }
 
         .column {
-            background-color: var(--card-bg);
-            border-radius: 8px;
+            background: var(--surface-color);
+            backdrop-filter: var(--glass-blur);
+            border-radius: 16px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            border: 1px solid #444;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
 
         .column-header {
-            font-weight: bold;
-            font-size: 13px;
+            font-weight: 700;
+            font-size: 12px;
             text-align: center;
-            padding: 6px 4px;
+            padding: 10px 4px;
             cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
         }
 
-        .col-a .column-header {
-            background-color: var(--team-a-color);
-        }
-
-        .col-b .column-header {
-            background-color: var(--team-b-color);
-        }
-
-        .col-c .column-header {
-            background-color: var(--team-c-color);
-        }
+        .col-a .column-header { background: linear-gradient(135deg, var(--team-a-color), #d97706); }
+        .col-b .column-header { background: linear-gradient(135deg, var(--team-b-color), #059669); }
+        .col-c .column-header { background: linear-gradient(135deg, var(--team-c-color), #2563eb); }
 
         /* Tactic Sections */
         .tactic-board {
@@ -112,305 +133,295 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
+            padding: 4px;
         }
 
         .pos-group {
-            border-bottom: 1px solid #444;
-            min-height: 40px;
+            border-bottom: 1px solid var(--glass-border);
+            min-height: 48px;
             display: flex;
             flex-direction: column;
+            transition: background 0.2s;
         }
 
-        .pos-group.hidden {
-            display: none;
-        }
+        .pos-group:last-child { border-bottom: none; }
+
+        .pos-group.hidden { display: none; }
 
         .pos-header {
-            font-size: 10px;
-            color: #888;
-            padding: 2px 4px;
-            background: rgba(0, 0, 0, 0.2);
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            padding: 4px 8px;
             text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .player-list {
             flex-grow: 1;
-            padding: 2px;
+            padding: 4px;
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 4px;
+            min-height: 20px;
         }
 
-        /* Unassigned Drawer */
-        .unassigned-section {
-            background-color: #333;
-            border-radius: 8px;
-            padding: 6px;
-            max-height: 35vh;
+        /* Pool Sections */
+        .pool-section {
+            background: var(--surface-color);
+            backdrop-filter: var(--glass-blur);
+            border-radius: 16px;
+            padding: 12px;
+            border: 1px solid var(--glass-border);
             display: flex;
             flex-direction: column;
-            margin-bottom: 8px;
+            gap: 8px;
         }
 
-        .reserve-section {
-            background-color: #2a2a2a;
-            border-radius: 8px;
-            padding: 6px;
-            max-height: 25vh;
-            display: flex;
-            flex-direction: column;
-            border: 1px dashed #555;
-        }
-
-        .reserve-header {
+        .pool-header {
             font-size: 11px;
-            color: #888;
-            margin-bottom: 4px;
-            text-align: center;
+            font-weight: 700;
+            color: var(--text-secondary);
             text-transform: uppercase;
-        }
-
-        .unassigned-header {
-            font-size: 11px;
-            color: #aaa;
-            margin-bottom: 4px;
-            text-align: center;
+            letter-spacing: 0.1em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .unassigned-list {
             overflow-y: auto;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px;
+            min-height: 40px;
         }
 
+        /* Player Card */
         .player-card {
-            background-color: #3d3d3d;
-            padding: 4px 6px;
-            border-radius: 4px;
+            background: var(--card-bg);
+            padding: 6px 10px;
+            border-radius: 10px;
             cursor: pointer;
             user-select: none;
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-size: 12px;
-            border: 1px solid transparent;
+            border: 1px solid var(--glass-border);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             width: 100%;
             box-sizing: border-box;
+        }
+
+        .player-card:hover {
+            transform: translateY(-2px);
+            background: rgba(71, 85, 105, 0.6);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .player-card.selected {
+            border-color: #fbbf24;
+            box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+            background: rgba(71, 85, 105, 0.8);
         }
 
         .player-info {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 8px;
             overflow: hidden;
             flex-grow: 1;
         }
 
         .player-pos {
             font-size: 9px;
-            font-weight: bold;
-            padding: 1px 2px;
-            border-radius: 3px;
-            background: #555;
-            min-width: 18px;
+            font-weight: 800;
+            padding: 2px 4px;
+            border-radius: 4px;
+            min-width: 24px;
             text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        .pos-GK {
-            background: #FF9800;
-            color: #000;
-        }
-
-        /* DEF: Blue */
-        .pos-DEF,
-        .pos-LB,
-        .pos-CB,
-        .pos-RB,
-        .pos-LWB,
-        .pos-RWB {
-            background: #2196F3;
-        }
-
-        /* MID: Green */
-        .pos-MID,
-        .pos-CDM,
-        .pos-CM,
-        .pos-CAM,
-        .pos-LM,
-        .pos-RM {
-            background: #4CAF50;
-        }
-
-        .pos-CDM {
-            background: #388E3C;
-        }
-
-        .pos-CAM {
-            background: #8BC34A;
-            color: #000;
-        }
-
-        /* FWD: Red */
-        .pos-FWD,
-        .pos-LW,
-        .pos-RW,
-        .pos-ST,
-        .pos-CF {
-            background: #f44336;
-        }
+        .pos-GK { background: #f59e0b; color: #000; }
+        .pos-DEF, .pos-LB, .pos-CB, .pos-RB, .pos-LWB, .pos-RWB { background: #3b82f6; }
+        .pos-MID, .pos-CDM, .pos-CM, .pos-CAM, .pos-LM, .pos-RM { background: #10b981; }
+        .pos-FWD, .pos-LW, .pos-RW, .pos-ST, .pos-CF { background: #ef4444; }
 
         .player-name {
+            font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            flex-grow: 1;
-            /* Take remaining space */
             min-width: 0;
-            /* Enable shrinking */
         }
 
         .player-rating {
             font-size: 10px;
-            color: #aaa;
-            background: #222;
-            padding: 1px 3px;
-            border-radius: 3px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            background: rgba(15, 23, 42, 0.5);
+            padding: 2px 6px;
+            border-radius: 6px;
         }
 
-        .selected {
-            border: 1px solid #FFEB3B;
-            background: #505050;
+        /* Stats & Controls */
+        .bottom-panel {
+            margin-top: auto;
+            padding-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
         .stats-panel {
-            padding: 8px;
-            background: #252525;
-            border-radius: 8px;
-            font-size: 12px;
+            padding: 12px 16px;
+            background: var(--surface-color);
+            backdrop-filter: var(--glass-blur);
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            font-size: 13px;
             display: flex;
             justify-content: space-between;
-            margin-top: auto;
+        }
+
+        .stats-item b {
+            color: var(--accent-color);
+            font-size: 14px;
         }
 
         .controls {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            padding-top: 4px;
+            gap: 10px;
         }
 
         button {
-            padding: 10px;
+            padding: 12px;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             font-size: 14px;
-            font-weight: bold;
+            font-weight: 700;
             cursor: pointer;
-            width: 100%;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
+        button:active { transform: scale(0.98); }
+
         .btn-balance {
-            background-color: #FF9800;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
             color: white;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
         }
 
         .btn-save {
-            background-color: var(--accent-color);
+            background: linear-gradient(135deg, #10b981, #059669);
             color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
         }
 
         .btn-publish {
-            background-color: #2196F3;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
             color: white;
             grid-column: span 2;
+            padding: 14px;
+            font-size: 15px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
         }
 
-        #searchModal {
+        /* Modals */
+        .modal {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(8px);
             z-index: 2000;
             display: none;
             flex-direction: column;
-            padding: 20px;
+            padding: 24px;
         }
 
-        #searchInput {
-            width: 100%;
-            padding: 12px;
-            font-size: 16px;
-            border-radius: 8px;
-            border: 1px solid #555;
-            background: #333;
+        input, select {
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid var(--glass-border);
             color: white;
-            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
         }
 
-        #searchResults {
-            flex-grow: 1;
-            overflow-y: auto;
+        input:focus { border-color: var(--accent-color); }
+
+        .game-selector-container {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-color);
+            z-index: 3000;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            padding: 24px;
+            gap: 16px;
         }
 
-        .search-result-item {
-            background: #444;
-            padding: 10px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .game-option {
+            background: var(--surface-color);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            font-weight: 600;
         }
 
-        .search-close-btn {
-            margin-top: 10px;
-            background: #f44336;
-        }
     </style>
 </head>
 
 <body>
-    <div id="gameSelector">
-        <h2>Выберите игру</h2>
-        <div id="gameList"></div>
+    <div id="gameSelector" class="game-selector-container">
+        <h1>Драфт Составов</h1>
+        <p style="text-align: center; color: var(--text-secondary); margin-top: -10px;">Выберите игру для редактирования</p>
+        <div id="gameList" style="display: flex; flex-direction: column; gap: 10px;"></div>
     </div>
 
     <!-- ADD SEARCH MODAL -->
-    <div id="searchModal">
+    <div id="searchModal" class="modal">
         <h3>🔍 Добавить игрока</h3>
         <input type="text" id="searchInput" placeholder="Имя или @username..." oninput="debounceSearch()">
         <div id="searchResults"></div>
-        <button class="search-close-btn" onclick="closeSearch()">Закрыть</button>
+        <button class="search-close-btn" onclick="closeSearch()" style="background: var(--danger-color); color: white; margin-top: 12px;">Закрыть</button>
     </div>
 
     <div class="top-bar">
-        <div class="gk-toggles" id="gkToggles">
-            <!-- Generated by JS -->
-        </div>
-        <span id="gameTitle" style="font-weight: bold; font-size:14px;">...</span>
+        <div class="gk-toggles" id="gkToggles"></div>
+        <span id="gameTitle" style="font-weight: 800; font-size: 13px; color: var(--accent-color);">...</span>
     </div>
 
     <div class="game-container">
-        <div class="unassigned-section" id="section-unassigned">
-            <div class="unassigned-header">
-                Нераспределенные (Active)
-                <span onclick="openSearch()"
-                    style="cursor:pointer; background:#2196F3; padding:2px 6px; border-radius:4px; margin-left:8px; font-size:10px;">➕
-                    Поиск</span>
-                <span onclick="openGuestModal()"
-                    style="cursor:pointer; background:#4CAF50; padding:2px 6px; border-radius:4px; margin-left:4px; font-size:10px;">👤
-                    Гость</span>
+        <div class="pool-section" id="section-unassigned">
+            <div class="pool-header">
+                <span>⚡ Нераспределенные</span>
+                <div style="display: flex; gap: 6px;">
+                    <span onclick="openSearch()"
+                        style="cursor:pointer; background: var(--team-c-color); padding:4px 8px; border-radius:6px; font-size:10px; color: white;">➕
+                        ПОИСК</span>
+                    <span onclick="openGuestModal()"
+                        style="cursor:pointer; background: var(--team-b-color); padding:4px 8px; border-radius:6px; font-size:10px; color: white;">👤
+                        ГОСТЬ</span>
+                </div>
             </div>
             <div class="unassigned-list" id="list-unassigned" onclick="handleListClick(event, 'list-unassigned')"></div>
         </div>
 
-        <div class="reserve-section" id="section-reserve">
-            <div class="reserve-header">Резерв</div>
+        <div class="pool-section" id="section-reserve">
+            <div class="pool-header">💤 Резерв</div>
             <div class="unassigned-list" id="list-reserve" onclick="handleListClick(event, 'list-reserve')"></div>
         </div>
 
@@ -419,16 +430,19 @@
         </div>
     </div>
 
-    <div class="stats-panel">
-        <span>Разница (MMR): <b id="diff-mmr">0</b></span>
-        <span>Игроки: <b id="count-total">0</b></span>
+    <div class="bottom-panel">
+        <div class="stats-panel">
+            <div class="stats-item">Разница: <b id="diff-mmr">0</b></div>
+            <div class="stats-item">Всего игроков: <b id="count-total">0</b></div>
+        </div>
+
+        <div class="controls">
+            <button id="btn-balance" class="btn-balance" onclick="autoBalance()">⚖️ Баланс</button>
+            <button class="btn-save" onclick="saveTeams()">💾 Сохранить</button>
+            <button class="btn-publish" onclick="publishTeams()">🚀 Опубликовать</button>
+        </div>
     </div>
 
-    <div class="controls">
-        <button id="btn-balance" class="btn-balance" onclick="autoBalance()">⚖️ Баланс</button>
-        <button class="btn-save" onclick="saveTeams()">💾 Сохранить</button>
-        <button class="btn-publish" onclick="publishTeams()">✅ Опубликовать</button>
-    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -817,8 +831,13 @@
                 ['GK', 'DEF', 'MID', 'FWD', 'SUB'].forEach(pos => {
                     const slot = document.getElementById(`${prefix}-${pos}`);
                     if (!slot) return;
-                    slot.querySelectorAll('.player-card').forEach(c => {
-                        const pid = parseInt(c.id.replace('player-', ''));
+                    // Find the player-list container
+                    const cardList = slot.querySelector('.player-list') || slot;
+                    cardList.querySelectorAll('.player-card').forEach(c => {
+                        const pidStr = c.id.replace('player-', '');
+                        const pid = parseInt(pidStr);
+                        list.push(pid);
+                        
                         // Record position based on the badge on the card (to keep CB, LB, etc.)
                         const posBadge = c.querySelector('.player-pos');
                         if (posBadge) {
@@ -834,6 +853,7 @@
             data.team_a = gather('a');
             data.team_b = gather('b');
             if (activeTeams.includes('c')) data.team_c = gather('c');
+
 
             // --- GATHER POOLS ---
             const gatherPool = (id) => {
@@ -1064,14 +1084,12 @@
     </script>
 
     <!-- ADD GUEST MODAL -->
-    <div id="guestModal"
-        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); z-index:2001; flex-direction:column; padding:20px; overflow-y: auto;">
-        <h3 style="color:white">👤 Гость</h3>
-        <input type="text" id="guestName" placeholder="Имя (Name)"
-            style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:none;">
+    <div id="guestModal" class="modal" style="overflow-y: auto;">
+        <h3>👤 Добавить гостя</h3>
+        <input type="text" id="guestName" placeholder="Имя (Name)" style="margin-bottom: 12px;">
         
-        <label style="color:#aaa; font-size:12px;">Основная позиция:</label>
-        <select id="guestPos" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:none;">
+        <label style="color: var(--text-secondary); font-size: 11px; font-weight: 700; margin-bottom: 4px; display: block; text-transform: uppercase;">Основная позиция:</label>
+        <select id="guestPos" style="margin-bottom: 12px; width: 100%;">
             <option value="GK">GK (Вратарь)</option>
             <option value="CB">CB (Центр. Защ)</option>
             <option value="LB">LB (Левый Защ)</option>
@@ -1084,23 +1102,23 @@
             <option value="FWD">FWD (Нападающий)</option>
         </select>
 
-        <label style="color:#aaa; font-size:12px;">Доп. позиции:</label>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:15px; color:white; font-size:12px;">
-            <label><input type="checkbox" class="guest-alt-pos" value="GK"> GK</label>
-            <label><input type="checkbox" class="guest-alt-pos" value="CB"> CB</label>
-            <label><input type="checkbox" class="guest-alt-pos" value="LB"> LB</label>
-            <label><input type="checkbox" class="guest-alt-pos" value="RB"> RB</label>
-            <label><input type="checkbox" class="guest-alt-pos" value="CDM"> CDM</label>
-            <label><input type="checkbox" class="guest-alt-pos" value="CM"> CM</label>
-            <label><input type="checkbox" class="guest-alt-pos" value="CAM"> CAM</label>
-            <label><input type="checkbox" class="guest-alt-pos" value="LW"> LW</label>
-            <label><input type="checkbox" class="guest-alt-pos" value="RW"> RW</label>
-            <label><input type="checkbox" class="guest-alt-pos" value="FWD"> FWD</label>
+        <label style="color: var(--text-secondary); font-size: 11px; font-weight: 700; margin-bottom: 8px; display: block; text-transform: uppercase;">Доп. позиции:</label>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:20px; color: var(--text-color); font-size:12px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" class="guest-alt-pos" value="GK" style="width: auto;"> GK</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" class="guest-alt-pos" value="CB" style="width: auto;"> CB</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" class="guest-alt-pos" value="LB" style="width: auto;"> LB</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" class="guest-alt-pos" value="RB" style="width: auto;"> RB</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" class="guest-alt-pos" value="CDM" style="width: auto;"> CDM</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" class="guest-alt-pos" value="CM" style="width: auto;"> CM</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" class="guest-alt-pos" value="CAM" style="width: auto;"> CAM</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" class="guest-alt-pos" value="LW" style="width: auto;"> LW</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" class="guest-alt-pos" value="RW" style="width: auto;"> RW</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" class="guest-alt-pos" value="FWD" style="width: auto;"> FWD</label>
         </div>
 
         <button class="btn-save" onclick="submitGuest()">Добавить</button>
         <button class="search-close-btn" onclick="document.getElementById('guestModal').style.display='none'"
-            style="margin-top:10px;">Отмена</button>
+            style="margin-top:12px; background: var(--danger-color); color: white;">Отмена</button>
     </div>
 </body>
 
