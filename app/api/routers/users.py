@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, desc, or_, and_
 from app.db.database import get_session
 from app.db.models import Chat, User
 from app.api.auth import validate_init_data, get_user_from_init_data, get_user_from_header
@@ -198,11 +198,19 @@ async def get_my_history(
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session)
 ):
-    """Returns past matches for the Mini-App."""
+    # We want games where the user was signed up AND either the game is FINISHED or it has a score.
+    # This helps catch games that might not be officially "finished" yet but have results.
     signups = await session.scalars(
         select(Signup)
         .join(Game)
-        .where(Signup.user_id == user_id, Game.chat_id == chat_id, Game.status == GameStatus.FINISHED)
+        .where(
+            Signup.user_id == user_id, 
+            Game.chat_id == chat_id,
+            or_(
+                Game.status == GameStatus.FINISHED,
+                and_(Game.status == GameStatus.ACTIVE, Game.score_a != None)
+            )
+        )
         .order_by(desc(Game.date_time))
         .limit(100)
     )
