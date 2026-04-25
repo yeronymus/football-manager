@@ -31,7 +31,7 @@ async function init() {
 
     if (urlChatId) {
         currentChatId = urlChatId;
-        await loadCurrentTab();
+        await switchTab(currentTab);
     } else {
         await showGroupSelector();
     }
@@ -72,7 +72,7 @@ async function showGroupSelector() {
 window.selectGroup = async function(id) {
     currentChatId = id;
     groupSelector.style.display = 'none';
-    await loadCurrentTab();
+    await switchTab(currentTab);
 }
 
 window.switchTab = async function(tabId) {

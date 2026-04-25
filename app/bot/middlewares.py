@@ -77,6 +77,9 @@ class TenantMiddleware(BaseMiddleware):
             chat_obj = Chat(chat_id=chat_id, title=tg_chat.title or "Group")
             session.add(chat_obj)
             await session.commit()
+        elif tg_chat.title and chat_obj.title != tg_chat.title:
+            chat_obj.title = tg_chat.title
+            await session.commit()
             
         data["tenant"] = chat_obj
         
