@@ -210,40 +210,6 @@ async def update_my_profile(
         
     return {"status": "ok"}
 
-@router.get("/debug/inspect-group-games")
-async def inspect_group_games(
-    chat_id: int,
-    session: AsyncSession = Depends(get_session)
-):
-    # Search variants
-    chat_id_str = str(chat_id)
-    alt_chat_id = int(chat_id_str.replace("-100", "-")) if "-100" in chat_id_str else int("-100" + chat_id_str.replace("-", ""))
-    chat_ids = [chat_id, alt_chat_id, abs(chat_id), abs(alt_chat_id)]
-    
-    games = await session.execute(
-        select(Game)
-        .where(Game.chat_id.in_(chat_ids))
-        .order_by(Game.date_time.desc())
-    )
-    result = []
-    for g in games.scalars().all():
-        # Check signups
-        signups_count = await session.scalar(select(func.count(Signup.id)).where(Signup.game_id == g.id))
-        stats_count = await session.scalar(select(func.count(GameStats.id)).where(GameStats.game_id == g.id))
-        rating_count = await session.scalar(select(func.count(RatingHistory.id)).where(RatingHistory.game_id == g.id))
-        
-        result.append({
-            "id": g.id,
-            "date": g.date_time.isoformat(),
-            "score": f"{g.score_a}:{g.score_b}",
-            "status": g.status.value,
-            "signups": signups_count,
-            "stats": stats_count,
-            "rating_history": rating_count,
-            "chat_id": g.chat_id
-        })
-    return result
-
 @router.get("/users/me/history")
 async def get_my_history(
     chat_id: int,

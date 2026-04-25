@@ -107,8 +107,6 @@ async function renderProfile() {
             </div>
         </div>
         
-        <div onclick="debugGames()" style="text-align:center; margin-top:12px; opacity:0.3; cursor:pointer; font-size:10px;">[Инспекция базы]</div>
-        
         <div class="card" style="margin-top: 16px;">
             <div style="margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
                 <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px; margin-bottom:8px; color:var(--accent-color)">Основная позиция</h4>
@@ -227,16 +225,6 @@ window.saveAlts = async function() {
 window.closeModal = function() {
     const modal = document.getElementById('modal-container');
     if(modal) modal.remove();
-}
-
-window.debugGames = async function() {
-    loader.style.display = 'flex';
-    try {
-        const data = await fetchAPI(`/debug/inspect-group-games?chat_id=${currentChatId}`);
-        const list = data.map(g => `${g.date.split('T')[0]} | ${g.score} | S:${g.signups} St:${g.stats} RH:${g.rating_history} (ID:${g.id})`).join('\n');
-        alert('Все игры в этой группе (в базе):\n' + (list || 'Нет игр'));
-    } catch(e) { alert(e.message); }
-    finally { loader.style.display = 'none'; }
 }
 
 async function renderLeaderboard() {
