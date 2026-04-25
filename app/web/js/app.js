@@ -55,10 +55,6 @@ async function showGroupSelector() {
         const chats = await fetchAPI('/chats');
         if (chats.length === 0) {
             groupList.innerHTML = '<p style="text-align:center; color:var(--hint-color)">Вы пока не состоите ни в одной группе.</p>';
-        } else if (chats.length === 1) {
-            // Auto-select if only 1
-            selectGroup(chats[0].id);
-            return;
         } else {
             groupList.innerHTML = chats.map(c => `
                 <button class="group-btn" onclick="selectGroup(${c.id})">${c.title}</button>
@@ -114,28 +110,33 @@ async function renderProfile() {
     
     // Render basic stats
     const html = `
-        <div class="card flex-row">
+        <div class="card flex-row" style="margin-top: 24px; padding: 24px;">
             <div class="avatar">${data.name.charAt(0)}</div>
             <div>
-                <h3 style="margin:0">${data.name}</h3>
+                <h3 style="font-size: 20px;">${data.name}</h3>
                 <span class="subtitle">${data.position}</span>
             </div>
         </div>
         
-        <div class="flex-row" style="padding: 0 16px;">
-            <div class="card" style="flex:1; text-align:center; margin: 0;">
-                <h2 style="color:var(--accent-color); margin:0;">${data.rating}</h2>
-                <span class="subtitle">MMR</span>
+        <div class="flex-row" style="padding: 0 16px; gap: 12px;">
+            <div class="card stat-badge" style="margin: 0;">
+                <span class="stat-value">${data.rating}</span>
+                <span class="subtitle" style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">MMR</span>
             </div>
-            <div class="card" style="flex:1; text-align:center; margin: 0;">
-                <h2 style="color:var(--accent-color); margin:0;">${data.games_played}</h2>
-                <span class="subtitle">Игр</span>
+            <div class="card stat-badge" style="margin: 0;">
+                <span class="stat-value">${data.games_played}</span>
+                <span class="subtitle" style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Игр</span>
             </div>
         </div>
         
-        <div class="card" style="margin-top: 16px;">
-            <h4>🏆 Награды MVP</h4>
-            <h2 style="color: gold; margin:0;">${data.mvp_count}</h2>
+        <div class="card" style="margin-top: 16px; background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,165,0,0.05)); border-color: rgba(255,215,0,0.2);">
+            <div class="flex-between">
+                <div>
+                    <h4 style="color: gold; font-size: 14px; text-transform: uppercase; margin-bottom: 4px;">🏆 Награды MVP</h4>
+                    <span class="subtitle">Лучший игрок матча</span>
+                </div>
+                <h2 style="color: gold; font-size: 32px; margin:0;">${data.mvp_count}</h2>
+            </div>
         </div>
     `;
     if(pages.profile) pages.profile.innerHTML = html;
@@ -173,14 +174,17 @@ async function renderHistory() {
         let sign = g.rating_change > 0 ? '+' : '';
         
         return `
-        <div class="card" onclick="showGameDetails(${g.game_id})" style="cursor:pointer">
-            <div class="flex-between" style="margin-bottom: 8px;">
-                <span style="font-weight:bold">${g.score_a} : ${g.score_b}</span>
-                <span class="subtitle">${new Date(g.date).toLocaleDateString()}</span>
+        <div class="card" onclick="showGameDetails(${g.game_id})" style="cursor:pointer; border-left: 4px solid ${resColor};">
+            <div class="flex-between" style="margin-bottom: 12px;">
+                <span style="font-size: 18px; font-weight: 700; letter-spacing: 1px;">${g.score_a} : ${g.score_b}</span>
+                <span class="subtitle" style="font-weight: 600;">${new Date(g.date).toLocaleDateString('ru-RU')}</span>
             </div>
             <div class="flex-between">
-                <span class="subtitle">Ваша команда: ${g.my_team || '-'}</span>
-                <span style="color:${resColor}; font-weight:bold">${sign}${g.rating_change} MMR</span>
+                <div class="flex-row" style="gap: 8px;">
+                    <span class="subtitle" style="background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 6px;">${g.my_team || '-'}</span>
+                    <span class="subtitle">Ваша команда</span>
+                </div>
+                <span style="color:${resColor}; font-weight: 700; font-size: 16px;">${sign}${g.rating_change} MMR</span>
             </div>
         </div>
         `;

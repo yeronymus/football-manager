@@ -15,9 +15,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/chat/{chat_id}/admins")
-async def get_chat_admins(chat_id: int, initData: str, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(initData, settings.bot_token):
-        raise HTTPException(status_code=403, detail="Invalid initData")
+async def get_chat_admins(
+    chat_id: int, 
+    user_id: int = Depends(get_user_from_header), 
+    session: AsyncSession = Depends(get_session)
+):
     
     try:
         from app.bot.instance import bot
@@ -54,11 +56,11 @@ async def get_chats(
     ]
 
 @router.get("/users/search")
-async def search_users(query: str, initData: str, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(initData, settings.bot_token):
-        raise HTTPException(status_code=403, detail="Invalid initData")
-    
-    user_id = get_user_from_init_data(initData)
+async def search_users(
+    query: str, 
+    user_id: int = Depends(get_user_from_header), 
+    session: AsyncSession = Depends(get_session)
+):
     logger.info(f"Searching users: query='{query}', user_id={user_id}")
     user_repo = UserRepository(session)
     users = await user_repo.search_users(query)
