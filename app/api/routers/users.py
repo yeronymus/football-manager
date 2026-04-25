@@ -192,6 +192,8 @@ async def update_my_profile(
     """Updates user's primary position."""
     from app.db.models import Position
     new_pos = data.get("position")
+    alt_positions = data.get("alt_positions", [])
+    
     if not new_pos:
         raise HTTPException(status_code=400, detail="Position required")
     
@@ -201,6 +203,7 @@ async def update_my_profile(
     
     try:
         user.player_position = Position(new_pos)
+        user.alt_positions = alt_positions
         await session.commit()
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid position")
