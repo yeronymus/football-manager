@@ -181,26 +181,84 @@ async function renderProfile() {
     if(pages.profile) pages.profile.innerHTML = html;
 }
 
-window.editPosition = function() {
-    console.log('Edit Position clicked');
-    const positions = ['GK', 'DEF', 'MID', 'FWD'];
+    const userPositions = [data.position, ...(data.alt_positions || [])].filter(Boolean);
     const html = `
-        <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
-            <div class="card" style="width:80%; max-width:320px; text-align:center; padding:24px;">
-                <h3 style="margin-bottom:20px;">Выберите позицию</h3>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                    ${positions.map(p => `
-                        <button onclick="updatePosition('${p}')" class="group-btn" style="justify-content:center; padding:16px 0;">${p}</button>
-                    `).join('')}
+        <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
+            <div class="card" style="width:90%; max-width:400px; padding:24px; max-height:85vh; overflow-y:auto; border:1px solid rgba(255,255,255,0.1)">
+                <h3 style="margin-bottom:8px; text-align:center;">Ваши позиции</h3>
+                <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">Выберите основную и дополнительные</p>
+                
+                <div style="display:flex; flex-direction:column; gap:20px;">
+                    <div>
+                        <h4 class="subtitle" style="font-size:11px; text-transform:uppercase; margin-bottom:10px; color:var(--accent-color)">Защита</h4>
+                        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
+                            ${['LB', 'CB', 'RB', 'LWB', 'RWB'].map(p => `<button onclick="togglePos('${p}')" id="pos-${p}" class="pos-btn ${userPositions.includes(p) ? 'active' : ''}">${p}</button>`).join('')}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="subtitle" style="font-size:11px; text-transform:uppercase; margin-bottom:10px; color:var(--accent-color)">Полузащита</h4>
+                        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
+                            ${['CDM', 'CM', 'CAM', 'LM', 'RM'].map(p => `<button onclick="togglePos('${p}')" id="pos-${p}" class="pos-btn ${userPositions.includes(p) ? 'active' : ''}">${p}</button>`).join('')}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="subtitle" style="font-size:11px; text-transform:uppercase; margin-bottom:10px; color:var(--accent-color)">Нападение</h4>
+                        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
+                            ${['ST', 'LW', 'RW', 'CF', 'GK'].map(p => `<button onclick="togglePos('${p}')" id="pos-${p}" class="pos-btn ${userPositions.includes(p) ? 'active' : ''}">${p}</button>`).join('')}
+                        </div>
+                    </div>
                 </div>
-                <button onclick="closeModal()" style="margin-top:20px; background:none; border:none; color:var(--hint-color); cursor:pointer;">Отмена</button>
+
+                <div style="display:flex; gap:12px; margin-top:32px;">
+                    <button onclick="closeModal()" class="group-btn" style="flex:1; justify-content:center; background:rgba(255,255,255,0.05); color:var(--hint-color)">Отмена</button>
+                    <button onclick="savePositions()" class="group-btn" style="flex:1; justify-content:center; background:var(--accent-color); color:white">Сохранить</button>
+                </div>
             </div>
         </div>
     `;
+    
+    window.selectedPositions = userPositions;
     const div = document.createElement('div');
     div.id = 'modal-container';
     div.innerHTML = html;
     document.body.appendChild(div);
+}
+
+window.togglePos = function(pos) {
+    const idx = window.selectedPositions.indexOf(pos);
+    if (idx > -1) window.selectedPositions.splice(idx, 1);
+    else window.selectedPositions.push(pos);
+    
+    document.getElementById(`pos-${pos}`).classList.toggle('active');
+}
+
+window.savePositions = async function() {
+    if (window.selectedPositions.length === 0) {
+        tg.showAlert('Выберите хотя бы одну позицию');
+        return;
+    }
+    
+    const mainPos = window.selectedPositions[0];
+    const alts = window.selectedPositions.slice(1);
+    
+    closeModal();
+    loader.style.display = 'flex';
+    try {
+        await fetchAPI('/users/me/profile', {
+            method: 'POST',
+            body: JSON.stringify({
+                position: mainPos,
+                alt_positions: alts
+            })
+        });
+        await renderProfile();
+    } catch(e) {
+        tg.showAlert('Ошибка: ' + e.message);
+    } finally {
+        loader.style.display = 'none';
+    }
 }
 
 window.closeModal = function() {
