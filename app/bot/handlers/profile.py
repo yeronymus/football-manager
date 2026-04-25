@@ -42,7 +42,9 @@ async def cmd_my_profile(message: types.Message):
             pass
         return
 
-    web_app_url = f"{settings.webapp_url}/web/profile.html"
+    from app.config import settings
+    base = settings.webapp_url.rstrip("/")
+    web_app_url = f"{base}/web/profile.html"
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(
@@ -116,7 +118,9 @@ async def cmd_my_history(message: types.Message):
             pass
         return
 
-    web_app_url = f"{settings.webapp_url}/web/history.html"
+    from app.config import settings
+    base = settings.webapp_url.rstrip("/")
+    web_app_url = f"{base}/web/history.html"
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(
