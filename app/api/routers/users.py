@@ -192,7 +192,7 @@ async def get_my_history(
         .join(Game)
         .where(Signup.user_id == user_id, Game.chat_id == chat_id, Game.status == GameStatus.FINISHED)
         .order_by(desc(Game.date_time))
-        .limit(10)
+        .limit(100)
     )
     
     result = []
@@ -206,6 +206,7 @@ async def get_my_history(
         result.append({
             "game_id": game.id,
             "date": game.date_time.isoformat(),
+            "location": game.location,
             "score_a": game.score_a,
             "score_b": game.score_b,
             "my_team": s.team.value if s.team else None,

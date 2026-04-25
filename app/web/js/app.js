@@ -206,19 +206,25 @@ async function renderHistory() {
         let resColor = g.rating_change > 0 ? '#4caf50' : (g.rating_change < 0 ? '#f44336' : 'var(--hint-color)');
         let sign = g.rating_change > 0 ? '+' : '';
         
-        const teamColors = { 'A': '#38bdf8', 'B': '#f87171', 'C': '#fbbf24' };
+        const teamColors = { 'A': '#ff9800', 'B': '#4caf50', 'C': '#3b82f6', 'D': '#ffffff' };
+        const teamLabels = { 'A': 'Оранжевые', 'B': 'Зеленые', 'C': 'Синие', 'D': 'Белые' };
         const teamColor = teamColors[g.my_team] || 'var(--hint-color)';
+        const teamLabel = teamLabels[g.my_team] || 'Неизвестно';
 
         return `
         <div class="card" onclick="showGameDetails(${g.game_id})" style="cursor:pointer; border-left: 4px solid ${resColor};">
-            <div class="flex-between" style="margin-bottom: 12px;">
+            <div class="flex-between" style="margin-bottom: 8px;">
                 <span style="font-size: 18px; font-weight: 700; letter-spacing: 1px;">${g.score_a} : ${g.score_b}</span>
                 <span class="subtitle" style="font-weight: 600;">${new Date(g.date).toLocaleDateString('ru-RU')}</span>
             </div>
+            <div class="subtitle" style="font-size: 12px; margin-bottom: 12px; display:flex; align-items:center; gap:4px;">
+                <svg style="width:14px;height:14px;fill:currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-12-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                ${g.location}
+            </div>
             <div class="flex-between">
                 <div class="flex-row" style="gap: 8px;">
-                    <div style="width:12px; height:12px; border-radius:3px; background:${teamColor}"></div>
-                    <span class="subtitle">Команда ${g.my_team || '-'}</span>
+                    <div style="width:10px; height:10px; border-radius:50%; background:${teamColor}"></div>
+                    <span class="subtitle">${teamLabel}</span>
                 </div>
                 <span style="color:${resColor}; font-weight: 700; font-size: 16px;">${sign}${g.rating_change} MMR</span>
             </div>
@@ -243,7 +249,7 @@ window.showGameDetails = async function(gameId) {
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
                 <div>
-                    <h4 style="color:#38bdf8; margin-bottom:10px; border-bottom:1px solid rgba(56,189,248,0.2)">Команда А</h4>
+                    <h4 style="color:#ff9800; margin-bottom:10px; border-bottom:1px solid rgba(255,152,0,0.2)">Команда А (Оранж)</h4>
                     ${game.team_a.map(p => `
                         <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between">
                             <span>${p.name}</span>
@@ -252,7 +258,7 @@ window.showGameDetails = async function(gameId) {
                     `).join('')}
                 </div>
                 <div>
-                    <h4 style="color:#f87171; margin-bottom:10px; border-bottom:1px solid rgba(248,113,113,0.2)">Команда Б</h4>
+                    <h4 style="color:#4caf50; margin-bottom:10px; border-bottom:1px solid rgba(76,175,80,0.2)">Команда Б (Зелен)</h4>
                     ${game.team_b.map(p => `
                         <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between">
                             <span>${p.name}</span>
@@ -261,6 +267,18 @@ window.showGameDetails = async function(gameId) {
                     `).join('')}
                 </div>
             </div>
+            ${game.team_c.length ? `
+            <div style="margin-top:20px;">
+                <h4 style="color:#3b82f6; margin-bottom:10px; border-bottom:1px solid rgba(59,130,246,0.2)">Команда С (Синие)</h4>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+                    ${game.team_c.map(p => `
+                        <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between">
+                            <span>${p.name}</span>
+                            <span style="color:var(--hint-color)">${p.goals > 0 ? `⚽${p.goals}` : ''} ${p.is_mvp ? '🌟' : ''}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>` : ''}
             <button onclick="closePopup()" class="group-btn" style="margin-top:30px; text-align:center; justify-content:center">Закрыть</button>
         `;
         
