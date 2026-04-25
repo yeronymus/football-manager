@@ -39,7 +39,7 @@ async function init() {
 
 // Fetch Helper (injects initData via Header)
 async function fetchAPI(endpoint) {
-    const url = new URL(endpoint, window.location.origin);
+    const url = new URL(`${API_BASE}${endpoint}`, window.location.origin);
     const res = await fetch(url, {
         headers: {
             'Authorization': `tma ${initData}`
