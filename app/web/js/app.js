@@ -137,11 +137,12 @@ async function renderProfile() {
     const data = await fetchAPI(`/users/me/profile?chat_id=${currentChatId}`);
     
     // Render basic stats
+    const userName = data.name || 'Игрок';
     const html = `
         <div class="card flex-row" style="margin-top: 16px; padding: 24px;">
-            <div class="avatar">${data.name.charAt(0)}</div>
+            <div class="avatar">${userName.charAt(0)}</div>
             <div style="flex:1">
-                <h3 style="font-size: 20px;">${data.name}</h3>
+                <h3 style="font-size: 20px;">${userName}</h3>
                 <div class="flex-between" style="margin-top:4px;">
                     <span class="subtitle">${data.position}</span>
                     <div onclick="editPosition()" style="padding: 8px 12px; margin: -8px -12px; cursor:pointer;">
@@ -181,6 +182,7 @@ async function renderProfile() {
 }
 
 window.editPosition = function() {
+    console.log('Edit Position clicked');
     const positions = ['GK', 'DEF', 'MID', 'FWD'];
     const html = `
         <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">

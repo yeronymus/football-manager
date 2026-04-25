@@ -81,40 +81,58 @@ async def get_my_profile(
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
-    """Returns player profile for the specific chat/group for the Mini-App."""
+    # Handle Telegram supergroup ID migration (-100 prefix)
+    chat_id_str = str(chat_id)
+    alt_chat_id = int(chat_id_str.replace("-100", "-")) if "-100" in chat_id_str else int("-100" + chat_id_str.replace("-", ""))
+    chat_ids = [chat_id, alt_chat_id]
+
     profile = await session.scalar(
         select(PlayerProfile)
-        .where(PlayerProfile.user_id == user_id, PlayerProfile.chat_id == chat_id)
+        .where(PlayerProfile.user_id == user_id, PlayerProfile.chat_id.in_(chat_ids))
     )
     user = await session.get(User, user_id)
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
+    # Dynamically calculate games played to ensure it matches history
+    games_count = await session.scalar(
+        select(func.count(distinct(Game.id)))
+        .outerjoin(Signup, Signup.game_id == Game.id)
+        .outerjoin(GameStats, GameStats.game_id == Game.id)
+        .outerjoin(RatingHistory, RatingHistory.game_id == Game.id)
+        .where(
+            Game.chat_id.in_(chat_ids),
+            or_(
+                Signup.user_id == user_id,
+                GameStats.user_id == user_id,
+                RatingHistory.user_id == user_id
+            ),
+            or_(
+                Game.status == GameStatus.FINISHED,
+                and_(Game.status == GameStatus.ACTIVE, Game.score_a != None)
+            )
+        )
+    )
+    
     rating = profile.rating if profile else 100
-    games_played = profile.games_played if profile else 0
+    games_played = games_count or 0
     mvps = profile.stats_mvp if profile else 0
     
-    # Get last 10 rating changes for graph
+    # Get last 10 rating changes for graph (legacy but keeping for logic)
     history = await session.scalars(
         select(RatingHistory)
-        .where(RatingHistory.user_id == user_id) # Should filter by chat_id too, but RatingHistory only has game_id
         .join(Game, Game.id == RatingHistory.game_id)
-        .where(Game.chat_id == chat_id)
+        .where(RatingHistory.user_id == user_id, Game.chat_id.in_(chat_ids))
         .order_by(desc(RatingHistory.date))
         .limit(10)
     )
     
-    graph_data = [{"date": h.date.isoformat(), "rating": h.new_rating} for h in reversed(list(history))]
-    
     # Total goals calculation
-    from sqlalchemy import func
-    from app.db.models import GameStats
     total_goals = await session.scalar(
         select(func.sum(GameStats.goals))
-        .where(GameStats.user_id == user_id)
         .join(Game, Game.id == GameStats.game_id)
-        .where(Game.chat_id == chat_id)
+        .where(GameStats.user_id == user_id, Game.chat_id.in_(chat_ids))
     )
 
     return {
@@ -198,6 +216,11 @@ async def get_my_history(
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session)
 ):
+    # Handle Telegram supergroup ID migration
+    chat_id_str = str(chat_id)
+    alt_chat_id = int(chat_id_str.replace("-100", "-")) if "-100" in chat_id_str else int("-100" + chat_id_str.replace("-", ""))
+    chat_ids = [chat_id, alt_chat_id]
+
     # Robust query: check Signups, GameStats AND RatingHistory.
     # If Signup was deleted, RatingHistory is the ultimate proof the user played.
     games = await session.scalars(
@@ -206,7 +229,7 @@ async def get_my_history(
         .outerjoin(GameStats, GameStats.game_id == Game.id)
         .outerjoin(RatingHistory, RatingHistory.game_id == Game.id)
         .where(
-            Game.chat_id == chat_id,
+            Game.chat_id.in_(chat_ids),
             or_(
                 Signup.user_id == user_id,
                 GameStats.user_id == user_id,
