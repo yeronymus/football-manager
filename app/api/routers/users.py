@@ -1,13 +1,11 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, or_, and_
+from sqlalchemy import select, desc, or_, and_, func, distinct
 from app.db.database import get_session
-from app.db.models import Chat, User
+from app.db.models import Chat, User, PlayerProfile, Game, RatingHistory, Signup, GameStatus, GameStats
 from app.api.auth import validate_init_data, get_user_from_init_data, get_user_from_header
 from app.core.repositories.user_repository import UserRepository
-from app.db.models import PlayerProfile, Game, RatingHistory, Signup, GameStatus, GameStats
-from sqlalchemy import desc, or_, and_, distinct
 
 from app.config import settings
 
@@ -81,10 +79,10 @@ async def get_my_profile(
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
-    # Handle Telegram supergroup ID migration (-100 prefix)
+    # Handle Telegram supergroup ID migration (-100 prefix) and potential legacy positive IDs
     chat_id_str = str(chat_id)
     alt_chat_id = int(chat_id_str.replace("-100", "-")) if "-100" in chat_id_str else int("-100" + chat_id_str.replace("-", ""))
-    chat_ids = [chat_id, alt_chat_id]
+    chat_ids = list(set([chat_id, alt_chat_id, abs(chat_id), abs(alt_chat_id)]))
 
     profile = await session.scalar(
         select(PlayerProfile)
@@ -216,10 +214,10 @@ async def get_my_history(
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session)
 ):
-    # Handle Telegram supergroup ID migration
+    # Handle Telegram supergroup ID migration and potential legacy positive IDs
     chat_id_str = str(chat_id)
     alt_chat_id = int(chat_id_str.replace("-100", "-")) if "-100" in chat_id_str else int("-100" + chat_id_str.replace("-", ""))
-    chat_ids = [chat_id, alt_chat_id]
+    chat_ids = list(set([chat_id, alt_chat_id, abs(chat_id), abs(alt_chat_id)]))
 
     # Robust query: check Signups, GameStats AND RatingHistory.
     # If Signup was deleted, RatingHistory is the ultimate proof the user played.
