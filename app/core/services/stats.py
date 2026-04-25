@@ -67,57 +67,35 @@ class StatsService:
         # Determine Ranks and Points for players
         team_points = {} # Team -> Base Point Change
 
-        if game.team_count == 2:
-            if game.score_a == game.score_b:
-                # Draw: 0 points for both
-                team_points[Team.A] = 0
-                team_points[Team.B] = 0
-            elif game.winner_team == Team.A:
-                team_points[Team.A] = 10
-                team_points[Team.B] = -5
-            elif game.winner_team == Team.B:
-                team_points[Team.A] = -5
-                team_points[Team.B] = 10
+        # Универсальный алгоритм распределения очков (работает для 2, 3, 4+ команд)
+        # 1-е место: +10 очков
+        # Последнее место: -5 очков
+        # Остальные места: равномерно распределены между +10 и -5
+        
+        scores_map = {}
+        if game.team_count >= 2:
+            scores_map[Team.A] = game.score_a or 0
+            scores_map[Team.B] = game.score_b or 0
+        if game.team_count >= 3:
+            scores_map[Team.C] = game.score_c or 0
+        
+        # Sort teams by score descending
+        sorted_teams = sorted(scores_map.items(), key=lambda item: item[1], reverse=True)
+        
+        # Find unique scores to determine ties
+        unique_scores = sorted(list(set(scores_map.values())), reverse=True)
+        
+        for team, score in sorted_teams:
+            if len(unique_scores) == 1:
+                # All teams tied
+                team_points[team] = 0
             else:
-                # Fallback if winner_team is not set but scores are different
-                # (should not happen with good API usage, but let's be safe)
-                if (game.score_a or 0) > (game.score_b or 0):
-                    team_points[Team.A] = 10
-                    team_points[Team.B] = -5
-                elif (game.score_b or 0) > (game.score_a or 0):
-                    team_points[Team.A] = -5
-                    team_points[Team.B] = 10
-                else:
-                    team_points[Team.A] = 0
-                    team_points[Team.B] = 0
-
-        elif game.team_count == 3:
-            # 3 Teams logic with tie handling
-            scores = [
-                (Team.A, game.score_a or 0),
-                (Team.B, game.score_b or 0),
-                (Team.C, game.score_c or 0)
-            ]
-            # Custom ranking: if scores equal, they get same points
-            # Sort by score descending
-            scores.sort(key=lambda x: x[1], reverse=True)
-            
-            # Simple rank points: 1st:+10, 2nd:0, 3rd:-5
-            # We assign points based on unique score positions
-            unique_scores = sorted(list(set(s[1] for s in scores)), reverse=True)
-            
-            for t, score in scores:
-                if len(unique_scores) == 1:
-                    # All tied
-                    team_points[t] = 0
-                else:
-                    rank = unique_scores.index(score)
-                    if rank == 0: # 1st
-                        team_points[t] = 10
-                    elif rank == 1: # 2nd
-                        team_points[t] = 0
-                    else: # 3rd or lower
-                        team_points[t] = -5
+                rank = unique_scores.index(score)
+                # Map rank (0 to len(unique_scores)-1) to points (+10 to -5)
+                # Max points: 10, Min points: -5
+                max_rank = len(unique_scores) - 1
+                points = 10 - (15 * rank / max_rank)
+                team_points[team] = round(points)
         
         # Fetch all active players with their teams AND profiles
         result = await self.session.execute(
@@ -149,8 +127,8 @@ class StatsService:
             if is_mvp:
                 profile.stats_mvp += 1
                 
-            # Maintain User fallback updates (optional)
-            user.rating = profile.rating
+            # We no longer overwrite global user.rating!
+            # Keep global games_played and MVP for legacy compatibility
             user.games_played += 1
             user.stats_matches += 1
             if is_mvp:

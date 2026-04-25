@@ -71,6 +71,7 @@ class User(Base):
     votes_cast = relationship("Vote", foreign_keys="[Vote.voter_id]", back_populates="voter")
     votes_received = relationship("Vote", foreign_keys="[Vote.target_id]", back_populates="target")
     profiles = relationship("PlayerProfile", back_populates="user", cascade="all, delete-orphan")
+    admin_in_chats = relationship("ChatAdmin", back_populates="user", cascade="all, delete-orphan")
 
 class Chat(Base):
     __tablename__ = "chats"
@@ -87,6 +88,7 @@ class Chat(Base):
 
     games = relationship("Game", back_populates="chat")
     players = relationship("PlayerProfile", back_populates="chat", cascade="all, delete-orphan")
+    admins = relationship("ChatAdmin", back_populates="chat", cascade="all, delete-orphan")
 
 class PlayerProfile(Base):
     __tablename__ = "player_profiles"
@@ -105,6 +107,23 @@ class PlayerProfile(Base):
 
     __table_args__ = (
         UniqueConstraint('user_id', 'chat_id', name='unique_group_profile'),
+    )
+
+class ChatAdmin(Base):
+    __tablename__ = "chat_admins"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
+    
+    can_edit_settings = Column(Boolean, default=True)
+    can_manage_games = Column(Boolean, default=True)
+
+    chat = relationship("Chat", back_populates="admins")
+    user = relationship("User", back_populates="admin_in_chats")
+
+    __table_args__ = (
+        UniqueConstraint('chat_id', 'user_id', name='unique_chat_admin'),
     )
 
 class AdBanner(Base):

@@ -20,19 +20,19 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
         
-    await check_admin_rights(game.chat_id, user_id)
-    
-    # Fetch players with Signup data (In Draft mode, we need both ACTIVE and RESERVE)
+    # Fetch players with Signup data and GameStats
+    from app.db.models import GameStats
     result = await session.execute(
-        select(User, Signup)
-        .join(Signup)
+        select(User, Signup, GameStats)
+        .join(Signup, User.user_id == Signup.user_id)
+        .outerjoin(GameStats, (GameStats.game_id == game_id) & (GameStats.user_id == User.user_id))
         .where(Signup.game_id == game_id)
         .where(Signup.status.in_([SignupStatus.ACTIVE, SignupStatus.RESERVE]))
     )
     players_data = result.all()
     
     def serialize_player(p_tuple):
-        user, signup = p_tuple
+        user, signup, stats = p_tuple
         eff_pos = signup.position if signup.position else user.player_position
         
         return {
@@ -42,7 +42,9 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
             "position": eff_pos.value if eff_pos else "DEF",
             "original_position": user.player_position.value if user.player_position else "DEF",
             "alt_positions": user.alt_positions or [],
-            "status": signup.status.value
+            "status": signup.status.value,
+            "goals": stats.goals if stats else 0,
+            "is_mvp": stats.is_mvp if stats else False
         }
     
     team_a = [serialize_player(p) for p in players_data if p[1].team == Team.A]
