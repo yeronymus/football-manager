@@ -29,7 +29,7 @@ async def cmd_create(message: types.Message):
     if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
         return
 
-    web_app_url = f"{settings.webapp_url}/web/index.html?v=1.3"
+    web_app_url = f"{settings.webapp_url.rstrip('/')}/web/index.html?v=1.3"
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(text="➕ Создать новую игру", web_app=types.WebAppInfo(url=web_app_url))]
     ])

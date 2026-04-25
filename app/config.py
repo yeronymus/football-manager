@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     use_polling: bool = False
     webapp_url: str = "https://your-domain.com"
     
+    @property
+    def clean_webapp_url(self) -> str:
+        return self.webapp_url.rstrip("/")
+    
     # Internal Configuration Seeding (Parsed directly from `.env` string like INITIAL_CHATS='[{"id": -100}]')
     initial_chats: List[Dict[str, Any]] = []
 
