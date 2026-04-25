@@ -6,8 +6,8 @@ from app.db.database import get_session
 from app.db.models import Chat, User
 from app.api.auth import validate_init_data, get_user_from_init_data, get_user_from_header
 from app.core.repositories.user_repository import UserRepository
-from app.db.models import PlayerProfile, Game, RatingHistory, Signup, GameStatus
-from sqlalchemy import desc
+from app.db.models import PlayerProfile, Game, RatingHistory, Signup, GameStatus, GameStats
+from sqlalchemy import desc, or_, and_, distinct
 
 from app.config import settings
 
@@ -198,26 +198,42 @@ async def get_my_history(
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session)
 ):
-    # We want games where the user was signed up AND either the game is FINISHED or it has a score.
-    # This helps catch games that might not be officially "finished" yet but have results.
-    signups = await session.scalars(
-        select(Signup)
-        .join(Game)
+    # Robust query: check both Signups and GameStats to ensure we don't miss any played matches.
+    games = await session.scalars(
+        select(Game)
+        .outerjoin(Signup, Signup.game_id == Game.id)
+        .outerjoin(GameStats, GameStats.game_id == Game.id)
         .where(
-            Signup.user_id == user_id, 
             Game.chat_id == chat_id,
+            or_(
+                Signup.user_id == user_id,
+                GameStats.user_id == user_id
+            ),
             or_(
                 Game.status == GameStatus.FINISHED,
                 and_(Game.status == GameStatus.ACTIVE, Game.score_a != None)
             )
         )
+        .distinct()
         .order_by(desc(Game.date_time))
         .limit(100)
     )
     
     result = []
-    for s in signups:
-        game = await session.get(Game, s.game_id)
+    for game in games:
+        # We still need the signup to know which team the user was on
+        s = await session.scalar(
+            select(Signup).where(Signup.game_id == game.id, Signup.user_id == user_id)
+        )
+        # If no signup, maybe check GameStats?
+        if not s:
+            gs = await session.scalar(
+                select(GameStats).where(GameStats.game_id == game.id, GameStats.user_id == user_id)
+            )
+            my_team = gs.team.value if gs and gs.team else None
+        else:
+            my_team = s.team.value if s.team else None
+
         history_record = await session.scalar(
             select(RatingHistory)
             .where(RatingHistory.game_id == game.id, RatingHistory.user_id == user_id)
@@ -229,7 +245,7 @@ async def get_my_history(
             "location": game.location,
             "score_a": game.score_a,
             "score_b": game.score_b,
-            "my_team": s.team.value if s.team else None,
+            "my_team": my_team,
             "winner_team": game.winner_team.value if game.winner_team else None,
             "rating_change": history_record.change if history_record else 0
         })
