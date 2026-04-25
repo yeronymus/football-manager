@@ -5,9 +5,9 @@ const tg = window.Telegram.WebApp;
 const loader = document.getElementById('loader');
 
 const pages = {
-    profile: document.getElementById('profile-page'),
-    leaderboard: document.getElementById('leaderboard-page'),
-    history: document.getElementById('history-page')
+    profile: document.getElementById('page-profile'),
+    leaderboard: document.getElementById('page-leaderboard'),
+    history: document.getElementById('page-history')
 };
 
 async function fetchAPI(endpoint, options = {}) {
@@ -53,7 +53,11 @@ async function init() {
         }
 
         const currentChat = chats.find(c => c.id == currentChatId) || chats[0];
-        document.getElementById('current-group-name').innerText = currentChat.title;
+        const groupDisplay = document.getElementById('group-name-display');
+        if (groupDisplay) groupDisplay.innerText = currentChat.title;
+        
+        const header = document.getElementById('group-header');
+        if (header) header.style.display = 'flex';
         
         await switchTab(currentTab);
     } catch (e) {
