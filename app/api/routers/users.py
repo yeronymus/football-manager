@@ -108,7 +108,7 @@ async def get_my_profile(
             ),
             or_(
                 Game.status == GameStatus.FINISHED,
-                and_(Game.status == GameStatus.ACTIVE, Game.score_a != None)
+                Game.score_a != None  # Any game with a score should probably count for history
             )
         )
     )
@@ -136,13 +136,12 @@ async def get_my_profile(
     return {
         "user_id": user.user_id,
         "name": user.full_name,
-        "position": user.player_position.value,
+        "position": user.player_position.value if user.player_position else "DEF",
         "alt_positions": user.alt_positions or [],
         "rating": rating,
         "games_played": games_played,
         "mvp_count": mvps,
-        "total_goals": int(total_goals or 0),
-        "graph": graph_data
+        "total_goals": int(total_goals or 0)
     }
 
 @router.get("/chats/{chat_id}/leaderboard")
@@ -235,7 +234,7 @@ async def get_my_history(
             ),
             or_(
                 Game.status == GameStatus.FINISHED,
-                and_(Game.status == GameStatus.ACTIVE, Game.score_a != None)
+                Game.score_a != None
             )
         )
         .distinct()
