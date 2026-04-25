@@ -96,7 +96,7 @@ def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = ""
     ]
     
     if is_admin and webapp_url:
-        draft_url = f"{webapp_url}/web/draft.html?game_id={game_id}&v=2.0"
+        draft_url = f"{webapp_url}/web/draft.html?game_id={game_id}&v=2.2"
         buttons.append([
             InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=draft_url))
         ])
@@ -139,8 +139,8 @@ def get_main_menu_inline_keyboard(is_admin: bool = False) -> InlineKeyboardMarku
         return None
 
     from app.config import settings
-    # Ensure ?v=3 is present to break cache
-    web_app_url = f"{settings.webapp_url}/web/index.html?v=3"
+    # Ensure ?v=4 is present to break cache
+    web_app_url = f"{settings.webapp_url}/web/index.html?v=4"
     
     buttons = [
         [InlineKeyboardButton(text="➕ Создать игру", web_app=types.WebAppInfo(url=web_app_url))],
