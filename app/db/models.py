@@ -9,11 +9,15 @@ class Position(str, enum.Enum):
     GK = "GK"
     
     # Defenders
+    DEF = "DEF" # General Defender
     LB = "LB"
     CB = "CB"
     RB = "RB"
+    LWB = "LWB"
+    RWB = "RWB"
     
     # Midfielders
+    MID = "MID" # General Midfielder
     CDM = "CDM"
     CM = "CM"
     CAM = "CAM"
@@ -21,9 +25,11 @@ class Position(str, enum.Enum):
     RM = "RM"
     
     # Forwards
+    FWD = "FWD" # General Forward
+    ST = "ST"
     LW = "LW"
     RW = "RW"
-    FWD = "FWD" # General Forward
+    CF = "CF"
     SUB = "SUB" # Substitute
 
 class GameStatus(str, enum.Enum):
@@ -64,6 +70,7 @@ class User(Base):
     signups = relationship("Signup", back_populates="user")
     votes_cast = relationship("Vote", foreign_keys="[Vote.voter_id]", back_populates="voter")
     votes_received = relationship("Vote", foreign_keys="[Vote.target_id]", back_populates="target")
+    profiles = relationship("PlayerProfile", back_populates="user", cascade="all, delete-orphan")
 
 class Chat(Base):
     __tablename__ = "chats"
@@ -73,7 +80,44 @@ class Chat(Base):
     admin_chat_id = Column(BigInteger, nullable=True) # Linked Admin Chat
     channel_id = Column(BigInteger, nullable=True)    # Linked Announcement Channel
 
+    # SaaS / Group Settings
+    language = Column(String, default="ru")
+    payment_info = Column(String, nullable=True)     # If null, uses global default
+    is_active = Column(Boolean, default=True)
+
     games = relationship("Game", back_populates="chat")
+    players = relationship("PlayerProfile", back_populates="chat", cascade="all, delete-orphan")
+
+class PlayerProfile(Base):
+    __tablename__ = "player_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False)
+    
+    rating = Column(Integer, default=100)
+    games_played = Column(Integer, default=0)
+    stats_matches = Column(Integer, default=0)
+    stats_mvp = Column(Integer, default=0)
+
+    user = relationship("User", back_populates="profiles")
+    chat = relationship("Chat", back_populates="players")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'chat_id', name='unique_group_profile'),
+    )
+
+class AdBanner(Base):
+    __tablename__ = "ad_banners"
+
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(BigInteger, nullable=True)     # ID of the user who owns this ad
+    image_url = Column(String, nullable=True)
+    text = Column(String, nullable=False)
+    link = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    show_probability = Column(Integer, default=100)  # Weight for random selection
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=True) # If null, show everywhere
 
 class Game(Base):
     __tablename__ = "games"

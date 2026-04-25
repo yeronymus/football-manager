@@ -34,12 +34,13 @@ async def cmd_history(message: types.Message):
 
 @router.message(F.text == "👤 Мой профиль")
 @router.message(Command("my_profile"))
-async def cmd_my_profile(message: types.Message, session: AsyncSession):
-    if message.chat.type != "private":
+async def cmd_my_profile(message: types.Message, session: AsyncSession, player=None):
+    if message.chat.type == "private":
+        await message.answer("Статистика теперь ведется для каждой группы отдельно. Вызовите /my_profile прямо в вашем игровом чате.")
         return
-    await render_profile(message, message.from_user.id, session)
+    await render_profile(message, message.from_user.id, session, player)
 
-async def render_profile(messageable: types.Message, user_id: int, session: AsyncSession):
+async def render_profile(messageable: types.Message, user_id: int, session: AsyncSession, player=None):
     user_repo = UserRepository(session)
     user = await user_repo.get_user(user_id)
     
@@ -65,14 +66,14 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
     
     # Always show rating (User request)
     # FIX: Check for legacy default rating (1200) and fix to new default (100)
-    if user.rating == 1200:
-        user.rating = 100
+    if player and player.rating == 1200:
+        player.rating = 100
         await session.commit()
         
-    text += f"📊 Рейтинг: <b>{user.rating}</b>\n"
+    text += f"📊 Рейтинг: <b>{player.rating if player else '(Смотрите в группе)'}</b>\n"
     
-    text += f"🎮 Матчей: <b>{user.games_played}</b>\n"
-    text += f"⭐️ MVP: <b>{user.stats_mvp}</b>\n"
+    text += f"🎮 Матчей: <b>{player.games_played if player else '-'}</b>\n"
+    text += f"⭐️ MVP: <b>{player.stats_mvp if player else '-'}</b>\n"
     text += f"⚽ Голов: <b>{total_goals}</b>"
     
     # Determine method (edit_text vs answer)
@@ -166,8 +167,8 @@ async def cmd_my_history(message: types.Message, session: AsyncSession):
     user = await session.get(User, user_id)
     text += f"➖➖➖➖➖➖➖➖\n"
     text += f"👤 <b>{user.full_name}</b>\n"
-    text += f"📊 Рейтинг: <b>{user.rating}</b>\n"
-    text += f"🎮 Матчей: <b>{user.games_played}</b>"
+    text += f"📊 Рейтинг: <b>(Смотрите внутри группы)</b>\n"
+    text += f"🎮 Матчей: <b>-</b>"
 
     await message.answer(text)
 

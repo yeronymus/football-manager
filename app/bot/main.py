@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from app.config import settings
-from app.bot.middlewares import DbSessionMiddleware, InstanceAccessMiddleware
+from app.bot.middlewares import DbSessionMiddleware, InstanceAccessMiddleware, TenantMiddleware
 
 # Configure logging
 logging.basicConfig(
@@ -51,6 +51,8 @@ dp.include_router(stats_router)
 
 
 dp.update.middleware(DbSessionMiddleware(session_pool=async_session_maker))
+dp.update.middleware(TenantMiddleware())
+dp.update.middleware(InstanceAccessMiddleware())
 
 async def start_bot():
     """

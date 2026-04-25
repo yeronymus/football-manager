@@ -426,6 +426,7 @@ async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends
             full_name=f"{data.name} (Guest)", 
             username=None, 
             player_position=Position[pos_str], 
+            alt_positions=data.alt_positions or [],
             rating=100
         )
         session.add(new_guest)

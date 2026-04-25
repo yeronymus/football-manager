@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, delete
-from app.db.models import User, Position, GameStats
+from app.db.models import User, Position, GameStats, PlayerProfile
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
@@ -13,6 +13,33 @@ class UserRepository:
     async def get_by_id(self, user_id: int) -> User | None:
         """Alias for get_user."""
         return await self.get_user(user_id)
+
+    async def get_player_profile(self, user_id: int, chat_id: int) -> PlayerProfile | None:
+        """Fetch a user's player profile for a specific group."""
+        stmt = select(PlayerProfile).where(
+            PlayerProfile.user_id == user_id, 
+            PlayerProfile.chat_id == chat_id
+        )
+        return await self.session.scalar(stmt)
+
+    async def get_group_leaderboard(self, chat_id: int, limit: int = 10, order_by: str = "rating"):
+        """Get leaderboard for a specific group."""
+        stmt = select(User, PlayerProfile).join(
+            PlayerProfile, 
+            User.user_id == PlayerProfile.user_id
+        ).where(PlayerProfile.chat_id == chat_id)
+        
+        if order_by == "games":
+            stmt = stmt.order_by(PlayerProfile.games_played.desc(), PlayerProfile.rating.desc())
+        elif order_by == "mvp":
+            stmt = stmt.order_by(PlayerProfile.stats_mvp.desc(), PlayerProfile.rating.desc())
+        else:
+            # default rating
+            stmt = stmt.order_by(PlayerProfile.rating.desc(), PlayerProfile.games_played.desc())
+            
+        stmt = stmt.limit(limit)
+        result = await self.session.execute(stmt)
+        return result.all()
 
     async def create_user(self, user_id: int, full_name: str, username: str | None, position: Position | str, alt_positions: list[str] = None) -> User:
         """Create a new user. Does not commit automatically to allow transaction grouping."""
