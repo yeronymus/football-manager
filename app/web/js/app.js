@@ -1,153 +1,93 @@
-const tg = window.Telegram.WebApp;
-tg.expand();
 
-const API_BASE = '/api';
-const initData = tg.initData || ''; 
-
-// State
 let currentChatId = null;
 let currentTab = 'profile';
-let groupTitle = '';
-
-// Elements
+const tg = window.Telegram.WebApp;
 const loader = document.getElementById('loader');
-const groupSelector = document.getElementById('group-selector');
-const groupList = document.getElementById('group-list');
-const groupHeader = document.getElementById('group-header');
-const pages = {
-    profile: document.getElementById('page-profile'),
-    history: document.getElementById('page-history'),
-    leaderboard: document.getElementById('page-leaderboard')
-};
-const groupNameDisplay = document.getElementById('group-name-display');
 
-// Initialization
+const pages = {
+    profile: document.getElementById('profile-page'),
+    leaderboard: document.getElementById('leaderboard-page'),
+    history: document.getElementById('history-page')
+};
+
+async function fetchAPI(endpoint, options = {}) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const initData = window.Telegram.WebApp.initData;
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        'X-TG-Init-Data': initData
+    };
+    
+    const response = await fetch('/api' + endpoint, {
+        ...options,
+        headers: { ...headers, ...options.headers }
+    });
+    
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || 'API Error');
+    }
+    return await response.json();
+}
+
 async function init() {
+    tg.expand();
+    tg.ready();
+    
     const urlParams = new URLSearchParams(window.location.search);
     const urlChatId = urlParams.get('chat_id');
     
-    // Check if the HTML file itself indicates a specific tab (legacy support)
-    const path = window.location.pathname;
-    if (path.includes('history.html')) currentTab = 'history';
-    if (path.includes('leaderboard.html')) currentTab = 'leaderboard';
-    if (path.includes('profile.html')) currentTab = 'profile';
-
-    if (urlChatId) {
-        currentChatId = urlChatId;
-        // Fetch group title if we only have ID
-        const chats = await fetchAPI('/chats');
-        const currentChat = chats.find(c => c.id == currentChatId);
-        if (currentChat) {
-            groupTitle = currentChat.title;
-            groupHeader.style.display = 'flex';
-            if(groupNameDisplay) groupNameDisplay.innerText = groupTitle;
-        }
-        await loadCurrentTab();
-        updateNavState(currentTab);
-        Object.values(pages).forEach(p => { if(p) p.style.display = 'none'; });
-        if(pages[currentTab]) pages[currentTab].style.display = 'block';
-    } else {
-        await showGroupSelector();
-    }
-}
-
-function updateNavState(tabId) {
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    const activeNav = document.querySelector(`[onclick="switchTab('${tabId}')"]`);
-    if(activeNav) activeNav.classList.add('active');
-}
-
-// Fetch Helper (injects initData via Header)
-async function fetchAPI(endpoint) {
-    const url = new URL(`${API_BASE}${endpoint}`, window.location.origin);
-    const res = await fetch(url, {
-        headers: {
-            'Authorization': `tma ${initData}`
-        }
-    });
-    if (!res.ok) throw new Error('API Error: ' + res.status);
-    return res.json();
-}
-
-async function showGroupSelector() {
-    loader.style.display = 'flex';
     try {
         const chats = await fetchAPI('/chats');
+        const selector = document.getElementById('group-selector');
+        
         if (chats.length === 0) {
-            groupList.innerHTML = '<p style="text-align:center; color:var(--hint-color)">Вы пока не состоите ни в одной группе.</p>';
-        } else {
-            groupList.innerHTML = chats.map(c => `
-                <button class="group-btn" onclick="selectGroup(${c.id}, '${c.title.replace(/'/g, "\\'")}')">${c.title}</button>
-            `).join('');
+            document.body.innerHTML = '<div class="card" style="margin:20px;text-align:center">Вы не состоите ни в одной группе бота.</div>';
+            return;
         }
-        groupSelector.style.display = 'block';
+
+        if (urlChatId) {
+            currentChatId = urlChatId;
+        } else {
+            currentChatId = chats[0].id;
+        }
+
+        const currentChat = chats.find(c => c.id == currentChatId) || chats[0];
+        document.getElementById('current-group-name').innerText = currentChat.title;
+        
+        await switchTab(currentTab);
     } catch (e) {
-        groupList.innerHTML = `<p style="color:red">Ошибка загрузки: ${e.message}</p>`;
-        groupSelector.style.display = 'block';
-    } finally {
-        loader.style.display = 'none';
+        console.error(e);
     }
 }
 
-window.selectGroup = async function(id, title) {
-    currentChatId = id;
-    groupTitle = title;
-    groupSelector.style.display = 'none';
-    groupHeader.style.display = 'flex';
-    if(groupNameDisplay) groupNameDisplay.innerText = title;
+async function switchTab(tab) {
+    currentTab = tab;
+    Object.values(pages).forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
     
-    // Reset pages display
-    Object.values(pages).forEach(p => { if(p) p.style.display = 'none'; });
-    if(pages[currentTab]) pages[currentTab].style.display = 'block';
+    pages[tab].classList.add('active');
+    document.querySelector(`.tab-item[onclick="switchTab('${tab}')"]`).classList.add('active');
     
-    updateNavState(currentTab);
-    await loadCurrentTab();
-}
-
-window.switchTab = async function(tabId) {
-    if (currentTab === tabId && pages[tabId].style.display === 'block') return;
-    
-    // Update UI
-    updateNavState(tabId);
-    
-    Object.values(pages).forEach(p => { if(p) p.style.display = 'none'; });
-    if(pages[tabId]) pages[tabId].style.display = 'block';
-    
-    currentTab = tabId;
-    await loadCurrentTab();
-}
-
-async function loadCurrentTab() {
-    if (!currentChatId) return;
     loader.style.display = 'flex';
-    
-    try {
-        if (currentTab === 'profile') await renderProfile();
-        else if (currentTab === 'history') await renderHistory();
-        else if (currentTab === 'leaderboard') await renderLeaderboard();
-    } catch (e) {
-        tg.showAlert('Ошибка: ' + e.message);
-    } finally {
-        loader.style.display = 'none';
-    }
+    if (tab === 'profile') await renderProfile();
+    else if (tab === 'leaderboard') await renderLeaderboard();
+    else if (tab === 'history') await renderHistory();
+    loader.style.display = 'none';
 }
 
-// Renderers
 async function renderProfile() {
     const data = await fetchAPI(`/users/me/profile?chat_id=${currentChatId}`);
     
-    // Render basic stats
     const userName = data.name || 'Игрок';
     const html = `
         <div class="card flex-row" style="margin-top: 16px; padding: 24px;">
             <div class="avatar">${userName.charAt(0)}</div>
             <div style="flex:1">
                 <h3 style="font-size: 20px;">${userName}</h3>
-                <div class="flex-between" style="margin-top:4px;">
-                    <span class="subtitle">${data.position}</span>
-                    <div onclick="editPosition()" style="padding: 8px 12px; margin: -8px -12px; cursor:pointer;">
-                        <span style="color:var(--accent-color); font-weight:600; font-size:13px;">Изменить</span>
-                    </div>
+                <div class="subtitle" style="margin-top:4px;">
+                    Основная: <b style="color:var(--text-color)">${data.position}</b>
                 </div>
             </div>
         </div>
@@ -168,118 +108,123 @@ async function renderProfile() {
         </div>
         
         <div class="card" style="margin-top: 16px;">
-            <div class="flex-between" style="margin-bottom:12px;">
-                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700">Доп. позиции</h4>
-                <span style="font-weight:600">${data.alt_positions && data.alt_positions.length ? data.alt_positions.join(', ') : 'Нет'}</span>
+            <div style="margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px; margin-bottom:8px; color:var(--accent-color)">Основная позиция</h4>
+                <div class="flex-between">
+                    <span style="font-weight:600; font-size:17px;">${data.position}</span>
+                    <button onclick="editPrimaryPosition()" style="background:var(--accent-color); color:white; border:none; padding:6px 16px; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">Изменить</button>
+                </div>
             </div>
+            
+            <div style="margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px; margin-bottom:8px; color:var(--accent-color)">Доп. позиции</h4>
+                <div class="flex-between">
+                    <span style="font-weight:600; font-size:15px;">${data.alt_positions && data.alt_positions.length ? data.alt_positions.join(', ') : 'Не указаны'}</span>
+                    <button onclick="editAltPositions()" style="background:rgba(255,255,255,0.05); color:var(--text-color); border:1px solid var(--border-color); padding:6px 16px; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">Изменить</button>
+                </div>
+            </div>
+
             <div class="flex-between">
-                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700">Всего голов</h4>
-                <span style="font-weight:600; color:var(--accent-color)">${data.total_goals || 0} ⚽</span>
+                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px;">Всего голов</h4>
+                <span style="font-weight:700; font-size:18px; color:var(--accent-color)">${data.total_goals || 0} ⚽</span>
             </div>
         </div>
     `;
     if(pages.profile) pages.profile.innerHTML = html;
 }
 
-    const userPositions = [data.position, ...(data.alt_positions || [])].filter(Boolean);
+window.editPrimaryPosition = function() {
+    const positions = ['GK', 'LB', 'CB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'CF'];
     const html = `
         <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
             <div class="card" style="width:90%; max-width:400px; padding:24px; max-height:85vh; overflow-y:auto; border:1px solid rgba(255,255,255,0.1)">
-                <h3 style="margin-bottom:8px; text-align:center;">Ваши позиции</h3>
-                <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">Выберите основную и дополнительные</p>
-                
-                <div style="display:flex; flex-direction:column; gap:20px;">
-                    <div>
-                        <h4 class="subtitle" style="font-size:11px; text-transform:uppercase; margin-bottom:10px; color:var(--accent-color)">Защита</h4>
-                        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
-                            ${['LB', 'CB', 'RB', 'LWB', 'RWB'].map(p => `<button onclick="togglePos('${p}')" id="pos-${p}" class="pos-btn ${userPositions.includes(p) ? 'active' : ''}">${p}</button>`).join('')}
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <h4 class="subtitle" style="font-size:11px; text-transform:uppercase; margin-bottom:10px; color:var(--accent-color)">Полузащита</h4>
-                        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
-                            ${['CDM', 'CM', 'CAM', 'LM', 'RM'].map(p => `<button onclick="togglePos('${p}')" id="pos-${p}" class="pos-btn ${userPositions.includes(p) ? 'active' : ''}">${p}</button>`).join('')}
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 class="subtitle" style="font-size:11px; text-transform:uppercase; margin-bottom:10px; color:var(--accent-color)">Нападение</h4>
-                        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
-                            ${['ST', 'LW', 'RW', 'CF', 'GK'].map(p => `<button onclick="togglePos('${p}')" id="pos-${p}" class="pos-btn ${userPositions.includes(p) ? 'active' : ''}">${p}</button>`).join('')}
-                        </div>
-                    </div>
+                <h3 style="margin-bottom:8px; text-align:center;">Основная позиция</h3>
+                <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">Выберите вашу главную роль на поле</p>
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+                    ${positions.map(p => `<button onclick="savePrimary('${p}')" class="pos-btn">${p}</button>`).join('')}
                 </div>
+                <button onclick="closeModal()" style="margin-top:24px; width:100%; color:var(--hint-color); background:none; border:none; cursor:pointer; font-weight:600;">Отмена</button>
+            </div>
+        </div>
+    `;
+    renderModal(html);
+}
 
+window.editAltPositions = async function() {
+    loader.style.display = 'flex';
+    const data = await fetchAPI(`/users/me/profile?chat_id=${currentChatId}`);
+    loader.style.display = 'none';
+    
+    const currentAlts = data.alt_positions || [];
+    const positions = ['GK', 'LB', 'CB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'CF'];
+    
+    const html = `
+        <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
+            <div class="card" style="width:90%; max-width:400px; padding:24px; max-height:85vh; overflow-y:auto; border:1px solid rgba(255,255,255,0.1)">
+                <h3 style="margin-bottom:8px; text-align:center;">Доп. позиции</h3>
+                <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">Выберите позиции, на которых также играете</p>
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+                    ${positions.map(p => `<button onclick="toggleAlt('${p}')" id="alt-${p}" class="pos-btn ${currentAlts.includes(p) ? 'active' : ''}">${p}</button>`).join('')}
+                </div>
                 <div style="display:flex; gap:12px; margin-top:32px;">
-                    <button onclick="closeModal()" class="group-btn" style="flex:1; justify-content:center; background:rgba(255,255,255,0.05); color:var(--hint-color)">Отмена</button>
-                    <button onclick="savePositions()" class="group-btn" style="flex:1; justify-content:center; background:var(--accent-color); color:white">Сохранить</button>
+                    <button onclick="closeModal()" class="group-btn" style="flex:1; justify-content:center; background:rgba(255,255,255,0.05); color:var(--hint-color); border:1px solid var(--border-color)">Отмена</button>
+                    <button onclick="saveAlts()" class="group-btn" style="flex:1; justify-content:center; background:var(--accent-color); color:white">Сохранить</button>
                 </div>
             </div>
         </div>
     `;
-    
-    window.selectedPositions = userPositions;
+    window.selectedAlts = [...currentAlts];
+    renderModal(html);
+}
+
+function renderModal(html) {
     const div = document.createElement('div');
     div.id = 'modal-container';
     div.innerHTML = html;
     document.body.appendChild(div);
 }
 
-window.togglePos = function(pos) {
-    const idx = window.selectedPositions.indexOf(pos);
-    if (idx > -1) window.selectedPositions.splice(idx, 1);
-    else window.selectedPositions.push(pos);
-    
-    document.getElementById(`pos-${pos}`).classList.toggle('active');
-}
-
-window.savePositions = async function() {
-    if (window.selectedPositions.length === 0) {
-        tg.showAlert('Выберите хотя бы одну позицию');
-        return;
-    }
-    
-    const mainPos = window.selectedPositions[0];
-    const alts = window.selectedPositions.slice(1);
-    
+window.savePrimary = async function(pos) {
     closeModal();
     loader.style.display = 'flex';
     try {
         await fetchAPI('/users/me/profile', {
             method: 'POST',
-            body: JSON.stringify({
-                position: mainPos,
-                alt_positions: alts
+            body: JSON.stringify({ position: pos })
+        });
+        await renderProfile();
+    } catch(e) { tg.showAlert(e.message); }
+    finally { loader.style.display = 'none'; }
+}
+
+window.toggleAlt = function(pos) {
+    const idx = window.selectedAlts.indexOf(pos);
+    if (idx > -1) window.selectedAlts.splice(idx, 1);
+    else window.selectedAlts.push(pos);
+    document.getElementById(`alt-${pos}`).classList.toggle('active');
+}
+
+window.saveAlts = async function() {
+    const alts = window.selectedAlts;
+    closeModal();
+    loader.style.display = 'flex';
+    try {
+        const profile = await fetchAPI(`/users/me/profile?chat_id=${currentChatId}`);
+        await fetchAPI('/users/me/profile', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                position: profile.position,
+                alt_positions: alts 
             })
         });
         await renderProfile();
-    } catch(e) {
-        tg.showAlert('Ошибка: ' + e.message);
-    } finally {
-        loader.style.display = 'none';
-    }
+    } catch(e) { tg.showAlert(e.message); }
+    finally { loader.style.display = 'none'; }
 }
 
 window.closeModal = function() {
     const modal = document.getElementById('modal-container');
     if(modal) modal.remove();
-}
-
-async function updatePosition(pos) {
-    closeModal();
-    loader.style.display = 'flex';
-    try {
-        await fetchAPI('/users/me/profile', {
-            method: 'POST',
-            body: JSON.stringify({position: pos})
-        });
-        await renderProfile();
-    } catch(e) {
-        tg.showAlert('Ошибка: ' + e.message);
-    } finally {
-        loader.style.display = 'none';
-    }
 }
 
 async function renderLeaderboard() {
@@ -330,6 +275,8 @@ async function renderHistory() {
             }
         }
 
+        const isOtherGroup = !g.is_current_group;
+
         return `
         <div class="card" onclick="showGameDetails(${g.game_id})" style="cursor:pointer; border-left: 4px solid ${resColor};">
             <div class="flex-between" style="margin-bottom: 8px;">
@@ -341,6 +288,7 @@ async function renderHistory() {
                     <span class="subtitle" style="font-weight: 600; font-size:12px;">${new Date(g.date).toLocaleDateString('ru-RU')}</span>
                 </div>
             </div>
+            ${isOtherGroup ? `<div style="font-size:10px; color:var(--accent-color); margin-bottom:8px; font-weight:700">📌 ГРУППА: ${g.group_title}</div>` : ''}
             <div class="subtitle" style="font-size: 11px; margin-bottom: 12px; display:flex; align-items:center; gap:4px; opacity:0.7">
                 <svg style="width:12px;height:12px;fill:currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-12-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
                 ${g.location}
@@ -356,7 +304,7 @@ async function renderHistory() {
         `;
     }).join('');
     
-    if(pages.history) pages.history.innerHTML = `<h2>История матчей</h2><p style="padding:0 16px" class="subtitle">Нажмите на карточку для деталей</p>` + listHtml;
+    if(pages.history) pages.history.innerHTML = `<h2>История матчей</h2><p style="padding:0 16px" class="subtitle">Ниже показаны все ваши игры в системе</p>` + listHtml;
 }
 
 window.showGameDetails = async function(gameId) {
@@ -423,7 +371,7 @@ window.showGameDetails = async function(gameId) {
             </div>
         `;
         document.body.appendChild(overlay);
-        document.body.style.overflow = 'hidden'; // Prevent background scroll
+        document.body.style.overflow = 'hidden'; 
         
     } catch (e) {
         tg.showAlert('Ошибка: ' + e.message);
@@ -438,10 +386,8 @@ window.closePopup = function() {
     document.body.style.overflow = '';
 }
 
-// Ads System
 async function loadAd() {
     try {
-        // If we don't have chat ID yet, pass empty
         let ep = `/ads/random`;
         if (currentChatId) ep += `?chat_id=${currentChatId}`;
         const adRes = await fetchAPI(ep);
@@ -452,6 +398,7 @@ async function loadAd() {
             adContainer.className = 'card flex-row';
             adContainer.style.background = 'linear-gradient(45deg, rgba(30,30,30,0.8), rgba(60,30,80,0.8))';
             adContainer.style.cursor = 'pointer';
+            adContainer.style.margin = '16px';
             adContainer.onclick = () => tg.openLink(ad.link);
             
             adContainer.innerHTML = `
@@ -461,7 +408,6 @@ async function loadAd() {
                     <div style="font-weight:bold; font-size:14px">${ad.text}</div>
                 </div>
             `;
-            // Insert at the top of the body (below loader, below group selector)
             document.body.insertBefore(adContainer, document.querySelector('.page-container'));
         }
     } catch (e) {
@@ -471,5 +417,5 @@ async function loadAd() {
 
 document.addEventListener("DOMContentLoaded", () => {
     init();
-    setTimeout(loadAd, 1500); // load ad after UI is stable
+    setTimeout(loadAd, 1500);
 });
