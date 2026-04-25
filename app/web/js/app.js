@@ -142,9 +142,11 @@ async function renderProfile() {
             <div class="avatar">${data.name.charAt(0)}</div>
             <div style="flex:1">
                 <h3 style="font-size: 20px;">${data.name}</h3>
-                <div class="flex-between">
+                <div class="flex-between" style="margin-top:4px;">
                     <span class="subtitle">${data.position}</span>
-                    <button onclick="editPosition()" class="subtitle" style="background:none; border:none; color:var(--accent-color); font-weight:600; cursor:pointer">Изменить</button>
+                    <div onclick="editPosition()" style="padding: 8px 12px; margin: -8px -12px; cursor:pointer;">
+                        <span style="color:var(--accent-color); font-weight:600; font-size:13px;">Изменить</span>
+                    </div>
                 </div>
             </div>
         </div>
