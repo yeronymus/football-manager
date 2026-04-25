@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_session
 from app.db.models import Game, User, Signup, SignupStatus, Team, GameStatus
-from app.api.auth import validate_init_data, get_user_from_init_data, check_admin_rights
+from app.api.auth import validate_init_data, get_user_from_init_data, check_admin_rights, get_user_from_header
 from app.config import settings
 
 router = APIRouter()
