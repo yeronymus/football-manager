@@ -198,16 +198,19 @@ async def get_my_history(
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session)
 ):
-    # Robust query: check both Signups and GameStats to ensure we don't miss any played matches.
+    # Robust query: check Signups, GameStats AND RatingHistory.
+    # If Signup was deleted, RatingHistory is the ultimate proof the user played.
     games = await session.scalars(
         select(Game)
         .outerjoin(Signup, Signup.game_id == Game.id)
         .outerjoin(GameStats, GameStats.game_id == Game.id)
+        .outerjoin(RatingHistory, RatingHistory.game_id == Game.id)
         .where(
             Game.chat_id == chat_id,
             or_(
                 Signup.user_id == user_id,
-                GameStats.user_id == user_id
+                GameStats.user_id == user_id,
+                RatingHistory.user_id == user_id
             ),
             or_(
                 Game.status == GameStatus.FINISHED,
