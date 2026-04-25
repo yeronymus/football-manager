@@ -76,10 +76,10 @@ async function init() {
 async function switchTab(tab) {
     currentTab = tab;
     Object.values(pages).forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-    
     pages[tab].classList.add('active');
-    document.querySelector(`.tab-item[onclick="switchTab('${tab}')"]`).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+    const activeNav = document.querySelector(`.nav-item[onclick*="switchTab('${tab}')"]`);
+    if (activeNav) activeNav.classList.add('active');
     
     loader.style.display = 'flex';
     if (tab === 'profile') await renderProfile();
