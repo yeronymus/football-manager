@@ -146,7 +146,7 @@
             background-color: #333;
             border-radius: 8px;
             padding: 6px;
-            max-height: 12vh;
+            max-height: 24vh;
             display: flex;
             flex-direction: column;
         }
@@ -750,6 +750,11 @@
         }
 
         async function saveTeams() {
+            if (!gameId || isNaN(parseInt(gameId))) {
+                tg.showAlert("Ошибка: ID игры не определен");
+                return;
+            }
+
             const data = {
                 initData: tg.initData,
                 game_id: parseInt(gameId),
@@ -766,9 +771,13 @@
                     if (!slot) return;
                     slot.querySelectorAll('.player-card').forEach(c => {
                         const pid = parseInt(c.id.replace('player-', ''));
-                        list.push(pid);
-                        // Record position based on slot
-                        data.positions[pid] = pos;
+                        // Record position based on the badge on the card (to keep CB, LB, etc.)
+                        const posBadge = c.querySelector('.player-pos');
+                        if (posBadge) {
+                            data.positions[pid] = posBadge.innerText;
+                        } else {
+                            data.positions[pid] = pos;
+                        }
                     });
                 });
                 return list;
@@ -799,16 +808,31 @@
                 });
 
                 if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.detail || "Ошибка сохранения");
+                    let errorMessage = "Ошибка сохранения";
+                    try {
+                        const err = await response.json();
+                        if (typeof err.detail === 'string') {
+                            errorMessage = err.detail;
+                        } else if (Array.isArray(err.detail)) {
+                            errorMessage = err.detail.map(d => `${d.loc.join('.')}: ${d.msg}`).join('\n');
+                        }
+                    } catch (jsonErr) {
+                        errorMessage = "Ошибка сервера (Invalid JSON)";
+                    }
+                    throw new Error(errorMessage);
                 }
 
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                 const btn = document.querySelector('.btn-save');
-                btn.innerText = "OK!";
-                setTimeout(() => btn.innerText = "💾 Сохранить", 1000);
+                if (btn) {
+                    btn.innerText = "OK!";
+                    setTimeout(() => btn.innerText = "💾 Сохранить", 1000);
+                }
+                return true; // Success
             } catch (e) {
+                console.error("Save error:", e);
                 tg.showAlert("Ошибка: " + e.message);
+                throw e; // Rethrow for publishTeams
             }
         }
 
@@ -829,14 +853,23 @@
                 });
 
                 if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.detail || "Ошибка публикации");
+                    let errorMessage = "Ошибка публикации";
+                    try {
+                        const err = await response.json();
+                        errorMessage = typeof err.detail === 'string' ? err.detail : (JSON.stringify(err.detail) || errorMessage);
+                    } catch (jsonErr) {}
+                    throw new Error(errorMessage);
                 }
 
                 tg.showAlert("✅ Опубликовано!");
                 tg.close();
             } catch (e) {
-                tg.showAlert("❌ Ошибка: " + e.message);
+                // Error already alert-ed in saveTeams or we alert here if it failed in publish phase
+                if (e.message && !e.message.includes("Ошибка сохранения")) {
+                     // Only alert if it's not a save error (which was already alerted)
+                     // But actually saveTeams rethrows it, so we might want to avoid double alert.
+                     // Let's just catch and ignore if it was already handled or alert if new.
+                }
                 btn.innerText = orig;
                 btn.disabled = false;
             }
@@ -948,6 +981,11 @@
             if (!name) return alert("Введите имя!");
 
             try {
+                const altPos = [];
+                document.querySelectorAll('.guest-alt-pos:checked').forEach(cb => {
+                    altPos.push(cb.value);
+                });
+
                 const response = await fetch('/api/admin/add_guest', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -955,7 +993,8 @@
                         initData: tg.initData,
                         game_id: parseInt(gameId),
                         name: name,
-                        position: pos
+                        position: pos,
+                        alt_positions: altPos
                     })
                 });
 
@@ -976,10 +1015,12 @@
 
     <!-- ADD GUEST MODAL -->
     <div id="guestModal"
-        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); z-index:2001; flex-direction:column; padding:20px;">
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); z-index:2001; flex-direction:column; padding:20px; overflow-y: auto;">
         <h3 style="color:white">👤 Гость</h3>
         <input type="text" id="guestName" placeholder="Имя (Name)"
             style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:none;">
+        
+        <label style="color:#aaa; font-size:12px;">Основная позиция:</label>
         <select id="guestPos" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:none;">
             <option value="GK">GK (Вратарь)</option>
             <option value="CB">CB (Центр. Защ)</option>
@@ -992,6 +1033,21 @@
             <option value="RW">RW (Правый Нап)</option>
             <option value="FWD">FWD (Нападающий)</option>
         </select>
+
+        <label style="color:#aaa; font-size:12px;">Доп. позиции:</label>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:15px; color:white; font-size:12px;">
+            <label><input type="checkbox" class="guest-alt-pos" value="GK"> GK</label>
+            <label><input type="checkbox" class="guest-alt-pos" value="CB"> CB</label>
+            <label><input type="checkbox" class="guest-alt-pos" value="LB"> LB</label>
+            <label><input type="checkbox" class="guest-alt-pos" value="RB"> RB</label>
+            <label><input type="checkbox" class="guest-alt-pos" value="CDM"> CDM</label>
+            <label><input type="checkbox" class="guest-alt-pos" value="CM"> CM</label>
+            <label><input type="checkbox" class="guest-alt-pos" value="CAM"> CAM</label>
+            <label><input type="checkbox" class="guest-alt-pos" value="LW"> LW</label>
+            <label><input type="checkbox" class="guest-alt-pos" value="RW"> RW</label>
+            <label><input type="checkbox" class="guest-alt-pos" value="FWD"> FWD</label>
+        </div>
+
         <button class="btn-save" onclick="submitGuest()">Добавить</button>
         <button class="search-close-btn" onclick="document.getElementById('guestModal').style.display='none'"
             style="margin-top:10px;">Отмена</button>

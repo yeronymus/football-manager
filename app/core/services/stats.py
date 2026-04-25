@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.db.models import Game, User, Signup, SignupStatus, RatingHistory, Team, GameStats
+from app.db.models import Game, User, Signup, SignupStatus, RatingHistory, Team, GameStats, PlayerProfile
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,6 +11,10 @@ class StatsService:
 
     async def revert_stats(self, game_id: int):
         """Reverts stats for a game (if reverting from finished)."""
+        # Fetch game to know its chat_id
+        game_obj = await self.session.get(Game, game_id)
+        if not game_obj: return
+        
         # 1. Revert Ratings & Games Played
         history_result = await self.session.execute(select(RatingHistory).where(RatingHistory.game_id == game_id))
         histories = history_result.scalars().all()
@@ -20,6 +24,16 @@ class StatsService:
                 user.rating = h.old_rating
                 user.games_played = max(0, user.games_played - 1)
                 user.stats_matches = max(0, user.stats_matches - 1)
+            
+            profile = await self.session.scalar(select(PlayerProfile).where(
+                PlayerProfile.user_id == h.user_id, 
+                PlayerProfile.chat_id == game_obj.chat_id
+            ))
+            if profile and h.old_rating is not None:
+                profile.rating = h.old_rating
+                profile.games_played = max(0, profile.games_played - 1)
+                profile.stats_matches = max(0, profile.stats_matches - 1)
+
             await self.session.delete(h)
             
         # 2. Revert MVP Counts (GameStats handled by caller? Or here?)
@@ -35,6 +49,12 @@ class StatsService:
                 user = await self.session.get(User, s.user_id)
                 if user:
                     user.stats_mvp = max(0, user.stats_mvp - 1)
+                profile = await self.session.scalar(select(PlayerProfile).where(
+                    PlayerProfile.user_id == s.user_id, 
+                    PlayerProfile.chat_id == game_obj.chat_id
+                ))
+                if profile:
+                    profile.stats_mvp = max(0, profile.stats_mvp - 1)
             # We don't delete GameStats here if caller does it?
             # Caller `GameService.finish_game` deleted them.
             # So pass. Caller manages `GameStats` table.
@@ -99,16 +119,21 @@ class StatsService:
                     else: # 3rd or lower
                         team_points[t] = -5
         
-        # Fetch all active players with their teams
+        # Fetch all active players with their teams AND profiles
         result = await self.session.execute(
-            select(User, Signup.team)
-            .join(Signup)
+            select(User, Signup.team, PlayerProfile)
+            .join(Signup, User.user_id == Signup.user_id)
+            .outerjoin(PlayerProfile, (User.user_id == PlayerProfile.user_id) & (PlayerProfile.chat_id == game.chat_id))
             .where(Signup.game_id == game.id, Signup.status == SignupStatus.ACTIVE)
         )
-        players_data = result.all() # List of (User, Team)
+        players_data = result.all() # List of (User, Team, PlayerProfile)
         
-        for user, team in players_data:
-            old_rating = user.rating
+        for user, team, profile in players_data:
+            if not profile:
+                profile = PlayerProfile(user_id=user.user_id, chat_id=game.chat_id)
+                self.session.add(profile)
+                
+            old_rating = profile.rating
             
             # Get base change from team_points
             change = team_points.get(team, -5) # Default to -5 if team unassigned (safety)
@@ -117,16 +142,26 @@ class StatsService:
             if is_mvp:
                 change += 5
             
-            user.rating += change
+            # Update Profile
+            profile.rating += change
+            profile.games_played += 1
+            profile.stats_matches += 1
+            if is_mvp:
+                profile.stats_mvp += 1
+                
+            # Maintain User fallback updates (optional)
+            user.rating = profile.rating
             user.games_played += 1
             user.stats_matches += 1
+            if is_mvp:
+                user.stats_mvp += 1
             
             # Record History
             self.session.add(RatingHistory(
                 user_id=user.user_id,
                 game_id=game.id,
                 old_rating=old_rating,
-                new_rating=user.rating,
+                new_rating=profile.rating,
                 change=change
             ))
 

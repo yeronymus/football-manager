@@ -3,9 +3,8 @@ from aiogram import Router, types
 from aiogram.filters import Command, CommandObject
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
-from app.db.models import User, GameStats
-from app.db.models import User, GameStats
-# from app.db.database import get_db # removed
+from app.db.models import User, GameStats, PlayerProfile
+from app.core.repositories.user_repository import UserRepository
 
 router = Router()
 
@@ -17,34 +16,46 @@ async def cmd_top(message: types.Message, command: CommandObject, session: Async
     Categories: rating (default), goals, mvp, matches
     Categories: rating (default), goals, mvp, matches
     """
-    if message.chat.type != "private":
-        # Silent ignore or minimal "DM only"
-        # User requested "no spam", so let's just ignore or delete?
-        # A quick self-destructing message is polite but might be spammy.
-        # Let's just return.
+    if message.chat.type == "private":
+        await message.answer("🏆 Лидерборд теперь уникальный для каждой группы. Вызовите /top прямо в чате вашей группы или откройте Мини-Приложение.")
         return
 
     args = command.args.split() if command.args else []
     category = args[0].lower() if args else "rating"
+    chat_id = message.chat.id
     
-    # Defaults
     limit = 10
     text = ""
+    user_repo = UserRepository(session)
     
     if category in ["rating", "elo", "рейтинг"]:
-        stmt = select(User).order_by(desc(User.rating), desc(User.games_played)).limit(limit)
-        result = await session.execute(stmt)
-        users = result.scalars().all()
-        
-        text = "🏆 <b>Топ Рейтинг (ELO):</b>\n\n"
-        for i, u in enumerate(users, 1):
-            text += f"{i}. {u.full_name} — <b>{u.rating}</b> ({u.games_played} игр)\n"
+        users_profiles = await user_repo.get_group_leaderboard(chat_id, limit, "rating")
+        text = "🏆 <b>Топ Рейтинг (ELO) группы:</b>\n\n"
+        for i, (u, p) in enumerate(users_profiles, 1):
+            text += f"{i}. {u.full_name} — <b>{p.rating}</b> ({p.games_played} игр)\n"
             
+    elif category in ["mvp", "мвп"]:
+        users_profiles = await user_repo.get_group_leaderboard(chat_id, limit, "mvp")
+        text = "🌟 <b>Топ MVP группы:</b>\n\n"
+        for i, (u, p) in enumerate(users_profiles, 1):
+            if p.stats_mvp > 0:
+                text += f"{i}. {u.full_name} — <b>{p.stats_mvp}</b>\n"
+        if "—" not in text: text += "Пока никого..."
+
+    elif category in ["matches", "games", "матчи", "игры"]:
+        users_profiles = await user_repo.get_group_leaderboard(chat_id, limit, "games")
+        text = "🏃 <b>Топ по играм в группе:</b>\n\n"
+        for i, (u, p) in enumerate(users_profiles, 1):
+             text += f"{i}. {u.full_name} — <b>{p.games_played}</b>\n"
+
     elif category in ["goals", "g", "голы"]:
-        # Aggregate goals from GameStats
+        # Aggregate goals for this group ONLY (joins Game and GameStats)
+        from app.db.models import Game
         stmt = (
             select(User.full_name, func.sum(GameStats.goals).label("total_goals"))
             .join(GameStats, User.user_id == GameStats.user_id)
+            .join(Game, Game.id == GameStats.game_id)
+            .where(Game.chat_id == chat_id)
             .group_by(User.user_id, User.full_name)
             .order_by(desc("total_goals"))
             .limit(limit)
@@ -52,29 +63,11 @@ async def cmd_top(message: types.Message, command: CommandObject, session: Async
         result = await session.execute(stmt)
         data = result.all()
         
-        text = "⚽ <b>Топ Бомбардиры:</b>\n\n"
+        text = "⚽ <b>Топ Бомбардиры группы:</b>\n\n"
         for i, (name, goals) in enumerate(data, 1):
-            text += f"{i}. {name} — <b>{goals}</b>\n"
-            
-    elif category in ["mvp", "мвп"]:
-        stmt = select(User).order_by(desc(User.stats_mvp), desc(User.games_played)).limit(limit)
-        result = await session.execute(stmt)
-        users = result.scalars().all()
-        
-        text = "🌟 <b>Топ MVP:</b>\n\n"
-        for i, u in enumerate(users, 1):
-            if u.stats_mvp > 0:
-                text += f"{i}. {u.full_name} — <b>{u.stats_mvp}</b>\n"
-        if not text.endswith("\n"): text += "Пока никого..."
-
-    elif category in ["matches", "games", "матчи", "игры"]:
-        stmt = select(User).order_by(desc(User.games_played), desc(User.rating)).limit(limit)
-        result = await session.execute(stmt)
-        users = result.scalars().all()
-        
-        text = "🏃 <b>Топ по играм:</b>\n\n"
-        for i, u in enumerate(users, 1):
-             text += f"{i}. {u.full_name} — <b>{u.games_played}</b>\n"
+            if goals > 0:
+                text += f"{i}. {name} — <b>{goals}</b>\n"
+        if "—" not in text: text += "Пока никого..."
 
     else:
         text = (

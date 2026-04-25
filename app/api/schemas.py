@@ -78,6 +78,7 @@ class AddGuestRequest(BaseModel):
     game_id: int
     name: str
     position: str
+    alt_positions: Optional[List[str]] = []
     initData: str
 
 class VoteRequest(BaseModel):

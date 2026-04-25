@@ -189,19 +189,33 @@ class RosterService:
         """
         from app.core.domain.balancer import balance_teams, Player as DomainPlayer, BalanceBucket
         
-        # 1. Get Active Players
+        # 1. Get Game
+        game = await self.uow.game_repo.get_game(game_id)
+        if not game:
+            return []
+
+        # 2. Get Active Players
         active_rows = await self.uow.game_repo.get_active_players(game_id)
         if not active_rows:
             return []
             
-        players = [DomainPlayer(user) for user, _ in active_rows]
+        # 3. Load Player Profiles for this specific Chat (SaaS group isolation)
+        from app.db.models import PlayerProfile
+        from sqlalchemy import select
+        profiles_res = await self.uow.session.execute(
+            select(PlayerProfile).where(PlayerProfile.chat_id == game.chat_id)
+        )
+        profile_map = {p.user_id: p.rating for p in profiles_res.scalars().all()}
         
-        # 2. Run Algorithm
-        teams = balance_teams(players, team_count=2) # Assuming 2 teams for now? Or get from Game?
-        # Ideally get team_count from Game.
-        game = await self.uow.game_repo.get_game(game_id)
-        if game and game.team_count:
-             teams = balance_teams(players, team_count=game.team_count)
+        players = []
+        for user, _ in active_rows:
+            # Contextual overwrite for this game's chat rating
+            user.rating = profile_map.get(user.user_id, 100)
+            players.append(DomainPlayer(user))
+        
+        # 4. Run Algorithm
+        team_count = game.team_count if game.team_count else 2
+        teams = balance_teams(players, team_count=team_count)
 
         # 3. Update Signups
         # Map user_id -> Team
@@ -262,24 +276,13 @@ class RosterService:
         for uid in team_b: update_signup(uid, Team.B)
         for uid in team_c or []: update_signup(uid, Team.C)
         
-        # 3. Handle Unassigned Pool (Auto-filling Active statuses)
-        # Count how many we already have in teams
-        active_count = len(team_a) + len(team_b) + (len(team_c) if team_c else 0)
-        
-        # Sort unassigned pool by registration time to be fair (FIFO)
+        # 3. Handle Unassigned Pool (Moving them to RESERVE as they are not in teams)
         unassigned_signups = [signup_map[uid] for uid in unassigned if uid in signup_map]
         unassigned_signups.sort(key=lambda s: s.created_at)
         
         for s in unassigned_signups:
             s.team = None
-            if active_count < game.max_players:
-                # If there's space, ensure they are ACTIVE
-                if s.status == SignupStatus.RESERVE:
-                    s.status = SignupStatus.ACTIVE
-                    promoted_ids.append(s.user_id)
-                active_count += 1
-            else:
-                # If no space, ensure they are RESERVE
+            if s.status == SignupStatus.ACTIVE:
                 s.status = SignupStatus.RESERVE
         
         # Finally: Demote anyone who wasn't in list A, B, C or Unassigned
