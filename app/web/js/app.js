@@ -178,34 +178,35 @@ async function renderProfile() {
     if(pages.profile) pages.profile.innerHTML = html;
 }
 
-window.editPosition = async function() {
+window.editPosition = function() {
     const positions = ['GK', 'DEF', 'MID', 'FWD'];
-    
-    // Fallback for older Telegram clients
-    if (!tg.isVersionAtLeast('6.2')) {
-        const msg = "Выберите новую позицию:\n" + positions.map((p, i) => `${i+1}. ${p}`).join('\n');
-        tg.showPopup({
-            title: 'Смена позиции',
-            message: msg,
-            buttons: positions.map((p, i) => ({id: p, type: 'default', text: p}))
-        }, async (buttonId) => {
-            if (buttonId) {
-                await updatePosition(buttonId);
-            }
-        });
-    } else {
-        tg.showActionSheet({
-            title: 'Выберите позицию',
-            buttons: positions.map(p => ({text: p}))
-        }, async (index) => {
-            if (index !== undefined) {
-                await updatePosition(positions[index]);
-            }
-        });
-    }
+    const html = `
+        <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
+            <div class="card" style="width:80%; max-width:320px; text-align:center; padding:24px;">
+                <h3 style="margin-bottom:20px;">Выберите позицию</h3>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    ${positions.map(p => `
+                        <button onclick="updatePosition('${p}')" class="group-btn" style="justify-content:center; padding:16px 0;">${p}</button>
+                    `).join('')}
+                </div>
+                <button onclick="closeModal()" style="margin-top:20px; background:none; border:none; color:var(--hint-color); cursor:pointer;">Отмена</button>
+            </div>
+        </div>
+    `;
+    const div = document.createElement('div');
+    div.id = 'modal-container';
+    div.innerHTML = html;
+    document.body.appendChild(div);
+}
+
+window.closeModal = function() {
+    const modal = document.getElementById('modal-container');
+    if(modal) modal.remove();
 }
 
 async function updatePosition(pos) {
+    closeModal();
+    loader.style.display = 'flex';
     try {
         await fetchAPI('/users/me/profile', {
             method: 'POST',
@@ -214,6 +215,8 @@ async function updatePosition(pos) {
         await renderProfile();
     } catch(e) {
         tg.showAlert('Ошибка: ' + e.message);
+    } finally {
+        loader.style.display = 'none';
     }
 }
 
