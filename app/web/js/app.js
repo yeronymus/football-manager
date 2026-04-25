@@ -34,6 +34,14 @@ async function init() {
 
     if (urlChatId) {
         currentChatId = urlChatId;
+        // Fetch group title if we only have ID
+        const chats = await fetchAPI('/chats');
+        const currentChat = chats.find(c => c.id == currentChatId);
+        if (currentChat) {
+            groupTitle = currentChat.title;
+            groupHeader.style.display = 'flex';
+            if(pages.groupName) pages.groupName.innerText = groupTitle;
+        }
         await switchTab(currentTab);
     } else {
         await showGroupSelector();
@@ -143,11 +151,13 @@ async function renderProfile() {
         </div>
         
         <div class="card" style="margin-top: 16px;">
-            <h4 class="subtitle" style="text-transform:uppercase; margin-bottom:12px; font-weight:700">График рейтинга</h4>
-            <div style="height:60px; display:flex; align-items:flex-end; gap:4px; padding-top:10px;">
-                ${data.graph.length ? data.graph.map(h => `
-                    <div style="flex:1; background:var(--accent-color); height:${Math.max(10, (h.rating / 200) * 100)}%; border-radius:4px 4px 0 0; opacity:0.6"></div>
-                `).join('') : '<p class="subtitle" style="width:100%; text-align:center">Нет данных для графика</p>'}
+            <div class="flex-between" style="margin-bottom:12px;">
+                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700">Доп. позиции</h4>
+                <span style="font-weight:600">${data.alt_positions && data.alt_positions.length ? data.alt_positions.join(', ') : 'Нет'}</span>
+            </div>
+            <div class="flex-between">
+                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700">Всего голов</h4>
+                <span style="font-weight:600; color:var(--accent-color)">${data.total_goals || 0} ⚽</span>
             </div>
         </div>
     `;
@@ -206,27 +216,44 @@ async function renderHistory() {
         let resColor = g.rating_change > 0 ? '#4caf50' : (g.rating_change < 0 ? '#f44336' : 'var(--hint-color)');
         let sign = g.rating_change > 0 ? '+' : '';
         
-        const teamColors = { 'A': '#ff9800', 'B': '#4caf50', 'C': '#3b82f6', 'D': '#ffffff' };
-        const teamLabels = { 'A': 'Оранжевые', 'B': 'Зеленые', 'C': 'Синие', 'D': 'Белые' };
+        const teamColors = { 'A': '#4caf50', 'B': '#ff9800', 'C': '#3b82f6', 'D': '#ffffff' };
+        const teamLabels = { 'A': 'Зеленые', 'B': 'Оранжевые', 'C': 'Синие', 'D': 'Белые' };
         const teamColor = teamColors[g.my_team] || 'var(--hint-color)';
         const teamLabel = teamLabels[g.my_team] || 'Неизвестно';
+        
+        let statusText = 'Ничья';
+        let statusColor = 'var(--hint-color)';
+        if (g.winner_team) {
+            if (g.my_team === g.winner_team) {
+                statusText = 'Победа';
+                statusColor = '#4caf50';
+            } else {
+                statusText = 'Поражение';
+                statusColor = '#f44336';
+            }
+        }
 
         return `
         <div class="card" onclick="showGameDetails(${g.game_id})" style="cursor:pointer; border-left: 4px solid ${resColor};">
             <div class="flex-between" style="margin-bottom: 8px;">
-                <span style="font-size: 18px; font-weight: 700; letter-spacing: 1px;">${g.score_a} : ${g.score_b}</span>
-                <span class="subtitle" style="font-weight: 600;">${new Date(g.date).toLocaleDateString('ru-RU')}</span>
+                <span style="font-size: 20px; font-weight: 800; letter-spacing: 1px;">
+                    <span style="color:#4caf50">${g.score_a}</span> : <span style="color:#ff9800">${g.score_b}</span>
+                </span>
+                <div style="text-align:right">
+                    <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color:${statusColor}">${statusText}</div>
+                    <span class="subtitle" style="font-weight: 600; font-size:12px;">${new Date(g.date).toLocaleDateString('ru-RU')}</span>
+                </div>
             </div>
-            <div class="subtitle" style="font-size: 12px; margin-bottom: 12px; display:flex; align-items:center; gap:4px;">
-                <svg style="width:14px;height:14px;fill:currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-12-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            <div class="subtitle" style="font-size: 11px; margin-bottom: 12px; display:flex; align-items:center; gap:4px; opacity:0.7">
+                <svg style="width:12px;height:12px;fill:currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-12-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
                 ${g.location}
             </div>
             <div class="flex-between">
                 <div class="flex-row" style="gap: 8px;">
                     <div style="width:10px; height:10px; border-radius:50%; background:${teamColor}"></div>
-                    <span class="subtitle">${teamLabel}</span>
+                    <span class="subtitle" style="font-weight:600">${teamLabel}</span>
                 </div>
-                <span style="color:${resColor}; font-weight: 700; font-size: 16px;">${sign}${g.rating_change} MMR</span>
+                <span style="color:${resColor}; font-weight: 800; font-size: 16px;">${sign}${g.rating_change} MMR</span>
             </div>
         </div>
         `;
@@ -249,7 +276,7 @@ window.showGameDetails = async function(gameId) {
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
                 <div>
-                    <h4 style="color:#ff9800; margin-bottom:10px; border-bottom:1px solid rgba(255,152,0,0.2)">Команда А (Оранж)</h4>
+                    <h4 style="color:#4caf50; margin-bottom:10px; border-bottom:1px solid rgba(76,175,80,0.2)">Команда А (Зелен)</h4>
                     ${game.team_a.map(p => `
                         <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between">
                             <span>${p.name}</span>
@@ -258,7 +285,7 @@ window.showGameDetails = async function(gameId) {
                     `).join('')}
                 </div>
                 <div>
-                    <h4 style="color:#4caf50; margin-bottom:10px; border-bottom:1px solid rgba(76,175,80,0.2)">Команда Б (Зелен)</h4>
+                    <h4 style="color:#ff9800; margin-bottom:10px; border-bottom:1px solid rgba(255,152,0,0.2)">Команда Б (Оранж)</h4>
                     ${game.team_b.map(p => `
                         <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between">
                             <span>${p.name}</span>
