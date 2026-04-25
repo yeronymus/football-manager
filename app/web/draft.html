@@ -146,9 +146,28 @@
             background-color: #333;
             border-radius: 8px;
             padding: 6px;
-            max-height: 24vh;
+            max-height: 35vh;
             display: flex;
             flex-direction: column;
+            margin-bottom: 8px;
+        }
+
+        .reserve-section {
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            padding: 6px;
+            max-height: 25vh;
+            display: flex;
+            flex-direction: column;
+            border: 1px dashed #555;
+        }
+
+        .reserve-header {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+            text-align: center;
+            text-transform: uppercase;
         }
 
         .unassigned-header {
@@ -377,9 +396,9 @@
     </div>
 
     <div class="game-container">
-        <div class="unassigned-section">
+        <div class="unassigned-section" id="section-unassigned">
             <div class="unassigned-header">
-                Нераспределенные
+                Нераспределенные (Active)
                 <span onclick="openSearch()"
                     style="cursor:pointer; background:#2196F3; padding:2px 6px; border-radius:4px; margin-left:8px; font-size:10px;">➕
                     Поиск</span>
@@ -388,6 +407,11 @@
                     Гость</span>
             </div>
             <div class="unassigned-list" id="list-unassigned" onclick="handleListClick(event, 'list-unassigned')"></div>
+        </div>
+
+        <div class="reserve-section" id="section-reserve">
+            <div class="reserve-header">Резерв</div>
+            <div class="unassigned-list" id="list-reserve" onclick="handleListClick(event, 'list-reserve')"></div>
         </div>
 
         <div class="teams-grid" id="teamsGrid">
@@ -513,13 +537,24 @@
             updateStats();
         };
 
-        // Handle Unassigned Click (Move back to pool)
-        document.querySelector('.unassigned-section').onclick = (e) => {
-            if (e.target.closest('.player-card')) return; // handled by card
+        // Handle Section Clicks (Move back to pools)
+        document.getElementById('section-unassigned').onclick = (e) => {
+            if (e.target.closest('.player-card')) return; 
             if (selectedPlayer && selectedElement) {
                 selectedElement.remove();
                 selectedElement = null;
                 addPlayerToSlot(selectedPlayer, 'list-unassigned');
+                selectedPlayer = null;
+                updateStats();
+            }
+        };
+
+        document.getElementById('section-reserve').onclick = (e) => {
+            if (e.target.closest('.player-card')) return; 
+            if (selectedPlayer && selectedElement) {
+                selectedElement.remove();
+                selectedElement = null;
+                addPlayerToSlot(selectedPlayer, 'list-reserve');
                 selectedPlayer = null;
                 updateStats();
             }
@@ -582,11 +617,19 @@
 
                 // Populate Players
                 document.getElementById('list-unassigned').innerHTML = '';
+                document.getElementById('list-reserve').innerHTML = '';
 
                 game.unassigned.forEach(p => {
                     allPlayers[p.id] = p;
                     addPlayerToSlot(p, 'list-unassigned');
                 });
+
+                if (game.reserve) {
+                    game.reserve.forEach(p => {
+                        allPlayers[p.id] = p;
+                        addPlayerToSlot(p, 'list-reserve');
+                    });
+                }
 
                 const loadTeam = (list, key) => {
                     if (!list) return;
@@ -623,8 +666,13 @@
                 activeTeams.forEach(k => toggleGK(k));
 
                 // --- Initialize SortableJS ---
-                // 1. Unassigned List
+                // 1. Pools
                 new Sortable(document.getElementById('list-unassigned'), {
+                    group: 'players',
+                    animation: 150,
+                    onEnd: (evt) => { updateStats(); }
+                });
+                new Sortable(document.getElementById('list-reserve'), {
                     group: 'players',
                     animation: 150,
                     onEnd: (evt) => { updateStats(); }
@@ -787,14 +835,16 @@
             data.team_b = gather('b');
             if (activeTeams.includes('c')) data.team_c = gather('c');
 
-            // --- GATHER UNASSIGNED ---
-            const unassignedList = document.getElementById('list-unassigned');
-            const unassignedIds = [];
-            unassignedList.querySelectorAll('.player-card').forEach(c => {
-                unassignedIds.push(parseInt(c.id.replace('player-', '')));
-            });
-            data.unassigned = unassignedIds;
-
+            // --- GATHER POOLS ---
+            const gatherPool = (id) => {
+                const list = [];
+                document.getElementById(id).querySelectorAll('.player-card').forEach(c => {
+                    list.push(parseInt(c.id.replace('player-', '')));
+                });
+                return list;
+            };
+            data.unassigned = gatherPool('list-unassigned');
+            data.reserve = gatherPool('list-reserve'); // Note: we need to send this to backend
             // Flags
             activeTeams.forEach(k => {
                 data[`has_active_gk_${k}`] = document.getElementById(`chk-gk-${k}`).checked;

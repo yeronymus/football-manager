@@ -66,6 +66,7 @@ class UpdateTeamsRequest(BaseModel):
     team_b: List[int]
     team_c: Optional[List[int]] = None
     unassigned: Optional[List[int]] = None
+    reserve: Optional[List[int]] = None # Added reserve field
     positions: Optional[dict[int, str]] = None
     initData: str
 
