@@ -126,7 +126,7 @@ async def remind_admin_to_finish(game_id: int):
         creator_id = game.created_by
         
         # 3. Формируем кнопку сразу на экран завершения
-        web_app_url = f"{settings.webapp_url}/web/finish.html?id={game.id}"
+        web_app_url = f"{settings.webapp_url.rstrip('/')}/web/finish.html?id={game.id}"
         
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="📝 Заполнить матч", web_app=types.WebAppInfo(url=web_app_url))]

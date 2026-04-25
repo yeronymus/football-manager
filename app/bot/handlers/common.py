@@ -285,7 +285,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 if not is_admin:
                     await message.answer("⛔ Только для админов.")
                     return
-                web_app_url = f"{settings.webapp_url}/web/edit_game.html?game_id={game_id}&v=1.3"
+                web_app_url = f"{settings.webapp_url.rstrip('/')}/web/edit_game.html?game_id={game_id}&v=1.3"
                 kb = types.InlineKeyboardMarkup(inline_keyboard=[
                     [types.InlineKeyboardButton(text="✏️ Открыть редактор (WebApp)", web_app=types.WebAppInfo(url=web_app_url))]
                 ])
@@ -296,7 +296,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 if not is_admin:
                     await message.answer("⛔ Только для админов.")
                     return
-                web_app_url = f"{settings.webapp_url}/web/finish.html?game_id={game_id}"
+                web_app_url = f"{settings.webapp_url.rstrip('/')}/web/finish.html?game_id={game_id}"
                 kb = types.InlineKeyboardMarkup(inline_keyboard=[
                     [types.InlineKeyboardButton(text="🏁 Открыть завершение (WebApp)", web_app=types.WebAppInfo(url=web_app_url))]
                 ])
@@ -304,7 +304,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 return
 
             elif action_type == "vote":
-                web_app_url = f"{settings.webapp_url}/web/vote.html?game_id={game_id}"
+                web_app_url = f"{settings.webapp_url.rstrip('/')}/web/vote.html?game_id={game_id}"
                 kb = types.InlineKeyboardMarkup(inline_keyboard=[
                     [types.InlineKeyboardButton(text="🏆 Голосовать (WebApp)", web_app=types.WebAppInfo(url=web_app_url))]
                 ])
