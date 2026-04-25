@@ -123,25 +123,62 @@ async def get_leaderboard(
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session)
 ):
-    """Returns top players in the group for the Mini-App."""
-    profiles = await session.scalars(
-        select(PlayerProfile)
+    """Returns top players in the group for the Mini-App with goals."""
+    from sqlalchemy import func
+    from app.db.models import GameStats, Game
+
+    # Subquery to count total goals per user in this chat
+    goals_sub = (
+        select(GameStats.user_id, func.sum(GameStats.goals).label("total_goals"))
+        .join(Game, Game.id == GameStats.game_id)
+        .where(Game.chat_id == chat_id)
+        .group_by(GameStats.user_id)
+    ).subquery()
+
+    profiles = await session.execute(
+        select(PlayerProfile, goals_sub.c.total_goals)
+        .outerjoin(goals_sub, PlayerProfile.user_id == goals_sub.c.user_id)
         .where(PlayerProfile.chat_id == chat_id)
         .order_by(desc(PlayerProfile.rating))
         .limit(50)
     )
     
     result = []
-    for p in profiles:
+    for p, goals in profiles.all():
         user = await session.get(User, p.user_id)
         if user:
             result.append({
                 "user_id": user.user_id,
                 "name": user.full_name,
                 "rating": p.rating,
-                "games": p.games_played
+                "games": p.games_played,
+                "goals": int(goals or 0)
             })
     return result
+
+@router.post("/users/me/profile")
+async def update_my_profile(
+    data: dict,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    """Updates user's primary position."""
+    from app.db.models import Position
+    new_pos = data.get("position")
+    if not new_pos:
+        raise HTTPException(status_code=400, detail="Position required")
+    
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    try:
+        user.player_position = Position(new_pos)
+        await session.commit()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid position")
+        
+    return {"status": "ok"}
 
 @router.get("/users/me/history")
 async def get_my_history(
