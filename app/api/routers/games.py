@@ -48,7 +48,8 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
     team_a = [serialize_player(p) for p in players_data if p[1].team == Team.A]
     team_b = [serialize_player(p) for p in players_data if p[1].team == Team.B]
     team_c = [serialize_player(p) for p in players_data if p[1].team == Team.C]
-    unassigned = [serialize_player(p) for p in players_data if not p[1].team]
+    unassigned = [serialize_player(p) for p in players_data if not p[1].team and p[1].status == SignupStatus.ACTIVE]
+    reserve = [serialize_player(p) for p in players_data if not p[1].team and p[1].status == SignupStatus.RESERVE]
     
     return {
         "id": game.id,
@@ -67,6 +68,7 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
         "team_b": team_b,
         "team_c": team_c,
         "unassigned": unassigned,
+        "reserve": reserve, # Added separate reserve list
         "score_a": game.score_a,
         "score_b": game.score_b,
         "status": game.status.value,

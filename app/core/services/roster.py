@@ -58,7 +58,6 @@ class RosterService:
                  return JoinResult(False, None, "Игра уже прошла!", False)
 
         # 3.1 Configurable Registration Window (Game #6+)
-        # If registration_hours is set (> 0), we enforce it.
         if game.created_at and game.registration_hours and game.registration_hours > 0 and not ignore_limit:
              now_ts = datetime.now().replace(tzinfo=None)
              created_at = game.created_at.replace(tzinfo=None)
@@ -94,13 +93,12 @@ class RosterService:
             alert_msg = "🧤 Места только для вратарей! Вы в РЕЗЕРВЕ." if is_gk_priority else "Резерв (мест нет)"
             is_reserve = True
             
-        # 5. Создание записи (Session flush произойдет внутри repo, commit - снаружи)
+        # 5. Создание записи
         signup = self.uow.game_repo.create_signup(game_id, user.user_id, status)
         
         return JoinResult(True, signup, alert_msg, is_reserve)
 
     async def leave_player(self, game_id: int, user_id: int, is_admin: bool = False) -> tuple[bool, str, User | None]:
-        # Блокируем игру, чтобы избежать гонки при выходе и подтягивании резерва
         game = await self.uow.game_repo.get_with_lock(game_id)
         if not game:
             return False, "Игра не найдена.", None
@@ -109,7 +107,6 @@ class RosterService:
         if not signup:
             return False, "Вы не записаны.", None
 
-        # Rule: 36 Hours policy
         if game.date_time and not is_admin:
              now = datetime.now().replace(tzinfo=None)
              game_dt = game.date_time.replace(tzinfo=None)
@@ -123,7 +120,6 @@ class RosterService:
         
         promoted_user = None
         if was_active:
-            # Автоматически переводим первого из резерва
             reserve_row = await self.uow.game_repo.get_first_reserve(game_id)
             if reserve_row:
                 res_signup, res_user = reserve_row
@@ -133,21 +129,14 @@ class RosterService:
         return True, "Вы выписались.", promoted_user
 
     async def recalculate_roster(self, game_id: int) -> bool:
-        """
-        Recalculates the active/reserve status for all signups in a game.
-        """
-        # 1. Fetch Game and Lock
         game = await self.uow.game_repo.get_with_lock(game_id)
         if not game: return False
         
-        # 2. Fetch All Signups Sorted by Time
         signups_with_user = await self.uow.game_repo.get_all_signups_sorted(game_id)
         
-        # 3. Logic Setup
         active_count = 0
         gk_reserved_slots = 0
         
-        # Check GK Priority Window
         is_gk_window = False
         if game.created_at:
              now_ts = datetime.now().replace(tzinfo=None)
@@ -157,49 +146,36 @@ class RosterService:
                  is_gk_window = True
                  gk_reserved_slots = 2
 
-        # 4. Iterate and Assign
         for signup, user in signups_with_user:
             is_gk = (user.player_position == Position.GK)
-            
-            # Effective Max for Non-GKs during Window
             effective_max = game.max_players
             if is_gk_window and not is_gk:
                 effective_max = game.max_players - gk_reserved_slots
             
             if active_count < effective_max:
-                # Space available
                 if signup.status != SignupStatus.ACTIVE:
                     signup.status = SignupStatus.ACTIVE
                 active_count += 1
             elif is_gk and active_count < game.max_players:
-                # GK Overwrite in Window
                 if signup.status != SignupStatus.ACTIVE:
                     signup.status = SignupStatus.ACTIVE
                 active_count += 1
             else:
-                # No space
                 if signup.status != SignupStatus.RESERVE:
                     signup.status = SignupStatus.RESERVE
+                active_count += 1 # Important: count everyone to maintain order
         
         return True
 
     async def balance_teams(self, game_id: int) -> list[tuple[User, Team]]:
-        """
-        Balances teams for a game using domain logic.
-        """
-        from app.core.domain.balancer import balance_teams, Player as DomainPlayer, BalanceBucket
+        from app.core.domain.balancer import balance_teams, Player as DomainPlayer
         
-        # 1. Get Game
         game = await self.uow.game_repo.get_game(game_id)
-        if not game:
-            return []
+        if not game: return []
 
-        # 2. Get Active Players
         active_rows = await self.uow.game_repo.get_active_players(game_id)
-        if not active_rows:
-            return []
+        if not active_rows: return []
             
-        # 3. Load Player Profiles for this specific Chat (SaaS group isolation)
         from app.db.models import PlayerProfile
         from sqlalchemy import select
         profiles_res = await self.uow.session.execute(
@@ -209,84 +185,71 @@ class RosterService:
         
         players = []
         for user, _ in active_rows:
-            # Contextual overwrite for this game's chat rating
             user.rating = profile_map.get(user.user_id, 100)
             players.append(DomainPlayer(user))
         
-        # 4. Run Algorithm
         team_count = game.team_count if game.team_count else 2
         teams = balance_teams(players, team_count=team_count)
 
-        # 3. Update Signups
-        # Map user_id -> Team
         user_team_map = {}
         for i, team_list in enumerate(teams):
             team_enum = Team.A
             if i == 1: team_enum = Team.B
             elif i == 2: team_enum = Team.C
-            
             for p in team_list:
-                user_team_map[p.id] = team_enum
-                
-        # Bulk Update or Iterative
+                user_team_map[p.user_id] = team_enum
+        
         for user, signup in active_rows:
             if user.user_id in user_team_map:
                 signup.team = user_team_map[user.user_id]
             else:
-                signup.team = None # Should not happen if all active are balanced
-                
-        return [] # Return structure not strictly defined by caller yet, but endpoint returns status
+                signup.team = None
+        
+        return []
 
-    async def update_teams(self, game_id: int, team_a: list[int], team_b: list[int], team_c: list[int], unassigned: list[int], positions: dict) -> list[int]:
-        """
-        Updates team assignments and handles manual promotions.
-        """
-        # 1. Get Game and All Signups
+    async def update_teams(self, game_id: int, team_a: list[int], team_b: list[int], team_c: list[int], unassigned: list[int], reserve: list[int], positions: dict) -> list[int]:
         game = await self.uow.game_repo.get_game(game_id)
-        if not game:
-            return []
+        if not game: return []
             
         signups = await self.uow.game_repo.get_all_active_and_reserve(game_id)
         signup_map = {s.user_id: s for s in signups}
         
         promoted_ids = []
         
-        # Helper for assigning teams (always ensures they are ACTIVE)
         def update_signup(uid, team_enum):
             if uid in signup_map:
                 s = signup_map[uid]
-                # Promote to Active if they were Reserve but are now in a team
                 if s.status == SignupStatus.RESERVE:
                     s.status = SignupStatus.ACTIVE
                     promoted_ids.append(uid)
                 s.team = team_enum
                 
-                # Update Position if provided
                 if str(uid) in positions:
-                    try:
-                        s.position = Position(positions[str(uid)])
+                    try: s.position = Position(positions[str(uid)])
                     except: pass
                 elif uid in positions:
-                     try:
-                        s.position = Position(positions[uid])
+                     try: s.position = Position(positions[uid])
                      except: pass
 
-        # 2. Update Teams (Manual override)
         for uid in team_a: update_signup(uid, Team.A)
         for uid in team_b: update_signup(uid, Team.B)
         for uid in team_c or []: update_signup(uid, Team.C)
         
-        # 3. Handle Unassigned Pool (Moving them to RESERVE as they are not in teams)
-        unassigned_signups = [signup_map[uid] for uid in unassigned if uid in signup_map]
-        unassigned_signups.sort(key=lambda s: s.created_at)
-        
-        for s in unassigned_signups:
-            s.team = None
-            if s.status == SignupStatus.ACTIVE:
+        for uid in unassigned:
+            if uid in signup_map:
+                s = signup_map[uid]
+                s.team = None
+                if s.status == SignupStatus.RESERVE:
+                    s.status = SignupStatus.ACTIVE
+                    promoted_ids.append(uid)
+
+        for uid in reserve:
+            if uid in signup_map:
+                s = signup_map[uid]
+                s.team = None
                 s.status = SignupStatus.RESERVE
         
-        # Finally: Demote anyone who wasn't in list A, B, C or Unassigned
-        picked_ids = set(team_a) | set(team_b) | set(team_c or []) | set(unassigned)
+        picked_ids = set(team_a) | set(team_b) | set(team_c or []) | set(unassigned) | set(reserve)
         for uid, s in signup_map.items():
             if uid not in picked_ids:
                 s.status = SignupStatus.RESERVE

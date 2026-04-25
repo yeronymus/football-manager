@@ -238,7 +238,15 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
         promoted_ids = []
         async with UnitOfWork() as uow:
             service = RosterService(uow)
-            promoted_ids = await service.update_teams(data.game_id, data.team_a, data.team_b, data.team_c, data.unassigned or [], data.positions or {})
+            promoted_ids = await service.update_teams(
+                data.game_id, 
+                data.team_a, 
+                data.team_b, 
+                data.team_c, 
+                data.unassigned or [], 
+                data.reserve or [], # Pass reserve
+                data.positions or {}
+            )
             await uow.commit()
 
         if promoted_ids:
