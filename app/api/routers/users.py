@@ -107,13 +107,25 @@ async def get_my_profile(
     
     graph_data = [{"date": h.date.isoformat(), "rating": h.new_rating} for h in reversed(list(history))]
     
+    # Total goals calculation
+    from sqlalchemy import func
+    from app.db.models import GameStats
+    total_goals = await session.scalar(
+        select(func.sum(GameStats.goals))
+        .where(GameStats.user_id == user_id)
+        .join(Game, Game.id == GameStats.game_id)
+        .where(Game.chat_id == chat_id)
+    )
+
     return {
         "user_id": user.user_id,
         "name": user.full_name,
         "position": user.player_position.value,
+        "alt_positions": user.alt_positions or [],
         "rating": rating,
         "games_played": games_played,
         "mvp_count": mvps,
+        "total_goals": int(total_goals or 0),
         "graph": graph_data
     }
 
