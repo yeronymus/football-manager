@@ -9,12 +9,11 @@ from app.config import settings
 router = APIRouter()
 
 @router.get("/game/{game_id}")
-async def get_game_details(game_id: int, initData: str, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(initData, settings.bot_token):
-        raise HTTPException(status_code=403, detail="Invalid initData")
-    
-    user_id = get_user_from_init_data(initData)
-    
+async def get_game_details(
+    game_id: int, 
+    user_id: int = Depends(get_user_from_header), 
+    session: AsyncSession = Depends(get_session)
+):
     result = await session.execute(select(Game).where(Game.id == game_id))
     game = result.scalar_one_or_none()
     if not game:
@@ -80,12 +79,11 @@ async def get_game_details(game_id: int, initData: str, session: AsyncSession = 
     }
 
 @router.get("/history/{chat_id}")
-async def get_chat_history(chat_id: int, initData: str, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(initData, settings.bot_token):
-        raise HTTPException(status_code=403, detail="Invalid initData")
-    
-    user_id = get_user_from_init_data(initData)
-    
+async def get_chat_history(
+    chat_id: int, 
+    user_id: int = Depends(get_user_from_header), 
+    session: AsyncSession = Depends(get_session)
+):
     from app.bot.instance import bot
     try:
         member = await bot.get_chat_member(chat_id, user_id)
@@ -123,12 +121,10 @@ async def get_chat_history(chat_id: int, initData: str, session: AsyncSession = 
 
 @router.get("/games/open")
 @router.get("/games/editable")
-async def get_editable_games(initData: str, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(initData, settings.bot_token):
-        raise HTTPException(status_code=403, detail="Invalid initData")
-        
-    user_id = get_user_from_init_data(initData)
-    
+async def get_editable_games(
+    user_id: int = Depends(get_user_from_header), 
+    session: AsyncSession = Depends(get_session)
+):
     result = await session.execute(
         select(Game).order_by(Game.date_time.desc()).limit(20)
     )
