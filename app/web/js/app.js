@@ -11,12 +11,11 @@ const pages = {
 };
 
 async function fetchAPI(endpoint, options = {}) {
-    const urlParams = new URLSearchParams(window.location.search);
     const initData = window.Telegram.WebApp.initData;
     
     const headers = {
         'Content-Type': 'application/json',
-        'X-TG-Init-Data': initData
+        'Authorization': `tma ${initData}`
     };
     
     const response = await fetch('/api' + endpoint, {
@@ -59,6 +58,14 @@ async function init() {
         await switchTab(currentTab);
     } catch (e) {
         console.error(e);
+        loader.style.display = 'none';
+        document.body.innerHTML = `
+            <div class="card" style="margin:20px; text-align:center;">
+                <h3 style="color:#f44336">Ошибка загрузки</h3>
+                <p class="subtitle">${e.message}</p>
+                <button onclick="location.reload()" class="group-btn" style="margin-top:20px; background:var(--accent-color); color:white; justify-content:center;">Попробовать снова</button>
+            </div>
+        `;
     }
 }
 
