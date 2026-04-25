@@ -17,9 +17,9 @@ const groupHeader = document.getElementById('group-header');
 const pages = {
     profile: document.getElementById('page-profile'),
     history: document.getElementById('page-history'),
-    leaderboard: document.getElementById('page-leaderboard'),
-    groupName: document.getElementById('group-name-display')
+    leaderboard: document.getElementById('page-leaderboard')
 };
+const groupNameDisplay = document.getElementById('group-name-display');
 
 // Initialization
 async function init() {
@@ -40,12 +40,21 @@ async function init() {
         if (currentChat) {
             groupTitle = currentChat.title;
             groupHeader.style.display = 'flex';
-            if(pages.groupName) pages.groupName.innerText = groupTitle;
+            if(groupNameDisplay) groupNameDisplay.innerText = groupTitle;
         }
-        await switchTab(currentTab);
+        await loadCurrentTab();
+        updateNavState(currentTab);
+        Object.values(pages).forEach(p => { if(p) p.style.display = 'none'; });
+        if(pages[currentTab]) pages[currentTab].style.display = 'block';
     } else {
         await showGroupSelector();
     }
+}
+
+function updateNavState(tabId) {
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const activeNav = document.querySelector(`[onclick="switchTab('${tabId}')"]`);
+    if(activeNav) activeNav.classList.add('active');
 }
 
 // Fetch Helper (injects initData via Header)
@@ -85,16 +94,21 @@ window.selectGroup = async function(id, title) {
     groupTitle = title;
     groupSelector.style.display = 'none';
     groupHeader.style.display = 'flex';
-    if(pages.groupName) pages.groupName.innerText = title;
-    await switchTab(currentTab);
+    if(groupNameDisplay) groupNameDisplay.innerText = title;
+    
+    // Reset pages display
+    Object.values(pages).forEach(p => { if(p) p.style.display = 'none'; });
+    if(pages[currentTab]) pages[currentTab].style.display = 'block';
+    
+    updateNavState(currentTab);
+    await loadCurrentTab();
 }
 
 window.switchTab = async function(tabId) {
-    if (currentTab === tabId) return;
+    if (currentTab === tabId && pages[tabId].style.display === 'block') return;
     
     // Update UI
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    document.querySelector(`[onclick="switchTab('${tabId}')"]`).classList.add('active');
+    updateNavState(tabId);
     
     Object.values(pages).forEach(p => { if(p) p.style.display = 'none'; });
     if(pages[tabId]) pages[tabId].style.display = 'block';
@@ -140,7 +154,7 @@ async function renderProfile() {
                 <span class="stat-value">${data.rating}</span>
                 <span class="subtitle" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">MMR</span>
             </div>
-            <div class="card stat-badge" style="margin: 0;">
+            <div class="card stat-badge" style="margin: 0; cursor:pointer;" onclick="switchTab('history')">
                 <span class="stat-value">${data.games_played}</span>
                 <span class="subtitle" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Игр</span>
             </div>
@@ -166,23 +180,41 @@ async function renderProfile() {
 
 window.editPosition = async function() {
     const positions = ['GK', 'DEF', 'MID', 'FWD'];
-    tg.showActionSheet({
-        title: 'Выберите позицию',
-        buttons: positions.map(p => ({text: p}))
-    }, async (index) => {
-        if (index !== undefined) {
-            const pos = positions[index];
-            try {
-                await fetchAPI('/users/me/profile', {
-                    method: 'POST',
-                    body: JSON.stringify({position: pos})
-                });
-                renderProfile();
-            } catch(e) {
-                tg.showAlert('Ошибка: ' + e.message);
+    
+    // Fallback for older Telegram clients
+    if (!tg.isVersionAtLeast('6.2')) {
+        const msg = "Выберите новую позицию:\n" + positions.map((p, i) => `${i+1}. ${p}`).join('\n');
+        tg.showPopup({
+            title: 'Смена позиции',
+            message: msg,
+            buttons: positions.map((p, i) => ({id: p, type: 'default', text: p}))
+        }, async (buttonId) => {
+            if (buttonId) {
+                await updatePosition(buttonId);
             }
-        }
-    });
+        });
+    } else {
+        tg.showActionSheet({
+            title: 'Выберите позицию',
+            buttons: positions.map(p => ({text: p}))
+        }, async (index) => {
+            if (index !== undefined) {
+                await updatePosition(positions[index]);
+            }
+        });
+    }
+}
+
+async function updatePosition(pos) {
+    try {
+        await fetchAPI('/users/me/profile', {
+            method: 'POST',
+            body: JSON.stringify({position: pos})
+        });
+        await renderProfile();
+    } catch(e) {
+        tg.showAlert('Ошибка: ' + e.message);
+    }
 }
 
 async function renderLeaderboard() {
@@ -268,52 +300,65 @@ window.showGameDetails = async function(gameId) {
         const game = await fetchAPI(`/game/${gameId}`);
         
         let html = `
-            <div style="text-align:center; margin-bottom:20px;">
-                <h2 style="font-size:32px; margin:10px 0;">${game.score_a} : ${game.score_b}</h2>
-                <div class="subtitle">${game.location}</div>
-                <div class="subtitle">${new Date(game.date).toLocaleString('ru-RU')}</div>
+            <div style="text-align:center; margin-bottom:30px;">
+                <h1 style="font-size:48px; margin:10px 0; font-weight:900; letter-spacing:-1px;">${game.score_a} : ${game.score_b}</h1>
+                <div class="subtitle" style="font-size:16px; margin-bottom:4px;">📍 ${game.location}</div>
+                <div class="subtitle" style="font-size:14px;">📅 ${new Date(game.date).toLocaleString('ru-RU')}</div>
             </div>
             
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
-                <div>
-                    <h4 style="color:#4caf50; margin-bottom:10px; border-bottom:1px solid rgba(76,175,80,0.2)">Команда А (Зелен)</h4>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
+                <div style="background: rgba(76, 175, 80, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(76, 175, 80, 0.1);">
+                    <h4 style="color:#4caf50; margin-bottom:12px; border-bottom:1px solid rgba(76,175,80,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">Зеленые (A)</h4>
                     ${game.team_a.map(p => `
-                        <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between">
-                            <span>${p.name}</span>
-                            <span style="color:var(--hint-color)">${p.goals > 0 ? `⚽${p.goals}` : ''} ${p.is_mvp ? '🌟' : ''}</span>
+                        <div style="font-size:15px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center">
+                            <span style="font-weight:500">${p.name}</span>
+                            <span style="display:flex; align-items:center; gap:4px">
+                                ${p.goals > 0 ? `<span style="font-size:12px">⚽${p.goals}</span>` : ''} 
+                                ${p.is_mvp ? '<span style="font-size:12px">🌟</span>' : ''}
+                            </span>
                         </div>
                     `).join('')}
                 </div>
-                <div>
-                    <h4 style="color:#ff9800; margin-bottom:10px; border-bottom:1px solid rgba(255,152,0,0.2)">Команда Б (Оранж)</h4>
+                <div style="background: rgba(255, 152, 0, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(255, 152, 0, 0.1);">
+                    <h4 style="color:#ff9800; margin-bottom:12px; border-bottom:1px solid rgba(255,152,0,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">Оранжевые (B)</h4>
                     ${game.team_b.map(p => `
-                        <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between">
-                            <span>${p.name}</span>
-                            <span style="color:var(--hint-color)">${p.goals > 0 ? `⚽${p.goals}` : ''} ${p.is_mvp ? '🌟' : ''}</span>
+                        <div style="font-size:15px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center">
+                            <span style="font-weight:500">${p.name}</span>
+                            <span style="display:flex; align-items:center; gap:4px">
+                                ${p.goals > 0 ? `<span style="font-size:12px">⚽${p.goals}</span>` : ''} 
+                                ${p.is_mvp ? '<span style="font-size:12px">🌟</span>' : ''}
+                            </span>
                         </div>
                     `).join('')}
                 </div>
             </div>
-            ${game.team_c.length ? `
-            <div style="margin-top:20px;">
-                <h4 style="color:#3b82f6; margin-bottom:10px; border-bottom:1px solid rgba(59,130,246,0.2)">Команда С (Синие)</h4>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+            
+            ${game.team_c && game.team_c.length ? `
+            <div style="margin-top:24px; background: rgba(59, 130, 246, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(59, 130, 246, 0.1);">
+                <h4 style="color:#3b82f6; margin-bottom:12px; border-bottom:1px solid rgba(59,130,246,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">Синие (C)</h4>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                     ${game.team_c.map(p => `
-                        <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between">
+                        <div style="font-size:14px; display:flex; justify-content:space-between">
                             <span>${p.name}</span>
-                            <span style="color:var(--hint-color)">${p.goals > 0 ? `⚽${p.goals}` : ''} ${p.is_mvp ? '🌟' : ''}</span>
+                            <span>${p.goals > 0 ? `⚽${p.goals}` : ''} ${p.is_mvp ? '🌟' : ''}</span>
                         </div>
                     `).join('')}
                 </div>
             </div>` : ''}
-            <button onclick="closePopup()" class="group-btn" style="margin-top:30px; text-align:center; justify-content:center">Закрыть</button>
+            
+            <button onclick="closePopup()" class="group-btn" style="margin-top:40px; height:56px; font-size:18px; justify-content:center; background:var(--accent-color); color:white;">Закрыть</button>
         `;
         
         const overlay = document.createElement('div');
         overlay.id = 'details-overlay';
-        overlay.style = 'position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg-color); z-index:2000; padding:24px; overflow-y:auto; animation: fadeIn 0.3s ease;';
-        overlay.innerHTML = html;
+        overlay.style = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(15,23,42,0.98); backdrop-filter:blur(20px); z-index:2000; padding:24px; overflow-y:auto; animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);';
+        overlay.innerHTML = `
+            <div style="max-width: 600px; margin: 0 auto; padding-bottom: 40px;">
+                ${html}
+            </div>
+        `;
         document.body.appendChild(overlay);
+        document.body.style.overflow = 'hidden'; // Prevent background scroll
         
     } catch (e) {
         tg.showAlert('Ошибка: ' + e.message);
@@ -325,6 +370,7 @@ window.showGameDetails = async function(gameId) {
 window.closePopup = function() {
     const overlay = document.getElementById('details-overlay');
     if(overlay) overlay.remove();
+    document.body.style.overflow = '';
 }
 
 // Ads System
