@@ -4,7 +4,9 @@ import urllib.parse
 import json
 import time
 import logging
-from fastapi import HTTPException
+from fastapi import HTTPException, Header, Depends, Body, Path
+from typing import Optional, Dict, Any
+from pydantic import BaseModel
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -92,3 +94,35 @@ async def check_admin_rights(chat_id: int, user_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Cannot verify user rights: {str(e)}")
+
+# --- Dependencies for FastAPI ---
+
+async def get_current_user_id(initData: str = Body(..., embed=False, alias="initData")) -> int:
+    """Legacy Dependency: Extract user_id from body."""
+    if not validate_init_data(initData, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+    return get_user_from_init_data(initData)
+
+async def require_chat_admin(
+    chat_id: int = Body(...),
+    user_id: int = Depends(get_current_user_id)
+) -> int:
+    """Legacy Dependency: ensure user_id is admin of the chat_id from body."""
+    await check_admin_rights(chat_id, user_id)
+    return user_id
+
+async def get_user_from_header(authorization: Optional[str] = Header(None)) -> int:
+    """
+    New Dependency: Extracts WebApp initData from the Authorization header.
+    Format: 'Authorization: tma <initData>'
+    """
+    if not authorization or not authorization.startswith("tma "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header. Use 'tma <initData>'")
+    
+    init_data = authorization.split(" ", 1)[1]
+    if not validate_init_data(init_data, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData in header")
+        
+    return get_user_from_init_data(init_data)
+
+

@@ -40,7 +40,9 @@ dp.include_router(admin_router)
 dp.include_router(vote_router)
 
 from app.bot.admin_system import router as system_router
+from app.bot.setup_handlers import router as setup_router
 dp.include_router(system_router)
+dp.include_router(setup_router)
 
 # from app.bot.common_handlers import router as common_router
 # dp.include_router(common_router)
@@ -50,8 +52,13 @@ dp.include_router(stats_router)
 
 
 
+from app.bot.i18n import SimpleI18n, I18nMiddleware
+
+i18n_instance = SimpleI18n("app/bot/locales")
+
 dp.update.middleware(DbSessionMiddleware(session_pool=async_session_maker))
 dp.update.middleware(TenantMiddleware())
+dp.update.middleware(I18nMiddleware(i18n=i18n_instance))
 dp.update.middleware(InstanceAccessMiddleware())
 
 async def start_bot():

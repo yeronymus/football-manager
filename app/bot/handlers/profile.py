@@ -34,11 +34,27 @@ async def cmd_history(message: types.Message):
 
 @router.message(F.text == "👤 Мой профиль")
 @router.message(Command("my_profile"))
-async def cmd_my_profile(message: types.Message, session: AsyncSession, player=None):
-    if message.chat.type == "private":
-        await message.answer("Статистика теперь ведется для каждой группы отдельно. Вызовите /my_profile прямо в вашем игровом чате.")
+async def cmd_my_profile(message: types.Message):
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except:
+            pass
         return
-    await render_profile(message, message.from_user.id, session, player)
+
+    web_app_url = f"{settings.webapp_url}/web/profile.html"
+    
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(
+            text="👤 Открыть Профиль", 
+            web_app=types.WebAppInfo(url=web_app_url)
+        )]
+    ])
+    
+    await message.answer(
+        "Нажмите кнопку ниже, чтобы открыть ваш профиль:",
+        reply_markup=kb
+    )
 
 async def render_profile(messageable: types.Message, user_id: int, session: AsyncSession, player=None):
     user_repo = UserRepository(session)
@@ -92,85 +108,27 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
 
 @router.message(F.text == "📜 Мои матчи")
 @router.message(Command("my_history"))
-async def cmd_my_history(message: types.Message, session: AsyncSession):
+async def cmd_my_history(message: types.Message):
     if message.chat.type != "private":
+        try:
+            await message.delete()
+        except:
+            pass
         return
-    user_id = message.from_user.id
 
-    # 1. Запрашиваем последние 10 игр, в которых участвовал юзер
-    query = (
-        select(Game, Signup, GameStats, RatingHistory)
-        .join(Signup, Game.id == Signup.game_id)
-        .outerjoin(GameStats, (Game.id == GameStats.game_id) & (GameStats.user_id == user_id))
-        .outerjoin(RatingHistory, (Game.id == RatingHistory.game_id) & (RatingHistory.user_id == user_id))
-        .where(
-            Signup.user_id == user_id,
-            Signup.status == SignupStatus.ACTIVE,
-            Game.status == GameStatus.FINISHED
-        )
-        .order_by(desc(Game.date_time))
-        .limit(10)
+    web_app_url = f"{settings.webapp_url}/web/history.html"
+    
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(
+            text="📜 Открыть архив игр", 
+            web_app=types.WebAppInfo(url=web_app_url)
+        )]
+    ])
+    
+    await message.answer(
+        "Нажмите кнопку ниже, чтобы посмотреть архив игр:",
+        reply_markup=kb
     )
-
-    result = await session.execute(query)
-    matches = result.all()
-
-    if not matches:
-        await message.answer("Вы еще не сыграли ни одного матча.")
-        return
-
-    # 2. Формируем красивый текст
-    text = "<b>📜 Ваши последние игры:</b>\n\n"
-
-    for game, signup, stats, rating in matches:
-        # А. Определяем результат и иконку команды
-        team_icon = "⚪"
-        if signup.team == Team.A: team_icon = "🟠"
-        elif signup.team == Team.B: team_icon = "🟢"
-        elif signup.team == Team.C: team_icon = "🔵"
-
-        result_icon = "🤝" 
-        if game.winner_team:
-            if game.winner_team == signup.team:
-                result_icon = "🏆" # Победа
-            else:
-                result_icon = "❌" # Поражение
-        
-        # Б. Счет матча
-        score_text = f"{game.score_a or 0}:{game.score_b or 0}"
-        if game.team_count == 3:
-            score_text += f":{game.score_c or 0}"
-        
-        # В. Строка матча
-        date_str = game.date_time.strftime("%d.%m")
-        # Извлекаем краткое название локации (первая часть до запятой или палки)
-        loc_short = game.location.split('|')[0].split(',')[0].strip()
-        
-        text += f"{result_icon} <b>{date_str} | {loc_short}</b> ({score_text})\n"
-        
-        # Г. Личная статистика (Детали)
-        details = []
-        details.append(f"{team_icon} Команда")
-
-        # Голы
-        if stats and stats.goals > 0:
-            details.append(f"⚽ {stats.goals} гол")
-            
-        # Рейтинг (MMR change)
-        if rating:
-            sign = "+" if rating.change > 0 else ""
-            details.append(f"{sign}{rating.change} MMR")
-        
-        text += f"   └ <i>{ ' • '.join(details) }</i>\n\n"
-
-    # Добавляем общую стату в подвал
-    user = await session.get(User, user_id)
-    text += f"➖➖➖➖➖➖➖➖\n"
-    text += f"👤 <b>{user.full_name}</b>\n"
-    text += f"📊 Рейтинг: <b>(Смотрите внутри группы)</b>\n"
-    text += f"🎮 Матчей: <b>-</b>"
-
-    await message.answer(text)
 
 # --- Profile Editing Handlers ---
 

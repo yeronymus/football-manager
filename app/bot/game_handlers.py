@@ -8,7 +8,7 @@ import logging
 router = Router()
 
 @router.callback_query(F.data.startswith("join_"))
-async def process_join(callback: types.CallbackQuery):
+async def process_join(callback: types.CallbackQuery, _):
     game_id = int(callback.data.split("_")[1])
     tg_id = callback.from_user.id
 
@@ -35,8 +35,14 @@ async def process_join(callback: types.CallbackQuery):
                 await callback.answer(result.message, show_alert=True)
                 return # Выход без commit (авто-rollback)
 
-            # 3. Подготовка события (side-effect)
-            alert_msg = result.message
+            # Override messages with translation (demonstration)
+            if result.success and not result.is_reserve:
+                alert_msg = _("user_joined_success")
+            elif result.success and result.is_reserve:
+                alert_msg = _("user_joined_reserve")
+            else:
+                alert_msg = result.message # Fallback to domain message for now
+                
             if result.signup:
                 event_payload = PlayerJoinedEvent(
                     game_id=game_id,
