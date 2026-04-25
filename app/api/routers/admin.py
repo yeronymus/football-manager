@@ -443,7 +443,7 @@ async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends
         new_signup = Signup(
             game_id=data.game_id, 
             user_id=guest_id, 
-            status=SignupStatus.ACTIVE
+            status=SignupStatus.RESERVE
         )
         session.add(new_signup)
         

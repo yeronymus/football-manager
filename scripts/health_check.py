@@ -21,7 +21,7 @@ def check_project_health():
     ]
     
     all_ok = True
-    base_path = Path(__file__).parent
+    base_path = Path(__file__).parent.parent
     
     print("\n🔍 Checking for syntax errors...")
     for file_path in critical_files:
