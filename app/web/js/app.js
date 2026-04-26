@@ -75,17 +75,24 @@ async function init() {
 
 async function switchTab(tab) {
     currentTab = tab;
-    Object.values(pages).forEach(p => p.classList.remove('active'));
-    pages[tab].classList.add('active');
-    document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
-    const activeNav = document.querySelector(`.nav-item[onclick*="switchTab('${tab}')"]`);
-    if (activeNav) activeNav.classList.add('active');
-    
     loader.style.display = 'flex';
-    if (tab === 'profile') await renderProfile();
-    else if (tab === 'leaderboard') await renderLeaderboard();
-    else if (tab === 'history') await renderHistory();
-    loader.style.display = 'none';
+    
+    try {
+        if (tab === 'profile') await renderProfile();
+        else if (tab === 'leaderboard') await renderLeaderboard();
+        else if (tab === 'history') await renderHistory();
+
+        Object.values(pages).forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+        
+        if (pages[tab]) pages[tab].classList.add('active');
+        const activeNav = document.querySelector(`.nav-item[onclick*="switchTab('${tab}')"]`);
+        if (activeNav) activeNav.classList.add('active');
+    } catch (e) {
+        console.error(e);
+    } finally {
+        loader.style.display = 'none';
+    }
 }
 
 async function renderProfile() {
