@@ -223,13 +223,16 @@ async def get_my_history(
 
     # Robust query: check Signups, GameStats AND RatingHistory.
     # If Signup was deleted, RatingHistory is the ultimate proof the user played.
-    games = await session.scalars(
+    from sqlalchemy.orm import selectinload
+    
+    games_res = await session.execute(
         select(Game)
+        .outerjoin(Chat, Game.chat_id == Chat.chat_id)
         .outerjoin(Signup, Signup.game_id == Game.id)
         .outerjoin(GameStats, GameStats.game_id == Game.id)
         .outerjoin(RatingHistory, RatingHistory.game_id == Game.id)
+        .options(selectinload(Game.chat))
         .where(
-            Game.chat_id.in_(chat_ids),
             or_(
                 Signup.user_id == user_id,
                 GameStats.user_id == user_id,
@@ -242,11 +245,10 @@ async def get_my_history(
         )
         .distinct()
         .order_by(desc(Game.date_time))
-        .limit(100)
     )
     
     result = []
-    for game in games:
+    for game in games_res.scalars().all():
         # We still need the signup to know which team the user was on
         s = await session.scalar(
             select(Signup).where(Signup.game_id == game.id, Signup.user_id == user_id)
