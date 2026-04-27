@@ -18,7 +18,7 @@ async def cmd_history(message: types.Message):
     current_chat_id = message.chat.id
     
     # Формируем URL с параметром
-    web_app_url = f"{settings.webapp_url.rstrip('/')}/web/history.html?chat_id={current_chat_id}"
+    web_app_url = f"{settings.webapp_url.rstrip('/')}/web/history.html?chat_id={current_chat_id}&v=6"
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(
@@ -44,7 +44,7 @@ async def cmd_my_profile(message: types.Message):
 
     from app.config import settings
     base = settings.webapp_url.rstrip("/")
-    web_app_url = f"{base}/web/profile.html"
+    web_app_url = f"{base}/web/profile.html?v=6"
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(
@@ -120,7 +120,7 @@ async def cmd_my_history(message: types.Message):
 
     from app.config import settings
     base = settings.webapp_url.rstrip("/")
-    web_app_url = f"{base}/web/history.html"
+    web_app_url = f"{base}/web/history.html?v=6"
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(

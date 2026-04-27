@@ -19,7 +19,7 @@ async def cmd_top(message: types.Message):
 
     from app.config import settings
     base = settings.webapp_url.rstrip("/")
-    web_app_url = f"{base}/web/leaderboard.html"
+    web_app_url = f"{base}/web/leaderboard.html?v=6"
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(
