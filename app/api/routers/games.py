@@ -96,7 +96,7 @@ async def get_chat_history(
     result = await session.execute(
         select(Game)
         .where(Game.chat_id == chat_id, Game.status == GameStatus.FINISHED)
-        .order_by(Game.date_time.asc())
+        .order_by(Game.date_time.desc())
         .limit(50)
     )
     games = result.scalars().all()

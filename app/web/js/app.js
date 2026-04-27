@@ -319,7 +319,7 @@ window.renderHistory = async function(mode = null) {
             }
         }
 
-        const gameNum = historyMode === 'all' ? (idx + 1) : (data.length - idx); 
+        const gameNum = data.length - idx; 
         // Better: if the backend doesn't provide numbering, we can't be sure unless we have ALL games.
         // But the user specifically said "Game 1", "Game 2" are in the location field now.
         // I will extract it if it exists, or just show the index.

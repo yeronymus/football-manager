@@ -21,7 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # Fix Draft #10 (28.03) and Draft #11 (04.04)
     # The user provided the address: https://maps.app.goo.gl/Sef5csEqQHYLfYNP7?g_st=ic
-    location_str = "Kavčí hory (https://maps.app.goo.gl/Sef5csEqQHYLfYNP7?g_st=ic)"
+    location_str = "Kavčí hory"
     
     op.execute(f"""
         UPDATE games 
