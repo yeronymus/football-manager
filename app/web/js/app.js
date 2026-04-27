@@ -2,7 +2,10 @@
 let currentChatId = null;
 let historyMode = 'mine'; // 'mine' or 'all'
 let currentTab = 'profile';
-const tg = window.Telegram.WebApp;
+const tg = window.Telegram ? window.Telegram.WebApp : null;
+if (!tg) {
+    console.error("Telegram WebApp object not found!");
+}
 const loader = document.getElementById('loader');
 
 const pages = {
@@ -32,8 +35,10 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 async function init() {
-    tg.expand();
-    tg.ready();
+    if (tg) {
+        tg.expand();
+        tg.ready();
+    }
     
     const urlParams = new URLSearchParams(window.location.search);
     const urlChatId = urlParams.get('chat_id');
@@ -74,7 +79,7 @@ async function init() {
     }
 }
 
-async function switchTab(tab) {
+window.switchTab = async function(tab) {
     currentTab = tab;
     loader.style.display = 'flex';
     
@@ -265,7 +270,7 @@ async function renderLeaderboard() {
     if(pages.leaderboard) pages.leaderboard.innerHTML = `<h2>Лидерборд группы</h2>` + listHtml;
 }
 
-async function renderHistory(mode = null) {
+window.renderHistory = async function(mode = null) {
     if (mode) historyMode = mode;
     
     const endpoint = historyMode === 'all' 
@@ -446,7 +451,8 @@ window.showGameDetails = async function(gameId) {
         document.body.style.overflow = 'hidden'; 
         
     } catch (e) {
-        tg.showAlert('Ошибка: ' + e.message);
+        console.error("Game details error:", e);
+        if (tg && tg.showAlert) tg.showAlert('Ошибка: ' + e.message);
     } finally {
         loader.style.display = 'none';
     }
