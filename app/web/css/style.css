@@ -238,3 +238,36 @@ h2 {
 .flex-row { display: flex; align-items: center; gap: 16px; }
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
 .flex-column { display: flex; flex-direction: column; }
+
+/* History Filter */
+.history-filter {
+    padding: 0 16px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 8px;
+}
+
+.filter-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-color);
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.filter-btn.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+    box-shadow: 0 8px 20px rgba(56, 189, 248, 0.3);
+}
+
+.filter-btn:active {
+    transform: scale(0.96);
+}

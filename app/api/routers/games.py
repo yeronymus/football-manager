@@ -72,6 +72,7 @@ async def get_game_details(
         "reserve": reserve, # Added separate reserve list
         "score_a": game.score_a,
         "score_b": game.score_b,
+        "score_c": game.score_c,
         "status": game.status.value,
         "has_active_gk_a": game.has_active_gk_a,
         "has_active_gk_b": game.has_active_gk_b,
@@ -95,7 +96,7 @@ async def get_chat_history(
     result = await session.execute(
         select(Game)
         .where(Game.chat_id == chat_id, Game.status == GameStatus.FINISHED)
-        .order_by(Game.date_time.desc())
+        .order_by(Game.date_time.asc())
         .limit(50)
     )
     games = result.scalars().all()
@@ -109,12 +110,14 @@ async def get_chat_history(
             winner_text = "Победа Б"
             
         history.append({
-            "id": game.id,
-            "date": game.date_time.strftime("%d.%m.%Y"),
+            "game_id": game.id,
+            "date": game.date_time.isoformat(),
             "location": game.location,
             "score_a": game.score_a if game.score_a is not None else 0,
             "score_b": game.score_b if game.score_b is not None else 0,
-            "winner": winner_text
+            "score_c": game.score_c if game.score_c is not None else 0,
+            "team_count": game.team_count,
+            "winner_team": game.winner_team.value if game.winner_team else None
         })
         
     return history
