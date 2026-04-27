@@ -273,6 +273,8 @@ async def get_my_history(
             "location": game.location,
             "score_a": game.score_a,
             "score_b": game.score_b,
+            "score_c": game.score_c,
+            "team_count": game.team_count,
             "my_team": my_team,
             "winner_team": game.winner_team.value if game.winner_team else None,
             "rating_change": history_record.change if history_record else 0

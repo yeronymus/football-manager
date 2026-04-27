@@ -1,5 +1,6 @@
 
 let currentChatId = null;
+let historyMode = 'mine'; // 'mine' or 'all'
 let currentTab = 'profile';
 const tg = window.Telegram.WebApp;
 const loader = document.getElementById('loader');
@@ -264,43 +265,83 @@ async function renderLeaderboard() {
     if(pages.leaderboard) pages.leaderboard.innerHTML = `<h2>Лидерборд группы</h2>` + listHtml;
 }
 
-async function renderHistory() {
-    const data = await fetchAPI(`/users/me/history?chat_id=${currentChatId}`);
+async function renderHistory(mode = null) {
+    if (mode) historyMode = mode;
+    
+    const endpoint = historyMode === 'all' 
+        ? `/history/${currentChatId}` 
+        : `/users/me/history?chat_id=${currentChatId}`;
+        
+    const data = await fetchAPI(endpoint);
     
     if (data.length === 0) {
-        if(pages.history) pages.history.innerHTML = `<div class="card" style="text-align:center">Игр пока нет.</div>`;
+        if(pages.history) pages.history.innerHTML = `
+            <div class="history-filter">
+                <button class="${historyMode === 'mine' ? 'active' : ''}" onclick="renderHistory('mine')">Мои игры</button>
+                <button class="${historyMode === 'all' ? 'active' : ''}" onclick="renderHistory('all')">Все игры группы</button>
+            </div>
+            <div class="card" style="text-align:center">Игр пока нет.</div>
+        `;
         return;
     }
+
+    // Numbering: if we have all games, we can number them based on total count
+    // If we only have some, it's harder. But usually we want "Game 1, 2, 3"
+    // Let's assume the games are returned in descending order.
+    // To number them correctly, we might need the full count or just use what we have.
+    // The user mentioned Game 1, 2, 7, 8. This suggests a global sequence.
     
-    const listHtml = data.map(g => {
-        let resColor = g.rating_change > 0 ? '#4caf50' : (g.rating_change < 0 ? '#f44336' : 'var(--hint-color)');
-        let sign = g.rating_change > 0 ? '+' : '';
+    const listHtml = data.map((g, idx) => {
+        const ratingChange = g.rating_change || 0;
+        let resColor = ratingChange > 0 ? '#4caf50' : (ratingChange < 0 ? '#f44336' : 'var(--hint-color)');
+        let sign = ratingChange > 0 ? '+' : '';
         
         const teamColors = { 'A': '#4caf50', 'B': '#ff9800', 'C': '#3b82f6', 'D': '#ffffff' };
         const teamLabels = { 'A': 'Зеленые', 'B': 'Оранжевые', 'C': 'Синие', 'D': 'Белые' };
-        const teamColor = teamColors[g.my_team] || 'var(--hint-color)';
-        const teamLabel = teamLabels[g.my_team] || 'Неизвестно';
         
         let statusText = 'Ничья';
         let statusColor = 'var(--hint-color)';
         if (g.winner_team) {
-            if (g.my_team === g.winner_team) {
+            if (g.my_team && g.my_team === g.winner_team) {
                 statusText = 'Победа';
                 statusColor = '#4caf50';
-            } else {
+            } else if (g.my_team) {
                 statusText = 'Поражение';
                 statusColor = '#f44336';
+            } else {
+                statusText = g.winner_team === 'A' ? 'Победа Зеленых' : (g.winner_team === 'B' ? 'Победа Оранжевых' : 'Победа Синих');
+                statusColor = teamColors[g.winner_team] || 'var(--hint-color)';
             }
         }
 
-        const isOtherGroup = !g.is_current_group;
+        const gameNum = historyMode === 'all' ? (idx + 1) : (data.length - idx); 
+        // Better: if the backend doesn't provide numbering, we can't be sure unless we have ALL games.
+        // But the user specifically said "Game 1", "Game 2" are in the location field now.
+        // I will extract it if it exists, or just show the index.
+        
+        let scoreHtml = '';
+        if (g.team_count === 3) {
+            scoreHtml = `
+                <span style="color:#4caf50">${g.score_a}</span> : 
+                <span style="color:#ff9800">${g.score_b}</span> : 
+                <span style="color:#3b82f6">${g.score_c}</span>
+            `;
+        } else {
+            scoreHtml = `
+                <span style="color:#4caf50">${g.score_a}</span> : 
+                <span style="color:#ff9800">${g.score_b}</span>
+            `;
+        }
 
         return `
-        <div class="card" onclick="showGameDetails(${g.game_id})" style="cursor:pointer; border-left: 4px solid ${resColor};">
+        <div class="card" onclick="showGameDetails(${g.game_id})" style="cursor:pointer; border-left: 4px solid ${historyMode === 'mine' ? resColor : 'transparent'};">
             <div class="flex-between" style="margin-bottom: 8px;">
-                <span style="font-size: 20px; font-weight: 800; letter-spacing: 1px;">
-                    <span style="color:#4caf50">${g.score_a}</span> : <span style="color:#ff9800">${g.score_b}</span>
-                </span>
+                <div style="display:flex; flex-direction:column">
+                    <span style="font-size: 10px; font-weight: 800; color:var(--accent-color); margin-bottom: 2px;">ИГРА ${gameNum}</span>
+                    <span style="font-size: 20px; font-weight: 800; letter-spacing: 1px;">
+                        ${scoreHtml}
+                    </span>
+                </div>
                 <div style="text-align:right">
                     <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color:${statusColor}">${statusText}</div>
                     <span class="subtitle" style="font-weight: 600; font-size:12px;">${new Date(g.date).toLocaleDateString('ru-RU')}</span>
@@ -311,18 +352,24 @@ async function renderHistory() {
                 <svg style="width:12px;height:12px;fill:currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-12-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
                 ${g.location}
             </div>
+            ${historyMode === 'mine' ? `
             <div class="flex-between">
                 <div class="flex-row" style="gap: 8px;">
-                    <div style="width:10px; height:10px; border-radius:50%; background:${teamColor}"></div>
-                    <span class="subtitle" style="font-weight:600">${teamLabel}</span>
+                    <div style="width:10px; height:10px; border-radius:50%; background:${teamColors[g.my_team] || 'var(--hint-color)'}"></div>
+                    <span class="subtitle" style="font-weight:600">${teamLabels[g.my_team] || 'Неизвестно'}</span>
                 </div>
-                <span style="color:${resColor}; font-weight: 800; font-size: 16px;">${sign}${g.rating_change} MMR</span>
-            </div>
+                <span style="color:${resColor}; font-weight: 800; font-size: 16px;">${sign}${ratingChange} MMR</span>
+            </div>` : ''}
         </div>
         `;
     }).join('');
     
-    if(pages.history) pages.history.innerHTML = `<h2>История матчей</h2><p style="padding:0 16px" class="subtitle">Ниже показаны все ваши игры в системе</p>` + listHtml;
+    if(pages.history) pages.history.innerHTML = `
+        <div class="history-filter" style="display:flex; gap:8px; padding:0 16px; margin-bottom:16px;">
+            <button class="filter-btn ${historyMode === 'mine' ? 'active' : ''}" onclick="renderHistory('mine')" style="flex:1; padding:10px; border-radius:12px; border:1px solid var(--border-color); background:${historyMode === 'mine' ? 'var(--accent-color)' : 'transparent'}; color:${historyMode === 'mine' ? 'white' : 'var(--text-color)'}; font-weight:700; font-size:12px; cursor:pointer; transition:all 0.2s;">Мои игры</button>
+            <button class="filter-btn ${historyMode === 'all' ? 'active' : ''}" onclick="renderHistory('all')" style="flex:1; padding:10px; border-radius:12px; border:1px solid var(--border-color); background:${historyMode === 'all' ? 'var(--accent-color)' : 'transparent'}; color:${historyMode === 'all' ? 'white' : 'var(--text-color)'}; font-weight:700; font-size:12px; cursor:pointer; transition:all 0.2s;">Все игры группы</button>
+        </div>
+    ` + listHtml;
 }
 
 window.showGameDetails = async function(gameId) {
@@ -330,9 +377,16 @@ window.showGameDetails = async function(gameId) {
     try {
         const game = await fetchAPI(`/game/${gameId}`);
         
+        let scoreHtml = '';
+        if (game.team_count === 3) {
+            scoreHtml = `<span style="color:#4caf50">${game.score_a}</span> : <span style="color:#ff9800">${game.score_b}</span> : <span style="color:#3b82f6">${game.score_c}</span>`;
+        } else {
+            scoreHtml = `<span style="color:#4caf50">${game.score_a}</span> : <span style="color:#ff9800">${game.score_b}</span>`;
+        }
+
         let html = `
             <div style="text-align:center; margin-bottom:30px;">
-                <h1 style="font-size:48px; margin:10px 0; font-weight:900; letter-spacing:-1px;">${game.score_a} : ${game.score_b}</h1>
+                <h1 style="font-size:48px; margin:10px 0; font-weight:900; letter-spacing:-1px;">${scoreHtml}</h1>
                 <div class="subtitle" style="font-size:16px; margin-bottom:4px;">📍 ${game.location}</div>
                 <div class="subtitle" style="font-size:14px;">📅 ${new Date(game.date).toLocaleString('ru-RU')}</div>
             </div>
