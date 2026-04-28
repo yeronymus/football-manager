@@ -96,7 +96,7 @@ def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = ""
     ]
     
     if is_admin and webapp_url:
-        draft_url = f"{webapp_url.rstrip('/')}/web/draft.html?game_id={game_id}&v=6"
+        draft_url = f"{webapp_url.rstrip('/')}/web/draft.html?game_id={game_id}&v=7"
         buttons.append([
             InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=draft_url))
         ])
