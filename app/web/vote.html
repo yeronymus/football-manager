@@ -132,7 +132,9 @@
 
         async function loadData() {
             try {
-                const res = await fetch(`${apiBase}/game/${gameId}/vote_data?initData=${encodeURIComponent(tg.initData)}`);
+                const res = await fetch(`${apiBase}/game/${gameId}/vote_data?initData=${encodeURIComponent(tg.initData)}`, {
+                    headers: { 'Authorization': `tma ${tg.initData}` }
+                });
                 if (!res.ok) throw new Error(await res.text());
                 const data = await res.json();
 

@@ -155,7 +155,9 @@
 
             try {
                 const url = `/api/game/${gameId}?initData=${encodeURIComponent(tg.initData)}`;
-                const res = await fetch(url);
+                const res = await fetch(url, {
+                    headers: { 'Authorization': `tma ${tg.initData}` }
+                });
                 if (res.ok) {
                     const game = await res.json();
 
