@@ -111,17 +111,29 @@ async def require_chat_admin(
     await check_admin_rights(chat_id, user_id)
     return user_id
 
-async def get_user_from_header(authorization: Optional[str] = Header(None)) -> int:
+async def get_user_from_header(
+    authorization: Optional[str] = Header(None),
+    initData: Optional[str] = None # Fallback for cached WebApps
+) -> int:
     """
-    New Dependency: Extracts WebApp initData from the Authorization header.
-    Format: 'Authorization: tma <initData>'
+    Extracts WebApp initData from the Authorization header or query params.
+    Format: 'Authorization: tma <initData>' or '?initData=<initData>'
     """
-    if not authorization or not authorization.startswith("tma "):
-        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header. Use 'tma <initData>'")
+    init_data = None
     
-    init_data = authorization.split(" ", 1)[1]
+    # 1. Try Header
+    if authorization and authorization.startswith("tma "):
+        init_data = authorization.split(" ", 1)[1]
+    
+    # 2. Try Query Param (Fallback for aggressive Telegram caching)
+    if not init_data and initData:
+        init_data = initData
+        
+    if not init_data:
+        raise HTTPException(status_code=401, detail="Missing Authorization header or initData query param")
+    
     if not validate_init_data(init_data, settings.bot_token):
-        raise HTTPException(status_code=403, detail="Invalid initData in header")
+        raise HTTPException(status_code=403, detail="Invalid initData")
         
     return get_user_from_init_data(init_data)
 
