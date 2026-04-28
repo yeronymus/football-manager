@@ -210,9 +210,12 @@
                         }
                     }
                 } else {
-                    console.error("Failed to fetch chats");
+                    const errorMsg = await response.text();
+                    chatSelect.innerHTML = `<option value="" disabled selected>Ошибка: ${response.status} ${errorMsg}</option>`;
+                    console.error("Failed to fetch chats", errorMsg);
                 }
             } catch (e) {
+                chatSelect.innerHTML = `<option value="" disabled selected>Ошибка сети: ${e.message}</option>`;
                 console.error(e);
             }
         }
