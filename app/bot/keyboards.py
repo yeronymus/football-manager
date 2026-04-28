@@ -121,7 +121,7 @@ def get_main_menu_keyboard(is_admin: bool = False):
         return types.ReplyKeyboardRemove()
 
     from app.config import settings
-    web_app_url = f"{settings.webapp_url.rstrip('/')}/web/index.html?v=6"
+    web_app_url = f"{settings.webapp_url.rstrip('/')}/web/index.html?v=7"
     
     # Admin Panel Only
     buttons = [
@@ -140,7 +140,7 @@ def get_main_menu_inline_keyboard(is_admin: bool = False) -> InlineKeyboardMarku
 
     from app.config import settings
     # Ensure ?v=5 is present to break cache
-    web_app_url = f"{settings.webapp_url.rstrip('/')}/web/index.html?v=6"
+    web_app_url = f"{settings.webapp_url.rstrip('/')}/web/index.html?v=7"
     
     buttons = [
         [InlineKeyboardButton(text="➕ Создать игру", web_app=types.WebAppInfo(url=web_app_url))],
