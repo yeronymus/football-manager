@@ -193,7 +193,9 @@
             list.innerHTML = '<div class="loading">Загрузка матчей...</div>';
 
             try {
-                const response = await fetch(`/api/games/open?initData=${encodeURIComponent(tg.initData)}`);
+                const response = await fetch(`/api/games/open?initData=${encodeURIComponent(tg.initData)}`, {
+                    headers: { 'Authorization': `tma ${tg.initData}` }
+                });
                 if (!response.ok) throw new Error("Failed to fetch games");
                 const games = await response.json();
 
@@ -234,7 +236,9 @@
             app.innerHTML = '<div class="loading">Loading game details...</div>';
 
             try {
-                const response = await fetch(`/api/game/${gameId}?initData=${encodeURIComponent(tg.initData)}`);
+                const response = await fetch(`/api/game/${gameId}?initData=${encodeURIComponent(tg.initData)}`, {
+                    headers: { 'Authorization': `tma ${tg.initData}` }
+                });
                 if (!response.ok) throw new Error('Failed to load game');
                 gameData = await response.json();
                 render();

@@ -182,7 +182,9 @@
             }
 
             try {
-                const response = await fetch('/api/chats?initData=' + encodeURIComponent(tg.initData));
+                const response = await fetch('/api/chats?initData=' + encodeURIComponent(tg.initData), {
+                    headers: { 'Authorization': `tma ${tg.initData}` }
+                });
                 if (response.ok) {
                     const chats = await response.json();
                     chatSelect.innerHTML = '<option value="" disabled selected>Выберите чат</option>';
@@ -226,7 +228,9 @@
 
             try {
                 const url = `/api/chat/${chatId}/admins?initData=${encodeURIComponent(tg.initData)}`;
-                const res = await fetch(url);
+                const res = await fetch(url, {
+                    headers: { 'Authorization': `tma ${tg.initData}` }
+                });
                 if (res.ok) {
                     const admins = await res.json();
                     adminList.innerHTML = '';
