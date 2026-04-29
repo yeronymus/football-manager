@@ -148,6 +148,13 @@ class RosterService:
 
         for signup, user in signups_with_user:
             is_gk = (user.player_position == Position.GK)
+            is_guest = (user.user_id < 0)
+            
+            if is_guest:
+                if signup.status != SignupStatus.RESERVE:
+                    signup.status = SignupStatus.RESERVE
+                continue
+
             effective_max = game.max_players
             if is_gk_window and not is_gk:
                 effective_max = game.max_players - gk_reserved_slots

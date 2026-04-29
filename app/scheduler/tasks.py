@@ -166,7 +166,7 @@ async def release_gk_slots(game_id: int):
                     # Promote from reserve
             reserves_result = await session.execute(
                 select(Signup)
-                .where(Signup.game_id == game_id, Signup.status == SignupStatus.RESERVE)
+                .where(Signup.game_id == game_id, Signup.status == SignupStatus.RESERVE, Signup.user_id >= 0)
                 .order_by(Signup.created_at) # FIFO
                 .limit(slots_available)
             )

@@ -42,7 +42,7 @@ class GameRepository(BaseRepository[Game]):
         result = await self.session.execute(
             select(Signup, User)
             .join(User)
-            .where(Signup.game_id == game_id, Signup.status == SignupStatus.RESERVE)
+            .where(Signup.game_id == game_id, Signup.status == SignupStatus.RESERVE, Signup.user_id >= 0)
             .order_by(Signup.created_at)
             .limit(1)
         )
