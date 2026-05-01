@@ -259,3 +259,40 @@ async def cancel_guest_addition(callback: types.CallbackQuery, state: FSMContext
     await state.clear()
     await callback.message.delete()
     await callback.answer("Отменено")
+
+@router.message(Command("promote"))
+async def cmd_promote_admin(message: types.Message, session: AsyncSession):
+    # Only superadmins can promote
+    if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
+        return
+        
+    parts = message.text.split()
+    if len(parts) != 2:
+        await message.answer("Использование: /promote <user_id>\n\nЭта команда делает пользователя админом текущей группы.")
+        return
+        
+    try:
+        target_uid = int(parts[1])
+        chat_id = message.chat.id
+        
+        if message.chat.type == "private":
+            await message.answer("Эту команду нужно вызывать прямо в группе, которой вы хотите дать управление.")
+            return
+            
+        from app.db.models import ChatAdmin
+        from sqlalchemy import select
+        
+        res = await session.execute(select(ChatAdmin).where(ChatAdmin.user_id == target_uid, ChatAdmin.chat_id == chat_id))
+        if res.first():
+            await message.answer("Этот пользователь уже является администратором этой группы.")
+            return
+            
+        ca = ChatAdmin(user_id=target_uid, chat_id=chat_id, can_edit_settings=True)
+        session.add(ca)
+        await session.commit()
+        
+        await message.answer(f"✅ Пользователь {target_uid} успешно назначен администратором этой группы! Теперь он может открыть /dashboard.")
+    except ValueError:
+        await message.answer("user_id должен быть числом.")
+    except Exception as e:
+        await message.answer(f"Ошибка: {e}")
