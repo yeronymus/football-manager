@@ -102,6 +102,7 @@ async def start_bot():
     # They are still available via typing but won't show in the simple menu.
     admin_commands = user_commands + [
         types.BotCommand(command="create", description="➕ Создать игру"),
+        types.BotCommand(command="dashboard", description="🛠 Dashboard"),
     ]
 
     # Set Private Chats Scope (Explicitly for all private chats)
