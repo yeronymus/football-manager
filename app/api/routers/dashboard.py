@@ -9,8 +9,13 @@ from app.db.database import get_session
 from app.db.models import Chat, ChatAdmin, User, Game, GameStatus, Signup, SignupStatus
 from app.api.auth import get_user_from_header, check_admin_rights
 from app.config import settings
+import re
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+def clean_location(loc: str) -> str:
+    if not loc: return loc
+    return re.sub(r'\(?https?://[^\s)]+\)?', '', loc).strip()
 
 class GroupOut(BaseModel):
     chat_id: int
@@ -26,6 +31,9 @@ class GameSummaryOut(BaseModel):
     status: str
     players_count: int
     max_players: int
+    score_a: Optional[int] = None
+    score_b: Optional[int] = None
+    score_c: Optional[int] = None
 
 @router.get("/groups", response_model=List[GroupOut])
 async def get_dashboard_groups(
@@ -114,7 +122,13 @@ async def get_group_games(
     rows = result.all()
     
     out = []
+    has_changes = False
     for game, count in rows:
+        cleaned_loc = clean_location(game.location)
+        if cleaned_loc != game.location:
+            game.location = cleaned_loc
+            has_changes = True
+            
         out.append(
             GameSummaryOut(
                 id=game.id,
@@ -122,9 +136,14 @@ async def get_group_games(
                 date_time=game.date_time,
                 status=game.status.value,
                 players_count=count,
-                max_players=game.max_players
+                max_players=game.max_players,
+                score_a=game.score_a,
+                score_b=game.score_b,
+                score_c=game.score_c
             )
         )
+    if has_changes:
+        await session.commit()
     return out
 
 class PlayerDetailOut(BaseModel):
@@ -134,6 +153,9 @@ class PlayerDetailOut(BaseModel):
     status: str
     is_paid: bool
     position: Optional[str]
+    team: Optional[str] = None
+    goals: int = 0
+    mvp_votes: int = 0
 
 class GameDetailOut(BaseModel):
     id: int
@@ -141,6 +163,9 @@ class GameDetailOut(BaseModel):
     date_time: datetime.datetime
     status: str
     price: int
+    score_a: Optional[int] = None
+    score_b: Optional[int] = None
+    score_c: Optional[int] = None
     players: List[PlayerDetailOut]
 
 @router.get("/games/{game_id}", response_model=GameDetailOut)
@@ -162,6 +187,12 @@ async def get_game_details(
         .order_by(Signup.created_at)
     )
     res = await session.execute(stmt)
+    
+    cleaned_loc = clean_location(game.location)
+    if cleaned_loc != game.location:
+        game.location = cleaned_loc
+        await session.commit()
+
     players = []
     for signup, user in res.all():
         players.append(PlayerDetailOut(
@@ -170,7 +201,10 @@ async def get_game_details(
             full_name=user.full_name,
             status=signup.status.value,
             is_paid=signup.is_paid,
-            position=signup.position.value if signup.position else (user.player_position.value if user.player_position else None)
+            position=signup.position.value if signup.position else (user.player_position.value if user.player_position else None),
+            team=signup.team.value if signup.team else None,
+            goals=signup.goals,
+            mvp_votes=signup.mvp_votes
         ))
         
     return GameDetailOut(
@@ -179,6 +213,9 @@ async def get_game_details(
         date_time=game.date_time,
         status=game.status.value,
         price=game.price,
+        score_a=game.score_a,
+        score_b=game.score_b,
+        score_c=game.score_c,
         players=players
     )
 
@@ -298,3 +335,51 @@ async def update_player_status(
     signup.status = status_map[data.status.lower()]
     await session.commit()
     return {"status": "ok", "new_status": signup.status.value}
+
+class VoteDetailOut(BaseModel):
+    voter_name: str
+    target_name: str
+    vote_team: str
+
+@router.get("/games/{game_id}/votes", response_model=List[VoteDetailOut])
+async def get_game_votes(
+    game_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    game = await session.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, user_id)
+    
+    from app.db.models import Vote
+    stmt = (
+        select(Vote)
+        .where(Vote.game_id == game_id)
+    )
+    res = await session.execute(stmt)
+    votes = res.scalars().all()
+    
+    # Needs to fetch names. Let's do a join.
+    from sqlalchemy.orm import aliased
+    Voter = aliased(User)
+    Target = aliased(User)
+    
+    stmt = (
+        select(Vote, Voter.full_name.label("voter_name"), Target.full_name.label("target_name"))
+        .join(Voter, Voter.user_id == Vote.voter_id)
+        .join(Target, Target.user_id == Vote.target_id)
+        .where(Vote.game_id == game_id)
+    )
+    res = await session.execute(stmt)
+    
+    out = []
+    for vote, voter_name, target_name in res.all():
+        out.append(VoteDetailOut(
+            voter_name=voter_name,
+            target_name=target_name,
+            vote_team=vote.vote_team.value
+        ))
+        
+    return out
