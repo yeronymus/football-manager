@@ -1,7 +1,0 @@
-{
-    "user_joined_success": "✅ Byl(a) jsi úspěšně přidán(a) do hlavní sestavy!",
-    "user_joined_reserve": "⏳ Místa jsou obsazená, jsi v rezervě.",
-    "user_left_success": "❌ Byl(a) jsi odhlášen(a).",
-    "error_game_full": "⛔ Omlouváme se, zápas je plně obsazen.",
-    "welcome_message": "Ahoj, {name}! Vítej ve skupině!"
-}

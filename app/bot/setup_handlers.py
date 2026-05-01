@@ -28,8 +28,7 @@ def get_setup_keyboard():
     builder = types.InlineKeyboardMarkup(inline_keyboard=[
         [
             types.InlineKeyboardButton(text="🇷🇺 RU", callback_data="setlang_ru"),
-            types.InlineKeyboardButton(text="🇬🇧 EN", callback_data="setlang_en"),
-            types.InlineKeyboardButton(text="🇨🇿 CS", callback_data="setlang_cs")
+            types.InlineKeyboardButton(text="🇬🇧 EN", callback_data="setlang_en")
         ],
         [
             types.InlineKeyboardButton(text="💳 Изменить реквизиты", callback_data="setup_payment")
