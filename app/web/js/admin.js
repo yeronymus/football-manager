@@ -31,14 +31,8 @@ function switchView(viewId) {
     setTimeout(() => target.classList.add('active'), 10);
 }
 
-function showSidebar() {
-    document.getElementById('sidebar').classList.add('show');
-}
-
-function hideSidebar() {
-    if(window.innerWidth <= 768) {
-        document.getElementById('sidebar').classList.remove('show');
-    }
+function showGroupsView() {
+    switchView('view-groups');
 }
 
 // API Helper
@@ -101,7 +95,7 @@ async function loadGroups() {
 
 async function loadGroupGames(group) {
     currentGroupId = group.chat_id;
-    hideSidebar();
+    currentGroupId = group.chat_id;
     switchView('view-group');
     
     document.getElementById('group-title').textContent = group.title;
@@ -269,9 +263,7 @@ async function updateGroupSetting(key, value) {
     }
 }
 
-function showGroupGames() {
-    switchView('view-group');
-}
+// No showGroupGames function needed since we have showGroupsView now
 
 async function togglePayment(signupId, btnEl, gameId) {
     btnEl.disabled = true;
