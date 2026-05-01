@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
 from pydantic import BaseModel
 from typing import List, Optional
 import datetime
@@ -31,6 +31,7 @@ class GameSummaryOut(BaseModel):
     status: str
     players_count: int
     max_players: int
+    paid_count: int
     score_a: Optional[int] = None
     score_b: Optional[int] = None
     score_c: Optional[int] = None
@@ -109,9 +110,13 @@ async def get_group_games(
 ):
     await check_admin_rights(chat_id, user_id)
     
-    # Get games with player count
+    # Get games with player count and paid count
     stmt = (
-        select(Game, func.count(Signup.id).label("players_count"))
+        select(
+            Game, 
+            func.count(Signup.id).label("players_count"),
+            func.sum(case((Signup.is_paid == True, 1), else_=0)).label("paid_count")
+        )
         .outerjoin(Signup, (Signup.game_id == Game.id) & (Signup.status == SignupStatus.ACTIVE))
         .where(Game.chat_id == chat_id)
         .group_by(Game.id)
@@ -123,7 +128,7 @@ async def get_group_games(
     
     out = []
     has_changes = False
-    for game, count in rows:
+    for game, count, paid_count in rows:
         cleaned_loc = clean_location(game.location)
         if cleaned_loc != game.location:
             game.location = cleaned_loc
@@ -137,6 +142,7 @@ async def get_group_games(
                 status=game.status.value,
                 players_count=count,
                 max_players=game.max_players,
+                paid_count=paid_count or 0,
                 score_a=game.score_a,
                 score_b=game.score_b,
                 score_c=game.score_c
@@ -188,6 +194,20 @@ async def get_game_details(
     )
     res = await session.execute(stmt)
     
+    # Also fetch GameStats
+    from app.db.models import GameStats, Vote
+    stats_res = await session.execute(select(GameStats).where(GameStats.game_id == game_id))
+    stats_map = {s.user_id: s for s in stats_res.scalars().all()}
+    
+    # Also fetch Vote counts
+    from sqlalchemy import func
+    votes_res = await session.execute(
+        select(Vote.target_id, func.count(Vote.id))
+        .where(Vote.game_id == game_id)
+        .group_by(Vote.target_id)
+    )
+    votes_map = {v[0]: v[1] for v in votes_res.all()}
+    
     cleaned_loc = clean_location(game.location)
     if cleaned_loc != game.location:
         game.location = cleaned_loc
@@ -195,6 +215,9 @@ async def get_game_details(
 
     players = []
     for signup, user in res.all():
+        u_stats = stats_map.get(user.user_id)
+        v_count = votes_map.get(user.user_id, 0)
+        
         players.append(PlayerDetailOut(
             signup_id=signup.id,
             user_id=user.user_id,
@@ -203,8 +226,8 @@ async def get_game_details(
             is_paid=signup.is_paid,
             position=signup.position.value if signup.position else (user.player_position.value if user.player_position else None),
             team=signup.team.value if signup.team else None,
-            goals=signup.goals,
-            mvp_votes=signup.mvp_votes
+            goals=u_stats.goals if u_stats else 0,
+            mvp_votes=v_count
         ))
         
     return GameDetailOut(

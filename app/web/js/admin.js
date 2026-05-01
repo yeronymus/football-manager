@@ -131,12 +131,22 @@ async function loadGroupGames(group) {
             
             const dateStr = new Date(g.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
             
+            let scoreHtml = '';
+            if (g.score_a !== null && g.score_b !== null) {
+                scoreHtml = `<div style="margin-bottom: 6px; font-size: 1.1rem; display: flex; gap: 6px; align-items: center;">
+                    <span class="score-box score-a">${g.score_a}</span> : <span class="score-box score-b">${g.score_b}</span>
+                    ${g.score_c !== null ? ` : <span class="score-box score-c">${g.score_c}</span>` : ''}
+                </div>`;
+            }
+            
             el.innerHTML = `
-                <div class="game-info">
-                    <h3>${g.location}</h3>
-                    <p>${dateStr} • Players: ${g.players_count}/${g.max_players}</p>
+                <div class="game-info" style="flex: 1;">
+                    <h3 style="margin-bottom: 4px; font-size: 1.2rem;">Game #${g.id}</h3>
+                    ${scoreHtml}
+                    <p style="color: var(--text-main); font-weight: 500; margin-bottom: 2px;">${g.location}</p>
+                    <p style="font-size: 0.85rem;">${dateStr} • Players: ${g.players_count}/${g.max_players} • Paid: ${g.paid_count}/${g.players_count}</p>
                 </div>
-                <div class="badge ${g.status}">${g.status}</div>
+                <div class="badge ${g.status}" style="margin-left: 12px;">${g.status}</div>
             `;
             
             el.onclick = () => loadGameDetails(g.id);
@@ -266,19 +276,39 @@ async function switchRosterTab(tab) {
                     return;
                 }
                 
+                const votesByTeam = {};
+                
                 votes.forEach(v => {
-                    const el = document.createElement('div');
-                    el.className = 'player-item';
-                    el.innerHTML = `
-                        <div class="player-info">
-                            <span class="player-name">${v.voter_name}</span>
-                            <span class="player-meta">voted for: <strong style="color:var(--text-main);">${v.target_name}</strong></span>
-                        </div>
-                        <div class="player-actions">
-                            <div class="badge active">${v.vote_team}</div>
-                        </div>
-                    `;
-                    listEl.appendChild(el);
+                    if (!votesByTeam[v.vote_team]) votesByTeam[v.vote_team] = [];
+                    votesByTeam[v.vote_team].push(v);
+                });
+                
+                Object.keys(votesByTeam).sort().forEach(t => {
+                    const header = document.createElement('div');
+                    header.className = 'team-header';
+                    header.textContent = `Team ${t.toUpperCase()} MVP Votes`;
+                    listEl.appendChild(header);
+                    
+                    votesByTeam[t].forEach(v => {
+                        const el = document.createElement('div');
+                        el.className = 'player-item';
+                        
+                        let badgeClass = 'active';
+                        if (v.vote_team === 'A') badgeClass = 'score-a';
+                        if (v.vote_team === 'B') badgeClass = 'score-b';
+                        if (v.vote_team === 'C') badgeClass = 'score-c';
+                        
+                        el.innerHTML = `
+                            <div class="player-info">
+                                <span class="player-name">${v.voter_name}</span>
+                                <span class="player-meta">voted for: <strong style="color:var(--text-main); margin-left:4px;">${v.target_name}</strong></span>
+                            </div>
+                            <div class="player-actions">
+                                <div class="badge ${badgeClass}" style="color: inherit;">Team ${v.vote_team}</div>
+                            </div>
+                        `;
+                        listEl.appendChild(el);
+                    });
                 });
             } catch (e) {
                 listEl.innerHTML = '<p style="color:var(--danger)">Failed to load votes.</p>';
