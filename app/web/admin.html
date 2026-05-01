@@ -12,22 +12,27 @@
 </head>
 <body>
     <div id="app-container">
-        <!-- Sidebar / Groups Panel -->
-        <aside id="sidebar" class="glass-panel">
-            <div class="sidebar-header">
-                <h2>Admin Hub</h2>
-            </div>
-            <div class="groups-list" id="groups-list">
-                <div class="loading-spinner"></div>
-            </div>
-        </aside>
-
         <!-- Main Content Area -->
         <main id="main-content">
+            <!-- Groups List View (Home) -->
+            <section id="view-groups" class="view-section active">
+                <header class="glass-header">
+                    <div class="header-content">
+                        <h1>Admin Hub</h1>
+                    </div>
+                </header>
+                <div class="content-scroll">
+                    <p style="color: var(--text-muted); margin-bottom: 16px; text-align: center;">Выберите группу для управления</p>
+                    <div class="groups-list" id="groups-list">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Group View (Games List) -->
             <section id="view-group" class="view-section hidden">
                 <header class="glass-header">
-                    <button class="back-btn mobile-only" onclick="showSidebar()">
+                    <button class="back-btn" onclick="showGroupsView()">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
                     <div class="header-content">
@@ -109,13 +114,6 @@
                 </div>
             </section>
 
-            <!-- Placeholder View -->
-            <section id="view-placeholder" class="view-section active">
-                <div class="empty-state">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-                    <h2>Welcome to Admin Dashboard</h2>
-                    <p>Select a group from the sidebar to manage games and players.</p>
-                </div>
             </section>
         </main>
     </div>
