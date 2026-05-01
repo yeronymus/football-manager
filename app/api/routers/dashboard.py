@@ -32,6 +32,7 @@ class GameSummaryOut(BaseModel):
     players_count: int
     max_players: int
     paid_count: int
+    team_count: int
     score_a: Optional[int] = None
     score_b: Optional[int] = None
     score_c: Optional[int] = None
@@ -143,6 +144,7 @@ async def get_group_games(
                 players_count=count,
                 max_players=game.max_players,
                 paid_count=paid_count or 0,
+                team_count=game.team_count,
                 score_a=game.score_a,
                 score_b=game.score_b,
                 score_c=game.score_c
@@ -162,6 +164,7 @@ class PlayerDetailOut(BaseModel):
     team: Optional[str] = None
     goals: int = 0
     mvp_votes: int = 0
+    is_mvp: bool = False
 
 class GameDetailOut(BaseModel):
     id: int
@@ -169,6 +172,7 @@ class GameDetailOut(BaseModel):
     date_time: datetime.datetime
     status: str
     price: int
+    team_count: int
     score_a: Optional[int] = None
     score_b: Optional[int] = None
     score_c: Optional[int] = None
@@ -227,7 +231,8 @@ async def get_game_details(
             position=signup.position.value if signup.position else (user.player_position.value if user.player_position else None),
             team=signup.team.value if signup.team else None,
             goals=u_stats.goals if u_stats else 0,
-            mvp_votes=v_count
+            mvp_votes=v_count,
+            is_mvp=u_stats.is_mvp if u_stats else False
         ))
         
     return GameDetailOut(
@@ -236,6 +241,7 @@ async def get_game_details(
         date_time=game.date_time,
         status=game.status.value,
         price=game.price,
+        team_count=game.team_count,
         score_a=game.score_a,
         score_b=game.score_b,
         score_c=game.score_c,
@@ -361,6 +367,7 @@ async def update_player_status(
 
 class VoteDetailOut(BaseModel):
     voter_name: str
+    voter_team: Optional[str]
     target_name: str
     vote_team: str
 
@@ -384,23 +391,31 @@ async def get_game_votes(
     res = await session.execute(stmt)
     votes = res.scalars().all()
     
-    # Needs to fetch names. Let's do a join.
+    # Needs to fetch names and voter team. Let's do a join.
     from sqlalchemy.orm import aliased
     Voter = aliased(User)
     Target = aliased(User)
+    VoterSignup = aliased(Signup)
     
     stmt = (
-        select(Vote, Voter.full_name.label("voter_name"), Target.full_name.label("target_name"))
+        select(
+            Vote, 
+            Voter.full_name.label("voter_name"), 
+            Target.full_name.label("target_name"),
+            VoterSignup.team.label("voter_team")
+        )
         .join(Voter, Voter.user_id == Vote.voter_id)
         .join(Target, Target.user_id == Vote.target_id)
+        .outerjoin(VoterSignup, (VoterSignup.user_id == Vote.voter_id) & (VoterSignup.game_id == game_id))
         .where(Vote.game_id == game_id)
     )
     res = await session.execute(stmt)
     
     out = []
-    for vote, voter_name, target_name in res.all():
+    for vote, voter_name, target_name, voter_team in res.all():
         out.append(VoteDetailOut(
             voter_name=voter_name,
+            voter_team=voter_team.value if voter_team else None,
             target_name=target_name,
             vote_team=vote.vote_team.value
         ))

@@ -177,7 +177,7 @@
 
         // Parse URL params
         const urlParams = new URLSearchParams(window.location.search);
-        let gameId = urlParams.get('id');
+        let gameId = urlParams.get('id') || urlParams.get('game_id');
 
         const app = document.getElementById('app');
         const selector = document.getElementById('gameSelector');
