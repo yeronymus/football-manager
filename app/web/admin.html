@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SuperAdmin Dashboard</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Telegram WebApp -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="css/admin.css?v=1.0">
+</head>
+<body>
+    <div id="app-container">
+        <!-- Sidebar / Groups Panel -->
+        <aside id="sidebar" class="glass-panel">
+            <div class="sidebar-header">
+                <h2>Admin Hub</h2>
+            </div>
+            <div class="groups-list" id="groups-list">
+                <div class="loading-spinner"></div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Group View (Games List) -->
+            <section id="view-group" class="view-section hidden">
+                <header class="glass-header">
+                    <button class="back-btn mobile-only" onclick="showSidebar()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                    </button>
+                    <div class="header-content">
+                        <h1 id="group-title">Select a Group</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button class="action-btn outline mobile-hide" id="btn-create-game" onclick="openApp('create')">+ Create Game</button>
+                    </div>
+                </header>
+                <div class="content-scroll" id="group-view-content">
+                    <div id="group-settings-container" class="group-settings-card hidden">
+                        <h3>Group Settings</h3>
+                        <div class="settings-grid" style="margin-top: 12px;">
+                            <div class="form-group">
+                                <label>Language</label>
+                                <select id="setting-lang" onchange="updateGroupSetting('language', this.value)">
+                                    <option value="ru">Русский</option>
+                                    <option value="en">English</option>
+                                    <option value="sr">Srpski</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Default Price</label>
+                                <input type="text" id="setting-price" onblur="updateGroupSetting('payment_info', this.value)">
+                            </div>
+                        </div>
+                    </div>
+                    <div id="games-list">
+                        <!-- Games populated here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Game Detail View -->
+            <section id="view-game" class="view-section hidden">
+                <header class="glass-header">
+                    <button class="back-btn" onclick="showGroupGames()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                        Back
+                    </button>
+                    <div class="game-header-info">
+                        <h1 id="game-title">Game Details</h1>
+                        <span id="game-status-badge" class="badge"></span>
+                    </div>
+                    <div class="header-actions">
+                        <button class="action-btn outline" onclick="openApp('edit')">✏️ Edit</button>
+                        <button class="action-btn outline" onclick="openApp('score')">🏁 Score</button>
+                        <button class="action-btn primary" onclick="openApp('draft')">🛡 Draft</button>
+                    </div>
+                </header>
+                
+                <div class="content-scroll">
+                    <div class="game-stats glass-card">
+                        <div class="stat-box">
+                            <span class="stat-label">Players</span>
+                            <span class="stat-value" id="game-stat-players">0/0</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Price</span>
+                            <span class="stat-value" id="game-stat-price">0</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Paid</span>
+                            <span class="stat-value" id="game-stat-paid">0</span>
+                        </div>
+                    </div>
+
+                    <div class="players-section glass-card">
+                        <div class="section-header">
+                            <h3>Roster</h3>
+                            <div class="actions">
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">Use Draft for squads</span>
+                            </div>
+                        </div>
+                        <div class="players-list" id="players-list">
+                            <!-- Players populated here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Placeholder View -->
+            <section id="view-placeholder" class="view-section active">
+                <div class="empty-state">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    <h2>Welcome to Admin Dashboard</h2>
+                    <p>Select a group from the sidebar to manage games and players.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- IFrame App Modal -->
+    <div id="iframe-modal" class="iframe-modal">
+        <div class="iframe-header">
+            <h2 id="iframe-title">App</h2>
+            <button class="close-iframe-btn" onclick="closeApp()">✕ Close</button>
+        </div>
+        <iframe id="app-iframe"></iframe>
+    </div>
+
+    <script src="js/admin.js?v=1.3"></script>
+</body>
+</html>

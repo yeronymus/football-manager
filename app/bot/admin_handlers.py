@@ -40,32 +40,27 @@ async def cmd_create(message: types.Message):
         reply_markup=kb
     )
 
-@router.message(Command("refresh_dashboard"))
-async def cmd_refresh_dashboard(message: types.Message, session: AsyncSession):
-    if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
-        return
 
+@router.message(Command("dashboard"))
+async def cmd_dashboard(message: types.Message, session: AsyncSession):
+    # Check if user is admin
+    from app.api.auth import check_admin_rights
     try:
-        args = message.text.split()
-        if len(args) != 2:
-            await message.answer("⚠️ Использование: `/refresh_dashboard <game_id>`")
-            return
-            
-        game_id = int(args[1])
+        # We just check if they are in admin_ids, or superadmin, or ChatAdmin
+        # A simple check: if check_admin_rights succeeds for ANY group or if they are superadmin.
+        # But check_admin_rights requires a chat_id. Let's just give the link to anyone,
+        # the TMA will authenticate them against the API and show only what they can see.
+        from aiogram.types.web_app_info import WebAppInfo
         
-        from app.bot.admin_dashboard import update_dashboard_message
-        success = await update_dashboard_message(message.bot, game_id, session)
+        webapp_url = f"{settings.webapp_url}/web/admin.html"
+        kb = types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="🛠 Открыть Dashboard", web_app=WebAppInfo(url=webapp_url))]
+        ])
         
-        if success:
-            await message.answer("✅ Dashboard обновлен!")
-        else:
-            await message.answer("⚠️ Не удалось обновить. Проверьте ID игры и привязку админ-чата.")
-            
-    except ValueError:
-        await message.answer("⚠️ ID игры должен быть числом.")
+        await message.answer("Добро пожаловать в Admin Dashboard! Нажмите кнопку ниже для управления группами и играми.", reply_markup=kb)
     except Exception as e:
-        logger.error(f"Manual refresh error: {e}")
-        await message.answer(f"❌ Ошибка: {e}")
+        await message.answer(f"Ошибка: {e}")
+
 @router.message(Command("force_refresh"))
 async def cmd_force_refresh(message: types.Message, session: AsyncSession):
     if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
@@ -115,144 +110,7 @@ async def cmd_start_voting(message: types.Message, session: AsyncSession):
         logger.error(f"Manual voting trigger error: {e}")
         await message.answer(f"❌ Ошибка: {e}")
 
-# --- Merged from admin_tools.py ---
 
-@router.callback_query(F.data.startswith("toggle_pay_"))
-async def cb_toggle_pay(callback: types.CallbackQuery, session: AsyncSession):
-    signup_id = int(callback.data.split("_")[2])
-    signup = await session.get(Signup, signup_id)
-    if not signup:
-        await callback.answer("Запись не найдена")
-        return
-        
-    signup.is_paid = not signup.is_paid
-    await session.commit()
-    await session.refresh(signup) # Force refresh for dashboard
-    
-    from app.bot.admin_dashboard import update_dashboard_message
-    await update_dashboard_message(callback.bot, signup.game_id, session)
-    await callback.answer("Статус оплаты изменен")
-
-@router.callback_query(F.data.startswith("god_kick_menu_"))
-async def cb_god_kick_menu(callback: types.CallbackQuery, session: AsyncSession):
-    game_id = int(callback.data.split("_")[3])
-    stmt = select(Signup, User).join(User).where(Signup.game_id == game_id).where(Signup.status == SignupStatus.ACTIVE).order_by(Signup.created_at)
-    res = await session.execute(stmt)
-    rows = res.all()
-    
-    if not rows:
-        await callback.answer("Нет игроков для удаления")
-        return
-        
-    buttons = []
-    for signup, user in rows:
-        name = user.full_name[:15]
-        buttons.append([types.InlineKeyboardButton(text=f"❌ {name}", callback_data=f"kick_p_{signup.id}_{game_id}")])
-    
-    buttons.append([types.InlineKeyboardButton(text="🔙 Назад", callback_data=f"god_dash_refresh_{game_id}")])
-    kb = types.InlineKeyboardMarkup(inline_keyboard=buttons)
-    
-    await callback.message.edit_text("🧨 <b>Выберите игрока для удаления:</b>", reply_markup=kb, parse_mode="HTML")
-
-@router.callback_query(F.data.startswith("god_dash_refresh_"))
-async def cb_god_dash_refresh(callback: types.CallbackQuery, session: AsyncSession):
-    try:
-        # Format: god_dash_refresh_{game_id}
-        game_id = int(callback.data.split("_")[3])
-        
-        from app.bot.admin_dashboard import update_dashboard_message
-        # Force update the same message (callback.message)
-        success = await update_dashboard_message(callback.bot, game_id, session, target_chat_id=callback.message.chat.id)
-        
-        if success:
-            await callback.answer("✅ Меню обновлено")
-        else:
-            await callback.answer("⚠️ Ошибка обновления меню")
-            
-    except Exception as e:
-        logger.error(f"Back Button Error: {e}")
-        await callback.answer(f"Error: {e}")
-
-@router.callback_query(F.data.startswith("kick_p_"))
-async def cb_kick_intent(callback: types.CallbackQuery):
-    # Swap button with a confirmation button
-    markup = callback.message.reply_markup
-    # Data format: kick_p_{signup_id}_{game_id}
-    parts = callback.data.split("_")
-    signup_id = parts[2]
-    game_id = parts[3]
-    new_data = f"kick_c_{signup_id}_{game_id}"
-    
-    for row in markup.inline_keyboard:
-        for btn in row:
-            if btn.callback_data == callback.data:
-                btn.text = "⚠️ ТОЧНО УДАЛИТЬ?"
-                btn.callback_data = new_data
-    
-    try:
-        await callback.message.edit_reply_markup(reply_markup=markup)
-    except Exception: pass
-    await callback.answer("Нажмите еще раз для удаления игрока")
-
-@router.callback_query(F.data.startswith("kick_c_"))
-async def cb_kick_confirm(callback: types.CallbackQuery, session: AsyncSession):
-    # Format: kick_c_{signup_id}_{game_id}
-    parts = callback.data.split("_")
-    signup_id = int(parts[2])
-    game_id = int(parts[3])
-    
-    signup = await session.get(Signup, signup_id)
-    if not signup:
-        await callback.answer("Запись не найдена")
-        # Return to dashboard anyway
-        from app.bot.admin_dashboard import update_dashboard_message
-        await update_dashboard_message(callback.bot, game_id, session)
-        return
-        
-    user_id = signup.user_id
-    
-    from app.core.services.roster import RosterService
-
-    try:
-        # Admin Kick = Leave with Admin privilege
-        success = False
-        msg = ""
-        
-        async with UnitOfWork() as uow:
-            service = RosterService(uow)
-            success, msg, _ = await service.leave_player(game_id, user_id, is_admin=True)
-            
-            if success:
-                # Success! return to kick menu to allow more kicks
-                await uow.commit() # Commit transaction
-
-        if success:
-            await callback.answer("Игрок удален")
-            
-            # Notify the user they were removed
-            # DISABLED PER MVP/DRAFT SPECIFICS
-            # try:
-            #     await callback.bot.send_message(user_id, f"⚠️ Администратор удалил вас из состава на игру #{game_id}.")
-            # except: pass
-            
-            # Publish Event for UI Update
-            from app.core.events import event_bus
-            from app.core.services.roster import PlayerLeftEvent
-            await event_bus.publish(PlayerLeftEvent(game_id, user_id, "Администратор удалил игрока", None))
-
-            # Return to kick menu
-            await cb_god_kick_menu(callback, session)
-
-        else:
-             await callback.answer(f"Ошибка: {msg}")
-             from app.bot.listeners import update_game_ui
-             await update_game_ui(game_id)
-
-
-    except Exception as e:
-        await callback.answer(f"Ошибка: {e}")
-        from app.bot.admin_dashboard import update_dashboard_message
-        await update_dashboard_message(callback.bot, game_id, session)
 
 
 @router.message(Command("add_player"))
@@ -376,9 +234,7 @@ async def process_guest_position(callback: types.CallbackQuery, state: FSMContex
         await callback.message.edit_text(f"✅ Гость <b>{name}</b> успешно добавлен в игру #{game_id}!", parse_mode="HTML")
         await state.clear()
         
-        # Update Dashboard
-        from app.bot.admin_dashboard import update_dashboard_message
-        await update_dashboard_message(callback.bot, game_id, session)
+
         
         # Update Game UI if needed
         from app.bot.listeners import update_game_ui

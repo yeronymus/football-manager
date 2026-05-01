@@ -7,7 +7,7 @@ import logging
 from app.config import settings
 from app.bot.instance import bot
 from app.bot.main import dp, start_bot, stop_bot
-from app.api.routers import games, admin, voting, users, ads
+from app.api.routers import games, admin, voting, users, ads, dashboard
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -88,6 +88,7 @@ app.include_router(admin.router, prefix="/api/admin", tags=["AdminNew"])
 app.include_router(voting.router, prefix="/api", tags=["Voting"])
 app.include_router(users.router, prefix="/api", tags=["Users"])
 app.include_router(ads.router, prefix="/api", tags=["Ads"])
+app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])
 
 app.mount("/web", StaticFiles(directory="app/web", html=True), name="web")
 
