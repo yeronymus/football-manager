@@ -267,17 +267,19 @@ async def cmd_promote_admin(message: types.Message, session: AsyncSession):
         return
         
     parts = message.text.split()
-    if len(parts) != 2:
-        await message.answer("Использование: /promote <user_id>\n\nЭта команда делает пользователя админом текущей группы.")
-        return
+    if message.chat.type == "private":
+        if len(parts) != 3:
+            await message.answer("В личных сообщениях используйте: /promote <user_id> <chat_id>\nУзнать chat_id можно из логов или базы данных.")
+            return
+        chat_id = int(parts[2])
+    else:
+        if len(parts) != 2:
+            await message.answer("В группе используйте: /promote <user_id>")
+            return
+        chat_id = message.chat.id
         
     try:
         target_uid = int(parts[1])
-        chat_id = message.chat.id
-        
-        if message.chat.type == "private":
-            await message.answer("Эту команду нужно вызывать прямо в группе, которой вы хотите дать управление.")
-            return
             
         from app.db.models import ChatAdmin
         from sqlalchemy import select
@@ -291,8 +293,8 @@ async def cmd_promote_admin(message: types.Message, session: AsyncSession):
         session.add(ca)
         await session.commit()
         
-        await message.answer(f"✅ Пользователь {target_uid} успешно назначен администратором этой группы! Теперь он может открыть /dashboard.")
+        await message.answer(f"✅ Пользователь {target_uid} успешно назначен администратором группы {chat_id}!")
     except ValueError:
-        await message.answer("user_id должен быть числом.")
+        await message.answer("user_id и chat_id должны быть числами.")
     except Exception as e:
         await message.answer(f"Ошибка: {e}")
