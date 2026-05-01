@@ -21,14 +21,22 @@ let currentGameId = null;
 // View Navigation
 function switchView(viewId) {
     document.querySelectorAll('.view-section').forEach(el => {
+        if (el.id === viewId) return;
         el.classList.remove('active');
-        setTimeout(() => el.classList.add('hidden'), 300);
+        setTimeout(() => {
+            if (!el.classList.contains('active')) {
+                el.classList.add('hidden');
+            }
+        }, 300);
     });
     
     const target = document.getElementById(viewId);
-    target.classList.remove('hidden');
-    // small timeout to allow display:block to apply before animating opacity
-    setTimeout(() => target.classList.add('active'), 10);
+    if (target) {
+        target.classList.remove('hidden');
+        // trigger reflow
+        void target.offsetWidth;
+        target.classList.add('active');
+    }
 }
 
 function showGroupsView() {
