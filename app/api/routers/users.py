@@ -210,6 +210,50 @@ async def update_my_profile(
         
     return {"status": "ok"}
 
+@router.post("/users/register")
+async def register_user(
+    data: dict,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    """Registers a new user and creates an initial profile if chat_id provided."""
+    from app.db.models import Position
+    name = data.get("name")
+    pos = data.get("position")
+    chat_id = data.get("chat_id")
+    
+    if not name or not pos:
+        raise HTTPException(status_code=400, detail="Name and position are required")
+        
+    user = await session.get(User, user_id)
+    if not user:
+        user = User(
+            user_id=user_id,
+            full_name=name,
+            player_position=Position(pos),
+            rating=100
+        )
+        session.add(user)
+    else:
+        user.full_name = name
+        user.player_position = Position(pos)
+        
+    # If chat_id is provided, create a profile for that chat immediately
+    if chat_id:
+        chat = await session.get(Chat, int(chat_id))
+        if chat:
+            stmt = select(PlayerProfile).where(
+                PlayerProfile.user_id == user_id, 
+                PlayerProfile.chat_id == chat.chat_id
+            )
+            profile = await session.scalar(stmt)
+            if not profile:
+                profile = PlayerProfile(user_id=user_id, chat_id=chat.chat_id, rating=100)
+                session.add(profile)
+
+    await session.commit()
+    return {"status": "ok", "user_id": user_id}
+
 @router.get("/users/me/history")
 async def get_my_history(
     chat_id: int,

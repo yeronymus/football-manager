@@ -188,10 +188,10 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
     Matches both /start and /start <args> (deep links).
     """
     # Clean up the command message itself (UX)
-    try:
-        await message.delete()
-    except:
-        pass
+    # try:
+    #     await message.delete()
+    # except:
+    #     pass
 
     # Always reset any stale FSM state (e.g. stuck registration in Redis)
     await state.clear()
@@ -362,15 +362,28 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
         )
         return
 
-    # 4. If User NOT Exists -> Registration Flow
+    # 4. If User NOT Exists -> Registration Flow (Mini App)
+    chat_id = None
     if game_id:
-        await state.update_data(pending_game_id=game_id)
-        
-    
-    # 5. Clarify Registration
+        result = await session.execute(select(Game).where(Game.id == game_id))
+        game = result.scalar_one_or_none()
+        if game:
+            chat_id = game.chat_id
+
+    reg_url = f"{settings.webapp_url.rstrip('/')}/web/register.html?v=1.0"
+    if chat_id:
+        reg_url += f"&chat_id={chat_id}"
+    if game_id:
+        reg_url += f"&game_id={game_id}"
+
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="📝 Создать профиль (Mini App)", web_app=types.WebAppInfo(url=reg_url))]
+    ])
+
     await message.answer(
         "👋 <b>Добро пожаловать в Football Manager!</b>\n\n"
-        "Давай создадим твой профиль игрока.\n\n"
-        "📝 <b>Как тебя зовут?</b>\n👇 Напиши свое Имя и Фамилию ниже в чат (латинницей)",
+        "Чтобы участвовать в играх и отслеживать статистику, нужно создать профиль игрока.\n\n"
+        "Это займет всего 30 секунд в нашем приложении! 👇",
+        reply_markup=kb,
+        parse_mode="HTML"
     )
-    await state.set_state(Registration.waiting_for_name)
