@@ -68,52 +68,54 @@
 
             <!-- Game Detail View -->
             <section id="view-game" class="view-section hidden">
-                <header class="glass-header">
-                    <button class="back-btn" onclick="showGroupGames()">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-                        Back
-                    </button>
-                    <div class="game-header-info">
-                        <h1 id="game-title">Game Details</h1>
+                <header class="glass-header" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                        <button class="back-btn" onclick="switchView('view-group')" style="margin-top: -4px;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                            Back
+                        </button>
                         <span id="game-status-badge" class="badge"></span>
                     </div>
-                    <div class="header-actions">
-                        <button class="action-btn outline" onclick="openApp('edit')">✏️ Edit</button>
-                        <button class="action-btn outline" onclick="openApp('score')">🏁 Score</button>
-                        <button class="action-btn primary" onclick="openApp('draft')">🛡 Draft</button>
+                    <div class="game-header-info">
+                        <h1 id="game-title" style="font-size: 1.5rem; margin-bottom: 4px;">Game #...</h1>
+                        <p id="game-date-location" style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.4;"></p>
+                        <div id="game-score-display" style="margin-top: 8px; font-size: 1.2rem; font-weight: 700; display: flex; gap: 8px;"></div>
                     </div>
                 </header>
                 
                 <div class="content-scroll">
-                    <div class="game-stats glass-card">
-                        <div class="stat-box">
-                            <span class="stat-label">Players</span>
-                            <span class="stat-value" id="game-stat-players">0/0</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-label">Price</span>
-                            <span class="stat-value" id="game-stat-price">0</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-label">Paid</span>
-                            <span class="stat-value" id="game-stat-paid">0</span>
-                        </div>
+                    <div class="game-action-grid">
+                        <button class="action-tile" onclick="openApp('edit')">
+                            <span class="icon">✏️</span> Edit Info
+                        </button>
+                        <button class="action-tile" onclick="openApp('score')">
+                            <span class="icon">🏁</span> Enter Score
+                        </button>
+                        <button class="action-tile primary" onclick="openApp('draft')">
+                            <span class="icon">🛡</span> Manage Draft
+                        </button>
                     </div>
 
-                    <div class="players-section glass-card">
-                        <div class="section-header">
-                            <h3>Roster</h3>
-                            <div class="actions">
-                                <span style="font-size: 0.85rem; color: var(--text-muted);">Use Draft for squads</span>
+                    <div class="roster-section">
+                        <div class="section-header" style="display: flex; flex-direction: column; align-items: stretch; gap: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div class="roster-tabs">
+                                    <button class="tab-btn active" id="tab-roster" onclick="switchRosterTab('roster')">Roster</button>
+                                    <button class="tab-btn" id="tab-mvp" onclick="switchRosterTab('mvp')">MVP Votes</button>
+                                </div>
+                                <div class="actions">
+                                    <span id="roster-paid-info" style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">Paid: 0/0</span>
+                                </div>
                             </div>
                         </div>
                         <div class="players-list" id="players-list">
-                            <!-- Players populated here -->
+                            <div class="loading-spinner"></div>
+                        </div>
+                        <div class="players-list hidden" id="mvp-list">
+                            <!-- MVP votes will go here -->
                         </div>
                     </div>
                 </div>
-            </section>
-
             </section>
         </main>
     </div>

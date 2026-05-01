@@ -157,46 +157,133 @@ async function loadGameDetails(gameId) {
         const game = await apiCall(`/games/${gameId}`);
         
         const dateStr = new Date(game.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
-        document.getElementById('game-title').textContent = `${game.location} (${dateStr})`;
+        document.getElementById('game-title').textContent = `Game #${game.id}`;
+        document.getElementById('game-date-location').textContent = `${game.location} • ${dateStr}`;
         
         const badge = document.getElementById('game-status-badge');
         badge.className = `badge ${game.status}`;
         badge.textContent = game.status;
         
-        document.getElementById('game-stat-players').textContent = `${game.players.length}`;
-        document.getElementById('game-stat-price').textContent = game.price;
+        const scoreContainer = document.getElementById('game-score-display');
+        if (game.score_a !== null && game.score_b !== null) {
+            let scoreHtml = `<span class="score-box score-a">${game.score_a}</span> : <span class="score-box score-b">${game.score_b}</span>`;
+            if (game.score_c !== null) {
+                scoreHtml += ` : <span class="score-box score-c">${game.score_c}</span>`;
+            }
+            scoreContainer.innerHTML = scoreHtml;
+        } else {
+            scoreContainer.innerHTML = '';
+        }
         
         const paidCount = game.players.filter(p => p.is_paid).length;
-        document.getElementById('game-stat-paid').textContent = `${paidCount}/${game.players.length}`;
+        document.getElementById('roster-paid-info').textContent = `Paid: ${paidCount}/${game.players.length}`;
         
         const listEl = document.getElementById('players-list');
         listEl.innerHTML = '';
         
+        // Group players by team
+        const teams = {};
         game.players.forEach(p => {
-            const el = document.createElement('div');
-            el.className = 'player-item';
-            
-            const btnClass = p.is_paid ? 'paid' : 'unpaid';
-            const btnText = p.is_paid ? 'Paid' : 'Unpaid';
-            
-            el.innerHTML = `
-                <div class="player-info">
-                    <span class="player-name">${p.full_name}</span>
-                    <span class="player-meta">${p.position || 'CM'}</span>
-                </div>
-                <div class="player-actions">
-                    <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 8px;">${p.status}</span>
-                    <button class="payment-toggle ${btnClass}" onclick="togglePayment(${p.signup_id}, this, ${gameId})">
-                        ${btnText}
-                    </button>
-                </div>
-            `;
-            
-            listEl.appendChild(el);
+            const t = p.team || 'Unassigned';
+            if (!teams[t]) teams[t] = [];
+            teams[t].push(p);
         });
+        
+        // Sort keys (A, B, C, then Unassigned)
+        const teamKeys = Object.keys(teams).sort((a,b) => {
+            if (a === 'Unassigned') return 1;
+            if (b === 'Unassigned') return -1;
+            return a.localeCompare(b);
+        });
+        
+        teamKeys.forEach(t => {
+            // Add team header
+            const header = document.createElement('div');
+            header.className = 'team-header';
+            header.textContent = t === 'Unassigned' ? 'Unassigned / Reserve' : `Team ${t.toUpperCase()}`;
+            listEl.appendChild(header);
+            
+            teams[t].forEach(p => {
+                const el = document.createElement('div');
+                el.className = 'player-item';
+                
+                const btnClass = p.is_paid ? 'paid' : 'unpaid';
+                const btnText = p.is_paid ? 'Paid' : 'Unpaid';
+                
+                // Construct stats text
+                let statsHtml = '';
+                if (p.goals > 0) statsHtml += `<span title="Goals">⚽ ${p.goals}</span> `;
+                if (p.mvp_votes > 0) statsHtml += `<span title="MVP Votes">🌟 ${p.mvp_votes}</span>`;
+                
+                el.innerHTML = `
+                    <div class="player-info">
+                        <span class="player-name">${p.full_name} <div style="font-size:0.8rem; margin-left: 6px;">${statsHtml}</div></span>
+                    </div>
+                    <div class="player-actions">
+                        <button class="payment-toggle ${btnClass}" onclick="togglePayment(${p.signup_id}, this, ${gameId})">
+                            ${btnText}
+                        </button>
+                    </div>
+                `;
+                
+                listEl.appendChild(el);
+            });
+        });
+        
+        // Setup Tabs
+        document.getElementById('tab-roster').className = 'tab-btn active';
+        document.getElementById('tab-mvp').className = 'tab-btn';
+        document.getElementById('players-list').classList.remove('hidden');
+        document.getElementById('mvp-list').classList.add('hidden');
         
     } catch (e) {
         document.getElementById('players-list').innerHTML = `<p style="color:var(--danger)">Failed to load game details.</p>`;
+    }
+}
+
+async function switchRosterTab(tab) {
+    if (tab === 'roster') {
+        document.getElementById('tab-roster').className = 'tab-btn active';
+        document.getElementById('tab-mvp').className = 'tab-btn';
+        document.getElementById('players-list').classList.remove('hidden');
+        document.getElementById('mvp-list').classList.add('hidden');
+    } else {
+        document.getElementById('tab-roster').className = 'tab-btn';
+        document.getElementById('tab-mvp').className = 'tab-btn active';
+        document.getElementById('players-list').classList.add('hidden');
+        document.getElementById('mvp-list').classList.remove('hidden');
+        
+        // Load votes if not loaded
+        const listEl = document.getElementById('mvp-list');
+        if (!listEl.innerHTML.includes('player-item')) {
+            listEl.innerHTML = '<div class="loading-spinner"></div>';
+            try {
+                const votes = await apiCall(`/games/${currentGameId}/votes`);
+                listEl.innerHTML = '';
+                
+                if (votes.length === 0) {
+                    listEl.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 20px;">No votes recorded yet.</p>';
+                    return;
+                }
+                
+                votes.forEach(v => {
+                    const el = document.createElement('div');
+                    el.className = 'player-item';
+                    el.innerHTML = `
+                        <div class="player-info">
+                            <span class="player-name">${v.voter_name}</span>
+                            <span class="player-meta">voted for: <strong style="color:var(--text-main);">${v.target_name}</strong></span>
+                        </div>
+                        <div class="player-actions">
+                            <div class="badge active">${v.vote_team}</div>
+                        </div>
+                    `;
+                    listEl.appendChild(el);
+                });
+            } catch (e) {
+                listEl.innerHTML = '<p style="color:var(--danger)">Failed to load votes.</p>';
+            }
+        }
     }
 }
 
