@@ -421,3 +421,39 @@ async def get_game_votes(
         ))
         
     return out
+
+@router.post("/games/{game_id}/notify")
+async def notify_player_payment(
+    game_id: int,
+    data: dict = Body(...),
+    admin_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    target_user_id = data.get("user_id")
+    if not target_user_id:
+        raise HTTPException(status_code=400, detail="Missing user_id")
+        
+    game = await session.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, admin_id)
+    
+    # Send message using bot
+    # We must import the bot instance carefully to avoid circular imports
+    # If bot is not globally accessible, we can use dependency injection or absolute import
+    try:
+        from app.bot.main import bot
+        
+        date_str = game.date_time.strftime("%d.%m.%Y %H:%M")
+        msg = (
+            f"🔔 <b>Напоминание об оплате</b>\n\n"
+            f"Пожалуйста, не забудьте оплатить взнос за игру:\n"
+            f"📍 <b>{game.location}</b> ({date_str})\n"
+            f"💰 Сумма: <b>{game.price} CZK</b>\n"
+            f"💳 Реквизиты: <code>{game.payment_info}</code>"
+        )
+        await bot.send_message(target_user_id, msg, parse_mode="HTML")
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

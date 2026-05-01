@@ -235,11 +235,17 @@ async function loadGameDetails(gameId) {
                     statsHtml += `<span title="MVP" style="color: #fbbf24; font-weight: bold; font-size: 0.95rem; margin-left: 6px; padding: 2px 6px; background: rgba(245, 158, 11, 0.15); border-radius: 6px;">MVP 🌟</span>`;
                 }
                 
+                let notifyBtn = '';
+                if (!p.is_paid) {
+                    notifyBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 6px;" onclick="notifyPayment(${p.user_id}, ${gameId}, this)" title="Уведомить об оплате">🔔</button>`;
+                }
+                
                 el.innerHTML = `
                     <div class="player-info">
                         <span class="player-name">${p.full_name} <div style="font-size:0.8rem; margin-left: 6px;">${statsHtml}</div></span>
                     </div>
-                    <div class="player-actions">
+                    <div class="player-actions" style="display: flex; align-items: center;">
+                        ${notifyBtn}
                         <button class="payment-toggle ${btnClass}" onclick="togglePayment(${p.signup_id}, this, ${gameId})">
                             ${btnText}
                         </button>
@@ -368,6 +374,27 @@ async function switchRosterTab(tab) {
                 listEl.innerHTML = '<p style="color:var(--danger)">Failed to load votes.</p>';
             }
         }
+    }
+}
+
+async function notifyPayment(userId, gameId, btn) {
+    if (!confirm('Отправить напоминание об оплате этому игроку в личные сообщения?')) return;
+    
+    const origText = btn.innerHTML;
+    btn.innerHTML = '⏳';
+    btn.disabled = true;
+    
+    try {
+        await apiCall(`/games/${gameId}/notify`, 'POST', { user_id: userId });
+        btn.innerHTML = '✅';
+        setTimeout(() => {
+            btn.innerHTML = origText;
+            btn.disabled = false;
+        }, 2000);
+    } catch (e) {
+        alert('Ошибка при отправке уведомления. Возможно игрок заблокировал бота.');
+        btn.innerHTML = origText;
+        btn.disabled = false;
     }
 }
 
