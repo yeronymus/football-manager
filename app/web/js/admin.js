@@ -207,9 +207,9 @@ async function loadGameDetails(gameId) {
         });
         
         const getTeamConfig = (t) => {
-            if (t === 'A') return { name: 'Team A (Orange)', icon: '🟠', color: 'var(--warning, #fbbf24)', bg: 'rgba(245, 158, 11, 0.2)' };
-            if (t === 'B') return { name: 'Team B (Green)', icon: '🟢', color: 'var(--success, #34d399)', bg: 'rgba(16, 185, 129, 0.2)' };
-            if (t === 'C') return { name: 'Team C (Blue)', icon: '🔵', color: 'var(--primary, #60a5fa)', bg: 'rgba(59, 130, 246, 0.2)' };
+            if (t === 'A') return { name: 'Orange', icon: '🟠', color: 'var(--warning, #fbbf24)', bg: 'rgba(245, 158, 11, 0.2)' };
+            if (t === 'B') return { name: 'Green', icon: '🟢', color: 'var(--success, #34d399)', bg: 'rgba(16, 185, 129, 0.2)' };
+            if (t === 'C') return { name: 'Blue', icon: '🔵', color: 'var(--primary, #60a5fa)', bg: 'rgba(59, 130, 246, 0.2)' };
             return { name: 'Unassigned / Reserve', icon: '⚪', color: 'var(--text-muted)', bg: 'rgba(255,255,255,0.1)' };
         };
 
@@ -230,13 +230,14 @@ async function loadGameDetails(gameId) {
                 
                 // Construct stats text
                 let statsHtml = '';
+                if (p.goals > 0) statsHtml += `<span title="Goals">⚽ ${p.goals}</span> `;
                 if (p.is_mvp) {
-                    statsHtml = `<span title="MVP" style="color: #fbbf24; font-weight: bold; font-size: 0.95rem; margin-left: 6px; padding: 2px 6px; background: rgba(245, 158, 11, 0.15); border-radius: 6px;">MVP 🌟</span>`;
+                    statsHtml += `<span title="MVP" style="color: #fbbf24; font-weight: bold; font-size: 0.95rem; margin-left: 6px; padding: 2px 6px; background: rgba(245, 158, 11, 0.15); border-radius: 6px;">MVP 🌟</span>`;
                 }
                 
                 el.innerHTML = `
                     <div class="player-info">
-                        <span class="player-name">${p.full_name} ${statsHtml}</span>
+                        <span class="player-name">${p.full_name} <div style="font-size:0.8rem; margin-left: 6px;">${statsHtml}</div></span>
                     </div>
                     <div class="player-actions">
                         <button class="payment-toggle ${btnClass}" onclick="togglePayment(${p.signup_id}, this, ${gameId})">
@@ -303,17 +304,23 @@ async function switchRosterTab(tab) {
                 });
                 
                 const getTeamConfig = (t) => {
-                    if (t === 'A') return { name: 'Team A (Orange)', icon: '🟠', color: 'var(--warning, #fbbf24)' };
-                    if (t === 'B') return { name: 'Team B (Green)', icon: '🟢', color: 'var(--success, #34d399)' };
-                    if (t === 'C') return { name: 'Team C (Blue)', icon: '🔵', color: 'var(--primary, #60a5fa)' };
+                    if (t === 'A') return { name: 'Orange', icon: '🟠', color: 'var(--warning, #fbbf24)' };
+                    if (t === 'B') return { name: 'Green', icon: '🟢', color: 'var(--success, #34d399)' };
+                    if (t === 'C') return { name: 'Blue', icon: '🔵', color: 'var(--primary, #60a5fa)' };
                     return { name: 'Unassigned', icon: '⚪', color: 'var(--text-muted)' };
                 };
+                
+                // We need to count how many votes each voter received to show 🌟
+                const receivedVotesCount = {};
+                votes.forEach(v => {
+                    receivedVotesCount[v.target_name] = (receivedVotesCount[v.target_name] || 0) + 1;
+                });
                 
                 Object.keys(votersByTeam).sort().forEach(t => {
                     const header = document.createElement('div');
                     header.className = 'team-header';
                     const tc = getTeamConfig(t);
-                    header.innerHTML = `<span style="margin-right: 6px;">${tc.icon}</span> <span style="color: ${tc.color};">Voters from ${tc.name.toUpperCase()}</span>`;
+                    header.innerHTML = `<span style="margin-right: 6px;">${tc.icon}</span> <span style="color: ${tc.color};">${tc.name.toUpperCase()} VOTERS</span>`;
                     listEl.appendChild(header);
                     
                     Object.keys(votersByTeam[t]).forEach(voterName => {
@@ -335,14 +342,17 @@ async function switchRosterTab(tab) {
                             castHtml += `
                                 <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; font-size: 0.85rem; padding: 4px 0; border-top: 1px solid rgba(255,255,255,0.05);">
                                     <span>➔ voted for: <strong style="color:var(--text-main); margin-left:2px;">${cast.target_name}</strong></span>
-                                    <span class="badge ${badgeClass}" style="color: inherit; font-size: 0.7rem; padding: 2px 6px;">Team ${cast.vote_team}</span>
+                                    <span class="badge ${badgeClass}" style="color: inherit; font-size: 0.7rem; padding: 2px 6px;">${getTeamConfig(cast.vote_team).name}</span>
                                 </div>
                             `;
                         });
                         
+                        const rVotes = receivedVotesCount[voterName] || 0;
+                        const starHtml = rVotes > 0 ? `<span style="color: #fbbf24; margin-left: 6px;">🌟 ${rVotes}</span>` : '';
+                        
                         el.innerHTML = `
                             <div class="player-info" style="width: 100%;">
-                                <span class="player-name" style="font-weight: 600;">${voterName}</span>
+                                <span class="player-name" style="font-weight: 600;">${voterName} ${starHtml}</span>
                             </div>
                             <div style="width: 100%; padding-left: 8px;">
                                 ${castHtml}

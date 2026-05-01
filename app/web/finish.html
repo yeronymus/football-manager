@@ -322,12 +322,12 @@
                 <h1>${gameData.location}</h1>
                 <div class="score-board">
                     <div class="team-score">
-                        <h3>🟠 Команда оранжевые</h3>
+                        <h3>🟠 Orange</h3>
                         <input type="number" id="score-a" value="${gameData.score_a || 0}" min="0">
                     </div>
                     <div class="vs">:</div>
                     <div class="team-score">
-                        <h3>🟢 Команда зеленые</h3>
+                        <h3>🟢 Green</h3>
                         <input type="number" id="score-b" value="${gameData.score_b || 0}" min="0">
                     </div>
                 </div>
@@ -336,7 +336,7 @@
             html += `<div class="players-list">`;
 
             // Team A
-            html += `<div class="team-header">🟠 Игроки (Оранжевые)</div>`;
+            html += `<div class="team-header">🟠 Игроки (Orange)</div>`;
             gameData.team_a.forEach(p => {
                 html += `
                     <div class="player-row">
@@ -351,7 +351,7 @@
             });
 
             // Team B
-            html += `<div class="team-header" style="margin-top: 20px;">🟢 Игроки (Зеленые)</div>`;
+            html += `<div class="team-header" style="margin-top: 20px;">🟢 Игроки (Green)</div>`;
             gameData.team_b.forEach(p => {
                 html += `
                     <div class="player-row">
@@ -373,7 +373,7 @@
                     <h3 style="margin-top:0; margin-bottom:10px;">⭐ Выберите MVP матча</h3>
                     
                     <div style="margin-bottom: 10px;">
-                        <label>🟠 MVP (Команда А):</label>
+                        <label>🟠 MVP (Orange):</label>
                         <select id="mvp-team-a" style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 6px;">
                             <option value="">-- Никто --</option>
             `;
@@ -387,7 +387,7 @@
                     </div>
 
                     <div>
-                        <label>🟢 MVP (Команда Б):</label>
+                        <label>🟢 MVP (Green):</label>
                         <select id="mvp-team-b" style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 6px;">
                             <option value="">-- Никто --</option>
             `;

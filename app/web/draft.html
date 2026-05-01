@@ -604,11 +604,11 @@
                 activeTeams.forEach(key => {
                     const col = document.createElement('div');
                     col.className = `column col-${key}`;
-                    const teamName = key.toUpperCase();
+                    const teamName = key === 'a' ? 'Orange' : (key === 'b' ? 'Green' : 'Blue');
 
                     const emojis = { a: '🟠', b: '🟢', c: '🔵' };
                     col.innerHTML = `
-                        <div class="column-header" onclick="moveSelectedToTeam('${key}')">${emojis[key] || ''} Команда ${teamName} <span id="rating-${key}"></span></div>
+                        <div class="column-header" onclick="moveSelectedToTeam('${key}')">${emojis[key] || ''} ${teamName} <span id="rating-${key}"></span></div>
                         <div class="tactic-board">
                              ${renderPosGroup(key, 'GK')}
                              ${renderPosGroup(key, 'DEF', 'Защита')}
