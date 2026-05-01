@@ -43,23 +43,31 @@ async def cmd_create(message: types.Message):
 
 @router.message(Command("dashboard"))
 async def cmd_dashboard(message: types.Message, session: AsyncSession):
-    # Check if user is admin
-    from app.api.auth import check_admin_rights
-    try:
-        # We just check if they are in admin_ids, or superadmin, or ChatAdmin
-        # A simple check: if check_admin_rights succeeds for ANY group or if they are superadmin.
-        # But check_admin_rights requires a chat_id. Let's just give the link to anyone,
-        # the TMA will authenticate them against the API and show only what they can see.
-        from aiogram.types.web_app_info import WebAppInfo
+    # System admins only for the command itself (or let the webapp handle auth, but hiding the button is better)
+    if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
+        # Check if they are ChatAdmin in DB
+        from app.db.models import ChatAdmin, User
+        from sqlalchemy import select
+        res = await session.execute(select(ChatAdmin).where(ChatAdmin.user_id == message.from_user.id))
+        is_admin = res.first() is not None
         
-        webapp_url = f"{settings.webapp_url}/web/admin.html"
+        user_res = await session.execute(select(User).where(User.user_id == message.from_user.id))
+        user = user_res.scalar_one_or_none()
+        is_super = user and getattr(user, 'is_superadmin', False)
+        
+        if not (is_admin or is_super):
+            return
+
+    try:
+        webapp_url = f"{settings.webapp_url.rstrip('/')}/web/admin.html"
         kb = types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(text="🛠 Открыть Dashboard", web_app=WebAppInfo(url=webapp_url))]
+            [types.InlineKeyboardButton(text="🛠 Открыть Dashboard", web_app=types.WebAppInfo(url=webapp_url))]
         ])
         
-        await message.answer("Добро пожаловать в Admin Dashboard! Нажмите кнопку ниже для управления группами и играми.", reply_markup=kb)
+        await message.answer("Добро пожаловать в Admin Dashboard!\nНажмите кнопку ниже для управления вашими группами и играми.", reply_markup=kb)
     except Exception as e:
-        await message.answer(f"Ошибка: {e}")
+        logger.error(f"Dashboard Command Error: {e}")
+        await message.answer(f"Ошибка вызова Dashboard: {e}")
 
 @router.message(Command("force_refresh"))
 async def cmd_force_refresh(message: types.Message, session: AsyncSession):
