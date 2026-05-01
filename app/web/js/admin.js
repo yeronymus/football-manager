@@ -254,7 +254,10 @@ async function loadGameDetails(gameId) {
         document.getElementById('tab-roster').className = 'tab-btn active';
         document.getElementById('tab-mvp').className = 'tab-btn';
         document.getElementById('players-list').classList.remove('hidden');
-        document.getElementById('mvp-list').classList.add('hidden');
+        
+        const mvpListEl = document.getElementById('mvp-list');
+        mvpListEl.classList.add('hidden');
+        mvpListEl.innerHTML = ''; // Clear old votes!
         
     } catch (e) {
         document.getElementById('players-list').innerHTML = `<p style="color:var(--danger)">Failed to load game details.</p>`;
