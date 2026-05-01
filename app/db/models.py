@@ -65,6 +65,7 @@ class User(Base):
     games_played = Column(Integer, default=0)
     alt_positions = Column(ARRAY(String), default=[])
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_superadmin = Column(Boolean, default=False)
 
     games_created = relationship("Game", back_populates="creator")
     signups = relationship("Signup", back_populates="user")
@@ -78,7 +79,6 @@ class Chat(Base):
 
     chat_id = Column(BigInteger, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    admin_chat_id = Column(BigInteger, nullable=True) # Linked Admin Chat
     channel_id = Column(BigInteger, nullable=True)    # Linked Announcement Channel
 
     # SaaS / Group Settings

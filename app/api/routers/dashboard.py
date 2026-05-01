@@ -1,0 +1,300 @@
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from pydantic import BaseModel
+from typing import List, Optional
+import datetime
+
+from app.db.database import get_session
+from app.db.models import Chat, ChatAdmin, User, Game, GameStatus, Signup, SignupStatus
+from app.api.auth import get_user_from_header, check_admin_rights
+from app.config import settings
+
+router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+class GroupOut(BaseModel):
+    chat_id: int
+    title: str
+    is_active: bool
+    language: str
+    payment_info: Optional[str]
+
+class GameSummaryOut(BaseModel):
+    id: int
+    location: str
+    date_time: datetime.datetime
+    status: str
+    players_count: int
+    max_players: int
+
+@router.get("/groups", response_model=List[GroupOut])
+async def get_dashboard_groups(
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Returns groups the user has admin access to.
+    Superadmins see all groups.
+    """
+    # Check if user is superadmin
+    is_superadmin = False
+    if user_id in settings.admin_ids or user_id == settings.system_owner_id:
+        is_superadmin = True
+    else:
+        user = await session.get(User, user_id)
+        if user and getattr(user, 'is_superadmin', False):
+            is_superadmin = True
+
+    if is_superadmin:
+        result = await session.execute(select(Chat))
+        chats = result.scalars().all()
+    else:
+        # Fetch only groups where user is ChatAdmin
+        result = await session.execute(
+            select(Chat).join(ChatAdmin).where(ChatAdmin.user_id == user_id)
+        )
+        chats = result.scalars().all()
+
+    return [
+        GroupOut(
+            chat_id=chat.chat_id,
+            title=chat.title,
+            is_active=chat.is_active,
+            language=chat.language,
+            payment_info=chat.payment_info
+        ) for chat in chats
+    ]
+
+class GroupUpdate(BaseModel):
+    is_active: Optional[bool] = None
+    language: Optional[str] = None
+    payment_info: Optional[str] = None
+
+@router.patch("/groups/{chat_id}")
+async def update_group_settings(
+    chat_id: int,
+    data: GroupUpdate,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    await check_admin_rights(chat_id, user_id)
+    chat = await session.get(Chat, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Group not found")
+        
+    if data.is_active is not None:
+        chat.is_active = data.is_active
+    if data.language is not None:
+        chat.language = data.language
+    if data.payment_info is not None:
+        chat.payment_info = data.payment_info
+        
+    await session.commit()
+    return {"status": "ok"}
+
+@router.get("/groups/{chat_id}/games", response_model=List[GameSummaryOut])
+async def get_group_games(
+    chat_id: int,
+    limit: int = Query(20, le=100),
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    await check_admin_rights(chat_id, user_id)
+    
+    # Get games with player count
+    stmt = (
+        select(Game, func.count(Signup.id).label("players_count"))
+        .outerjoin(Signup, (Signup.game_id == Game.id) & (Signup.status == SignupStatus.ACTIVE))
+        .where(Game.chat_id == chat_id)
+        .group_by(Game.id)
+        .order_by(Game.date_time.desc())
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    rows = result.all()
+    
+    out = []
+    for game, count in rows:
+        out.append(
+            GameSummaryOut(
+                id=game.id,
+                location=game.location,
+                date_time=game.date_time,
+                status=game.status.value,
+                players_count=count,
+                max_players=game.max_players
+            )
+        )
+    return out
+
+class PlayerDetailOut(BaseModel):
+    signup_id: int
+    user_id: int
+    full_name: str
+    status: str
+    is_paid: bool
+    position: Optional[str]
+
+class GameDetailOut(BaseModel):
+    id: int
+    location: str
+    date_time: datetime.datetime
+    status: str
+    price: int
+    players: List[PlayerDetailOut]
+
+@router.get("/games/{game_id}", response_model=GameDetailOut)
+async def get_game_details(
+    game_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    game = await session.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, user_id)
+    
+    stmt = (
+        select(Signup, User)
+        .join(User, User.user_id == Signup.user_id)
+        .where(Signup.game_id == game_id)
+        .order_by(Signup.created_at)
+    )
+    res = await session.execute(stmt)
+    players = []
+    for signup, user in res.all():
+        players.append(PlayerDetailOut(
+            signup_id=signup.id,
+            user_id=user.user_id,
+            full_name=user.full_name,
+            status=signup.status.value,
+            is_paid=signup.is_paid,
+            position=signup.position.value if signup.position else (user.player_position.value if user.player_position else None)
+        ))
+        
+    return GameDetailOut(
+        id=game.id,
+        location=game.location,
+        date_time=game.date_time,
+        status=game.status.value,
+        price=game.price,
+        players=players
+    )
+
+@router.post("/signups/{signup_id}/toggle_pay")
+async def toggle_payment(
+    signup_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    signup = await session.get(Signup, signup_id)
+    if not signup:
+        raise HTTPException(status_code=404, detail="Signup not found")
+        
+    game = await session.get(Game, signup.game_id)
+    await check_admin_rights(game.chat_id, user_id)
+    
+    signup.is_paid = not signup.is_paid
+    await session.commit()
+    return {"status": "ok", "is_paid": signup.is_paid}
+
+class GuestCreate(BaseModel):
+    name: str
+    position: str
+
+@router.post("/games/{game_id}/guests")
+async def add_guest(
+    game_id: int,
+    data: GuestCreate,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    game = await session.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, user_id)
+    
+    import time
+    from app.db.models import Position
+    guest_id = -int(time.time() * 1000)
+    
+    pos_str = data.position.upper().strip()
+    if pos_str not in Position.__members__:
+        pos_str = "CM"
+        
+    new_guest = User(
+        user_id=guest_id, 
+        full_name=f"{data.name} (Guest)", 
+        username=None, 
+        player_position=Position[pos_str], 
+        rating=100
+    )
+    session.add(new_guest)
+    
+    new_signup = Signup(
+        game_id=game_id, 
+        user_id=guest_id, 
+        status=SignupStatus.RESERVE
+    )
+    session.add(new_signup)
+    await session.commit()
+    
+    return {"status": "added", "user_id": guest_id}
+
+@router.delete("/signups/{signup_id}")
+async def kick_player(
+    signup_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    signup = await session.get(Signup, signup_id)
+    if not signup:
+        raise HTTPException(status_code=404, detail="Signup not found")
+        
+    game = await session.get(Game, signup.game_id)
+    await check_admin_rights(game.chat_id, user_id)
+    
+    from app.core.services.roster import RosterService
+    from app.core.uow import UnitOfWork
+    
+    async with UnitOfWork() as uow:
+        service = RosterService(uow)
+        success, msg, _ = await service.leave_player(signup.game_id, signup.user_id, is_admin=True)
+        if success:
+            await uow.commit()
+        else:
+            raise HTTPException(status_code=400, detail=msg)
+            
+    return {"status": "deleted"}
+
+class StatusUpdate(BaseModel):
+    status: str
+
+@router.patch("/signups/{signup_id}/status")
+async def update_player_status(
+    signup_id: int,
+    data: StatusUpdate,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    signup = await session.get(Signup, signup_id)
+    if not signup:
+        raise HTTPException(status_code=404, detail="Signup not found")
+        
+    game = await session.get(Game, signup.game_id)
+    await check_admin_rights(game.chat_id, user_id)
+    
+    status_map = {
+        "active": SignupStatus.ACTIVE,
+        "reserve": SignupStatus.RESERVE,
+        "cancelled": SignupStatus.CANCELLED
+    }
+    
+    if data.status.lower() not in status_map:
+        raise HTTPException(status_code=400, detail="Invalid status")
+        
+    signup.status = status_map[data.status.lower()]
+    await session.commit()
+    return {"status": "ok", "new_status": signup.status.value}

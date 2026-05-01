@@ -58,38 +58,38 @@ def get_user_from_init_data(init_data: str) -> int:
         
     return user_id
 
-# Simple in-memory cache: (chat_id, user_id) -> (timestamp, is_admin)
-admin_rights_cache = {}
-CACHE_TTL = 300  # 5 minutes
-
 async def check_admin_rights(chat_id: int, user_id: int):
-    # System admins bypass all checks
+    # System admins from config bypass checks (fallback/bootstrap)
     if user_id in settings.admin_ids or user_id == settings.system_owner_id:
         return True
 
-    # 1. Check Cache
-    current_time = time.time()
-    cache_key = (chat_id, user_id)
-    
-    if cache_key in admin_rights_cache:
-        timestamp, is_admin = admin_rights_cache[cache_key]
-        if current_time - timestamp < CACHE_TTL:
-            if not is_admin:
-                raise HTTPException(status_code=403, detail="You must be an admin of the chat (Cached)")
-            return True # Authorized
-
-    # 2. Check Real (if not cached or expired)
     try:
-        from app.bot.instance import bot
-        user_member = await bot.get_chat_member(chat_id, user_id)
-        is_admin = user_member.status in ["administrator", "creator"]
+        from app.db.database import async_session_maker
+        from app.db.models import User, ChatAdmin
+        from sqlalchemy import select
         
-        # Update Cache
-        admin_rights_cache[cache_key] = (current_time, is_admin)
-        
-        if not is_admin:
-             raise HTTPException(status_code=403, detail="You must be an admin of the chat")
-             
+        async with async_session_maker() as session:
+            # 1. Check if user is superadmin in DB
+            user_res = await session.execute(select(User).where(User.user_id == user_id))
+            user = user_res.scalar_one_or_none()
+            
+            if user and getattr(user, 'is_superadmin', False):
+                return True
+                
+            # 2. Check if user is admin of this specific chat
+            admin_res = await session.execute(
+                select(ChatAdmin).where(
+                    ChatAdmin.chat_id == chat_id, 
+                    ChatAdmin.user_id == user_id
+                )
+            )
+            chat_admin = admin_res.scalar_one_or_none()
+            
+            if not chat_admin:
+                raise HTTPException(status_code=403, detail="You must be an admin of this group")
+                
+            return True
+            
     except HTTPException:
         raise
     except Exception as e:
