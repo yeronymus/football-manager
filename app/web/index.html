@@ -62,24 +62,62 @@
 
 <body>
     <h1>Создать игру</h1>
+    
+    <!-- 1. Основные -->
     <div class="form-group">
         <label for="chat_id">Чат</label>
         <select id="chat_id">
             <option value="" disabled selected>Загрузка...</option>
-            <!-- Options will be populated via JS or hardcoded for MVP -->
-            <!-- For MVP, user enters Chat ID manually or we fetch from API if possible -->
-            <!-- Since we don't have an endpoint to list chats yet, let's use a text input for ID or hardcode -->
         </select>
     </div>
+    
+    <div class="form-group">
+        <label for="location">Локация</label>
+        <input type="text" id="location" value="Plamínkové 1539, Praha 4-Nusle" placeholder="Например, Pankrac" required>
+    </div>
+
     <div class="form-group">
         <label for="date_time">Дата и Время</label>
         <input type="text" id="date_time" placeholder="Выберите дату и время" required>
     </div>
+
+    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0; opacity: 0.1;">
+
+    <!-- 2. Параметры игры -->
     <div class="form-group">
-        <label for="location">Локация</label>
-        <input type="text" id="location" value="Plamínkové 1539, Praha 4-Nusle" placeholder="Например, Pankrac"
-            required>
+        <label for="game_type">Формат игры</label>
+        <select id="game_type">
+            <option value="regular">Общая игра</option>
+            <option value="draft" selected>Драфт</option>
+        </select>
     </div>
+
+    <div class="form-group">
+        <label for="team_count">Количество команд</label>
+        <select id="team_count">
+            <option value="2" selected>2 Команды</option>
+            <option value="3">3 Команды (Турнир)</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="duration">Длительность (часов)</label>
+        <input type="number" id="duration" value="2" min="0.5" max="5" step="0.5" inputmode="decimal">
+    </div>
+
+    <div class="form-group">
+        <label for="price">Взнос (CZK)</label>
+        <input type="number" id="price" value="155" min="0" step="1" inputmode="numeric">
+    </div>
+
+    <div class="form-group">
+        <label for="payment_info">Номер счета</label>
+        <input type="text" id="payment_info" value="2924402033/0800" placeholder="Номер счета / карты">
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0; opacity: 0.1;">
+
+    <!-- 3. Игроки -->
     <div class="form-group">
         <label for="max_players">Мест в основе (+ замены)</label>
         <input type="number" id="max_players" value="26" min="5" max="999" inputmode="numeric">
@@ -98,46 +136,15 @@
         <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">После этого запись закроется полностью</small>
     </div>
 
+    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0; opacity: 0.1;">
+
+    <!-- 4. Настройки (Settings) -->
+    <h3 style="margin: 25px 0 15px; font-size: 16px; color: var(--tg-theme-hint-color); text-transform: uppercase; letter-spacing: 1px;">Настройки</h3>
+
     <div class="form-group">
         <label for="registration_hours">Окно записи (часов)</label>
         <input type="number" id="registration_hours" value="24" min="0" max="720" inputmode="numeric">
         <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - без ограничений</small>
-    </div>
-
-    <div class="form-group">
-        <label for="game_type">Формат игры</label>
-        <select id="game_type">
-            <option value="regular">Общая игра</option>
-            <option value="draft" selected>Драфт</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="team_count">Количество команд</label>
-        <select id="team_count">
-            <option value="2" selected>2 Команды</option>
-            <option value="3">3 Команды (Турнир)</option>
-        </select>
-    </div>
-    <div class="form-group">
-        <label for="price">Взнос (CZK)</label>
-        <input type="number" id="price" value="100" min="0" step="10" inputmode="numeric">
-    </div>
-    <div class="form-group">
-        <label for="payment_info">Номер счета</label>
-        <input type="text" id="payment_info" value="2924402033/0800" placeholder="Номер счета / карты">
-    </div>
-    <div class="form-group" id="admin_wrapper" style="display:none;">
-        <label>Авто-запись админов:</label>
-        <div id="admin_list"
-            style="max-height: 150px; overflow-y: auto; background: var(--tg-theme-secondary-bg-color); border-radius: 8px; padding: 10px;">
-            <!-- Checkboxes populated dynamically -->
-        </div>
-    </div>
-
-    <div class="form-group">
-        <label for="duration">Длительность (часов)</label>
-        <input type="number" id="duration" value="2" min="0.5" max="5" step="0.5" inputmode="decimal">
     </div>
 
     <div class="form-group">
@@ -149,6 +156,14 @@
     <div class="form-group">
         <label for="publish_at">Отложенная публикация (опционально)</label>
         <input type="text" id="publish_at" placeholder="Сразу">
+    </div>
+
+    <div class="form-group" id="admin_wrapper" style="display:none;">
+        <label>Авто-запись админов:</label>
+        <div id="admin_list"
+            style="max-height: 150px; overflow-y: auto; background: var(--tg-theme-secondary-bg-color); border-radius: 8px; padding: 10px;">
+            <!-- Checkboxes populated dynamically -->
+        </div>
     </div>
 
     <button id="submitBtn" onclick="createGame()">Опубликовать</button>
