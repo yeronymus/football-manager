@@ -71,7 +71,16 @@ async def get_dashboard_groups(
             title=chat.title,
             is_active=chat.is_active,
             language=chat.language,
-            payment_info=chat.payment_info
+            payment_info=chat.payment_info,
+            default_location=chat.default_location,
+            default_price=chat.default_price,
+            default_team_count=chat.default_team_count,
+            default_max_players=chat.default_max_players,
+            default_main_players_count=chat.default_main_players_count,
+            default_duration=chat.default_duration,
+            default_gk_hours=chat.default_gk_hours,
+            default_registration_hours=chat.default_registration_hours,
+            default_signup_limit=chat.default_signup_limit
         ) for chat in chats
     ]
 
@@ -79,6 +88,15 @@ class GroupUpdate(BaseModel):
     is_active: Optional[bool] = None
     language: Optional[str] = None
     payment_info: Optional[str] = None
+    default_location: Optional[str] = None
+    default_price: Optional[int] = None
+    default_team_count: Optional[int] = None
+    default_max_players: Optional[int] = None
+    default_main_players_count: Optional[int] = None
+    default_duration: Optional[float] = None
+    default_gk_hours: Optional[int] = None
+    default_registration_hours: Optional[int] = None
+    default_signup_limit: Optional[int] = None
 
 @router.patch("/groups/{chat_id}")
 async def update_group_settings(
@@ -92,12 +110,9 @@ async def update_group_settings(
     if not chat:
         raise HTTPException(status_code=404, detail="Group not found")
         
-    if data.is_active is not None:
-        chat.is_active = data.is_active
-    if data.language is not None:
-        chat.language = data.language
-    if data.payment_info is not None:
-        chat.payment_info = data.payment_info
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(chat, field, value)
         
     await session.commit()
     return {"status": "ok"}

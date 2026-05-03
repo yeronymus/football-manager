@@ -202,7 +202,7 @@
                 });
                 if (response.ok) {
                     const chats = await response.json();
-                    chatSelect.innerHTML = '<option value="" disabled selected>Выберите чат</option>';
+                    let chatData = {};
                     if (chats.length === 0) {
                         const option = document.createElement('option');
                         option.text = "Нет доступных чатов";
@@ -214,13 +214,32 @@
                             option.value = chat.id;
                             option.text = chat.title;
                             chatSelect.add(option);
+                            chatData[chat.id] = chat;
                         });
+
+                        // Function to apply defaults
+                        window.applyChatDefaults = function(chatId) {
+                            const chat = chatData[chatId];
+                            if (!chat) return;
+                            
+                            if (chat.default_location) document.getElementById('location').value = chat.default_location;
+                            if (chat.default_price) document.getElementById('price').value = chat.default_price;
+                            if (chat.payment_info) document.getElementById('payment_info').value = chat.payment_info;
+                            if (chat.default_max_players) document.getElementById('max_players').value = chat.default_max_players;
+                            if (chat.default_main_players_count) document.getElementById('main_players_count').value = chat.default_main_players_count;
+                            if (chat.default_signup_limit) document.getElementById('signup_limit').value = chat.default_signup_limit;
+                            if (chat.default_team_count) document.getElementById('team_count').value = chat.default_team_count;
+                            if (chat.default_duration) document.getElementById('duration').value = chat.default_duration;
+                            if (chat.default_gk_hours !== undefined) document.getElementById('gk_hours').value = chat.default_gk_hours;
+                            if (chat.default_registration_hours !== undefined) document.getElementById('registration_hours').value = chat.default_registration_hours;
+                        };
 
                         // Auto-select if target_chat_id provided
                         const urlParams = new URLSearchParams(window.location.search);
                         const targetChatId = urlParams.get('target_chat_id');
                         if (targetChatId) {
                             chatSelect.value = targetChatId;
+                            applyChatDefaults(targetChatId);
                             chatSelect.dispatchEvent(new Event('change'));
                         }
                     }
@@ -239,6 +258,10 @@
         chatSelect.addEventListener('change', async function () {
             const chatId = this.value;
             if (!chatId) return;
+
+            if (window.applyChatDefaults) {
+                window.applyChatDefaults(chatId);
+            }
 
             // Clear current admins
             adminList.innerHTML = 'Загрузка...';
