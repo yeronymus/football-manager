@@ -43,9 +43,15 @@
                     </div>
                 </header>
                 <div class="content-scroll" id="group-view-content">
-                    <div id="group-settings-container" class="group-settings-card hidden">
-                        <h3>Group Settings</h3>
-                        <div class="settings-grid" style="margin-top: 12px;">
+                    <div id="games-list">
+                        <!-- Games populated here -->
+                    </div>
+
+                    <div id="group-settings-container" class="group-settings-card hidden" style="margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 24px;">
+                        <h3>Group Defaults & Settings</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">These values will be pre-filled when creating new games for this group.</p>
+                        
+                        <div class="settings-grid">
                             <div class="form-group">
                                 <label>Language</label>
                                 <select id="setting-lang" onchange="updateGroupSetting('language', this.value)">
@@ -55,13 +61,49 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Default Price</label>
-                                <input type="text" id="setting-price" onblur="updateGroupSetting('payment_info', this.value)">
+                                <label>Default Price (CZK)</label>
+                                <input type="number" id="setting-price" onblur="updateGroupSetting('default_price', parseInt(this.value))">
+                            </div>
+                            <div class="form-group">
+                                <label>Payment Account</label>
+                                <input type="text" id="setting-payment-info" placeholder="2924402033/0800" onblur="updateGroupSetting('payment_info', this.value)">
+                            </div>
+                            <div class="form-group">
+                                <label>Default Location</label>
+                                <input type="text" id="setting-location" placeholder="Plamínkové 1539..." onblur="updateGroupSetting('default_location', this.value)">
+                            </div>
+                            <div class="form-group">
+                                <label>Max Players (Total)</label>
+                                <input type="number" id="setting-max-players" onblur="updateGroupSetting('default_max_players', parseInt(this.value))">
+                            </div>
+                            <div class="form-group">
+                                <label>Main Squad Size</label>
+                                <input type="number" id="setting-main-players" onblur="updateGroupSetting('default_main_players_count', parseInt(this.value))">
+                            </div>
+                            <div class="form-group">
+                                <label>Team Count</label>
+                                <select id="setting-teams" onchange="updateGroupSetting('default_team_count', parseInt(this.value))">
+                                    <option value="2">2 Teams</option>
+                                    <option value="3">3 Teams</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Duration (Hours)</label>
+                                <input type="number" step="0.5" id="setting-duration" onblur="updateGroupSetting('default_duration', parseFloat(this.value))">
+                            </div>
+                            <div class="form-group">
+                                <label>GK Reservation (Hours)</label>
+                                <input type="number" id="setting-gk-hours" onblur="updateGroupSetting('default_gk_hours', parseInt(this.value))">
+                            </div>
+                            <div class="form-group">
+                                <label>Reg. Window (Hours)</label>
+                                <input type="number" id="setting-reg-hours" onblur="updateGroupSetting('default_registration_hours', parseInt(this.value))">
+                            </div>
+                            <div class="form-group">
+                                <label>Total Signup Limit</label>
+                                <input type="number" id="setting-signup-limit" onblur="updateGroupSetting('default_signup_limit', parseInt(this.value))">
                             </div>
                         </div>
-                    </div>
-                    <div id="games-list">
-                        <!-- Games populated here -->
                     </div>
                 </div>
             </section>
