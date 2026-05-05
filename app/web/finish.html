@@ -338,10 +338,9 @@
             // Team A
             html += `<div class="team-header">🟠 Игроки (Orange)</div>`;
             gameData.team_a.forEach(p => {
-                const paidTag = p.is_paid ? '✅' : '❌';
                 html += `
                     <div class="player-row">
-                        <div class="player-name">${paidTag} ${p.name}</div>
+                        <div class="player-name">${p.name}</div>
                         <div class="goal-controls">
                             <button class="btn-circle" onclick="updateGoal(${p.id}, -1, 'A')">-</button>
                             <span class="goal-count" id="goals-${p.id}">0</span>
@@ -354,10 +353,9 @@
             // Team B
             html += `<div class="team-header" style="margin-top: 20px;">🟢 Игроки (Green)</div>`;
             gameData.team_b.forEach(p => {
-                const paidTag = p.is_paid ? '✅' : '❌';
                 html += `
                     <div class="player-row">
-                        <div class="player-name">${paidTag} ${p.name}</div>
+                        <div class="player-name">${p.name}</div>
                         <div class="goal-controls">
                             <button class="btn-circle" onclick="updateGoal(${p.id}, -1, 'B')">-</button>
                             <span class="goal-count" id="goals-${p.id}">0</span>
@@ -415,7 +413,7 @@
 
         async function fetchVotes() {
             try {
-                const response = await fetch(`/api/dashboard/games/${gameId}/votes`, {
+                const response = await fetch(`/api/dashboard/games/${gameId}/votes/summary`, {
                     headers: { 'Authorization': `tma ${tg.initData}` }
                 });
                 if (response.ok) {

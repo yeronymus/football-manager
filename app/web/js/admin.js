@@ -466,7 +466,7 @@ async function updateGroupSetting(key, value) {
     if (!currentGroupId) return;
     
     // Find the input element to show feedback
-    const inputId = `setting-${key.replace('default_', '').replace('_', '-')}`;
+    const inputId = `setting-${key.replace('default_', '').replaceAll('_', '-')}`;
     const input = document.getElementById(inputId);
     let originalBorder = "";
     if (input) {
@@ -482,15 +482,22 @@ async function updateGroupSetting(key, value) {
             method: 'PATCH',
             body: JSON.stringify(data)
         });
+        
+        // Update local cache
+        const gIdx = groups.findIndex(g => g.id == currentGroupId);
+        if (gIdx > -1) {
+            groups[gIdx] = { ...groups[gIdx], ...data };
+        }
+
         if (input) {
-            input.style.borderColor = "var(--success)";
+            input.style.borderColor = "#4caf50"; // Success Green
             setTimeout(() => {
-                input.style.borderColor = originalBorder;
+                input.style.borderColor = ""; 
             }, 1500);
         }
     } catch (e) {
-        if (input) input.style.borderColor = "var(--danger)";
-        alert("Failed to update setting");
+        console.error("Failed to update setting:", e);
+        if (input) input.style.borderColor = "#f44336"; // Error Red
     }
 }
 
