@@ -298,7 +298,10 @@
             try {
                 const response = await fetch('/api/admin/finish_game', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `tma ${tg.initData}`
+                    },
                     body: JSON.stringify(payload)
                 });
 
