@@ -115,11 +115,11 @@ async function loadGroupGames(group) {
     document.getElementById('setting-payment-info').value = group.payment_info || '';
     document.getElementById('setting-location').value = group.default_location || '';
     document.getElementById('setting-max-players').value = group.default_max_players || 26;
-    document.getElementById('setting-main-players').value = group.default_main_players_count || 22;
+    document.getElementById('setting-main-players-count').value = group.default_main_players_count || 22;
     document.getElementById('setting-team-count').value = group.default_team_count || 2;
     document.getElementById('setting-duration').value = group.default_duration || 2.0;
     document.getElementById('setting-gk-hours').value = group.default_gk_hours || 0;
-    document.getElementById('setting-reg-hours').value = group.default_registration_hours || 24;
+    document.getElementById('setting-registration-hours').value = group.default_registration_hours || 24;
     document.getElementById('setting-signup-limit').value = group.default_signup_limit || 40;
     
     const listEl = document.getElementById('games-list');
