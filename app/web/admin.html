@@ -62,7 +62,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Default Price (CZK)</label>
-                                <input type="number" id="setting-price" onblur="updateGroupSetting('default_price', parseInt(this.value))">
+                                <input type="number" id="setting-price" onblur="updateGroupSetting('default_price', parseInt(this.value) || 0)">
                             </div>
                             <div class="form-group">
                                 <label>Payment Account</label>
@@ -74,36 +74,33 @@
                             </div>
                             <div class="form-group">
                                 <label>Max Players (Total)</label>
-                                <input type="number" id="setting-max-players" onblur="updateGroupSetting('default_max_players', this.value)" placeholder="26">
+                                <input type="number" id="setting-max-players" onblur="updateGroupSetting('default_max_players', parseInt(this.value) || 0)" placeholder="26">
                             </div>
                             <div class="form-group">
                                 <label>Main Squad Size</label>
-                                <input type="number" id="setting-main-players-count" onblur="updateGroupSetting('default_main_players_count', this.value)" placeholder="22">
+                                <input type="number" id="setting-main-players-count" onblur="updateGroupSetting('default_main_players_count', parseInt(this.value) || 0)" placeholder="22">
                             </div>
                             <div class="form-group">
                                 <label>Team Count</label>
-                                <select id="setting-team-count" onchange="updateGroupSetting('default_team_count', this.value)">
+                                <select id="setting-team-count" onchange="updateGroupSetting('default_team_count', parseInt(this.value) || 2)">
                                     <option value="2">2 Teams</option>
                                     <option value="3">3 Teams</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>Duration (Hours)</label>
-                                <input type="number" id="setting-duration" onblur="updateGroupSetting('default_duration', this.value)" placeholder="2">
+                                <input type="number" id="setting-duration" onblur="updateGroupSetting('default_duration', parseFloat(this.value) || 0)" placeholder="2">
                             </div>
                             <div class="form-group">
                                 <label>GK Reservation (Hours)</label>
-                                <input type="number" id="setting-gk-hours" onblur="updateGroupSetting('default_gk_hours', this.value)" placeholder="48">
+                                <input type="number" id="setting-gk-hours" onblur="updateGroupSetting('default_gk_hours', parseInt(this.value) || 0)" placeholder="48">
                             </div>
                             <div class="form-group">
                                 <label>Reg. Window (Hours)</label>
-                                <input type="number" id="setting-registration-hours" onblur="updateGroupSetting('default_registration_hours', this.value)" placeholder="24">
+                                <input type="number" id="setting-registration-hours" onblur="updateGroupSetting('default_registration_hours', parseInt(this.value) || 0)" placeholder="24">
                             </div>
                             <div class="form-group">
                                 <label>Total Signup Limit</label>
-                                <input type="number" id="setting-signup-limit" onblur="updateGroupSetting('default_signup_limit', this.value)" placeholder="30">
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -172,6 +169,6 @@
     <iframe id="app-iframe"></iframe>
 </div>
 
-<script src="js/admin.js?v=1.4"></script>
+<script src="js/admin.js?v=1.5"></script>
 </body>
 </html>

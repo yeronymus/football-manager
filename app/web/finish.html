@@ -306,9 +306,8 @@
                 });
 
                 if (response.ok) {
-                    tg.showAlert("Матч завершен!", () => {
-                        tg.close();
-                    });
+                    tg.showAlert("Матч завершен!");
+                    tg.close();
                 } else {
                     const err = await response.json();
                     tg.showAlert(`Error: ${err.detail}`);
