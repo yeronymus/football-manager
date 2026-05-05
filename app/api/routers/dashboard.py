@@ -386,6 +386,29 @@ class VoteDetailOut(BaseModel):
     target_name: str
     vote_team: str
 
+@router.get("/games/{game_id}/votes/summary")
+async def get_game_votes_summary(
+    game_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    game = await session.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, user_id)
+    
+    from app.db.models import Vote, User
+    result = await session.execute(
+        select(User.full_name, func.count(Vote.id))
+        .join(Vote, User.user_id == Vote.target_id)
+        .where(Vote.game_id == game_id)
+        .group_by(User.full_name)
+        .order_by(func.count(Vote.id).desc())
+    )
+    votes = result.all()
+    return [{"name": name, "count": count} for name, count in votes]
+
 @router.get("/games/{game_id}/votes", response_model=List[VoteDetailOut])
 async def get_game_votes(
     game_id: int,
@@ -398,15 +421,8 @@ async def get_game_votes(
         
     await check_admin_rights(game.chat_id, user_id)
     
-    from app.db.models import Vote
-    stmt = (
-        select(Vote)
-        .where(Vote.game_id == game_id)
-    )
-    res = await session.execute(stmt)
-    votes = res.scalars().all()
-    
     # Needs to fetch names and voter team. Let's do a join.
+    from app.db.models import Vote, User, Signup
     from sqlalchemy.orm import aliased
     Voter = aliased(User)
     Target = aliased(User)
