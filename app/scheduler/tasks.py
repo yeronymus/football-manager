@@ -4,7 +4,6 @@ from app.db.models import Game, Signup, User, Vote, SignupStatus, GameStatus, Te
 from sqlalchemy import select, func
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from app.config import settings
 
