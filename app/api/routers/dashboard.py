@@ -23,6 +23,15 @@ class GroupOut(BaseModel):
     is_active: bool
     language: str
     payment_info: Optional[str]
+    default_location: Optional[str] = None
+    default_price: Optional[int] = None
+    default_team_count: Optional[int] = None
+    default_max_players: Optional[int] = None
+    default_main_players_count: Optional[int] = None
+    default_duration: Optional[float] = None
+    default_gk_hours: Optional[int] = None
+    default_registration_hours: Optional[int] = None
+    default_signup_limit: Optional[int] = None
 
 class GameSummaryOut(BaseModel):
     id: int
