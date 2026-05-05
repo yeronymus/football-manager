@@ -188,10 +188,7 @@ class GameLifecycleService:
         
         processed_users = set()
         
-        # Helper to get user obj for counter update
-        async def increment_mvp_counter(uid):
-            u = await self.session.get(User, uid)
-            if u: u.stats_mvp += 1
+        processed_users = set()
 
         if data.player_stats:
             for p_stat in data.player_stats:
@@ -205,16 +202,12 @@ class GameLifecycleService:
                     )
                     self.session.add(stat)
                     processed_users.add(p_stat.user_id)
-                    
-                    if is_mvp:
-                        await increment_mvp_counter(p_stat.user_id)
         
         # Handle MVPs with no goals
         for mid in mvp_ids:
             if mid not in processed_users:
                 self.session.add(GameStats(game_id=game.id, user_id=mid, goals=0, is_mvp=True))
                 processed_users.add(mid) # Avoid double add if loop logic changes
-                await increment_mvp_counter(mid)
                 
         # Call Stats Service for Ratings
         await self.stats.apply_game_results(game, mvp_ids)
