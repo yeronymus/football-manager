@@ -121,18 +121,18 @@ class StatsService:
                 change += 5
             
             # Update Profile
-            profile.rating += change
-            profile.games_played += 1
-            profile.stats_matches += 1
+            profile.rating = (profile.rating or 100) + change
+            profile.games_played = (profile.games_played or 0) + 1
+            profile.stats_matches = (profile.stats_matches or 0) + 1
             if is_mvp:
-                profile.stats_mvp += 1
+                profile.stats_mvp = (profile.stats_mvp or 0) + 1
                 
             # We no longer overwrite global user.rating!
             # Keep global games_played and MVP for legacy compatibility
-            user.games_played += 1
-            user.stats_matches += 1
+            user.games_played = (user.games_played or 0) + 1
+            user.stats_matches = (user.stats_matches or 0) + 1
             if is_mvp:
-                user.stats_mvp += 1
+                user.stats_mvp = (user.stats_mvp or 0) + 1
             
             # Record History
             self.session.add(RatingHistory(
