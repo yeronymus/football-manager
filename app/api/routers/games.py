@@ -42,6 +42,7 @@ async def get_game_details(
             "original_position": user.player_position.value if user.player_position else "DEF",
             "alt_positions": user.alt_positions or [],
             "status": signup.status.value,
+            "is_paid": signup.is_paid,
             "goals": stats.goals if stats else 0,
             "is_mvp": stats.is_mvp if stats else False
         }

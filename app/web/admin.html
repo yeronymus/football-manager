@@ -66,38 +66,38 @@
                             </div>
                             <div class="form-group">
                                 <label>Payment Account</label>
-                                <input type="text" id="setting-payment-info" placeholder="2924402033/0800" onblur="updateGroupSetting('payment_info', this.value)">
+                                <input type="text" id="setting-payment-info" placeholder="Enter bank account..." onblur="updateGroupSetting('payment_info', this.value)">
                             </div>
                             <div class="form-group">
                                 <label>Default Location</label>
-                                <input type="text" id="setting-location" placeholder="Plamínkové 1539..." onblur="updateGroupSetting('default_location', this.value)">
+                                <input type="text" id="setting-location" placeholder="Enter venue name and address..." onblur="updateGroupSetting('default_location', this.value)">
                             </div>
                             <div class="form-group">
                                 <label>Max Players (Total)</label>
-                                <input type="number" id="setting-max-players" onblur="updateGroupSetting('default_max_players', parseInt(this.value))">
+                                <input type="number" id="setting-max-players" placeholder="e.g. 26" onblur="updateGroupSetting('default_max_players', parseInt(this.value))">
                             </div>
                             <div class="form-group">
                                 <label>Main Squad Size</label>
-                                <input type="number" id="setting-main-players" onblur="updateGroupSetting('default_main_players_count', parseInt(this.value))">
+                                <input type="number" id="setting-main-players" placeholder="e.g. 22" onblur="updateGroupSetting('default_main_players_count', parseInt(this.value))">
                             </div>
                             <div class="form-group">
                                 <label>Team Count</label>
-                                <select id="setting-teams" onchange="updateGroupSetting('default_team_count', parseInt(this.value))">
+                                <select id="setting-team-count" onchange="updateGroupSetting('default_team_count', parseInt(this.value))">
                                     <option value="2">2 Teams</option>
                                     <option value="3">3 Teams</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>Duration (Hours)</label>
-                                <input type="number" step="0.5" id="setting-duration" onblur="updateGroupSetting('default_duration', parseFloat(this.value))">
+                                <input type="number" step="0.5" id="setting-duration" placeholder="e.g. 2.0" onblur="updateGroupSetting('default_duration', parseFloat(this.value))">
                             </div>
                             <div class="form-group">
                                 <label>GK Reservation (Hours)</label>
-                                <input type="number" id="setting-gk-hours" onblur="updateGroupSetting('default_gk_hours', parseInt(this.value))">
+                                <input type="number" id="setting-gk-hours" placeholder="e.g. 0" onblur="updateGroupSetting('default_gk_hours', parseInt(this.value))">
                             </div>
                             <div class="form-group">
                                 <label>Reg. Window (Hours)</label>
-                                <input type="number" id="setting-reg-hours" onblur="updateGroupSetting('default_registration_hours', parseInt(this.value))">
+                                <input type="number" id="setting-reg-hours" placeholder="e.g. 24" onblur="updateGroupSetting('default_registration_hours', parseInt(this.value))">
                             </div>
                             <div class="form-group">
                                 <label>Total Signup Limit</label>
