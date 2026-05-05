@@ -43,16 +43,10 @@ async def send_voting_message(game_id: int):
         
         await bot.send_message(
             chat_id=game.chat_id,
-            text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды), нажав на кнопки ниже.\n<i>(Результаты через 15 часов)</i>\n\nП.С. Отправляйте свои голы @yeronym для внесения в статистику",
+            text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды), нажав на кнопки ниже.\n\nП.С. Отправляйте свои голы @yeronym для внесения в статистику",
             reply_markup=keyboard,
             parse_mode="HTML"
         )
-        
-        # Schedule calculation in 15 hours
-        from app.scheduler.main import scheduler
-        from datetime import datetime, timedelta
-        run_date = datetime.now() + timedelta(hours=15)
-        scheduler.add_job(calculate_mvp, 'date', run_date=run_date, args=[game_id], id=f"mvp_calc_{game_id}", replace_existing=True)
 
 async def calculate_mvp(game_id: int):
     async for session in get_session():

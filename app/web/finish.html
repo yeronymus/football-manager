@@ -338,9 +338,10 @@
             // Team A
             html += `<div class="team-header">🟠 Игроки (Orange)</div>`;
             gameData.team_a.forEach(p => {
+                const paidTag = p.is_paid ? '✅' : '❌';
                 html += `
                     <div class="player-row">
-                        <div class="player-name">${p.name}</div>
+                        <div class="player-name">${paidTag} ${p.name}</div>
                         <div class="goal-controls">
                             <button class="btn-circle" onclick="updateGoal(${p.id}, -1, 'A')">-</button>
                             <span class="goal-count" id="goals-${p.id}">0</span>
@@ -349,13 +350,14 @@
                     </div>
                 `;
             });
-
+ 
             // Team B
             html += `<div class="team-header" style="margin-top: 20px;">🟢 Игроки (Green)</div>`;
             gameData.team_b.forEach(p => {
+                const paidTag = p.is_paid ? '✅' : '❌';
                 html += `
                     <div class="player-row">
-                        <div class="player-name">${p.name}</div>
+                        <div class="player-name">${paidTag} ${p.name}</div>
                         <div class="goal-controls">
                             <button class="btn-circle" onclick="updateGoal(${p.id}, -1, 'B')">-</button>
                             <span class="goal-count" id="goals-${p.id}">0</span>
@@ -370,7 +372,10 @@
             // MVP Selection Dropdown
             html += `
                 <div style="background:var(--tg-theme-secondary-bg-color, #f5f5f5); padding:15px; border-radius:12px; margin-bottom:20px;">
-                    <h3 style="margin-top:0; margin-bottom:10px;">⭐ Выберите MVP матча</h3>
+                    <h3 style="margin-top:0; margin-bottom:10px;">⭐ Результаты голосования</h3>
+                    <div id="voting-preview" style="font-size:14px; color:var(--tg-theme-hint-color); margin-bottom:15px;">Загрузка голосов...</div>
+                    
+                    <h3 style="margin-top:20px; margin-bottom:10px;">🏆 Выберите MVP (итоговых)</h3>
                     
                     <div style="margin-bottom: 10px;">
                         <label>🟠 MVP (Orange):</label>
@@ -405,6 +410,31 @@
             html += `<button class="submit-btn" onclick="submitResult()">Завершить матч</button>`;
 
             app.innerHTML = html;
+            fetchVotes();
+        }
+
+        async function fetchVotes() {
+            try {
+                const response = await fetch(`/api/dashboard/games/${gameId}/votes`, {
+                    headers: { 'Authorization': `tma ${tg.initData}` }
+                });
+                if (response.ok) {
+                    const votes = await response.json();
+                    const preview = document.getElementById('voting-preview');
+                    if (votes.length === 0) {
+                        preview.innerText = "Голосов пока нет.";
+                        return;
+                    }
+                    let voteHtml = '<ul style="margin:0; padding-left:20px;">';
+                    votes.slice(0, 5).forEach(v => {
+                        voteHtml += `<li>${v.name}: <b>${v.count}</b> ⭐</li>`;
+                    });
+                    voteHtml += '</ul>';
+                    preview.innerHTML = voteHtml;
+                }
+            } catch (e) {
+                console.error("Failed to fetch votes", e);
+            }
         }
 
         fetchGameDetails();

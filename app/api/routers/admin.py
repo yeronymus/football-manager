@@ -334,6 +334,18 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
             game = await lifecycle.finish_game(dto)
             await uow.commit()
 
+        # 4. Fetch Voting Results (Stars)
+        from app.db.models import Vote
+        res_v = await session.execute(
+            select(User.full_name, func.count(Vote.id))
+            .join(Vote, User.user_id == Vote.target_id)
+            .where(Vote.game_id == game.id)
+            .group_by(User.full_name)
+            .order_by(func.count(Vote.id).desc())
+            .limit(5)
+        )
+        voting_results = res_v.all()
+
         # Build result text — pure string, no bot needed
         text = f"🏁 <b>Матч завершен!</b>\n\n"
         text += f"Команда оранжевые 🟠 {game.score_a}:{game.score_b} 🟢 Команда зеленые\n"
@@ -353,6 +365,11 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
             if mvp_names:
                 text += "🌟 <b>MVP:</b> " + ", ".join(mvp_names) + "\n"
         
+        if voting_results:
+            text += "\n⭐ <b>Голоса за MVP:</b>\n"
+            for name, count in voting_results:
+                text += f"- {name}: {count}\n"
+
         scorers = [p for p in data.player_stats if p.goals > 0]
         if scorers:
             text += "\n⚽ <b>Голы:</b>\n"

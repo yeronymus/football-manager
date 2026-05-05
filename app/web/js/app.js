@@ -35,11 +35,6 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 async function init() {
-    if (tg) {
-        tg.expand();
-        tg.ready();
-    }
-    
     const urlParams = new URLSearchParams(window.location.search);
     const urlChatId = urlParams.get('chat_id');
     
@@ -66,6 +61,11 @@ async function init() {
         if (header) header.style.display = 'flex';
         
         await switchTab(currentTab);
+        
+        if (tg) {
+            tg.expand();
+            tg.ready();
+        }
     } catch (e) {
         console.error(e);
         loader.style.display = 'none';
