@@ -76,6 +76,10 @@ async function init() {
                 <button onclick="location.reload()" class="group-btn" style="margin-top:20px; background:var(--accent-color); color:white; justify-content:center;">Попробовать снова</button>
             </div>
         `;
+        if (tg) {
+            tg.expand();
+            tg.ready();
+        }
     }
 }
 
