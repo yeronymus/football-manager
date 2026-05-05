@@ -101,10 +101,12 @@
                             </div>
                             <div class="form-group">
                                 <label>Total Signup Limit</label>
+                                <input type="number" id="setting-signup-limit" onblur="updateGroupSetting('default_signup_limit', parseInt(this.value) || 0)" placeholder="30">
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
         <!-- Game Detail View -->
         <section id="view-game" class="view-section hidden">
@@ -169,6 +171,6 @@
     <iframe id="app-iframe"></iframe>
 </div>
 
-<script src="js/admin.js?v=1.5"></script>
+<script src="js/admin.js?v=1.6"></script>
 </body>
 </html>
