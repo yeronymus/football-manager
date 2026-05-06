@@ -119,9 +119,14 @@
         tg.ready();
         tg.expand();
 
-        // Get game_id from URL
         const urlParams = new URLSearchParams(window.location.search);
         const gameId = urlParams.get('game_id');
+        const urlInitData = urlParams.get('initData');
+        const initData = tg.initData || urlInitData || "";
+        
+        if (!tg.initData && urlInitData) {
+            console.log("Using initData from URL params");
+        }
 
         const dateTimeInput = document.getElementById('date_time');
         const locationInput = document.getElementById('location');
@@ -154,9 +159,9 @@
             }
 
             try {
-                const url = `/api/game/${gameId}?initData=${encodeURIComponent(tg.initData)}`;
+                const url = `/api/game/${gameId}?initData=${encodeURIComponent(initData)}`;
                 const res = await fetch(url, {
-                    headers: { 'Authorization': `tma ${tg.initData}` }
+                    headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (res.ok) {
                     const game = await res.json();
@@ -212,7 +217,7 @@
                     registration_hours: parseInt(registrationHoursInput.value) || 0,
                     main_players_count: parseInt(mainPlayersInput.value) || 22,
                     signup_limit: parseInt(signupLimitInput.value) || 999,
-                    initData: tg.initData
+                    initData: initData
                 };
 
                 const response = await fetch('/api/admin/update_game', {

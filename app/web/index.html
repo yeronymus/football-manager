@@ -174,10 +174,17 @@
         tg.ready();
         tg.expand();
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlInitData = urlParams.get('initData');
+        const initData = tg.initData || urlInitData || "";
+        
+        if (!tg.initData && urlInitData) {
+            console.log("Using initData from URL params");
+        }
         let autoJoinIds = [];
 
         // Check initData
-        if (!tg.initData) {
+        if (!initData) {
             console.log("No initData found.");
         }
 
@@ -191,14 +198,14 @@
 
         // 1. Fetch Chats
         async function loadChats() {
-            if (!tg.initData) {
+            if (!initData) {
                 chatSelect.innerHTML = '<option value="" disabled>ERROR: No InitData</option>';
                 return;
             }
 
             try {
-                const response = await fetch('/api/chats?initData=' + encodeURIComponent(tg.initData), {
-                    headers: { 'Authorization': `tma ${tg.initData}` }
+                const response = await fetch('/api/chats?initData=' + encodeURIComponent(initData), {
+                    headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (response.ok) {
                     const chats = await response.json();
@@ -268,9 +275,9 @@
             adminWrapper.style.display = 'block';
 
             try {
-                const url = `/api/chat/${chatId}/admins?initData=${encodeURIComponent(tg.initData)}`;
+                const url = `/api/chat/${chatId}/admins?initData=${encodeURIComponent(initData)}`;
                 const res = await fetch(url, {
-                    headers: { 'Authorization': `tma ${tg.initData}` }
+                    headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (res.ok) {
                     const admins = await res.json();
@@ -390,7 +397,7 @@
                     registration_hours: parseInt(document.getElementById('registration_hours').value) || 0,
                     duration: parseFloat(document.getElementById('duration').value) || 2,
                     auto_join_ids: checkedAdmins,
-                    initData: tg.initData
+                    initData: initData
                 };
 
                 if (publishAtInput.value) {

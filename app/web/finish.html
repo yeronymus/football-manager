@@ -173,6 +173,15 @@
 
     <script>
         const tg = window.Telegram.WebApp;
+        
+        // Robust initData retrieval (handle iframe case)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlInitData = urlParams.get('initData');
+        const initData = tg.initData || urlInitData || "";
+        
+        if (!tg.initData && urlInitData) {
+            console.log("Using initData from URL params");
+        }
         tg.expand();
 
         // Parse URL params
@@ -236,8 +245,8 @@
             app.innerHTML = '<div class="loading">Loading game details...</div>';
 
             try {
-                const response = await fetch(`/api/game/${gameId}?initData=${encodeURIComponent(tg.initData)}`, {
-                    headers: { 'Authorization': `tma ${tg.initData}` }
+                const response = await fetch(`/api/game/${gameId}?initData=${encodeURIComponent(initData)}`, {
+                    headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (!response.ok) throw new Error('Failed to load game');
                 gameData = await response.json();
@@ -292,7 +301,7 @@
                 mvp_team_a: mvpA ? parseInt(mvpA) : null,
                 mvp_team_b: mvpB ? parseInt(mvpB) : null,
                 player_stats: playerStats,
-                initData: tg.initData
+                initData: initData
             };
 
             try {
@@ -300,7 +309,7 @@
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'Authorization': `tma ${tg.initData}`
+                        'Authorization': `tma ${initData}`
                     },
                     body: JSON.stringify(payload)
                 });

@@ -447,9 +447,15 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-
+        
         const urlParams = new URLSearchParams(window.location.search);
         let gameId = urlParams.get('game_id');
+        const urlInitData = urlParams.get('initData');
+        const initData = tg.initData || urlInitData || "";
+        
+        if (!tg.initData && urlInitData) {
+            console.log("Using initData from URL params");
+        }
         let allPlayers = {};
         let selectedPlayer = null;
         let selectedElement = null;
@@ -578,8 +584,8 @@
 
         async function loadGame(id) {
             try {
-                const response = await fetch(`/api/game/${id}?initData=${encodeURIComponent(tg.initData)}`, {
-                    headers: { 'Authorization': `tma ${tg.initData}` }
+                const response = await fetch(`/api/game/${id}?initData=${encodeURIComponent(initData)}`, {
+                    headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (!response.ok) throw new Error("Load failed");
                 const game = await response.json();
@@ -786,8 +792,8 @@
             try {
                 const response = await fetch('/api/admin/balance_teams', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `tma ${tg.initData}` },
-                    body: JSON.stringify({ initData: tg.initData, game_id: parseInt(gameId) })
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `tma ${initData}` },
+                    body: JSON.stringify({ initData: initData, game_id: parseInt(gameId) })
                 });
 
                 if (!response.ok) {
@@ -820,7 +826,7 @@
             }
 
             const data = {
-                initData: tg.initData,
+                initData: initData,
                 game_id: parseInt(gameId),
                 team_a: [],
                 team_b: [],
@@ -875,7 +881,7 @@
             try {
                 const response = await fetch('/api/admin/update_teams', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `tma ${tg.initData}` },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `tma ${initData}` },
                     body: JSON.stringify(data)
                 });
 
@@ -920,8 +926,8 @@
 
                 const response = await fetch('/api/admin/publish_teams', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `tma ${tg.initData}` },
-                    body: JSON.stringify({ initData: tg.initData, game_id: parseInt(gameId) })
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `tma ${initData}` },
+                    body: JSON.stringify({ initData: initData, game_id: parseInt(gameId) })
                 });
 
                 if (!response.ok) {
@@ -950,8 +956,8 @@
         async function showGameSelector() {
             document.getElementById('gameSelector').style.display = 'flex';
             try {
-                const response = await fetch(`/api/games/editable?initData=${encodeURIComponent(tg.initData)}`, {
-                    headers: { 'Authorization': `tma ${tg.initData}` }
+                const response = await fetch(`/api/games/editable?initData=${encodeURIComponent(initData)}`, {
+                    headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (!response.ok) throw new Error("API Error");
                 const games = await response.json();
@@ -994,8 +1000,8 @@
             if (q.length < 2) return;
             try {
                 const timestamp = new Date().getTime();
-                const response = await fetch(`/api/users/search?query=${encodeURIComponent(q)}&initData=${encodeURIComponent(tg.initData)}&_v=${timestamp}`, {
-                    headers: { 'Authorization': `tma ${tg.initData}` }
+                const response = await fetch(`/api/users/search?query=${encodeURIComponent(q)}&initData=${encodeURIComponent(initData)}&_v=${timestamp}`, {
+                    headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (!response.ok) {
                     const err = await response.json();
@@ -1030,7 +1036,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        initData: tg.initData,
+                        initData: initData,
                         game_id: parseInt(gameId),
                         user_id: uid
                     })
@@ -1066,7 +1072,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        initData: tg.initData,
+                        initData: initData,
                         game_id: parseInt(gameId),
                         name: name,
                         position: pos,
