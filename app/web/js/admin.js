@@ -413,26 +413,27 @@ function openApp(appType) {
     const iframe = document.getElementById('app-iframe');
     const title = document.getElementById('iframe-title');
     
-    let url = '';
+    const v = Date.now();
+    const auth = `&initData=${encodeURIComponent(initData)}&v=${v}`;
     
     if (appType === 'create') {
         if (!currentGroupId) return;
-        url = `/web/index.html?target_chat_id=${currentGroupId}`;
+        url = `/web/index.html?target_chat_id=${currentGroupId}${auth}`;
         title.textContent = 'Create Game';
     } 
     else if (appType === 'draft') {
         if (!currentGameId) return;
-        url = `/web/draft.html?game_id=${currentGameId}`;
+        url = `/web/draft.html?game_id=${currentGameId}${auth}`;
         title.textContent = 'Draft & Squads';
     }
     else if (appType === 'edit') {
         if (!currentGameId) return;
-        url = `/web/edit_game.html?game_id=${currentGameId}`;
+        url = `/web/edit_game.html?game_id=${currentGameId}${auth}`;
         title.textContent = 'Edit Game Info';
     }
     else if (appType === 'score') {
         if (!currentGameId) return;
-        url = `/web/finish.html?game_id=${currentGameId}`;
+        url = `/web/finish.html?game_id=${currentGameId}${auth}`;
         title.textContent = 'Enter Score & Stats';
     }
 
