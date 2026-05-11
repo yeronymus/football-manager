@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -110,13 +111,13 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
                     should_publish_now = False
 
             # Delegate all messaging to bot layer via event
-            await event_bus.publish(GameCreatedEvent(
+            asyncio.create_task(event_bus.publish(GameCreatedEvent(
                 game_id=new_game.id,
                 chat_id=new_game.chat_id,
                 creator_id=user_id,
                 should_publish=should_publish_now,
                 publish_at=game_data.publish_at,
-            ))
+            )))
             return {"game_id": new_game.id, "status": "created"}
         
     except ValueError as e:
@@ -181,7 +182,7 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
             await uow.commit()
 
         # Delegate messaging to bot layer
-        await event_bus.publish(GameUpdatedEvent(game_id=updated_game.id, changes=changes))
+        asyncio.create_task(event_bus.publish(GameUpdatedEvent(game_id=updated_game.id, changes=changes)))
         return {"status": "updated", "id": updated_game.id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -213,7 +214,7 @@ async def balance_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
             await service.balance_teams(data.game_id)
             await uow.commit()
 
-        await event_bus.publish(GameStateChangedEvent(game_id=data.game_id))
+        asyncio.create_task(event_bus.publish(GameStateChangedEvent(game_id=data.game_id)))
         return {"status": "balanced"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -261,7 +262,7 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
                 except Exception as e:
                     logger.warning(f"Failed to notify promoted user {uid}: {e}")
 
-        await event_bus.publish(GameStateChangedEvent(game_id=data.game_id))
+        asyncio.create_task(event_bus.publish(GameStateChangedEvent(game_id=data.game_id)))
         return {"status": "updated"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -293,7 +294,8 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
     await session.commit()
 
     # Delegate messaging to bot layer
-    await event_bus.publish(TeamsPublishedEvent(game_id=game.id))
+    import asyncio
+    asyncio.create_task(event_bus.publish(TeamsPublishedEvent(game_id=game.id)))
     return {"status": "published"}
 
 @router.post("/finish_game")
@@ -380,13 +382,12 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
                 name = users_map.get(s.user_id, "Неизвестный")
                 text += f"- {name}: {s.goals}\n"
 
-        # Delegate messaging to bot layer via event
-        await event_bus.publish(GameFinishedEvent(
+        asyncio.create_task(event_bus.publish(GameFinishedEvent(
             game_id=game.id,
             chat_id=game.chat_id,
             message_id=game.message_id,
             result_text=text,
-        ))
+        )))
         return {"status": "finished"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -411,14 +412,15 @@ async def admin_add_player(data: AddPlayerRequest, session: AsyncSession = Depen
         if existing.status != SignupStatus.ACTIVE:
             existing.status = SignupStatus.ACTIVE
             await session.commit()
-            await event_bus.publish(GameStateChangedEvent(game_id=data.game_id))
+            asyncio.create_task(event_bus.publish(GameStateChangedEvent(game_id=data.game_id)))
             return {"status": "updated", "message": "Player restored to Active"}
         else: return {"status": "ok", "message": "Already active"}
             
     signup = Signup(game_id=data.game_id, user_id=data.user_id, status=SignupStatus.ACTIVE)
     session.add(signup)
     await session.commit()
-    await event_bus.publish(GameStateChangedEvent(game_id=data.game_id))
+    import asyncio
+    asyncio.create_task(event_bus.publish(GameStateChangedEvent(game_id=data.game_id)))
     return {"status": "added"}
 
 @router.post("/add_guest")
@@ -467,7 +469,7 @@ async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends
         await session.commit()
         logger.info(f"Guest {guest_id} successfully added and committed")
         
-        await event_bus.publish(GameStateChangedEvent(game_id=data.game_id))
+        asyncio.create_task(event_bus.publish(GameStateChangedEvent(game_id=data.game_id)))
         return {"status": "added", "user_id": guest_id}
         
     except Exception as e:
