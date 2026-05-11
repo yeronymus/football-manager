@@ -471,6 +471,12 @@ function closeApp() {
     }, 300);
 }
 
+window.addEventListener('message', (event) => {
+    if (event.data === 'closeIframe') {
+        closeApp();
+    }
+});
+
 // Group Settings
 async function updateGroupSetting(key, value) {
     if (!currentGroupId) return;

@@ -320,18 +320,24 @@
                 });
 
                 if (response.ok) {
-                    tg.showAlert("Матч завершен!");
-                    tg.close();
+                    alert("Матч завершен!");
+                    window.parent.postMessage('closeIframe', '*');
                 } else {
-                    const err = await response.json();
-                    tg.showAlert(`Error: ${err.detail || "Unknown error"}`);
+                    let errText = "Unknown error";
+                    try {
+                        const err = await response.json();
+                        errText = err.detail || errText;
+                    } catch (jsonErr) {
+                        errText = "Server returned non-JSON error.";
+                    }
+                    alert(`Error: ${errText}`);
                     if (btn) {
                         btn.disabled = false;
                         btn.innerText = "Завершить матч";
                     }
                 }
             } catch (e) {
-                tg.showAlert(`Network Error: ${e.message}`);
+                alert(`Network Error: ${e.message}`);
                 if (btn) {
                     btn.disabled = false;
                     btn.innerText = "Завершить матч";
