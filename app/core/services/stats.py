@@ -111,7 +111,7 @@ class StatsService:
                 profile = PlayerProfile(user_id=user.user_id, chat_id=game.chat_id)
                 self.session.add(profile)
                 
-            old_rating = profile.rating
+            old_rating = profile.rating or 100
             
             # Get base change from team_points
             change = team_points.get(team, -5) # Default to -5 if team unassigned (safety)
