@@ -86,7 +86,7 @@ async def on_game_created(event: GameCreatedEvent):
 
 async def on_game_finished(event: GameFinishedEvent):
     """Send finish result text to chat, then refresh dashboard."""
-    if event.message_id and event.result_text:
+    if event.result_text:
         try:
             await bot.send_message(
                 chat_id=event.chat_id,

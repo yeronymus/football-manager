@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 import json
@@ -23,18 +23,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/create_game")
-async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(game_data.initData, settings.bot_token):
+async def create_game(data: GameCreate, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
-    user_id = get_user_from_init_data(game_data.initData)
-    await check_admin_rights(game_data.chat_id, user_id)
+    user_id = get_user_from_init_data(data.initData)
+    await check_admin_rights(data.chat_id, user_id)
 
     # Ensure user exists (Creator)
     user_repo = UserRepository(session)
     user = await user_repo.get_user(user_id)
     if not user:
-        parsed_data = dict(urllib.parse.parse_qsl(game_data.initData))
+        parsed_data = dict(urllib.parse.parse_qsl(data.initData))
         user_data = json.loads(parsed_data.get("user", "{}"))
         user = await user_repo.create_user(
             user_id=user_id, 
@@ -45,7 +45,7 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         await session.commit()
 
     # Interpret naive datetime from WebApp as Prague time
-    game_dt = game_data.date_time
+    game_dt = data.date_time
     if game_dt.tzinfo is None:
         try:
             import zoneinfo
@@ -54,7 +54,7 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         except ImportError:
             pass # Fallback to whatever Pydantic did
     
-    publish_dt = game_data.publish_at
+    publish_dt = data.publish_at
     if publish_dt and publish_dt.tzinfo is None:
         try:
             import zoneinfo
@@ -71,21 +71,21 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         
         # Map Pydantic schema -> Domain DTO
         dto = CreateGameDTO(
-            chat_id=game_data.chat_id,
+            chat_id=data.chat_id,
             date_time=game_dt,
-            location=game_data.location,
-            max_players=game_data.max_players,
-            price=game_data.price,
-            payment_info=game_data.payment_info,
-            team_count=game_data.team_count,
-            gk_hours=game_data.gk_hours,
-            duration=game_data.duration,
-            registration_hours=game_data.registration_hours,
-            game_type=game_data.game_type,
-            auto_join_ids=game_data.auto_join_ids,
+            location=data.location,
+            max_players=data.max_players,
+            price=data.price,
+            payment_info=data.payment_info,
+            team_count=data.team_count,
+            gk_hours=data.gk_hours,
+            duration=data.duration,
+            registration_hours=data.registration_hours,
+            game_type=data.game_type,
+            auto_join_ids=data.auto_join_ids,
             publish_at=publish_dt,
-            main_players_count=game_data.main_players_count,
-            signup_limit=game_data.signup_limit,
+            main_players_count=data.main_players_count,
+            signup_limit=data.signup_limit,
         )
 
         new_game = None
@@ -103,21 +103,21 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
             should_publish_now = True
             if new_game.date_time < now_tz:
                 should_publish_now = False
-            elif game_data.publish_at:
-                pub_at = game_data.publish_at
+            elif data.publish_at:
+                pub_at = data.publish_at
                 if pub_at.tzinfo is None and tz:
                     pub_at = pub_at.replace(tzinfo=tz)
                 if pub_at > now_tz:
                     should_publish_now = False
 
             # Delegate all messaging to bot layer via event
-            asyncio.create_task(event_bus.publish(GameCreatedEvent(
+            background_tasks.add_task(event_bus.publish, GameCreatedEvent(
                 game_id=new_game.id,
-                chat_id=new_game.chat_id,
+                chat_id=data.chat_id,
                 creator_id=user_id,
                 should_publish=should_publish_now,
-                publish_at=game_data.publish_at,
-            )))
+                publish_at=data.publish_at,
+            ))
             return {"game_id": new_game.id, "status": "created"}
         
     except ValueError as e:
@@ -127,7 +127,7 @@ async def create_game(game_data: GameCreate, session: AsyncSession = Depends(get
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/update_game")
-async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_session)):
+async def update_game(data: GameUpdate, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
         
@@ -182,7 +182,7 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
             await uow.commit()
 
         # Delegate messaging to bot layer
-        asyncio.create_task(event_bus.publish(GameUpdatedEvent(game_id=updated_game.id, changes=changes)))
+        background_tasks.add_task(event_bus.publish, GameUpdatedEvent(game_id=updated_game.id, changes=changes))
         return {"status": "updated", "id": updated_game.id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -192,7 +192,7 @@ async def update_game(data: GameUpdate, session: AsyncSession = Depends(get_sess
 
 
 @router.post("/balance_teams")
-async def balance_teams(data: BalanceTeams, session: AsyncSession = Depends(get_session)):
+async def admin_balance_teams(data: BalanceTeams, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
@@ -214,7 +214,7 @@ async def balance_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
             await service.balance_teams(data.game_id)
             await uow.commit()
 
-        asyncio.create_task(event_bus.publish(GameStateChangedEvent(game_id=data.game_id)))
+        background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id=data.game_id))
         return {"status": "balanced"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -223,7 +223,7 @@ async def balance_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
         raise HTTPException(status_code=500, detail="Internal error")
 
 @router.post("/update_teams")
-async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends(get_session)):
+async def admin_update_teams(data: UpdateTeamsRequest, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
@@ -262,7 +262,7 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
                 except Exception as e:
                     logger.warning(f"Failed to notify promoted user {uid}: {e}")
 
-        asyncio.create_task(event_bus.publish(GameStateChangedEvent(game_id=data.game_id)))
+        background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id=data.game_id))
         return {"status": "updated"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -271,7 +271,7 @@ async def update_teams(data: UpdateTeamsRequest, session: AsyncSession = Depends
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/publish_teams")
-async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_session)):
+async def admin_publish_teams(data: BalanceTeams, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
     
@@ -294,11 +294,11 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
     await session.commit()
 
     # Delegate messaging to bot layer
-    asyncio.create_task(event_bus.publish(TeamsPublishedEvent(game_id=game.id)))
+    background_tasks.add_task(event_bus.publish, TeamsPublishedEvent(game_id=game.id))
     return {"status": "published"}
 
 @router.post("/finish_game")
-async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(get_session)):
+async def finish_game(data: GameFinishRequest, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
 
@@ -381,12 +381,12 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
                 name = users_map.get(s.user_id, "Неизвестный")
                 text += f"- {name}: {s.goals}\n"
 
-        asyncio.create_task(event_bus.publish(GameFinishedEvent(
+        background_tasks.add_task(event_bus.publish, GameFinishedEvent(
             game_id=game.id,
             chat_id=game.chat_id,
             message_id=game.message_id,
             result_text=text,
-        )))
+        ))
         return {"status": "finished"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -395,7 +395,7 @@ async def finish_game(data: GameFinishRequest, session: AsyncSession = Depends(g
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/add_player")
-async def admin_add_player(data: AddPlayerRequest, session: AsyncSession = Depends(get_session)):
+async def admin_add_player(data: AddPlayerRequest, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(data.initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
     user_id = get_user_from_init_data(data.initData)
@@ -411,18 +411,18 @@ async def admin_add_player(data: AddPlayerRequest, session: AsyncSession = Depen
         if existing.status != SignupStatus.ACTIVE:
             existing.status = SignupStatus.ACTIVE
             await session.commit()
-            asyncio.create_task(event_bus.publish(GameStateChangedEvent(game_id=data.game_id)))
+            background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id=data.game_id))
             return {"status": "updated", "message": "Player restored to Active"}
         else: return {"status": "ok", "message": "Already active"}
             
     signup = Signup(game_id=data.game_id, user_id=data.user_id, status=SignupStatus.ACTIVE)
     session.add(signup)
     await session.commit()
-    asyncio.create_task(event_bus.publish(GameStateChangedEvent(game_id=data.game_id)))
+    background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id=data.game_id))
     return {"status": "added"}
 
 @router.post("/add_guest")
-async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends(get_session)):
+async def admin_add_guest(data: AddGuestRequest, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(data.initData, settings.bot_token):
         logger.warning(f"Invalid initData in add_guest for game {data.game_id}")
         raise HTTPException(status_code=403, detail="Invalid initData")
@@ -467,7 +467,7 @@ async def admin_add_guest(data: AddGuestRequest, session: AsyncSession = Depends
         await session.commit()
         logger.info(f"Guest {guest_id} successfully added and committed")
         
-        asyncio.create_task(event_bus.publish(GameStateChangedEvent(game_id=data.game_id)))
+        background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id=data.game_id))
         return {"status": "added", "user_id": guest_id}
         
     except Exception as e:
