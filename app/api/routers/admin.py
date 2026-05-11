@@ -294,7 +294,6 @@ async def publish_teams(data: BalanceTeams, session: AsyncSession = Depends(get_
     await session.commit()
 
     # Delegate messaging to bot layer
-    import asyncio
     asyncio.create_task(event_bus.publish(TeamsPublishedEvent(game_id=game.id)))
     return {"status": "published"}
 
@@ -419,7 +418,6 @@ async def admin_add_player(data: AddPlayerRequest, session: AsyncSession = Depen
     signup = Signup(game_id=data.game_id, user_id=data.user_id, status=SignupStatus.ACTIVE)
     session.add(signup)
     await session.commit()
-    import asyncio
     asyncio.create_task(event_bus.publish(GameStateChangedEvent(game_id=data.game_id)))
     return {"status": "added"}
 
