@@ -5,7 +5,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.Telegram && window.Telegram.WebApp) {
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
-        initData = window.Telegram.WebApp.initData;
+        
+        // Robust initData retrieval
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlInitData = urlParams.get('initData');
+        initData = window.Telegram.WebApp.initData || urlInitData || "";
+        
+        if (!window.Telegram.WebApp.initData && urlInitData) {
+            console.log("Main Admin: Using initData from URL params");
+        }
     }
     
     // For local dev without TG:
@@ -415,6 +423,7 @@ function openApp(appType) {
     
     const v = Date.now();
     const auth = `&initData=${encodeURIComponent(initData)}&v=${v}`;
+    let url = '';
     
     if (appType === 'create') {
         if (!currentGroupId) return;
