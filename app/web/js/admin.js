@@ -69,10 +69,21 @@ async function apiCall(endpoint, options = {}) {
 }
 
 // Load Data
-async function loadGroups() {
+async function loadGroups(retryCount = 0) {
     const listEl = document.getElementById('groups-list');
     listEl.innerHTML = '<div class="loading-spinner"></div>';
     
+    // Check if initData is available. If not, wait a bit (mobile TG clients can be slow to inject it)
+    if (!initData && window.Telegram && window.Telegram.WebApp) {
+        initData = window.Telegram.WebApp.initData;
+    }
+    
+    if (!initData && retryCount < 3) {
+        console.warn("initData missing, retrying in 300ms...");
+        setTimeout(() => loadGroups(retryCount + 1), 300);
+        return;
+    }
+
     try {
         const groups = await apiCall('/groups');
         listEl.innerHTML = '';
@@ -105,7 +116,10 @@ async function loadGroups() {
         }
         
     } catch (e) {
-        listEl.innerHTML = `<p style="color:var(--danger)">Failed to load groups.</p>`;
+        listEl.innerHTML = `
+            <p style="color:var(--danger)">Failed to load groups: ${e.message}</p>
+            <button class="btn" style="margin-top:10px" onclick="loadGroups()">Retry</button>
+        `;
     }
 }
 
