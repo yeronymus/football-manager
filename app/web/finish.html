@@ -276,6 +276,12 @@
         }
 
         async function submitResult() {
+            const btn = document.querySelector('.submit-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "⏳ Сохранение...";
+            }
+
             const scoreA = parseInt(document.getElementById('score-a').value) || 0;
             const scoreB = parseInt(document.getElementById('score-b').value) || 0;
 
@@ -318,10 +324,18 @@
                     tg.close();
                 } else {
                     const err = await response.json();
-                    tg.showAlert(`Error: ${err.detail}`);
+                    tg.showAlert(`Error: ${err.detail || "Unknown error"}`);
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerText = "Завершить матч";
+                    }
                 }
             } catch (e) {
                 tg.showAlert(`Network Error: ${e.message}`);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = "Завершить матч";
+                }
             }
         }
 
@@ -424,7 +438,7 @@
         async function fetchVotes() {
             try {
                 const response = await fetch(`/api/dashboard/games/${gameId}/votes/summary`, {
-                    headers: { 'Authorization': `tma ${tg.initData}` }
+                    headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (response.ok) {
                     const votes = await response.json();
