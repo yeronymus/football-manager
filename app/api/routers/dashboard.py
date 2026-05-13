@@ -116,7 +116,7 @@ async def update_group_settings(
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session)
 ):
-    await check_admin_rights(chat_id, user_id)
+    await check_admin_rights(chat_id, user_id, session=session)
     chat = await session.get(Chat, chat_id)
     if not chat:
         raise HTTPException(status_code=404, detail="Group not found")
@@ -135,7 +135,7 @@ async def get_group_games(
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session)
 ):
-    await check_admin_rights(chat_id, user_id)
+    await check_admin_rights(chat_id, user_id, session=session)
     
     # Get games with player count and paid count
     stmt = (

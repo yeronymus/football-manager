@@ -38,9 +38,16 @@ async function init() {
     const urlParams = new URLSearchParams(window.location.search);
     const urlChatId = urlParams.get('chat_id');
     
+    // Retry logic for initData (common on mobile Telegram clients)
+    let retryCount = 0;
+    while (!window.Telegram.WebApp.initData && retryCount < 5) {
+        console.warn(`initData missing, retry ${retryCount}...`);
+        await new Promise(r => setTimeout(r, 200));
+        retryCount++;
+    }
+
     try {
         const chats = await fetchAPI('/chats');
-        const selector = document.getElementById('group-selector');
         
         if (chats.length === 0) {
             document.body.innerHTML = '<div class="card" style="margin:20px;text-align:center">Вы не состоите ни в одной группе бота.</div>';
@@ -69,10 +76,19 @@ async function init() {
     } catch (e) {
         console.error(e);
         loader.style.display = 'none';
+        
+        // Improve error message for debugging
+        let errorTitle = "Ошибка загрузки";
+        let errorDetail = e.message;
+        
+        if (e.message === 'Failed to fetch' || e.message === 'Load failed') {
+            errorDetail = "Нет связи с сервером. Проверьте интернет или VPN.";
+        }
+
         document.body.innerHTML = `
             <div class="card" style="margin:20px; text-align:center;">
-                <h3 style="color:#f44336">Ошибка загрузки</h3>
-                <p class="subtitle">${e.message}</p>
+                <h3 style="color:#f44336">${errorTitle}</h3>
+                <p class="subtitle" style="word-break: break-all;">${errorDetail}</p>
                 <button onclick="location.reload()" class="group-btn" style="margin-top:20px; background:var(--accent-color); color:white; justify-content:center;">Попробовать снова</button>
             </div>
         `;

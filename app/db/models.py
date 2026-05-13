@@ -105,8 +105,8 @@ class PlayerProfile(Base):
     __tablename__ = "player_profiles"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
-    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False, index=True)
     
     rating = Column(Integer, default=100)
     games_played = Column(Integer, default=0)
@@ -124,8 +124,8 @@ class ChatAdmin(Base):
     __tablename__ = "chat_admins"
 
     id = Column(Integer, primary_key=True, index=True)
-    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False)
-    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False, index=True)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
     
     can_edit_settings = Column(Boolean, default=True)
     can_manage_games = Column(Boolean, default=True)
@@ -153,7 +153,7 @@ class Game(Base):
     __tablename__ = "games"
 
     id = Column(Integer, primary_key=True, index=True)
-    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False)
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False, index=True)
     created_by = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
     date_time = Column(DateTime(timezone=True), nullable=False)
     location = Column(String, nullable=False)
@@ -195,8 +195,8 @@ class Signup(Base):
     __tablename__ = "signups"
 
     id = Column(Integer, primary_key=True, index=True)
-    game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
-    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
+    game_id = Column(Integer, ForeignKey("games.id"), nullable=False, index=True)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
     status = Column(Enum(SignupStatus), default=SignupStatus.ACTIVE)
     team = Column(Enum(Team), nullable=True)
     position = Column(Enum(Position, name="signup_position_enum"), nullable=True) # Per-match override

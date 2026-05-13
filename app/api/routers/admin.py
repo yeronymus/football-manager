@@ -28,7 +28,7 @@ async def create_game(data: GameCreate, background_tasks: BackgroundTasks, sessi
         raise HTTPException(status_code=403, detail="Invalid initData")
 
     user_id = get_user_from_init_data(data.initData)
-    await check_admin_rights(data.chat_id, user_id)
+    await check_admin_rights(data.chat_id, user_id, session=session)
 
     # Ensure user exists (Creator)
     user_repo = UserRepository(session)
@@ -139,7 +139,7 @@ async def update_game(data: GameUpdate, background_tasks: BackgroundTasks, sessi
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
         
-    await check_admin_rights(game.chat_id, user_id)
+    await check_admin_rights(game.chat_id, user_id, session=session)
     
     # Interpret naive datetime from WebApp as Prague time
     game_dt = data.date_time
@@ -203,7 +203,7 @@ async def admin_balance_teams(data: BalanceTeams, background_tasks: BackgroundTa
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    await check_admin_rights(game.chat_id, user_id)
+    await check_admin_rights(game.chat_id, user_id, session=session)
 
     try:
         from app.core.services.roster import RosterService
@@ -281,7 +281,7 @@ async def admin_publish_teams(data: BalanceTeams, background_tasks: BackgroundTa
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
         
-    await check_admin_rights(game.chat_id, user_id)
+    await check_admin_rights(game.chat_id, user_id, session=session)
     
     is_update = True
     if game.status == GameStatus.OPEN:
@@ -308,7 +308,7 @@ async def finish_game(data: GameFinishRequest, background_tasks: BackgroundTasks
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    await check_admin_rights(game.chat_id, user_id)
+    await check_admin_rights(game.chat_id, user_id, session=session)
 
     try:
         from app.infrastructure.scheduler.service import SchedulerService
@@ -403,7 +403,7 @@ async def admin_add_player(data: AddPlayerRequest, background_tasks: BackgroundT
     game = result.scalar_one_or_none()
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
-    await check_admin_rights(game.chat_id, user_id)
+    await check_admin_rights(game.chat_id, user_id, session=session)
     
     result = await session.execute(select(Signup).where(Signup.game_id == data.game_id, Signup.user_id == data.user_id))
     existing = result.scalar_one_or_none()
@@ -433,7 +433,7 @@ async def admin_add_guest(data: AddGuestRequest, background_tasks: BackgroundTas
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
     
-    await check_admin_rights(game.chat_id, user_id)
+    await check_admin_rights(game.chat_id, user_id, session=session)
     
     # Generate unique negative ID for guest
     guest_id = -int(time.time() * 1000) # Reduced precision to stay safe within some JS limits, but still unique enough
