@@ -6,6 +6,7 @@ import time
 import logging
 from fastapi import HTTPException, Header, Depends, Body, Path
 from typing import Optional, Dict, Any
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from app.config import settings
 
