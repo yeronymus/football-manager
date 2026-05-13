@@ -67,12 +67,14 @@ async def get_dashboard_groups(
     if is_superadmin:
         result = await session.execute(select(Chat))
         chats = result.scalars().all()
+        logger.info(f"Dashboard: User {user_id} is superadmin, fetched {len(chats)} chats.")
     else:
         # Fetch only groups where user is ChatAdmin
         result = await session.execute(
             select(Chat).join(ChatAdmin).where(ChatAdmin.user_id == user_id)
         )
         chats = result.scalars().all()
+        logger.info(f"Dashboard: User {user_id} is regular admin, fetched {len(chats)} chats.")
 
     return [
         GroupOut(
