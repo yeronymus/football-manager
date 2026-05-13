@@ -58,26 +58,26 @@ def get_user_from_init_data(init_data: str) -> int:
         
     return user_id
 
-async def check_admin_rights(chat_id: int, user_id: int):
+async def check_admin_rights(chat_id: int, user_id: int, session: Optional[AsyncSession] = None):
     # System admins from config bypass checks (fallback/bootstrap)
     if user_id in settings.admin_ids or user_id == settings.system_owner_id:
         return True
 
     try:
-        from app.db.database import async_session_maker
         from app.db.models import User, ChatAdmin
         from sqlalchemy import select
         
-        async with async_session_maker() as session:
+        # Internal helper to perform the check
+        async def _perform_check(s: AsyncSession):
             # 1. Check if user is superadmin in DB
-            user_res = await session.execute(select(User).where(User.user_id == user_id))
+            user_res = await s.execute(select(User).where(User.user_id == user_id))
             user = user_res.scalar_one_or_none()
             
             if user and getattr(user, 'is_superadmin', False):
                 return True
                 
             # 2. Check if user is admin of this specific chat
-            admin_res = await session.execute(
+            admin_res = await s.execute(
                 select(ChatAdmin).where(
                     ChatAdmin.chat_id == chat_id, 
                     ChatAdmin.user_id == user_id
@@ -87,8 +87,19 @@ async def check_admin_rights(chat_id: int, user_id: int):
             
             if not chat_admin:
                 raise HTTPException(status_code=403, detail="You must be an admin of this group")
-                
             return True
+
+        if session:
+            return await _perform_check(session)
+        else:
+            from app.db.database import async_session_maker
+            async with async_session_maker() as new_session:
+                return await _perform_check(new_session)
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Cannot verify user rights: {str(e)}")
             
     except HTTPException:
         raise

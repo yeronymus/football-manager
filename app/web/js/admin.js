@@ -59,30 +59,38 @@ async function apiCall(endpoint, options = {}) {
     };
     
     const url = `/api/dashboard${endpoint}`;
-    const response = await fetch(url, { ...options, headers });
-    
-    if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+    try {
+        const response = await fetch(url, { ...options, headers });
+        if (!response.ok) {
+            let detail = response.statusText;
+            try {
+                const err = await response.json();
+                detail = err.detail || detail;
+            } catch(e) {}
+            throw new Error(`API Error ${response.status}: ${detail}`);
+        }
+        return await response.json();
+    } catch (e) {
+        if (e.message === 'Failed to fetch' || e.message === 'Load failed') {
+            throw new Error("Network Error: Connection to server failed.");
+        }
+        throw e;
     }
-    
-    return response.json();
 }
 
 // Load Data
-async function loadGroups(retryCount = 0) {
+async function loadGroups() {
     const listEl = document.getElementById('groups-list');
     listEl.innerHTML = '<div class="loading-spinner"></div>';
     
-    // Check if initData is available. If not, wait a bit (mobile TG clients can be slow to inject it)
-    if (!initData && window.Telegram && window.Telegram.WebApp) {
-        initData = window.Telegram.WebApp.initData;
+    // Wait for initData if missing
+    let retryCount = 0;
+    while (!window.Telegram.WebApp.initData && retryCount < 5) {
+        console.warn(`initData missing, retry ${retryCount}...`);
+        await new Promise(r => setTimeout(r, 200));
+        retryCount++;
     }
-    
-    if (!initData && retryCount < 3) {
-        console.warn("initData missing, retrying in 300ms...");
-        setTimeout(() => loadGroups(retryCount + 1), 300);
-        return;
-    }
+    initData = window.Telegram.WebApp.initData;
 
     try {
         const groups = await apiCall('/groups');
