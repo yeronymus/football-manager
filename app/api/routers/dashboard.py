@@ -4,12 +4,15 @@ from sqlalchemy import select, func, case
 from pydantic import BaseModel
 from typing import List, Optional
 import datetime
+import logging
+import re
 
 from app.db.database import get_session
 from app.db.models import Chat, ChatAdmin, User, Game, GameStatus, Signup, SignupStatus
 from app.api.auth import get_user_from_header, check_admin_rights
 from app.config import settings
-import re
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
