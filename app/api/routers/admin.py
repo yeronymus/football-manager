@@ -89,7 +89,7 @@ async def create_game(data: GameCreate, background_tasks: BackgroundTasks, sessi
         )
 
         new_game = None
-        async with UnitOfWork() as uow:
+        async with UnitOfWork(session=session) as uow:
             scheduler = SchedulerService()
             stats = StatsService(uow.session)
             lifecycle = GameLifecycleService(uow, scheduler, stats)
@@ -174,7 +174,7 @@ async def update_game(data: GameUpdate, background_tasks: BackgroundTasks, sessi
 
         updated_game = None
         changes = []
-        async with UnitOfWork() as uow:
+        async with UnitOfWork(session=session) as uow:
             scheduler = SchedulerService()
             stats = StatsService(uow.session)
             lifecycle = GameLifecycleService(uow, scheduler, stats)
@@ -209,7 +209,7 @@ async def admin_balance_teams(data: BalanceTeams, background_tasks: BackgroundTa
         from app.core.services.roster import RosterService
         from app.core.uow import UnitOfWork
         
-        async with UnitOfWork() as uow:
+        async with UnitOfWork(session=session) as uow:
             service = RosterService(uow)
             await service.balance_teams(data.game_id)
             await uow.commit()
@@ -219,8 +219,8 @@ async def admin_balance_teams(data: BalanceTeams, background_tasks: BackgroundTa
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Balance error: {e}")
-        raise HTTPException(status_code=500, detail="Internal error")
+        logger.error(f"Balance error for game {data.game_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Balance error: {str(e)}")
 
 @router.post("/update_teams")
 async def admin_update_teams(data: UpdateTeamsRequest, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
@@ -237,7 +237,7 @@ async def admin_update_teams(data: UpdateTeamsRequest, background_tasks: Backgro
         from app.core.uow import UnitOfWork
         
         promoted_ids = []
-        async with UnitOfWork() as uow:
+        async with UnitOfWork(session=session) as uow:
             service = RosterService(uow)
             promoted_ids = await service.update_teams(
                 data.game_id, 
@@ -267,8 +267,8 @@ async def admin_update_teams(data: UpdateTeamsRequest, background_tasks: Backgro
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Update teams error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Update teams error for game {data.game_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Update error: {str(e)}")
 
 @router.post("/publish_teams")
 async def admin_publish_teams(data: BalanceTeams, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
@@ -328,7 +328,7 @@ async def finish_game(data: GameFinishRequest, background_tasks: BackgroundTasks
             player_stats=[PlayerStatDTO(user_id=p.user_id, goals=p.goals) for p in data.player_stats],
         )
 
-        async with UnitOfWork() as uow:
+        async with UnitOfWork(session=session) as uow:
             scheduler = SchedulerService()
             stats = StatsService(uow.session)
             lifecycle = GameLifecycleService(uow, scheduler, stats)

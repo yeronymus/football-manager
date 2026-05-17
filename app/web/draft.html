@@ -716,8 +716,7 @@
 
             } catch (e) {
                 console.error(e);
-                alert("Ошибка загрузки данных (Load Error): " + e.message);
-                tg.showAlert("Ошибка: " + e.message);
+                tg.showAlert("Ошибка загрузки данных: " + e.message);
             }
         }
 
@@ -811,8 +810,7 @@
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             } catch (e) {
                 console.error(e);
-                alert("Ошибка: " + e.message); // Fallback alert
-                tg.showAlert("Ошибка: " + e.message);
+                tg.showAlert("Ошибка балансировки: " + e.message);
             } finally {
                 btn.innerText = originalText;
                 btn.disabled = false;

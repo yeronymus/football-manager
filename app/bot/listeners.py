@@ -96,6 +96,21 @@ async def on_game_finished(event: GameFinishedEvent):
         except Exception as e:
             logger.warning(f"Failed to send finish message for game {event.game_id}: {e}")
 
+    # Clean up and close the MVP voting message if it exists
+    async with async_session_maker() as session:
+        game = await session.get(Game, event.game_id)
+        if game and game.voting_message_id:
+            try:
+                await bot.edit_message_text(
+                    chat_id=game.chat_id,
+                    message_id=game.voting_message_id,
+                    text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP закрыто!</b>\nРезультаты опубликованы ниже.",
+                    reply_markup=None,
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to close voting message on game finish for game {event.game_id}: {e}")
+
     await _refresh_full(event.game_id)
 
 
@@ -157,6 +172,38 @@ async def on_teams_published(event: TeamsPublishedEvent):
                 )
                 game.message_id = msg.message_id
                 await session.commit()
+
+            # Also update MVP voting message keyboard if voting is already open/created
+            if game.voting_message_id:
+                try:
+                    from sqlalchemy import select
+                    from app.db.models import User, Signup, SignupStatus, Team
+                    
+                    result = await session.execute(
+                        select(User, Signup.team)
+                        .join(Signup)
+                        .where(Signup.game_id == game.id, Signup.status == SignupStatus.ACTIVE)
+                    )
+                    players_data = result.all()
+                    
+                    team_a = []
+                    team_b = []
+                    for user, team in players_data:
+                        if team == Team.A:
+                            team_a.append(user)
+                        elif team == Team.B:
+                            team_b.append(user)
+                    
+                    from app.bot.keyboards import get_voting_keyboard
+                    voting_kb = get_voting_keyboard(game.id, team_a, team_b)
+                    
+                    await bot.edit_message_reply_markup(
+                        chat_id=game.chat_id,
+                        message_id=game.voting_message_id,
+                        reply_markup=voting_kb
+                    )
+                except Exception as ex:
+                    logger.warning(f"Failed to update voting message keyboard for game {game.id}: {ex}")
 
         except Exception as e:
             logger.error(f"Failed to publish teams for game {event.game_id}: {e}", exc_info=True)

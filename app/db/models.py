@@ -173,6 +173,7 @@ class Game(Base):
     channel_id = Column(BigInteger, nullable=True) # Channel Chat ID
     channel_message_id = Column(BigInteger, nullable=True) # Channel Message ID
     admin_message_id = Column(BigInteger, nullable=True) # Dashboard Message
+    voting_message_id = Column(BigInteger, nullable=True) # MVP Voting Message
     has_active_gk_a = Column(Boolean, default=True)
     has_active_gk_b = Column(Boolean, default=True)
     has_active_gk_c = Column(Boolean, default=True)
