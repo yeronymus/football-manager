@@ -9,19 +9,22 @@ class UnitOfWork:
     Обеспечивает атомарность операций. 
     Все репозитории внутри одного 'async with' делят одну сессию БД.
     """
-    def __init__(self, session_factory=async_session_maker):
+    def __init__(self, session_factory=async_session_maker, session: AsyncSession | None = None):
         self._session_factory = session_factory
-        self._session: AsyncSession | None = None
+        self._session: AsyncSession | None = session
+        self._external_session = session is not None
         
     async def __aenter__(self) -> "UnitOfWork":
-        self._session = self._session_factory()
+        if not self._session:
+            self._session = self._session_factory()
+            
         # ВАЖНО: Передаем одну сессию во все репозитории
         self.game_repo = GameRepository(self._session)
         self.user_repo = UserRepository(self._session)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self._session:
+        if self._session and not self._external_session:
             if exc_type:
                 await self.rollback()
             await self._session.close()

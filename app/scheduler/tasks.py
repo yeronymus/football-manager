@@ -7,6 +7,9 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from app.config import settings
 
+import logging
+logger = logging.getLogger(__name__)
+
 async def send_voting_message(game_id: int):
     async for session in get_session():
         result = await session.execute(select(Game).where(Game.id == game_id))
@@ -40,12 +43,21 @@ async def send_voting_message(game_id: int):
         from app.bot.keyboards import get_voting_keyboard
         keyboard = get_voting_keyboard(game_id, team_a, team_b)
         
-        await bot.send_message(
+        # Delete old voting message if it exists
+        if game.voting_message_id:
+            try:
+                await bot.delete_message(chat_id=game.chat_id, message_id=game.voting_message_id)
+            except Exception as e:
+                logger.warning(f"Failed to delete old voting message for game {game_id}: {e}")
+        
+        msg = await bot.send_message(
             chat_id=game.chat_id,
             text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды), нажав на кнопки ниже.\n\nП.С. Отправляйте свои голы @yeronym для внесения в статистику",
             reply_markup=keyboard,
             parse_mode="HTML"
         )
+        game.voting_message_id = msg.message_id
+        await session.commit()
 
 async def calculate_mvp(game_id: int):
     async for session in get_session():
@@ -94,6 +106,20 @@ async def calculate_mvp(game_id: int):
         text += format_results(results_b)
 
         await bot.send_message(chat_id=game.chat_id, text=text, parse_mode="HTML")
+        
+        # Edit old voting message to clean it up and remove keyboard + P.S. text
+        if game.voting_message_id:
+            try:
+                await bot.edit_message_text(
+                    chat_id=game.chat_id,
+                    message_id=game.voting_message_id,
+                    text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP закрыто!</b>\nРезультаты опубликованы ниже.",
+                    reply_markup=None,
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to edit/close voting message for game {game_id}: {e}")
+
 
 async def remind_admin_to_finish(game_id: int):
     async for session in get_session():
