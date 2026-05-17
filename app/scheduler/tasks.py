@@ -52,7 +52,7 @@ async def send_voting_message(game_id: int):
         
         msg = await bot.send_message(
             chat_id=game.chat_id,
-            text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды), нажав на кнопки ниже.\n\nП.С. Отправляйте свои голы @yeronym для внесения в статистику",
+            text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды), нажав на кнопки ниже.",
             reply_markup=keyboard,
             parse_mode="HTML"
         )

@@ -172,7 +172,7 @@
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
+        const tg = (window.parent && window.parent.Telegram && window.parent.Telegram.WebApp) ? window.parent.Telegram.WebApp : window.Telegram.WebApp;
         
         // Robust initData retrieval (handle iframe case)
         const urlParams = new URLSearchParams(window.location.search);
