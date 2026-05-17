@@ -1,6 +1,6 @@
 from app.bot.instance import bot
 from app.db.database import get_session
-from app.db.models import Game, Signup, User, Vote, SignupStatus, GameStatus, Team, RatingHistory
+from app.db.models import Game, Signup, User, SignupStatus, GameStatus, Team
 from sqlalchemy import select, func
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -61,26 +61,6 @@ async def send_voting_message(game_id: int):
 
 async def calculate_mvp(game_id: int):
     async for session in get_session():
-        # Get Team A Results
-        res_a = await session.execute(
-            select(User.full_name, func.count(Vote.id))
-            .join(Vote, User.user_id == Vote.target_id)
-            .where(Vote.game_id == game_id, Vote.vote_team == Team.A)
-            .group_by(User.full_name)
-            .order_by(func.count(Vote.id).desc())
-        )
-        results_a = res_a.all()
-        
-        # Get Team B Results
-        res_b = await session.execute(
-            select(User.full_name, func.count(Vote.id))
-            .join(Vote, User.user_id == Vote.target_id)
-            .where(Vote.game_id == game_id, Vote.vote_team == Team.B)
-            .group_by(User.full_name)
-            .order_by(func.count(Vote.id).desc())
-        )
-        results_b = res_b.all()
-        
         # Get game info
         result = await session.execute(select(Game).where(Game.id == game_id))
         game = result.scalar_one_or_none()
@@ -88,32 +68,13 @@ async def calculate_mvp(game_id: int):
         if not game:
             return
 
-        text = f"📊 <b>Результаты голосования MVP</b>\n\n"
-        
-        def format_results(items):
-            if not items: return "<i>Голосов нет</i>"
-            lines = []
-            for i, (name, count) in enumerate(items):
-                prefix = "🌟 " if i == 0 else "- "
-                lines.append(f"{prefix}{name}: {count}")
-            return "\n".join(lines)
-
-        text += "<b>Команда А 🟠:</b>\n"
-        text += format_results(results_a)
-        text += "\n\n"
-        
-        text += "<b>Команда Б 🟢:</b>\n"
-        text += format_results(results_b)
-
-        await bot.send_message(chat_id=game.chat_id, text=text, parse_mode="HTML")
-        
-        # Edit old voting message to clean it up and remove keyboard + P.S. text
+        # Silently edit old voting message to clean it up and remove keyboard
         if game.voting_message_id:
             try:
                 await bot.edit_message_text(
                     chat_id=game.chat_id,
                     message_id=game.voting_message_id,
-                    text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP закрыто!</b>\nРезультаты опубликованы ниже.",
+                    text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP закрыто!</b>",
                     reply_markup=None,
                     parse_mode="HTML"
                 )
