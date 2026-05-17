@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from app.core.services.game_lifecycle import GameLifecycleService
 from app.core.services.stats import StatsService
 from app.infrastructure.scheduler.service import SchedulerService
-from app.api.schemas import GameCreate, GameFinishRequest, PlayerStats
+from app.api.schemas import GameCreate, GameFinishRequest, PlayerStat
 from app.db.models import Game, GameStatus, User, Signup, SignupStatus
 
 @pytest.mark.asyncio
@@ -84,10 +84,10 @@ async def test_lifecycle_flow(session):
         score_a=2,
         score_b=1,
         winner_team=Team.A,
-        mvp_user_id=101,
+        mvp_team_a=101,
         player_stats=[
-            PlayerStats(user_id=101, goals=2, assists=0),
-            PlayerStats(user_id=102, goals=1, assists=0)
+            PlayerStat(user_id=101, goals=2, assists=0),
+            PlayerStat(user_id=102, goals=1, assists=0)
         ]
     )
     

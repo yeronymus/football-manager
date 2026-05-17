@@ -54,7 +54,6 @@ class GameFinishRequest(BaseModel):
     score_a: int
     score_b: int
     winner_team: Optional[Team]
-    mvp_user_id: Optional[int] = None # Deprecated, kept for backward compat
     mvp_team_a: Optional[int] = None
     mvp_team_b: Optional[int] = None
     player_stats: list[PlayerStat]

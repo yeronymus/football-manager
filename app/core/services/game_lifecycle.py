@@ -182,7 +182,6 @@ class GameLifecycleService:
         
         # Process Inputs for Manual Stats
         mvp_ids = set()
-        if data.mvp_user_id: mvp_ids.add(data.mvp_user_id)
         if data.mvp_team_a: mvp_ids.add(data.mvp_team_a)
         if data.mvp_team_b: mvp_ids.add(data.mvp_team_b)
         

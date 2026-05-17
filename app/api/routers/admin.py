@@ -322,7 +322,6 @@ async def finish_game(data: GameFinishRequest, background_tasks: BackgroundTasks
             score_a=data.score_a,
             score_b=data.score_b,
             winner_team=data.winner_team,
-            mvp_user_id=data.mvp_user_id,
             mvp_team_a=data.mvp_team_a,
             mvp_team_b=data.mvp_team_b,
             player_stats=[PlayerStatDTO(user_id=p.user_id, goals=p.goals) for p in data.player_stats],
@@ -357,7 +356,6 @@ async def finish_game(data: GameFinishRequest, background_tasks: BackgroundTasks
             return [u.full_name for u in res.scalars().all()]
 
         mvp_ids = []
-        if data.mvp_user_id: mvp_ids.append(data.mvp_user_id)
         if data.mvp_team_a: mvp_ids.append(data.mvp_team_a)
         if data.mvp_team_b: mvp_ids.append(data.mvp_team_b)
         

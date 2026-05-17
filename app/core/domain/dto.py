@@ -60,7 +60,6 @@ class FinishGameDTO:
     score_a: int
     score_b: int
     winner_team: Optional[Team] = None
-    mvp_user_id: Optional[int] = None
     mvp_team_a: Optional[int] = None
     mvp_team_b: Optional[int] = None
     player_stats: list[PlayerStatDTO] = field(default_factory=list)
