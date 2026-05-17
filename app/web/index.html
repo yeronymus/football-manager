@@ -170,7 +170,7 @@
     <div style="text-align: center; margin-top: 10px; font-size: 10px; color: var(--tg-theme-hint-color);">v1.3.0</div>
 
     <script>
-        const tg = window.Telegram.WebApp;
+        const tg = (window.parent && window.parent.Telegram && window.parent.Telegram.WebApp) ? window.parent.Telegram.WebApp : window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 

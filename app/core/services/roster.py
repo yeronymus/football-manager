@@ -204,7 +204,7 @@ class RosterService:
             if i == 1: team_enum = Team.B
             elif i == 2: team_enum = Team.C
             for p in team_list:
-                user_team_map[p.user_id] = team_enum
+                user_team_map[p.id] = team_enum
         
         for user, signup in active_rows:
             if user.user_id in user_team_map:
