@@ -1,17 +1,22 @@
 
 import asyncio
-from app.db.database import async_session_factory
+from app.db.database import async_session_maker as async_session_factory
 from app.db.models import RatingHistory, Game, Chat, User, PlayerProfile
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
 async def check_all_games():
     async with async_session_factory() as session:
         # 1. Find the user (assuming we care about the one with the most games if multiple)
         # Actually, let's just find the user with 8 games in any profile
-        profiles = await session.execute(select(PlayerProfile).where(PlayerProfile.games_played >= 1))
+        profiles = await session.execute(
+            select(PlayerProfile)
+            .options(joinedload(PlayerProfile.user), joinedload(PlayerProfile.chat))
+            .where(PlayerProfile.games_played >= 1)
+        )
         for p in profiles.scalars().all():
-            user = await session.get(User, p.user_id)
-            chat = await session.get(Chat, p.chat_id)
+            user = p.user
+            chat = p.chat
             print(f"User {user.full_name} ({user.user_id}) in Chat '{chat.title if chat else 'Unknown'}' ({p.chat_id}): {p.games_played} games in Profile")
             
             # Now find all RatingHistory entries for this user/chat combination
