@@ -2,16 +2,6 @@ from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from app.db.models import Position
 
-def get_position_keyboard() -> InlineKeyboardMarkup:
-    # Deprecated, use get_primary_select_keyboard
-    buttons = [
-        [InlineKeyboardButton(text="🧤 Вратарь (GK)", callback_data=f"pos_{Position.GK.value}")],
-        [InlineKeyboardButton(text="🛡 Защитник (DEF)", callback_data=f"pos_{Position.DEF.value}")],
-        [InlineKeyboardButton(text="🏃 Полузащитник (MID)", callback_data=f"pos_{Position.MID.value}")],
-        [InlineKeyboardButton(text="⚽ Нападающий (FWD)", callback_data=f"pos_{Position.FWD.value}")],
-        [InlineKeyboardButton(text="🔙 Отмена", callback_data="delete_msg")]
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_multiselect_keyboard(selected: list[str]) -> InlineKeyboardMarkup:
     buttons = []
