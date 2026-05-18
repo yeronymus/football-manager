@@ -126,23 +126,26 @@ class UserRepository:
         new_signups = (await self.session.execute(select(Signup).where(Signup.user_id == new_user_id))).scalars().all()
         new_game_ids = {s.game_id for s in new_signups}
         
-        for old_s in old_signups:
-            if old_s.game_id in new_game_ids:
-                # Conflict: both users signed up for the same game. Delete old user's signup
-                await self.session.execute(delete(Signup).where(Signup.id == old_s.id))
-            else:
-                old_s.user_id = new_user_id
+        delete_signup_ids = [s.id for s in old_signups if s.game_id in new_game_ids]
+        update_signup_ids = [s.id for s in old_signups if s.game_id not in new_game_ids]
+
+        if delete_signup_ids:
+            await self.session.execute(delete(Signup).where(Signup.id.in_(delete_signup_ids)))
+        if update_signup_ids:
+            await self.session.execute(update(Signup).where(Signup.id.in_(update_signup_ids)).values(user_id=new_user_id))
                 
         # 3. Update Votes - Delete if conflict (voter_id)
         old_votes = (await self.session.execute(select(Vote).where(Vote.voter_id == old_user_id))).scalars().all()
         new_votes = (await self.session.execute(select(Vote).where(Vote.voter_id == new_user_id))).scalars().all()
         new_vote_keys = {(v.game_id, v.vote_team) for v in new_votes}
         
-        for old_v in old_votes:
-            if (old_v.game_id, old_v.vote_team) in new_vote_keys:
-                await self.session.execute(delete(Vote).where(Vote.id == old_v.id))
-            else:
-                old_v.voter_id = new_user_id
+        delete_vote_ids = [v.id for v in old_votes if (v.game_id, v.vote_team) in new_vote_keys]
+        update_vote_ids = [v.id for v in old_votes if (v.game_id, v.vote_team) not in new_vote_keys]
+
+        if delete_vote_ids:
+            await self.session.execute(delete(Vote).where(Vote.id.in_(delete_vote_ids)))
+        if update_vote_ids:
+            await self.session.execute(update(Vote).where(Vote.id.in_(update_vote_ids)).values(voter_id=new_user_id))
                 
         # Target ID for votes has no unique constraint constraint
         await self.session.execute(update(Vote).where(Vote.target_id == old_user_id).values(target_id=new_user_id))
