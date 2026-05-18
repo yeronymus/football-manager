@@ -6,7 +6,7 @@ from app.db.models import Game, Signup, User, SignupStatus, GameStatus, Team, Ch
 from app.core.uow import UnitOfWork
 from app.config import settings
 from app.bot.utils import format_game_message, update_game_message
-from app.bot.keyboards import get_game_keyboard, get_position_keyboard
+from app.bot.keyboards import get_game_keyboard, get_primary_select_keyboard
 from app.bot.fsm import GuestAddition
 from aiogram.fsm.context import FSMContext
 import time
@@ -197,19 +197,18 @@ async def process_guest_name(message: types.Message, state: FSMContext):
     await state.update_data(guest_name=name)
     await state.set_state(GuestAddition.waiting_for_position)
     
-    from app.bot.keyboards import get_position_keyboard
     await message.answer(
         f"👤 Гость: <b>{name}</b>\n\nВыберите позицию игрока:",
-        reply_markup=get_position_keyboard(),
+        reply_markup=get_primary_select_keyboard([pos.value for pos in Position]),
         parse_mode="HTML"
     )
 
-@router.callback_query(GuestAddition.waiting_for_position, F.data.startswith("pos_"))
+@router.callback_query(GuestAddition.waiting_for_position, F.data.startswith("primary_"))
 async def process_guest_position(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
     data = await state.get_data()
     game_id = data.get("guest_game_id")
     name = data.get("guest_name")
-    pos_str = callback.data.split("_")[1]
+    primary_str = callback.data.split("_")[1]
     
     if not game_id or not name:
         await callback.answer("❌ Ошибка данных. Попробуйте снова.")
@@ -224,7 +223,7 @@ async def process_guest_position(callback: types.CallbackQuery, state: FSMContex
             user_id=guest_id,
             full_name=f"{name} (Guest)",
             username=None,
-            player_position=Position(pos_str),
+            player_position=Position(primary_str),
             rating=100
         )
         session.add(new_guest)
