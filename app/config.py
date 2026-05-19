@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     # Telegram Bot
     bot_token: str
+    bot_username: str = "fm_metabot"
     admin_ids: List[int] = []
     system_owner_id: Optional[int] = None
     webhook_url: str = ""

@@ -22,19 +22,21 @@ from app.core.domain.dto import CreateGameDTO, UpdateGameDTO, FinishGameDTO, Pla
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.post("/create_game")
-async def create_game(data: GameCreate, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
-    if not validate_init_data(data.initData, settings.bot_token):
-        raise HTTPException(status_code=403, detail="Invalid initData")
+def _interpret_prague_tz(dt):
+    if dt and dt.tzinfo is None:
+        try:
+            import zoneinfo
+            prague_tz = zoneinfo.ZoneInfo("Europe/Prague")
+            return dt.replace(tzinfo=prague_tz)
+        except ImportError:
+            pass
+    return dt
 
-    user_id = get_user_from_init_data(data.initData)
-    await check_admin_rights(data.chat_id, user_id, session=session)
-
-    # Ensure user exists (Creator)
+async def _ensure_creator_exists(user_id: int, init_data: str, session: AsyncSession) -> User:
     user_repo = UserRepository(session)
     user = await user_repo.get_user(user_id)
     if not user:
-        parsed_data = dict(urllib.parse.parse_qsl(data.initData))
+        parsed_data = dict(urllib.parse.parse_qsl(init_data))
         user_data = json.loads(parsed_data.get("user", "{}"))
         user = await user_repo.create_user(
             user_id=user_id, 
@@ -43,25 +45,19 @@ async def create_game(data: GameCreate, background_tasks: BackgroundTasks, sessi
             position="CM" # Default
         )
         await session.commit()
+    return user
 
-    # Interpret naive datetime from WebApp as Prague time
-    game_dt = data.date_time
-    if game_dt.tzinfo is None:
-        try:
-            import zoneinfo
-            prague_tz = zoneinfo.ZoneInfo("Europe/Prague")
-            game_dt = game_dt.replace(tzinfo=prague_tz)
-        except ImportError:
-            pass # Fallback to whatever Pydantic did
-    
-    publish_dt = data.publish_at
-    if publish_dt and publish_dt.tzinfo is None:
-        try:
-            import zoneinfo
-            prague_tz = zoneinfo.ZoneInfo("Europe/Prague")
-            publish_dt = publish_dt.replace(tzinfo=prague_tz)
-        except ImportError:
-            pass
+@router.post("/create_game")
+async def create_game(data: GameCreate, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
+    if not validate_init_data(data.initData, settings.bot_token):
+        raise HTTPException(status_code=403, detail="Invalid initData")
+
+    user_id = get_user_from_init_data(data.initData)
+    await check_admin_rights(data.chat_id, user_id, session=session)
+    await _ensure_creator_exists(user_id, data.initData, session)
+
+    game_dt = _interpret_prague_tz(data.date_time)
+    publish_dt = _interpret_prague_tz(data.publish_at)
 
     try:
         from app.infrastructure.scheduler.service import SchedulerService
@@ -69,7 +65,6 @@ async def create_game(data: GameCreate, background_tasks: BackgroundTasks, sessi
         from app.core.services.game_lifecycle import GameLifecycleService
         from app.core.uow import UnitOfWork
         
-        # Map Pydantic schema -> Domain DTO
         dto = CreateGameDTO(
             chat_id=data.chat_id,
             date_time=game_dt,
@@ -88,7 +83,6 @@ async def create_game(data: GameCreate, background_tasks: BackgroundTasks, sessi
             signup_limit=data.signup_limit,
         )
 
-        new_game = None
         async with UnitOfWork(session=session) as uow:
             scheduler = SchedulerService()
             stats = StatsService(uow.session)
@@ -110,7 +104,6 @@ async def create_game(data: GameCreate, background_tasks: BackgroundTasks, sessi
                 if pub_at > now_tz:
                     should_publish_now = False
 
-            # Delegate all messaging to bot layer via event
             background_tasks.add_task(event_bus.publish, GameCreatedEvent(
                 game_id=new_game.id,
                 chat_id=data.chat_id,
@@ -252,7 +245,9 @@ async def admin_update_teams(data: UpdateTeamsRequest, background_tasks: Backgro
 
         if promoted_ids:
             from app.bot.instance import bot as _bot
-            for uid in promoted_ids:
+            import asyncio
+            
+            async def send_notify(uid):
                 try:
                     await _bot.send_message(
                         uid,
@@ -261,6 +256,8 @@ async def admin_update_teams(data: UpdateTeamsRequest, background_tasks: Backgro
                     )
                 except Exception as e:
                     logger.warning(f"Failed to notify promoted user {uid}: {e}")
+            
+            await asyncio.gather(*(send_notify(uid) for uid in promoted_ids))
 
         background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id=data.game_id))
         return {"status": "updated"}

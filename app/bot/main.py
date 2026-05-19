@@ -28,24 +28,10 @@ dp = Dispatcher(storage=storage)
 dp.message.outer_middleware(InstanceAccessMiddleware())
 dp.callback_query.outer_middleware(InstanceAccessMiddleware())
 
-from app.bot.handlers import router as valid_router
-from app.bot.game_handlers import router as game_router
-from app.bot.admin_handlers import router as admin_router
-from app.bot.vote_handlers import router as vote_router
+from app.bot.handlers import router as main_router
 from app.db.database import async_session_maker
 
-dp.include_router(valid_router)
-dp.include_router(game_router)
-dp.include_router(admin_router)
-dp.include_router(vote_router)
-
-from app.bot.admin_system import router as system_router
-from app.bot.setup_handlers import router as setup_router
-dp.include_router(system_router)
-dp.include_router(setup_router)
-
-from app.bot.stats_handlers import router as stats_router
-dp.include_router(stats_router)
+dp.include_router(main_router)
 
 
 
