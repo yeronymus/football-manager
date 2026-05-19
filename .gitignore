@@ -1,6 +1,7 @@
 # --- Secrets & Environment ---
 .env
 .env.*
+!.env.example
 *.env
 development.env
 production.env
