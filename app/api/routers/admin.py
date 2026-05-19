@@ -32,6 +32,21 @@ def _interpret_prague_tz(dt):
             pass
     return dt
 
+def _should_publish_game_now(game_datetime, publish_at) -> bool:
+    from datetime import datetime
+    tz = game_datetime.tzinfo
+    now_tz = datetime.now(tz) if tz else datetime.now()
+    
+    if game_datetime < now_tz:
+        return False
+    if publish_at:
+        pub_at = publish_at
+        if pub_at.tzinfo is None and tz:
+            pub_at = pub_at.replace(tzinfo=tz)
+        if pub_at > now_tz:
+            return False
+    return True
+
 async def _ensure_creator_exists(user_id: int, init_data: str, session: AsyncSession) -> User:
     user_repo = UserRepository(session)
     user = await user_repo.get_user(user_id)
@@ -90,19 +105,7 @@ async def create_game(data: GameCreate, background_tasks: BackgroundTasks, sessi
             new_game = await lifecycle.create_game(dto, user_id)
             await uow.commit()
 
-            from datetime import datetime
-            tz = new_game.date_time.tzinfo
-            now_tz = datetime.now(tz) if tz else datetime.now()
-            
-            should_publish_now = True
-            if new_game.date_time < now_tz:
-                should_publish_now = False
-            elif data.publish_at:
-                pub_at = data.publish_at
-                if pub_at.tzinfo is None and tz:
-                    pub_at = pub_at.replace(tzinfo=tz)
-                if pub_at > now_tz:
-                    should_publish_now = False
+            should_publish_now = _should_publish_game_now(new_game.date_time, data.publish_at)
 
             background_tasks.add_task(event_bus.publish, GameCreatedEvent(
                 game_id=new_game.id,

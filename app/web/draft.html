@@ -477,7 +477,7 @@
                 if (selectedElement) selectedElement.classList.remove('selected');
                 selectedElement = card;
                 selectedElement.classList.add('selected');
-                const pid = selectedElement.id.replace('player-', '');
+                const pid = selectedElement.dataset.playerId;
                 selectedPlayer = allPlayers[pid];
             } else if (selectedPlayer) {
                 // Determine target slot... actually unassigned list is simple append
@@ -497,6 +497,7 @@
             const div = document.createElement('div');
             div.className = 'player-card';
             div.id = `player-${p.id}`;
+            div.dataset.playerId = p.id;
             div.onclick = (e) => {
                 e.stopPropagation();
                 if (selectedElement) selectedElement.classList.remove('selected');
@@ -748,7 +749,7 @@
                     const slot = document.getElementById(`${key}-${pos}`);
                     if (!slot) return;
                     slot.querySelectorAll('.player-card').forEach(c => {
-                        const pid = c.id.replace('player-', '');
+                        const pid = c.dataset.playerId;
                         const p = allPlayers[pid];
                         if (p) {
                             sum += (p.rating || 1200);
@@ -838,7 +839,7 @@
                     // Find the player-list container
                     const cardList = slot.querySelector('.player-list') || slot;
                     cardList.querySelectorAll('.player-card').forEach(c => {
-                        const pidStr = c.id.replace('player-', '');
+                        const pidStr = c.dataset.playerId;
                         const pid = parseInt(pidStr);
                         list.push(pid);
                         
@@ -859,11 +860,11 @@
             if (activeTeams.includes('c')) data.team_c = gather('c');
 
 
-            // --- GATHER POOLS ---
+            # --- GATHER POOLS ---
             const gatherPool = (id) => {
                 const list = [];
                 document.getElementById(id).querySelectorAll('.player-card').forEach(c => {
-                    list.push(parseInt(c.id.replace('player-', '')));
+                    list.push(parseInt(c.dataset.playerId));
                 });
                 return list;
             };

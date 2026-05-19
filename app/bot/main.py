@@ -48,13 +48,19 @@ async def start_bot():
     """
     Function to start the bot. Called from FastAPI startup event.
     """
+    try:
+        me = await bot.get_me()
+        settings.bot_username = me.username
+        logging.info(f"Dynamically retrieved bot username: {settings.bot_username}")
+    except Exception as e:
+        logging.warning(f"Failed to dynamically retrieve bot username, using default: {settings.bot_username}. Error: {e}")
+
     setup_listeners()
 
     if settings.webhook_url and not settings.use_polling:
         webhook_info = await bot.get_webhook_info()
         if webhook_info.url != settings.webhook_url:
             await bot.set_webhook(settings.webhook_url)
-
 
     logging.info(f"Webhook set to {settings.webhook_url}")
 
