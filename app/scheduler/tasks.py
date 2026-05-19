@@ -1,3 +1,4 @@
+import asyncio
 from app.bot.instance import bot
 from app.db.database import get_session
 from app.db.models import Game, Signup, User, SignupStatus, GameStatus, Team
@@ -153,10 +154,7 @@ async def release_gk_slots(game_id: int):
             promoted_signups = reserves_result.scalars().all()
             
             if promoted_signups:
-                for signup in promoted_signups:
-                    signup.status = SignupStatus.ACTIVE
-                    
-                    # Notify User
+                async def notify_user(signup):
                     try:
                         await bot.send_message(
                             signup.user_id, 
@@ -165,6 +163,11 @@ async def release_gk_slots(game_id: int):
                     except Exception as e:
                         print(f"Failed to notify user {signup.user_id}: {e}")
                 
+                for signup in promoted_signups:
+                    signup.status = SignupStatus.ACTIVE
+
+                await asyncio.gather(*(notify_user(signup) for signup in promoted_signups))
+
                 await session.commit()
                 
                 # Update Message
