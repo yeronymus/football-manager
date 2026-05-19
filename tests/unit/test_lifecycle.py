@@ -22,11 +22,18 @@ async def test_lifecycle_flow(session):
         def schedule_publish(self, gid, time): pass
         def schedule_voting(self, gid, time): pass
         def schedule_admin_reminder(self, gid, time): pass
+        def schedule_gk_release(self, game): pass
+        def schedule_mvp_calculation(self, game_id): pass
+        def schedule_mvp_calculation_at(self, game_id, run_date): pass
         def cancel_game_tasks(self, gid): pass
 
     scheduler = MockScheduler()
+    from app.core.uow import UnitOfWork
+    uow = UnitOfWork(session=session)
+    await uow.__aenter__()
+    
     stats = StatsService(session)
-    service = GameLifecycleService(session, scheduler, stats)
+    service = GameLifecycleService(uow, scheduler, stats)
     
     # 1. Create Game
     data = GameCreate(
@@ -40,7 +47,8 @@ async def test_lifecycle_flow(session):
         gk_hours=24,
         duration=1,
         publish_at=None,
-        auto_join_ids=[111]
+        auto_join_ids=[111],
+        initData="some_fake_init_data"
     )
     
     # Create Admin
@@ -55,11 +63,6 @@ async def test_lifecycle_flow(session):
     assert game.status == GameStatus.OPEN
     
     # Verify Auto-Join
-    s = await session.get(Signup, (game.id, 111)) # Composite PK? id is int PK.
-    # Signup PK is (id).
-    # Need verify via query.
-    # Wait, Signup PK is just 'id'.
-    # We query by game_id/user_id.
     from sqlalchemy import select
     res = await session.execute(select(Signup).where(Signup.game_id == game.id, Signup.user_id == 111))
     s = res.scalar_one_or_none()
@@ -68,8 +71,8 @@ async def test_lifecycle_flow(session):
     
     # 2. Finish Game
     # Create Players
-    u1 = User(user_id=101, full_name="Player 1", rating=100)
-    u2 = User(user_id=102, full_name="Player 2", rating=100)
+    u1 = User(user_id=101, full_name="Player 1", player_position="CB", rating=100)
+    u2 = User(user_id=102, full_name="Player 2", player_position="ST", rating=100)
     session.add_all([u1, u2])
     await session.commit()
     
@@ -86,9 +89,10 @@ async def test_lifecycle_flow(session):
         winner_team=Team.A,
         mvp_team_a=101,
         player_stats=[
-            PlayerStat(user_id=101, goals=2, assists=0),
-            PlayerStat(user_id=102, goals=1, assists=0)
-        ]
+            PlayerStat(user_id=101, goals=2),
+            PlayerStat(user_id=102, goals=1)
+        ],
+        initData="some_fake_init_data"
     )
     
     game = await service.finish_game(finish_data)
