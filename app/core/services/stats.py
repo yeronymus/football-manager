@@ -18,17 +18,38 @@ class StatsService:
         # 1. Revert Ratings & Games Played
         history_result = await self.session.execute(select(RatingHistory).where(RatingHistory.game_id == game_id))
         histories = history_result.scalars().all()
+        
+        # Get unique user IDs from histories and stats
+        stats_result = await self.session.execute(select(GameStats).where(GameStats.game_id == game_id))
+        stats = stats_result.scalars().all()
+        
+        user_ids = {h.user_id for h in histories} | {s.user_id for s in stats if s.is_mvp}
+        
+        user_map = {}
+        profile_map = {}
+        
+        if user_ids:
+            # Bulk fetch users
+            users_res = await self.session.execute(select(User).where(User.user_id.in_(user_ids)))
+            user_map = {u.user_id: u for u in users_res.scalars().all()}
+            
+            # Bulk fetch player profiles
+            profiles_res = await self.session.execute(
+                select(PlayerProfile).where(
+                    PlayerProfile.user_id.in_(user_ids),
+                    PlayerProfile.chat_id == game_obj.chat_id
+                )
+            )
+            profile_map = {p.user_id: p for p in profiles_res.scalars().all()}
+            
         for h in histories:
-            user = await self.session.get(User, h.user_id)
+            user = user_map.get(h.user_id)
             if user and h.old_rating is not None:
                 user.rating = h.old_rating
                 user.games_played = max(0, user.games_played - 1)
                 user.stats_matches = max(0, user.stats_matches - 1)
             
-            profile = await self.session.scalar(select(PlayerProfile).where(
-                PlayerProfile.user_id == h.user_id, 
-                PlayerProfile.chat_id == game_obj.chat_id
-            ))
+            profile = profile_map.get(h.user_id)
             if profile and h.old_rating is not None:
                 profile.rating = h.old_rating
                 profile.games_played = max(0, profile.games_played - 1)
@@ -42,17 +63,12 @@ class StatsService:
         # But GameStats contains Goals too.
         # Let's assume Caller handles GameStats lifecycle (deletion), 
         # BUT we must revert User MVP counters.
-        stats_result = await self.session.execute(select(GameStats).where(GameStats.game_id == game_id))
-        stats = stats_result.scalars().all()
         for s in stats:
             if s.is_mvp:
-                user = await self.session.get(User, s.user_id)
+                user = user_map.get(s.user_id)
                 if user:
                     user.stats_mvp = max(0, user.stats_mvp - 1)
-                profile = await self.session.scalar(select(PlayerProfile).where(
-                    PlayerProfile.user_id == s.user_id, 
-                    PlayerProfile.chat_id == game_obj.chat_id
-                ))
+                profile = profile_map.get(s.user_id)
                 if profile:
                     profile.stats_mvp = max(0, profile.stats_mvp - 1)
             # We don't delete GameStats here if caller does it?
