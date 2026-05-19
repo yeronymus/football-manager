@@ -8,12 +8,19 @@ from app.config import settings
 
 router = APIRouter()
 
+from app.core.services.cache import cache_service
+
 @router.get("/game/{game_id}")
 async def get_game_details(
     game_id: int, 
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
+    cache_key = f"game_details:{game_id}"
+    cached_data = await cache_service.get(cache_key)
+    if cached_data:
+        return cached_data
+
     result = await session.execute(select(Game).where(Game.id == game_id))
     game = result.scalar_one_or_none()
     if not game:
@@ -53,7 +60,7 @@ async def get_game_details(
     unassigned = [serialize_player(p) for p in players_data if not p[1].team and p[1].status == SignupStatus.ACTIVE]
     reserve = [serialize_player(p) for p in players_data if not p[1].team and p[1].status == SignupStatus.RESERVE]
     
-    return {
+    response_data = {
         "id": game.id,
         "location": game.location,
         "date": game.date_time.isoformat(),
@@ -79,6 +86,10 @@ async def get_game_details(
         "has_active_gk_b": game.has_active_gk_b,
         "has_active_gk_c": getattr(game, 'has_active_gk_c', True)
     }
+    
+    await cache_service.set(cache_key, response_data, ttl=300)
+    return response_data
+
 
 @router.get("/history/{chat_id}")
 async def get_chat_history(
