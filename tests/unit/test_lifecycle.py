@@ -75,15 +75,15 @@ async def test_lifecycle_flow(session):
     
     # Sign them up (Manually for speed)
     from app.db.models import Team
-    session.add(Signup(game_id=game.id, user_id=101, status=SignupStatus.ACTIVE, team=Team.A))
-    session.add(Signup(game_id=game.id, user_id=102, status=SignupStatus.ACTIVE, team=Team.B))
+    session.add(Signup(game_id=game.id, user_id=101, status=SignupStatus.ACTIVE, team=Team.A)) # Enum value used instead of string "A"
+    session.add(Signup(game_id=game.id, user_id=102, status=SignupStatus.ACTIVE, team=Team.B)) # Enum value used instead of string "B"
     await session.commit()
 
     finish_data = GameFinishRequest(
         game_id=game.id,
         score_a=2,
         score_b=1,
-        winner_team=Team.A,
+        winner_team=Team.A, # Enum value used instead of string "A"
         mvp_team_a=101,
         player_stats=[
             PlayerStat(user_id=101, goals=2, assists=0),
@@ -103,22 +103,3 @@ async def test_lifecycle_flow(session):
     await session.refresh(u1)
     # assert u1.rating == 115 
     print(f"U1 Rating: {u1.rating}") 
-    # Note: Logic in StatsService might be TeamEnum vs String "A".
-    # Service uses Team.A enum.
-    # Test passed string "A". 
-    # DB Model stores Enum or String?
-    # Game.winner_team is Enum usually?
-    # DB Model: winner_team = Column(Enum(Team), nullable=True)
-    # Input Schema: winner_team: Team (Enum)
-    # Pydantic parses "A" to Team.A if validation works.
-    # But here we construct Object directly.
-    # Wait, schemas use Enum usually.
-    # let's use Enum in test data.
-    
-    from app.db.models import Team
-    finish_data.winner_team = Team.A # Fix type
-    # Signups check: team="A". Model uses Enum? 
-    # Signup.team is Enum.
-    
-    # We need to fix signup creation in test.
-    # session.add(Signup(..., team=Team.A))
