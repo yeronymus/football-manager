@@ -176,7 +176,8 @@ async def get_leaderboard(
     ).subquery()
 
     profiles = await session.execute(
-        select(PlayerProfile, goals_sub.c.total_goals)
+        select(PlayerProfile, goals_sub.c.total_goals, User)
+        .join(User, User.user_id == PlayerProfile.user_id)
         .outerjoin(goals_sub, PlayerProfile.user_id == goals_sub.c.user_id)
         .where(PlayerProfile.chat_id == chat_id)
         .order_by(desc(PlayerProfile.rating))
@@ -184,8 +185,7 @@ async def get_leaderboard(
     )
     
     result = []
-    for p, goals in profiles.all():
-        user = await session.get(User, p.user_id)
+    for p, goals, user in profiles.all():
         if user:
             result.append({
                 "user_id": user.user_id,
