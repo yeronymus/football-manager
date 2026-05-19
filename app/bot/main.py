@@ -44,9 +44,6 @@ from app.bot.setup_handlers import router as setup_router
 dp.include_router(system_router)
 dp.include_router(setup_router)
 
-# from app.bot.common_handlers import router as common_router
-# dp.include_router(common_router)
-
 from app.bot.stats_handlers import router as stats_router
 dp.include_router(stats_router)
 
