@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/ru.js"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/cs.js"></script>
+    <style>
+        body {
+            font-family: var(--tg-theme-font-family, sans-serif);
+            background-color: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+            padding: 20px;
+            margin: 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--tg-theme-hint-color, #ccc);
+            border-radius: 8px;
+            box-sizing: border-box;
+            background-color: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #000);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #fff);
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Создать игру</h1>
+    
+    <!-- 1. Основные -->
+    <div class="form-group">
+        <label for="chat_id">Чат</label>
+        <select id="chat_id">
+            <option value="" disabled selected>Загрузка...</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="location">Локация</label>
+        <input type="text" id="location" value="Plamínkové 1539, Praha 4-Nusle" placeholder="Например, Pankrac" required>
+    </div>
+
+    <div class="form-group">
+        <label for="date_time">Дата и Время</label>
+        <input type="text" id="date_time" placeholder="Выберите дату и время" required>
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0; opacity: 0.1;">
+
+    <!-- 2. Параметры игры -->
+    <div class="form-group">
+        <label for="game_type">Формат игры</label>
+        <select id="game_type">
+            <option value="regular">Общая игра</option>
+            <option value="draft" selected>Драфт</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="team_count">Количество команд</label>
+        <select id="team_count">
+            <option value="2" selected>2 Команды</option>
+            <option value="3">3 Команды (Турнир)</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="duration">Длительность (часов)</label>
+        <input type="number" id="duration" value="2" min="0.5" max="5" step="0.5" inputmode="decimal">
+    </div>
+
+    <div class="form-group">
+        <label for="price">Взнос (CZK)</label>
+        <input type="number" id="price" value="155" min="0" step="1" inputmode="numeric">
+    </div>
+
+    <div class="form-group">
+        <label for="payment_info">Номер счета</label>
+        <input type="text" id="payment_info" value="2924402033/0800" placeholder="Номер счета / карты">
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0; opacity: 0.1;">
+
+    <!-- 3. Игроки -->
+    <div class="form-group">
+        <label for="max_players">Мест в основе (+ замены)</label>
+        <input type="number" id="max_players" value="26" min="5" max="999" inputmode="numeric">
+        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Например: 26 (22 + 4 на замену)</small>
+    </div>
+    
+    <div class="form-group">
+        <label for="main_players_count">Игроков на поле (всего)</label>
+        <input type="number" id="main_players_count" value="22" min="2" max="999" inputmode="numeric">
+        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Например: 22 для 11х11</small>
+    </div>
+
+    <div class="form-group">
+        <label for="signup_limit">Лимит записи (всё вкл.)</label>
+        <input type="number" id="signup_limit" value="40" min="5" max="999" inputmode="numeric">
+        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">После этого запись закроется полностью</small>
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0; opacity: 0.1;">
+
+    <!-- 4. Настройки (Settings) -->
+    <h3 style="margin: 25px 0 15px; font-size: 16px; color: var(--tg-theme-hint-color); text-transform: uppercase; letter-spacing: 1px;">Настройки</h3>
+
+    <div class="form-group">
+        <label for="registration_hours">Окно записи (часов)</label>
+        <input type="number" id="registration_hours" value="24" min="0" max="720" inputmode="numeric">
+        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - без ограничений</small>
+    </div>
+
+    <div class="form-group">
+        <label for="gk_hours">Бронь вратарей (часов)</label>
+        <input type="number" id="gk_hours" value="0" min="0" max="168" inputmode="numeric">
+        <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - отключить</small>
+    </div>
+
+    <div class="form-group">
+        <label for="publish_at">Отложенная публикация (опционально)</label>
+        <input type="text" id="publish_at" placeholder="Сразу">
+    </div>
+
+    <div class="form-group" id="admin_wrapper" style="display:none;">
+        <label>Авто-запись админов:</label>
+        <div id="admin_list"
+            style="max-height: 150px; overflow-y: auto; background: var(--tg-theme-secondary-bg-color); border-radius: 8px; padding: 10px;">
+            <!-- Checkboxes populated dynamically -->
+        </div>
+    </div>
+
+    <button id="submitBtn" onclick="createGame()">Опубликовать</button>
+    <div style="text-align: center; margin-top: 10px; font-size: 10px; color: var(--tg-theme-hint-color);">v1.3.0</div>
+
+    <script>
+        const tg = (window.parent && window.parent.Telegram && window.parent.Telegram.WebApp) ? window.parent.Telegram.WebApp : window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlInitData = urlParams.get('initData');
+        const initData = tg.initData || urlInitData || "";
+        
+        if (!tg.initData && urlInitData) {
+            console.log("Using initData from URL params");
+        }
+        let autoJoinIds = [];
+
+        // Check initData
+        if (!initData) {
+            console.log("No initData found.");
+        }
+
+        const chatSelect = document.getElementById('chat_id');
+        const dateTimeInput = document.getElementById('date_time');
+        const locationInput = document.getElementById('location');
+        const maxPlayersInput = document.getElementById('max_players');
+        const adminWrapper = document.getElementById('admin_wrapper');
+        const adminList = document.getElementById('admin_list');
+        const publishAtInput = document.getElementById('publish_at');
+
+        // 1. Fetch Chats
+        async function loadChats() {
+            if (!initData) {
+                chatSelect.innerHTML = '<option value="" disabled>ERROR: No InitData</option>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/chats?initData=' + encodeURIComponent(initData), {
+                    headers: { 'Authorization': `tma ${initData}` }
+                });
+                if (response.ok) {
+                    const chats = await response.json();
+                    let chatData = {};
+                    if (chats.length === 0) {
+                        const option = document.createElement('option');
+                        option.text = "Нет доступных чатов";
+                        option.disabled = true;
+                        chatSelect.add(option);
+                    } else {
+                        chats.forEach(chat => {
+                            const option = document.createElement('option');
+                            option.value = chat.id;
+                            option.text = chat.title;
+                            chatSelect.add(option);
+                            chatData[chat.id] = chat;
+                        });
+
+                        // Function to apply defaults
+                        window.applyChatDefaults = function(chatId) {
+                            const chat = chatData[chatId];
+                            if (!chat) return;
+                            
+                            if (chat.default_location) document.getElementById('location').value = chat.default_location;
+                            if (chat.default_price) document.getElementById('price').value = chat.default_price;
+                            if (chat.payment_info) document.getElementById('payment_info').value = chat.payment_info;
+                            if (chat.default_max_players) document.getElementById('max_players').value = chat.default_max_players;
+                            if (chat.default_main_players_count) document.getElementById('main_players_count').value = chat.default_main_players_count;
+                            if (chat.default_signup_limit) document.getElementById('signup_limit').value = chat.default_signup_limit;
+                            if (chat.default_team_count) document.getElementById('team_count').value = chat.default_team_count;
+                            if (chat.default_duration) document.getElementById('duration').value = chat.default_duration;
+                            if (chat.default_gk_hours !== undefined) document.getElementById('gk_hours').value = chat.default_gk_hours;
+                            if (chat.default_registration_hours !== undefined) document.getElementById('registration_hours').value = chat.default_registration_hours;
+                        };
+
+                        // Auto-select if target_chat_id provided
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const targetChatId = urlParams.get('target_chat_id');
+                        if (targetChatId) {
+                            chatSelect.value = targetChatId;
+                            applyChatDefaults(targetChatId);
+                            chatSelect.dispatchEvent(new Event('change'));
+                        }
+                    }
+                } else {
+                    const errorMsg = await response.text();
+                    chatSelect.innerHTML = `<option value="" disabled selected>Ошибка: ${response.status} ${errorMsg}</option>`;
+                    console.error("Failed to fetch chats", errorMsg);
+                }
+            } catch (e) {
+                chatSelect.innerHTML = `<option value="" disabled selected>Ошибка сети: ${e.message}</option>`;
+                console.error(e);
+            }
+        }
+
+        // Listen for Chat Change
+        chatSelect.addEventListener('change', async function () {
+            const chatId = this.value;
+            if (!chatId) return;
+
+            if (window.applyChatDefaults) {
+                window.applyChatDefaults(chatId);
+            }
+
+            // Clear current admins
+            adminList.innerHTML = 'Загрузка...';
+            adminWrapper.style.display = 'block';
+
+            try {
+                const url = `/api/chat/${chatId}/admins?initData=${encodeURIComponent(initData)}`;
+                const res = await fetch(url, {
+                    headers: { 'Authorization': `tma ${initData}` }
+                });
+                if (res.ok) {
+                    const admins = await res.json();
+                    adminList.innerHTML = '';
+                    if (admins.length > 0) {
+                        admins.forEach(admin => {
+                            const div = document.createElement('div');
+                            div.style.marginBottom = '5px';
+
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.value = admin.id;
+                            checkbox.id = `admin_${admin.id}`;
+                            checkbox.style.width = 'auto'; // Reset global width: 100%
+                            checkbox.style.marginRight = '10px';
+
+                            const label = document.createElement('label');
+                            label.htmlFor = `admin_${admin.id}`;
+                            label.innerText = admin.first_name + (admin.username ? ` (@${admin.username})` : '');
+                            label.style.display = 'inline';
+                            label.style.fontWeight = 'normal';
+
+                            div.appendChild(checkbox);
+                            div.appendChild(label);
+                            adminList.appendChild(div);
+                        });
+                    } else {
+                        adminList.innerHTML = 'Админы не найдены.';
+                    }
+                } else {
+                    adminList.innerHTML = 'Ошибка загрузки админов.';
+                }
+            } catch (e) {
+                adminList.innerHTML = 'Ошибка сети.';
+            }
+        });
+
+        // 2. Set Default Time and Init Flatpickr
+        function initDatePicker() {
+            const now = new Date();
+            now.setHours(now.getHours() + 1);
+            now.setMinutes(0);
+
+            // Game Date
+            flatpickr("#date_time", {
+                enableTime: true,
+                dateFormat: "Y-m-dTH:i",
+                altInput: true,
+                altFormat: "d.m.Y H:i",
+                defaultDate: now,
+                time_24hr: true,
+                locale: "ru"
+                // minDate removed for retroactive games
+            });
+
+            // Publish At (Optional)
+            flatpickr("#publish_at", {
+                enableTime: true,
+                dateFormat: "Y-m-dTH:i",
+                altInput: true,
+                altFormat: "d.m.Y H:i",
+                time_24hr: true,
+                locale: "ru",
+                minDate: "today"
+            });
+        }
+
+        // Initialize
+        loadChats();
+        initDatePicker();
+
+        // 3. Create Game
+        async function createGame() {
+            const chatId = chatSelect.value;
+            const dateTime = dateTimeInput.value;
+            const location = locationInput.value;
+            const maxPlayers = maxPlayersInput.value;
+
+            // Collect admins
+            const checkedAdmins = [];
+            const checkboxes = adminList.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                if (cb.checked) checkedAdmins.push(parseInt(cb.value));
+            });
+
+            if (!chatId || !dateTime || !location) {
+                tg.showAlert("Заполните все поля!");
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = "Публикация...";
+
+            try {
+                // Force interpret as Prague time (Europe/Prague)
+                function toPragueISO(localDateStr) {
+                    // localDateStr is like "2026-04-04T12:00" from flatpickr
+                    // We send it to the server as a string, and let the server handle it
+                    // Or we can convert it to UTC if we know Prague's offset for THAT date.
+                    // But simpler: just return the string with a 'T' and we'll handle it on server.
+                    return localDateStr; 
+                }
+
+                const payload = {
+                    chat_id: parseInt(chatId),
+                    date_time: toPragueISO(dateTime),
+                    location: location,
+                    max_players: parseInt(maxPlayers),
+                    main_players_count: parseInt(document.getElementById('main_players_count').value) || 22,
+                    signup_limit: parseInt(document.getElementById('signup_limit').value) || 999,
+                    price: parseInt(document.getElementById('price').value) || 0,
+                    payment_info: document.getElementById('payment_info').value || "",
+                    team_count: parseInt(document.getElementById('team_count').value) || 2,
+                    game_type: document.getElementById('game_type').value || "regular",
+                    gk_hours: parseInt(document.getElementById('gk_hours').value) || 24,
+                    registration_hours: parseInt(document.getElementById('registration_hours').value) || 0,
+                    duration: parseFloat(document.getElementById('duration').value) || 2,
+                    auto_join_ids: checkedAdmins,
+                    initData: initData
+                };
+
+                if (publishAtInput.value) {
+                    payload.publish_at = toPragueISO(publishAtInput.value);
+                }
+
+                const response = await fetch('/api/admin/create_game', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    tg.showAlert("Игра создана!" + (payload.publish_at ? " (Отложка)" : ""));
+                    tg.close();
+                } else {
+                    const error = await response.json();
+                    tg.showAlert("Ошибка: " + (error.detail || "Unknown error"));
+                }
+            } catch (e) {
+                tg.showAlert("Ошибка сети: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Опубликовать";
+            }
+        }
+    </script>
+</body>
+
+</html>

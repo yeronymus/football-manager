@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SuperAdmin Dashboard</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Telegram WebApp -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="css/admin.css?v=1.0">
+</head>
+<body>
+    <div id="app-container">
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Groups List View (Home) -->
+            <section id="view-groups" class="view-section active">
+                <header class="glass-header">
+                    <div class="header-content">
+                        <h1>Admin Hub</h1>
+                    </div>
+                </header>
+                <div class="content-scroll">
+                    <p style="color: var(--text-muted); margin-bottom: 16px; text-align: center;">Выберите группу для управления</p>
+                    <div class="groups-list" id="groups-list">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Group View (Games List) -->
+            <section id="view-group" class="view-section hidden">
+                <header class="glass-header">
+                    <button class="back-btn" onclick="showGroupsView()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                    </button>
+                    <div class="header-content">
+                        <h1 id="group-title">Select a Group</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button class="action-btn outline mobile-hide" id="btn-create-game" onclick="openApp('create')">+ Create Game</button>
+                    </div>
+                </header>
+                <div class="content-scroll" id="group-view-content">
+                    <div id="games-list">
+                        <!-- Games populated here -->
+                    </div>
+
+                    <div id="group-settings-container" class="group-settings-card hidden" style="margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 24px;">
+                        <h3>Group Defaults & Settings</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">These values will be pre-filled when creating new games for this group.</p>
+                        
+                        <div class="settings-grid">
+                            <div class="form-group">
+                                <label>Language</label>
+                                <select id="setting-lang" onchange="updateGroupSetting('language', this.value)">
+                                    <option value="ru">Русский</option>
+                                    <option value="en">English</option>
+                                    <option value="sr">Srpski</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Default Price (CZK)</label>
+                                <input type="number" id="setting-price" onblur="updateGroupSetting('default_price', parseInt(this.value) || 0)">
+                            </div>
+                            <div class="form-group">
+                                <label>Payment Account</label>
+                                <input type="text" id="setting-payment-info" placeholder="Enter bank account..." onblur="updateGroupSetting('payment_info', this.value)">
+                            </div>
+                            <div class="form-group">
+                                <label>Default Location</label>
+                                <input type="text" id="setting-location" placeholder="Enter venue name and address..." onblur="updateGroupSetting('default_location', this.value)">
+                            </div>
+                            <div class="form-group">
+                                <label>Max Players (Total)</label>
+                                <input type="number" id="setting-max-players" onblur="updateGroupSetting('default_max_players', parseInt(this.value) || 0)" placeholder="26">
+                            </div>
+                            <div class="form-group">
+                                <label>Main Squad Size</label>
+                                <input type="number" id="setting-main-players-count" onblur="updateGroupSetting('default_main_players_count', parseInt(this.value) || 0)" placeholder="22">
+                            </div>
+                            <div class="form-group">
+                                <label>Team Count</label>
+                                <select id="setting-team-count" onchange="updateGroupSetting('default_team_count', parseInt(this.value) || 2)">
+                                    <option value="2">2 Teams</option>
+                                    <option value="3">3 Teams</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Duration (Hours)</label>
+                                <input type="number" id="setting-duration" onblur="updateGroupSetting('default_duration', parseFloat(this.value) || 0)" placeholder="2">
+                            </div>
+                            <div class="form-group">
+                                <label>GK Reservation (Hours)</label>
+                                <input type="number" id="setting-gk-hours" onblur="updateGroupSetting('default_gk_hours', parseInt(this.value) || 0)" placeholder="48">
+                            </div>
+                            <div class="form-group">
+                                <label>Reg. Window (Hours)</label>
+                                <input type="number" id="setting-registration-hours" onblur="updateGroupSetting('default_registration_hours', parseInt(this.value) || 0)" placeholder="24">
+                            </div>
+                            <div class="form-group">
+                                <label>Total Signup Limit</label>
+                                <input type="number" id="setting-signup-limit" onblur="updateGroupSetting('default_signup_limit', parseInt(this.value) || 0)" placeholder="30">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        <!-- Game Detail View -->
+        <section id="view-game" class="view-section hidden">
+            <header class="glass-header" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                    <button class="back-btn" onclick="switchView('view-group')" style="margin-top: -4px;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                        Back
+                    </button>
+                    <span id="game-status-badge" class="badge"></span>
+                </div>
+                <div class="game-header-info">
+                    <h1 id="game-title" style="font-size: 1.5rem; margin-bottom: 4px;">Game #...</h1>
+                    <p id="game-date-location" style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.4;"></p>
+                    <div id="game-score-display" style="margin-top: 8px; font-size: 1.2rem; font-weight: 700; display: flex; gap: 8px;"></div>
+                </div>
+            </header>
+            
+            <div class="content-scroll">
+                <div class="game-action-grid">
+                    <button class="action-tile" onclick="openApp('edit')">
+                        <span class="icon">✏️</span> Edit Info
+                    </button>
+                    <button class="action-tile" onclick="openApp('score')">
+                        <span class="icon">🏁</span> Enter Score
+                    </button>
+                    <button class="action-tile primary" onclick="openApp('draft')">
+                        <span class="icon">🛡</span> Manage Draft
+                    </button>
+                </div>
+
+                <div class="roster-section">
+                    <div class="section-header" style="display: flex; flex-direction: column; align-items: stretch; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="roster-tabs">
+                                <button class="tab-btn active" id="tab-roster" onclick="switchRosterTab('roster')">Roster</button>
+                                <button class="tab-btn" id="tab-mvp" onclick="switchRosterTab('mvp')">MVP Votes</button>
+                            </div>
+                            <div class="actions">
+                                <span id="roster-paid-info" style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">Paid: 0/0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="players-list" id="players-list">
+                        <div class="loading-spinner"></div>
+                    </div>
+                    <div class="players-list hidden" id="mvp-list">
+                        <!-- MVP votes will go here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- IFrame App Modal -->
+<div id="iframe-modal" class="iframe-modal">
+    <div class="iframe-header">
+        <h2 id="iframe-title">App</h2>
+        <button class="close-iframe-btn" onclick="closeApp()">✕ Close</button>
+    </div>
+    <iframe id="app-iframe"></iframe>
+</div>
+
+<script src="js/admin.js?v=1.9"></script>
+</body>
+</html>

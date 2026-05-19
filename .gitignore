@@ -1,0 +1,77 @@
+# --- Secrets & Environment ---
+.env
+.env.*
+*.env
+development.env
+production.env
+local.env
+remote.env
+*.pem
+id_rsa
+secrets.json
+.pypirc
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+dist/
+build/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.tox/
+.coverage
+htmlcov/
+
+# --- Database & Data ---
+*.db
+*.sqlite3
+postgres_data/
+redis_data/
+backups/
+*.sql
+
+# --- Logs & Temp ---
+*.log
+*.bak
+*.tar.gz
+*.txt
+!requirements.txt
+git_status.txt
+
+# --- IDE & Editors ---
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.pydevproject
+.settings/
+.agent/
+.agents/
+
+# --- Documentation & Internal ---
+/*.md
+!/README.md
+# Explicitly ignore context/agent docs
+PROJECT.md
+AGENTS.md
+BACKLOG.md
+NSS_presentation.md
+scratch/
+temp/
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Docker & Infrastructure ---
+.docker/
+docker-compose.override.yml
+!scripts/
+*.sh
