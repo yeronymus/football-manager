@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MVP Vote</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-color: #ffffff;
+            --accent-color: #3498db;
+            --team-a-color: #e74c3c;
+            --team-b-color: #3498db;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+        }
+
+        .vote-section {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .vote-section h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+
+        .player-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .player-option {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: #3a3a3a;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .player-option.selected {
+            background: #555;
+            border: 2px solid var(--accent-color);
+        }
+
+        .player-option input {
+            margin-right: 15px;
+        }
+
+        #submit-btn {
+            width: 100%;
+            padding: 15px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #submit-btn:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading">Loading...</div>
+
+    <div id="main-content" class="hidden">
+        <h2>🏆 MVP Vote</h2>
+        <p style="text-align: center; color: #aaa; margin-bottom: 20px;">Выберите по одному игроку из каждой команды.
+        </p>
+
+        <div class="vote-section" style="border-left: 5px solid var(--team-a-color);">
+            <h3>🟠 Team A MVP</h3>
+            <div id="list-a" class="player-list"></div>
+        </div>
+
+        <div class="vote-section" style="border-left: 5px solid var(--team-b-color);">
+            <h3>🟢 Team B MVP</h3>
+            <div id="list-b" class="player-list"></div>
+        </div>
+
+        <button id="submit-btn" onclick="submitVote()">Vote</button>
+    </div>
+
+    <div id="voted-message" class="hidden" style="text-align: center; margin-top: 50px;">
+        <h1>✅ Voted!</h1>
+        <p>Thank you for voting.</p>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameId = urlParams.get('game_id');
+        const apiBase = '/api'; // Relative path for simplified deployment
+
+        let selectedA = null;
+        let selectedB = null;
+
+        tg.MainButton.text = "Submit Vote";
+        tg.MainButton.onClick(submitVote);
+
+        async function loadData() {
+            try {
+                const res = await fetch(`${apiBase}/game/${gameId}/vote_data?initData=${encodeURIComponent(tg.initData)}`, {
+                    headers: { 'Authorization': `tma ${tg.initData}` }
+                });
+                if (!res.ok) throw new Error(await res.text());
+                const data = await res.json();
+
+                if (data.has_voted) {
+                    showVoted();
+                    return;
+                }
+
+                renderList(data.team_a, 'list-a', 'A');
+                renderList(data.team_b, 'list-b', 'B');
+
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                tg.MainButton.show();
+
+            } catch (e) {
+                alert("Error: " + e.message);
+            }
+        }
+
+        function renderList(players, containerId, team) {
+            const container = document.getElementById(containerId);
+            players.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'player-option';
+                div.onclick = () => selectPlayer(team, p.id, div);
+                div.innerHTML = `
+                    <div style="font-weight: bold;">${p.name}</div>
+                    <div style="margin-left: auto; font-size: 0.8em; color: #aaa;">${p.position}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function selectPlayer(team, id, el) {
+            // Clear previous selection in this list
+            const container = document.getElementById(team === 'A' ? 'list-a' : 'list-b');
+            container.querySelectorAll('.player-option').forEach(d => d.classList.remove('selected'));
+
+            el.classList.add('selected');
+
+            if (team === 'A') selectedA = id;
+            if (team === 'B') selectedB = id;
+
+            checkSubmit();
+        }
+
+        function checkSubmit() {
+            if (selectedA && selectedB) {
+                tg.MainButton.enable();
+                document.getElementById('submit-btn').disabled = false;
+            } else {
+                tg.MainButton.disable();
+                document.getElementById('submit-btn').disabled = true;
+            }
+        }
+
+        async function submitVote() {
+            if (!selectedA || !selectedB) {
+                tg.showAlert("Choose one player from EACH team!");
+                return;
+            }
+
+            tg.MainButton.showProgress();
+            try {
+                const res = await fetch(`${apiBase}/game/vote`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        game_id: parseInt(gameId),
+                        mvp_team_a: selectedA,
+                        mvp_team_b: selectedB,
+                        initData: tg.initData
+                    })
+                });
+
+                if (!res.ok) throw new Error(await res.text());
+
+                showVoted();
+                tg.MainButton.hideProgress();
+                tg.MainButton.hide();
+
+            } catch (e) {
+                tg.MainButton.hideProgress();
+                alert("Error: " + e.message);
+            }
+        }
+
+        function showVoted() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('main-content').classList.add('hidden');
+            document.getElementById('voted-message').classList.remove('hidden');
+        }
+
+        loadData();
+    </script>
+</body>
+
+</html>

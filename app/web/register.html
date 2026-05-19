@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Регистрация</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/web/css/style.css?v=1.3.0">
+    <style>
+        .register-container {
+            padding: 24px 16px;
+            animation: fadeIn 0.5s ease-out;
+        }
+        .input-group {
+            margin-bottom: 24px;
+        }
+        .input-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--hint-color);
+            margin-bottom: 8px;
+            display: block;
+        }
+        input[type="text"] {
+            width: 100%;
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 16px;
+            color: var(--text-color);
+            font-size: 16px;
+            font-family: inherit;
+            outline: none;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+        .position-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .submit-btn {
+            width: 100%;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 8px 20px rgba(56, 189, 248, 0.3);
+            transition: all 0.2s;
+        }
+        .submit-btn:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div id="loader">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="register-container">
+        <h1 style="font-size: 28px; margin-bottom: 8px;">Создание профиля</h1>
+        <p class="subtitle" style="margin-bottom: 32px;">Заполни данные, чтобы начать играть.</p>
+
+        <div class="card" style="margin: 0; margin-bottom: 32px;">
+            <div class="input-group">
+                <label class="input-label">Имя и Фамилия (Латинницей)</label>
+                <input type="text" id="full-name" placeholder="E.g. David Beckham">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Основная позиция</label>
+                <div class="position-grid">
+                    <button class="pos-btn" onclick="setPos('GK')">GK</button>
+                    <button class="pos-btn" onclick="setPos('CB')">CB</button>
+                    <button class="pos-btn" onclick="setPos('LB')">LB</button>
+                    <button class="pos-btn" onclick="setPos('RB')">RB</button>
+                    <button class="pos-btn" onclick="setPos('CDM')">CDM</button>
+                    <button class="pos-btn" onclick="setPos('CM')">CM</button>
+                    <button class="pos-btn" onclick="setPos('CAM')">CAM</button>
+                    <button class="pos-btn" onclick="setPos('ST')">ST</button>
+                    <button class="pos-btn" onclick="setPos('RW')">RW</button>
+                </div>
+            </div>
+        </div>
+
+        <button class="submit-btn" id="submit-btn">Готово!</button>
+    </div>
+
+    <script src="/web/js/register.js?v=1.3.0"></script>
+</body>
+</html>

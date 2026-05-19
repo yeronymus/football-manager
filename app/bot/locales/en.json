@@ -1,0 +1,7 @@
+{
+    "user_joined_success": "✅ You have successfully joined the main roster!",
+    "user_joined_reserve": "⏳ No spots left, you've been added to the reserve.",
+    "user_left_success": "❌ You have been removed from the roster.",
+    "error_game_full": "⛔ Sorry, the game is completely full.",
+    "welcome_message": "Hello, {name}! Welcome to the group!"
+}
