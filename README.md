@@ -67,4 +67,3 @@ This project utilizes a **Continuous Deployment** pipeline via GitHub Actions an
 
 ---
 *Powered by Pydantic-Settings & Industrial-Grade CI. Reliability first.*
-ootball.
