@@ -61,12 +61,18 @@ class GameLifecycleService:
         # 3. Auto-Join Admins
         if data.auto_join_ids:
             # We assume users exist or created by caller.
+            q = select(Signup.user_id).where(
+                Signup.game_id == game.id,
+                Signup.user_id.in_(data.auto_join_ids)
+            )
+            res = await self.session.execute(q)
+            existing_user_ids = set(res.scalars().all())
+
             for admin_id in data.auto_join_ids:
-                q = select(Signup).where(Signup.game_id == game.id, Signup.user_id == admin_id)
-                res = await self.session.execute(q)
-                if not res.scalar_one_or_none():
+                if admin_id not in existing_user_ids:
                     signup = Signup(game_id=game.id, user_id=admin_id, status=SignupStatus.ACTIVE)
                     self.session.add(signup)
+                    existing_user_ids.add(admin_id)
         
         # 4. Schedule Tasks
         # Helper to check past (naive/aware mix handled by datetime.now(tz))
