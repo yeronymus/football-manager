@@ -52,7 +52,12 @@ def get_user_from_init_data(init_data: str) -> int:
         return settings.admin_ids[0] if settings.admin_ids else 123456789
         
     parsed_data = dict(urllib.parse.parse_qsl(init_data))
-    user_data = json.loads(parsed_data.get("user", "{}"))
+
+    try:
+        user_data = json.loads(parsed_data.get("user", "{}"))
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid user JSON in initData")
+
     user_id = user_data.get("id")
     if not user_id:
         raise HTTPException(status_code=400, detail="User ID not found in initData")
