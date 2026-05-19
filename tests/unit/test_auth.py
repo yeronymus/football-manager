@@ -1,8 +1,38 @@
+import pytest
 import time
 import hmac
 import hashlib
 import urllib.parse
-from app.api.auth import validate_init_data
+from fastapi import HTTPException
+from app.api.auth import get_user_from_init_data, validate_init_data
+
+# ===========================================================================
+# 1. TESTS FOR get_user_from_init_data (JSON Decoding & Malformed Inputs)
+# ===========================================================================
+
+def test_get_user_from_init_data_malformed_json():
+    init_data = urllib.parse.urlencode({"user": "{invalid}"})
+    with pytest.raises(HTTPException) as exc_info:
+        get_user_from_init_data(init_data)
+    assert exc_info.value.status_code == 400
+
+
+def test_get_user_from_init_data_success():
+    init_data = urllib.parse.urlencode({"user": '{"id": 12345}'})
+    user_id = get_user_from_init_data(init_data)
+    assert user_id == 12345
+
+def test_get_user_from_init_data_missing_id():
+    init_data = urllib.parse.urlencode({"user": '{"name": "test"}'})
+    with pytest.raises(HTTPException) as exc_info:
+        get_user_from_init_data(init_data)
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "User ID not found in initData"
+
+
+# ===========================================================================
+# 2. TESTS FOR validate_init_data (HMAC SHA-256 Signature Verification)
+# ===========================================================================
 
 def generate_valid_init_data(bot_token: str, auth_date: int = None, **kwargs) -> str:
     if auth_date is None:
