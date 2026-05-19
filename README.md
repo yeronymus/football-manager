@@ -6,17 +6,12 @@ Jedná se o produkční systém pro kompletní správu amatérské fotbalové ko
 
 ---
 
-## 📂 Architektonická dokumentace (Milestone 1)
+## 📂 Architektonická dokumentace (Milestones)
 
-Veškeré podklady pro první milník semestrální práce byly úspěšně vypracovány, zrevidovány podle požadavků a jsou uloženy ve vyhrazené složce repozitáře:
+Veškeré podklady pro semestrální práci byly úspěšně vypracovány a jsou uloženy ve vyhrazené složce repozitáře:
 
-1. **[Milestone 1 Zpráva](nss_docs/NSS_milestone1.md)** — Kompletní architektonická zpráva obsahující:
-   - Detailní analýzu současného stavu (**AS-IS**), identifikaci anti-patternů (God Object, protékání vrstev, chybějící transakční izolace, volatile event bus).
-   - Návrh cílové modularizované architektury (**TO-BE**) typu Modular Monolith s Vertical Slice uspořádáním.
-   - Kompletní specifikace a parametry pro **Redis Look-Aside Cache** a **Redis Streams (Outbox Worker)**.
-   - Definice funkčních a nefunkčních požadavků.
-2. **[UML Diagramy (Mermaid)](nss_docs/NSS_presentation.md)** — Interaktivní komponentní diagramy, sequence diagramy (se znázorněním commit/rollback try-catch hranic) a class diagramy pro stávající i cílový stav.
-3. **[Prezentační scénář](nss_docs/NSS_presentation_script.md)** — Doprovodný text pro obhajobu prvního milníku.
+1. **[Milestone 1 Zpráva](nss_docs/NSS_milestone1.md)** — Architektonická zpráva obsahující analýzu stávajícího stavu (**AS-IS**), návrh cílové modularizované architektury (**TO-BE**), UML diagramy a specifikaci požadavků.
+2. **[Milestone 2 Zpráva](nss_docs/NSS_milestone2.md)** — **Architektonická implementace** obsahující detailní popis 5 implementovaných návrhových vzorů (Strategy, Facade, Repository, Unit of Work, Observer), hybridní kešovací vrstvy (Passive + Active Invalidation), message brokeru na Redis Streams (Kafka-like spotřebitelské skupiny), HTTP Interceptoru s asynchronním logováním do Elasticsearch a detailní zabezpečení.
 
 ---
 
