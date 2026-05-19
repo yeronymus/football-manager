@@ -16,6 +16,7 @@ class TestStranglerRouter(unittest.IsolatedAsyncioTestCase):
         # Mock callback
         callback = AsyncMock(spec=types.CallbackQuery)
         callback.data = "join_5"
+        callback.from_user = MagicMock()
         callback.from_user.id = 12345
         
         # Patch the handlers
@@ -44,6 +45,7 @@ class TestStranglerRouter(unittest.IsolatedAsyncioTestCase):
         
         callback = AsyncMock(spec=types.CallbackQuery)
         callback.data = "join_6"
+        callback.from_user = MagicMock()
         callback.from_user.id = 12345
         
         # Patch Legacy Handler to ensure it's NOT called

@@ -1,70 +1,47 @@
-# Football Manager Telegram Bot ⚽️
-[@fm_metabot](https://t.me/fm_metabot)
+# Football Manager Bot — Semestrální projekt B6B36NSS
 
-An industrial-grade multi-tenant SaaS platform for amateur football communities. The system orchestrates player registrations, dynamic ELO balancing, match tracking, and transactional analytics via a high-performance Aiogram client and FastAPI WebApp backend.
+Tento repozitář obsahuje semestrální projekt předmětu **B6B36NSS (Návrh softwarových systémů)** na ČVUT FEL. Projekt vyvíjím **samostatně**.
 
-## 🏗 System Architecture & Domain Model
+Jedná se o produkční systém pro kompletní správu amatérské fotbalové komunity v Praze prostřednictvím Telegram Botu (Aiogram 3.x) a doprovodného WebApp rozhraní (FastAPI).
 
-The system follows a Vertical Slice / Domain-Driven design (In Progress) focusing on strict process isolation and immutable build artifacts.
+---
 
-### Database Entities
-- **`User`**: Core identity model encapsulating player statistics (`games_played`, `stats_mvp`) and ELO Rating (`rating`). 
-- **`Game`**: Central transactional object representing a match event with a strict state machine (`OPEN` -> `ACTIVE` -> `FINISHED`).
-- **`Signup`**: Many-to-many junction handling match-specific availability and team assignments.
-- **`Chat`**: Configuration entity defining authorized Telegram groups and their corresponding admin channels.
+## 📂 Architektonická dokumentace (Milestone 1)
 
-## 🚀 Quick Start & Local Setup
+Veškeré podklady pro první milník semestrální práce byly úspěšně vypracovány, zrevidovány podle požadavků a jsou uloženy ve vyhrazené složce repozitáře:
 
-### Core Dependencies
-We exclusively rely on **`uv`** for deterministic dependency management. 
-- **Python**: 3.11+
-- **Database**: PostgreSQL 15+ & Redis 7+
-- **Engine**: Docker + Compose
+1. **[Milestone 1 Zpráva](nss_docs/NSS_milestone1.md)** — Kompletní architektonická zpráva obsahující:
+   - Detailní analýzu současného stavu (**AS-IS**), identifikaci anti-patternů (God Object, protékání vrstev, chybějící transakční izolace, volatile event bus).
+   - Návrh cílové modularizované architektury (**TO-BE**) typu Modular Monolith s Vertical Slice uspořádáním.
+   - Kompletní specifikace a parametry pro **Redis Look-Aside Cache** a **Redis Streams (Outbox Worker)**.
+   - Definice funkčních a nefunkčních požadavků.
+2. **[UML Diagramy (Mermaid)](nss_docs/NSS_presentation.md)** — Interaktivní komponentní diagramy, sequence diagramy (se znázorněním commit/rollback try-catch hranic) a class diagramy pro stávající i cílový stav.
+3. **[Prezentační scénář](nss_docs/NSS_presentation_script.md)** — Doprovodný text pro obhajobu prvního milníku.
 
-### 1. Environment Configuration
-Copy `.env.example` to `.env` and configure:
-- `INITIAL_CHATS`: JSON string defining the initial group/admin environment.
-- `GHCR_PAT`: Required for CI/CD container registry access.
+---
 
-### 2. Launch
-The infrastructure is fully automated. Simply run:
+## 🛠️ Aktuálně hotová funkcionalita a změny
+
+- **Datová vrstva:** Podle požadavků cvičícího byla provedena revize datových typů. Sloupec `Chat.language` byl plně refaktorován z obecného řetězce (`String`) na typově bezpečný výčtový typ **`Language` Enum (`RU`, `CZ`, `EN`)** (implementováno v `app/db/models.py`).
+- **Příprava na Milestone 2:**
+  - Infrastruktura pro transakční **Unit of Work** (`app/core/uow.py`).
+  - Rozhraní a implementace repozitářů (`app/core/repositories/`).
+  - Asynchronní event dispatcher (`app/core/events.py`).
+
+---
+
+## 🚀 Rychlé spuštění a testování
+
+Projekt využívá moderní balíčkovač **`uv`** pro deterministickou správu závislostí a bezproblémové spuštění na stabilním Python 3.12.
+
+### Spuštění testů
+Pro lokální ověření funkčnosti a integrity datových modelů spusťte sadu unit testů:
+```bash
+PYTHONPATH=. uv run --python 3.12 pytest tests/
+```
+
+### Spuštění aplikace v Dockeru
+Kompletní aplikační stack (FastAPI + PostgreSQL + Redis) lze spustit pomocí Docker Compose:
 ```bash
 docker compose up -d
 ```
-*Note: Database migrations (`alembic upgrade`) are automatically executed inside the container during boot.*
-
-### 3. Data Seeding
-```bash
-# Initialize authorized chats from .env
-docker compose exec app python app/presentation/cli/manage.py db seed-chats
-
-# Populate match history for testing
-docker compose exec app python app/presentation/cli/manage.py db seed-history
-```
-
-## 🔄 CI/CD & Auto-Deployment
-
-This project utilizes a **Continuous Deployment** pipeline via GitHub Actions and **GHCR** (GitHub Container Registry).
-
-1. **Build**: Every push to `Main` triggers a GitHub runner that compiles a sterile, immutable Docker image.
-2. **Registry**: Images are tagged with `git-sha` and `latest` and pushed to `ghcr.io`.
-3. **Continuous Deployment (Watchtower)**: The production server runs **Watchtower**, which monitors the registry. Once a new image is detected, Watchtower automatically:
-   - Pulls the fresh image.
-   - Gracefully stops the old container.
-   - Runs database migrations.
-   - Restarts the application.
-   - **Typical delay**: ~60 seconds from build completion.
-
-## 🖥 Deployment Infrastructure Guidelines
-
-### Minimal System Requirements
-- **CPU/RAM**: 2 vCPUs / 2 GB RAM minimum.
-- **Storage**: 20 GB SSD with Docker log-rotation enabled.
-
-### Firewall Policy
-- `ALLOW 22/tcp` (SSH), `443/tcp` (HTTPS), `80/tcp` (ACME).
-- **CRITICAL**: PostgreSQL (5432) and Redis (6379) MUST be restricted to the Docker bridge network only.
-
----
-*Powered by Pydantic-Settings & Industrial-Grade CI. Reliability first.*
-ootball.

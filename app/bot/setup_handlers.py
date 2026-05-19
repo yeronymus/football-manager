@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.config import settings
-from app.db.models import Chat, ChatAdmin
+from app.db.models import Chat, ChatAdmin, Language
 from app.core.uow import UnitOfWork
 
 router = Router()
@@ -65,7 +65,7 @@ async def process_setlang(callback: types.CallbackQuery, session: AsyncSession, 
         return
 
     lang = callback.data.split("_")[1]
-    tenant.language = lang
+    tenant.language = Language(lang.lower())
     await session.commit()
     
     await callback.message.edit_text(
