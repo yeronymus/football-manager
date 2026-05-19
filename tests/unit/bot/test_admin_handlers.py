@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from aiogram import types
 from aiogram.exceptions import TelegramBadRequest
-from app.bot.admin_handlers import cmd_create
+from app.bot.handlers.admin_handlers import cmd_create
 
 @pytest.mark.asyncio
 async def test_cmd_create_delete_message_exception():

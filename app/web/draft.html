@@ -550,9 +550,7 @@
             selectedElement.remove();
             selectedElement = null;
 
-            // Find list inside
-            let list = el.querySelector('.player-list');
-            addPlayerToSlot(selectedPlayer, list ? list.parentElement.id : el.id); // Hacky ID passing
+            addPlayerToSlot(selectedPlayer, el.id);
             selectedPlayer = null;
             updateStats();
         };

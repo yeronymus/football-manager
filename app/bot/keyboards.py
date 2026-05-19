@@ -75,8 +75,8 @@ def get_primary_select_keyboard(available: list[str]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = "") -> InlineKeyboardMarkup:
-    # Use Deep Link to bypass "WebApp in Channel" restriction
-    bot_username = "fm_metabot" 
+    from app.config import settings
+    bot_username = settings.bot_username 
     
     buttons = [
         [
@@ -95,10 +95,7 @@ def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = ""
 
 def get_channel_game_keyboard(game_id: int) -> InlineKeyboardMarkup:
     from app.config import settings
-    # Deep link to bot with start param
-    bot_username = settings.bot_token.split(":")[0] # Hacky if username not in config, but we used hardcoded before.
-    # Better use the string we had
-    bot_username = "fm_metabot"
+    bot_username = settings.bot_username
     deep_link = f"https://t.me/{bot_username}?start=game_{game_id}"
     
     buttons = [
