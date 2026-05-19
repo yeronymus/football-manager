@@ -7,7 +7,7 @@ import logging
 from app.config import settings
 from app.bot.instance import bot
 from app.bot.main import dp, start_bot, stop_bot
-from app.api.routers import games, admin, voting, users, ads, dashboard
+from app.api.routers import games, admin, voting, users, ads, dashboard, nss
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Football Manager Bot API")
 
 # Middlewares
+from app.api.middlewares import TelemetryInterceptorMiddleware
+app.add_middleware(TelemetryInterceptorMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
@@ -33,6 +35,10 @@ async def on_startup():
         
         await init_models()
         await start_scheduler()
+        
+        # Start persistent messaging consumer for volatile event safety
+        from app.infrastructure.messaging import consumer as msg_consumer
+        await msg_consumer.start()
         
         # STARTUP LOGIC
         # If Webhook: we await start_bot (critical path).
@@ -79,6 +85,11 @@ async def on_startup():
 
 @app.on_event("shutdown")
 async def on_shutdown():
+    from app.infrastructure.messaging import consumer as msg_consumer
+    try:
+        await msg_consumer.stop()
+    except Exception as e:
+        logger.error(f"Failed to stop messaging consumer: {e}")
     await stop_bot()
 
 # Routers
@@ -89,6 +100,7 @@ app.include_router(voting.router, prefix="/api", tags=["Voting"])
 app.include_router(users.router, prefix="/api", tags=["Users"])
 app.include_router(ads.router, prefix="/api", tags=["Ads"])
 app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])
+app.include_router(nss.router, prefix="/api", tags=["NSS Verification"])
 
 app.mount("/web", StaticFiles(directory="app/web", html=True), name="web")
 

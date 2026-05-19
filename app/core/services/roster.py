@@ -96,6 +96,10 @@ class RosterService:
         # 5. Создание записи
         signup = self.uow.game_repo.create_signup(game_id, user.user_id, status)
         
+        # Invalidate Cache
+        from app.core.services.cache import cache_service
+        await cache_service.evict(f"game_details:{game_id}")
+        
         return JoinResult(True, signup, alert_msg, is_reserve)
 
     async def leave_player(self, game_id: int, user_id: int, is_admin: bool = False) -> tuple[bool, str, User | None]:
@@ -126,6 +130,10 @@ class RosterService:
                 res_signup.status = SignupStatus.ACTIVE
                 promoted_user = res_user
         
+        # Invalidate Cache
+        from app.core.services.cache import cache_service
+        await cache_service.evict(f"game_details:{game_id}")
+
         return True, "Вы выписались.", promoted_user
 
     async def recalculate_roster(self, game_id: int) -> bool:
@@ -172,6 +180,10 @@ class RosterService:
                     signup.status = SignupStatus.RESERVE
                 active_count += 1 # Important: count everyone to maintain order
         
+        # Invalidate Cache
+        from app.core.services.cache import cache_service
+        await cache_service.evict(f"game_details:{game_id}")
+
         return True
 
     async def balance_teams(self, game_id: int) -> list[tuple[User, Team]]:

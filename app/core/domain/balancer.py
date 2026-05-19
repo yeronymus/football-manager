@@ -1,6 +1,8 @@
 from typing import List, Dict
 from app.db.models import User, Position, Team
 import enum
+import random
+from abc import ABC, abstractmethod
 
 class Player:
     def __init__(self, user: User):
@@ -42,120 +44,151 @@ def get_bucket_for_position(pos: Position) -> BalanceBucket:
     val = pos.value if hasattr(pos, 'value') else str(pos)
     return get_bucket_for_position_str(val)
 
-def balance_teams(players: List[Player], team_count: int = 2) -> List[List[Player]]:
-    """
-    Balances players into N teams.
-    Enhanced Algorithm:
-    1. Satisfy GK requirements (using Primary then Alt).
-    2. Satisfy DEF requirements (Target: 3 per team) using Primary then Alt.
-    3. Distribute remaining by Strength.
-    """
-    if not players:
-        return [[] for _ in range(team_count)]
 
-    teams: List[List[Player]] = [[] for _ in range(team_count)]
-    
-    # --- 0. Helper to check if player fits bucket ---
-    def fits_bucket(p: Player, bucket: BalanceBucket) -> bool:
-        # Check primary
-        if get_bucket_for_position(p.position) == bucket: return True
-        # Check alts
-        for alt in p.alt_positions:
-            if get_bucket_for_position_str(alt) == bucket: return True
-        return False
+# ===========================================================================
+# DESIGN PATTERN: STRATEGY PATTERN FOR TEAM BALANCING
+# ===========================================================================
 
-    # --- 1. Identify Pool ---
-    # We work with a list of available players to assign
-    pool = players[:]
-    
-    # --- 2. GK Phase ---
-    # Goal: 1 GK per team.
-    # Logic: Find primary GKs first. If not enough, find Alt GKs.
-    
-    gks_assigned = 0
-    while gks_assigned < team_count:
-        # Find best candidate for GK
-        # Priority 1: Primary GK
-        candidates = [p for p in pool if get_bucket_for_position(p.position) == BalanceBucket.GK]
+class BalancingStrategy(ABC):
+    """Abstract Base Class for team balancing algorithms."""
+    @abstractmethod
+    def balance(self, players: List[Player], team_count: int) -> List[List[Player]]:
+        pass
+
+
+class RoleBasedBalancingStrategy(BalancingStrategy):
+    """
+    Advanced balancing that:
+    1. Satisfies GK requirements.
+    2. Satisfies DEF requirements (target: 3 per team).
+    3. Decouples remaining by role & strength.
+    """
+    def balance(self, players: List[Player], team_count: int) -> List[List[Player]]:
+        if not players:
+            return [[] for _ in range(team_count)]
+
+        teams: List[List[Player]] = [[] for _ in range(team_count)]
         
-        if not candidates:
-            # Priority 2: Alt GK
-            candidates = [p for p in pool if "GK" in p.alt_positions]
-            
-        if not candidates:
-            break # No more GKs found
-            
-        # Sort candidates by rating (descending? or ascending to save strong players for field?)
-        # Usually we want best GKs in goal.
-        candidates.sort(key=lambda x: x.rating, reverse=True)
-        best_gk = candidates[0]
+        def fits_bucket(p: Player, bucket: BalanceBucket) -> bool:
+            if get_bucket_for_position(p.position) == bucket: return True
+            for alt in p.alt_positions:
+                if get_bucket_for_position_str(alt) == bucket: return True
+            return False
+
+        pool = players[:]
         
-        # Assign to team with NO GK yet
-        # Find team index = gks_assigned (simple round robin for this phase)
-        target_team_idx = gks_assigned
-        teams[target_team_idx].append(best_gk)
-        
-        pool.remove(best_gk)
-        gks_assigned += 1
-        
-    # --- 3. DEF Phase ---
-    # Goal: At least 3 Defenders per team? Or just maximize?
-    # User said: "Need at least 3 defenders".
-    # Let's try to fill 3 slots per team.
-    
-    def_target_per_team = 3 
-    
-    # Loop 3 times (for 1st defender, 2nd defender, 3rd defender)
-    for _ in range(def_target_per_team):
-        # Round robin across teams
-        for t_idx in range(team_count):
-            # Find best DEF candidate
-            # Priority 1: Primary DEF
-            candidates = [p for p in pool if get_bucket_for_position(p.position) == BalanceBucket.DEF]
-            
+        # 1. GK Phase
+        gks_assigned = 0
+        while gks_assigned < team_count:
+            candidates = [p for p in pool if get_bucket_for_position(p.position) == BalanceBucket.GK]
             if not candidates:
-                # Priority 2: Alt DEF (Only if we really need them?)
-                # If we convert a good MID/FWD to DEF, we might lose attack power.
-                # But balanced structure is improved.
-                candidates = [p for p in pool if fits_bucket(p, BalanceBucket.DEF)]
+                candidates = [p for p in pool if "GK" in p.alt_positions]
+            if not candidates:
+                break
                 
-            if candidates:
-                # Pick strongest DEF? Or Weakest?
-                # Strongest makes defense solid.
-                candidates.sort(key=lambda x: x.rating, reverse=True)
-                pick = candidates[0]
-                
-                teams[t_idx].append(pick)
-                pool.remove(pick)
-    
-    # --- 4. Distribute Remaining by Role ---
-    # To avoid one team getting all MIDs and the other all FWDs, we distribute by role.
-    
-    # helper to distribute a list of players to teams balanced by count and rating
-    def distribute_list(subpool: List[Player]):
-        subpool.sort(key=lambda x: x.rating, reverse=True)
-        for p in subpool:
-             # Assign to team with fewest players, break ties with lowest rating
-            teams.sort(key=lambda t: (len(t), sum(x.rating for x in t)))
-            teams[0].append(p)
+            candidates.sort(key=lambda x: x.rating, reverse=True)
+            best_gk = candidates[0]
+            teams[gks_assigned].append(best_gk)
+            pool.remove(best_gk)
+            gks_assigned += 1
+            
+        # 2. DEF Phase (target 3 defenders per team)
+        def_target_per_team = 3 
+        for _ in range(def_target_per_team):
+            for t_idx in range(team_count):
+                candidates = [p for p in pool if get_bucket_for_position(p.position) == BalanceBucket.DEF]
+                if not candidates:
+                    candidates = [p for p in pool if fits_bucket(p, BalanceBucket.DEF)]
+                if candidates:
+                    candidates.sort(key=lambda x: x.rating, reverse=True)
+                    pick = candidates[0]
+                    teams[t_idx].append(pick)
+                    pool.remove(pick)
+        
+        # 3. Distribute Remaining by Role & Strength
+        def distribute_list(subpool: List[Player]):
+            subpool.sort(key=lambda x: x.rating, reverse=True)
+            for p in subpool:
+                # Assign to team with fewest players, break ties with lowest cumulative rating
+                teams.sort(key=lambda t: (len(t), sum(x.rating for x in t)))
+                teams[0].append(p)
 
-    # Buckets for remaining players
-    rem_mids = [p for p in pool if get_bucket_for_position(p.position) == BalanceBucket.MID]
-    rem_fwds = [p for p in pool if get_bucket_for_position(p.position) == BalanceBucket.FWD]
-    rem_defs = [p for p in pool if get_bucket_for_position(p.position) == BalanceBucket.DEF] # Extras
-    rem_gks  = [p for p in pool if get_bucket_for_position(p.position) == BalanceBucket.GK]  # Extras
+        rem_mids = [p for p in pool if get_bucket_for_position(p.position) == BalanceBucket.MID]
+        rem_fwds = [p for p in pool if get_bucket_for_position(p.position) == BalanceBucket.FWD]
+        rem_defs = [p for p in pool if get_bucket_for_position(p.position) == BalanceBucket.DEF]
+        rem_gks  = [p for p in pool if get_bucket_for_position(p.position) == BalanceBucket.GK]
 
-    # Distribute in order: MID -> FWD -> DEF -> GK (Extras)
-    distribute_list(rem_mids)
-    distribute_list(rem_fwds)
-    distribute_list(rem_defs)
-    distribute_list(rem_gks)
-    
-    # Any leftovers (safety)
-    pool_ids = set(p.id for p in pool)
-    dist_ids = set(p.id for p in rem_mids + rem_fwds + rem_defs + rem_gks)
-    leftover_ids = pool_ids - dist_ids
-    leftovers = [p for p in pool if p.id in leftover_ids]
-    distribute_list(leftovers)
+        distribute_list(rem_mids)
+        distribute_list(rem_fwds)
+        distribute_list(rem_defs)
+        distribute_list(rem_gks)
+        
+        # Leftovers safety
+        pool_ids = set(p.id for p in pool)
+        dist_ids = set(p.id for p in rem_mids + rem_fwds + rem_defs + rem_gks)
+        leftover_ids = pool_ids - dist_ids
+        leftovers = [p for p in pool if p.id in leftover_ids]
+        distribute_list(leftovers)
 
-    return teams
+        return teams
+
+
+class RatingSnakeBalancingStrategy(BalancingStrategy):
+    """
+    Pure ELO-based snake draft:
+    Sorts all players by rating desc and distributes them in a snake pattern (1-2-2-1)
+    to achieve near-perfect average ratings.
+    """
+    def balance(self, players: List[Player], team_count: int) -> List[List[Player]]:
+        if not players:
+            return [[] for _ in range(team_count)]
+            
+        teams: List[List[Player]] = [[] for _ in range(team_count)]
+        sorted_players = sorted(players, key=lambda x: x.rating, reverse=True)
+        
+        for idx, player in enumerate(sorted_players):
+            round_num = idx // team_count
+            offset = idx % team_count
+            if round_num % 2 == 0:
+                # Left-to-right
+                t_idx = offset
+            else:
+                # Right-to-left
+                t_idx = team_count - 1 - offset
+            teams[t_idx].append(player)
+            
+        return teams
+
+
+class RandomBalancingStrategy(BalancingStrategy):
+    """Random distribution for maximum variety in friendly matches."""
+    def balance(self, players: List[Player], team_count: int) -> List[List[Player]]:
+        if not players:
+            return [[] for _ in range(team_count)]
+            
+        teams: List[List[Player]] = [[] for _ in range(team_count)]
+        pool = players[:]
+        random.shuffle(pool)
+        
+        for idx, player in enumerate(pool):
+            teams[idx % team_count].append(player)
+            
+        return teams
+
+
+class TeamBalancer:
+    """Context class that holds and delegates to a BalancingStrategy."""
+    def __init__(self, strategy: BalancingStrategy):
+        self._strategy = strategy
+
+    def set_strategy(self, strategy: BalancingStrategy):
+        self._strategy = strategy
+
+    def balance_teams(self, players: List[Player], team_count: int) -> List[List[Player]]:
+        return self._strategy.balance(players, team_count)
+
+
+# Maintain backward compatibility
+def balance_teams(players: List[Player], team_count: int = 2) -> List[List[Player]]:
+    balancer = TeamBalancer(RoleBasedBalancingStrategy())
+    return balancer.balance_teams(players, team_count)
