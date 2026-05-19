@@ -1,33 +1,42 @@
-# Football Manager Telegram Bot ⚽️
-[@fm_metabot](https://t.me/fm_metabot)
+# Football Manager Bot — Semestrální projekt B6B36NSS
 
-An industrial-grade multi-tenant SaaS platform for amateur football communities. The system orchestrates player registrations, dynamic ELO balancing, match tracking, and transactional analytics via a high-performance Aiogram client and FastAPI WebApp backend.
+Tento repozitář obsahuje semestrální projekt předmětu **B6B36NSS (Návrh softwarových systémů)** na ČVUT FEL. Projekt vyvíjím **samostatně**.
 
-## 🏗 System Architecture & Domain Model
+Jedná se o produkční systém pro kompletní správu amatérské fotbalové komunity v Praze prostřednictvím Telegram Botu (Aiogram 3.x) a doprovodného WebApp rozhraní (FastAPI).
 
-The system follows a Vertical Slice / Domain-Driven design (In Progress) focusing on strict process isolation and immutable build artifacts.
+---
 
-### Database Entities
-- **`User`**: Core identity model encapsulating player statistics (`games_played`, `stats_mvp`) and ELO Rating (`rating`). 
-- **`Game`**: Central transactional object representing a match event with a strict state machine (`OPEN` -> `ACTIVE` -> `FINISHED`).
-- **`Signup`**: Many-to-many junction handling match-specific availability and team assignments.
-- **`Chat`**: Configuration entity defining authorized Telegram groups and their corresponding admin channels.
+## 📂 Architektonická dokumentace (Milestones)
 
-## 🚀 Quick Start & Local Setup
+Veškeré podklady pro semestrální práci byly úspěšně vypracovány a jsou uloženy ve vyhrazené složce repozitáře:
 
-### Core Dependencies
-We exclusively rely on **`uv`** for deterministic dependency management. 
-- **Python**: 3.11+
-- **Database**: PostgreSQL 15+ & Redis 7+
-- **Engine**: Docker + Compose
+1. **[Milestone 1 Zpráva](nss_docs/NSS_milestone1.md)** — Architektonická zpráva obsahující analýzu stávajícího stavu (**AS-IS**), návrh cílové modularizované architektury (**TO-BE**), UML diagramy a specifikaci požadavků.
+2. **[Milestone 2 Zpráva](nss_docs/NSS_milestone2.md)** — **Architektonická implementace** obsahující detailní popis 5 implementovaných návrhových vzorů (Strategy, Facade, Repository, Unit of Work, Observer), hybridní kešovací vrstvy (Passive + Active Invalidation), message brokeru na Redis Streams (Kafka-like spotřebitelské skupiny), HTTP Interceptoru s asynchronním logováním do Elasticsearch a detailní zabezpečení.
 
-### 1. Environment Configuration
-Copy `.env.example` to `.env` and configure:
-- `INITIAL_CHATS`: JSON string defining the initial group/admin environment.
-- `GHCR_PAT`: Required for CI/CD container registry access.
+---
 
-### 2. Launch
-The infrastructure is fully automated. Simply run:
+## 🛠️ Aktuálně hotová funkcionalita a změny
+
+- **Datová vrstva:** Podle požadavků cvičícího byla provedena revize datových typů. Sloupec `Chat.language` byl plně refaktorován z obecného řetězce (`String`) na typově bezpečný výčtový typ **`Language` Enum (`RU`, `CZ`, `EN`)** (implementováno v `app/db/models.py`).
+- **Příprava na Milestone 2:**
+  - Infrastruktura pro transakční **Unit of Work** (`app/core/uow.py`).
+  - Rozhraní a implementace repozitářů (`app/core/repositories/`).
+  - Asynchronní event dispatcher (`app/core/events.py`).
+
+---
+
+## 🚀 Rychlé spuštění a testování
+
+Projekt využívá moderní balíčkovač **`uv`** pro deterministickou správu závislostí a bezproblémové spuštění na stabilním Python 3.12.
+
+### Spuštění testů
+Pro lokální ověření funkčnosti a integrity datových modelů spusťte sadu unit testů:
+```bash
+PYTHONPATH=. uv run --python 3.12 pytest tests/
+```
+
+### Spuštění aplikace v Dockeru
+Kompletní aplikační stack (FastAPI + PostgreSQL + Redis) lze spustit pomocí Docker Compose:
 ```bash
 docker compose up -d
 ```

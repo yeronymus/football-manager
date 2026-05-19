@@ -8,7 +8,7 @@ import logging
 import re
 
 from app.db.database import get_session
-from app.db.models import Chat, ChatAdmin, User, Game, GameStatus, Signup, SignupStatus
+from app.db.models import Chat, ChatAdmin, User, Game, GameStatus, Signup, SignupStatus, Language
 from app.api.auth import get_user_from_header, check_admin_rights
 from app.config import settings
 
@@ -24,7 +24,7 @@ class GroupOut(BaseModel):
     chat_id: int
     title: str
     is_active: bool
-    language: str
+    language: Language
     payment_info: Optional[str]
     default_location: Optional[str] = None
     default_price: Optional[int] = None
@@ -100,7 +100,7 @@ async def get_dashboard_groups(
 
 class GroupUpdate(BaseModel):
     is_active: Optional[bool] = None
-    language: Optional[str] = None
+    language: Optional[Language] = None
     payment_info: Optional[str] = None
     default_location: Optional[str] = None
     default_price: Optional[int] = None
