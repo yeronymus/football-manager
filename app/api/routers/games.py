@@ -159,3 +159,92 @@ async def get_editable_games(
             pass
             
     return editable
+
+
+@router.post("/game/{game_id}/join")
+async def join_game(
+    game_id: int,
+    user_id: int = Depends(get_user_from_header)
+):
+    from app.core.uow import UnitOfWork
+    from app.core.services.roster import RosterService, PlayerJoinedEvent
+    from app.core.events import event_bus
+    import logging
+
+    try:
+        async with UnitOfWork() as uow:
+            user = await uow.user_repo.get_by_id(user_id)
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found. Please register first.")
+            
+            service = RosterService(uow)
+            is_admin = user_id in settings.admin_ids or user_id == settings.system_owner_id
+            result = await service.join_player(game_id, user, ignore_limit=is_admin)
+            
+            if not result.success:
+                raise HTTPException(status_code=400, detail=result.message)
+            
+            alert_msg = result.message
+            event_payload = None
+            if result.signup:
+                event_payload = PlayerJoinedEvent(
+                    game_id=game_id,
+                    user_id=user_id,
+                    signup=result.signup,
+                    is_reserve=result.is_reserve,
+                    message=alert_msg
+                )
+            
+            await uow.commit()
+            
+        if event_payload:
+            await event_bus.publish(event_payload)
+            
+        return {"success": True, "message": alert_msg, "is_reserve": result.is_reserve}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"API Join Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/game/{game_id}/leave")
+async def leave_game(
+    game_id: int,
+    user_id: int = Depends(get_user_from_header)
+):
+    from app.core.uow import UnitOfWork
+    from app.core.services.roster import RosterService, PlayerLeftEvent
+    from app.core.events import event_bus
+    import logging
+
+    try:
+        async with UnitOfWork() as uow:
+            service = RosterService(uow)
+            is_admin = user_id in settings.admin_ids or user_id == settings.system_owner_id
+            success, msg, promoted = await service.leave_player(game_id, user_id, is_admin)
+            
+            if not success:
+                raise HTTPException(status_code=400, detail=msg)
+                
+            await uow.commit()
+            
+        if promoted:
+            try:
+                from app.bot.instance import bot
+                await bot.send_message(
+                    promoted.user_id,
+                    "🎉 <b>Вас перевели в основной состав!</b>\nКто-то выписался из игры.",
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logging.warning(f"Failed to notify promoted user in API leave: {e}")
+                
+        await event_bus.publish(PlayerLeftEvent(game_id, user_id, msg, promoted))
+        return {"success": True, "message": msg}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"API Leave Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
