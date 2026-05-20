@@ -20,7 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column('users', sa.Column('alt_positions', sa.ARRAY(sa.String()), nullable=True, server_default='{}'))
+    op.execute(sa.text("ALTER TABLE users ADD COLUMN IF NOT EXISTS alt_positions VARCHAR[] DEFAULT '{}'"))
 
 
 def downgrade() -> None:
