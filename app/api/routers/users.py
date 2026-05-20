@@ -234,6 +234,7 @@ async def register_user(
     name = data.get("name")
     pos = data.get("position")
     chat_id = data.get("chat_id")
+    alt_positions = data.get("alt_positions", [])
     
     if not name or not pos:
         raise HTTPException(status_code=400, detail="Name and position are required")
@@ -244,12 +245,14 @@ async def register_user(
             user_id=user_id,
             full_name=name,
             player_position=Position(pos),
+            alt_positions=alt_positions,
             rating=100
         )
         session.add(user)
     else:
         user.full_name = name
         user.player_position = Position(pos)
+        user.alt_positions = alt_positions
         
     # If chat_id is provided, create a profile for that chat immediately
     if chat_id:
