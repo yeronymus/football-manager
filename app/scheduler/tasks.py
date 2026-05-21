@@ -1,6 +1,6 @@
 import asyncio
 from app.bot.instance import bot
-from app.db.database import get_session
+from app.db.database import async_session_maker
 from app.db.models import Game, Signup, User, SignupStatus, GameStatus, Team
 from sqlalchemy import select, func
 from aiogram import types
@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 async def send_voting_message(game_id: int):
-    async for session in get_session():
+    async with async_session_maker() as session:
         result = await session.execute(select(Game).where(Game.id == game_id))
         game = result.scalar_one_or_none()
         
@@ -61,7 +61,7 @@ async def send_voting_message(game_id: int):
         await session.commit()
 
 async def calculate_mvp(game_id: int):
-    async for session in get_session():
+    async with async_session_maker() as session:
         # Get game info
         result = await session.execute(select(Game).where(Game.id == game_id))
         game = result.scalar_one_or_none()
@@ -84,7 +84,7 @@ async def calculate_mvp(game_id: int):
 
 
 async def remind_admin_to_finish(game_id: int):
-    async for session in get_session():
+    async with async_session_maker() as session:
         # 1. Берем игру
         game = await session.get(Game, game_id)
         
@@ -129,7 +129,7 @@ async def release_gk_slots(game_id: int):
     Releases the "GK Reservation" by auto-promoting players from the waiting list
     if there are still empty slots (which were effectively reserved).
     """
-    async for session in get_session():
+    async with async_session_maker() as session:
         game = await session.get(Game, game_id)
         if not game or game.status not in [GameStatus.OPEN, GameStatus.ACTIVE]:
             return
@@ -192,7 +192,7 @@ async def release_gk_slots(game_id: int):
                 await update_dashboard_message(bot, game.id, session)
 
 async def publish_game_task(game_id: int):
-    async for session in get_session():
+    async with async_session_maker() as session:
         game = await session.get(Game, game_id)
         if not game:
             return

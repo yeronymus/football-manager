@@ -8,7 +8,7 @@ import logging
 import re
 
 from app.db.database import get_session
-from app.db.models import Chat, ChatAdmin, User, Game, GameStatus, Signup, SignupStatus, Language
+from app.db.models import Chat, ChatAdmin, User, Game, Signup, SignupStatus, Language
 from app.api.auth import get_user_from_header, check_admin_rights
 from app.config import settings
 
@@ -219,20 +219,8 @@ async def get_game_details(
         
     await check_admin_rights(game.chat_id, user_id)
     
-    stmt = (
-        select(Signup, User)
-        .join(User, User.user_id == Signup.user_id)
-        .where(Signup.game_id == game_id)
-        .order_by(Signup.created_at)
-    )
-    res = await session.execute(stmt)
-    
-    # Also fetch GameStats
-    from app.db.models import GameStats, Vote
-    stats_res = await session.execute(select(GameStats).where(GameStats.game_id == game_id))
-    stats_map = {s.user_id: s for s in stats_res.scalars().all()}
-    
     # Also fetch Vote counts
+    from app.db.models import GameStats, Vote
     from sqlalchemy import func
     votes_res = await session.execute(
         select(Vote.target_id, func.count(Vote.id))
@@ -240,6 +228,15 @@ async def get_game_details(
         .group_by(Vote.target_id)
     )
     votes_map = {v[0]: v[1] for v in votes_res.all()}
+
+    stmt = (
+        select(Signup, User, GameStats)
+        .join(User, User.user_id == Signup.user_id)
+        .outerjoin(GameStats, (GameStats.game_id == Signup.game_id) & (GameStats.user_id == Signup.user_id))
+        .where(Signup.game_id == game_id)
+        .order_by(Signup.created_at)
+    )
+    res = await session.execute(stmt)
     
     cleaned_loc = clean_location(game.location)
     if cleaned_loc != game.location:
@@ -247,8 +244,7 @@ async def get_game_details(
         await session.commit()
 
     players = []
-    for signup, user in res.all():
-        u_stats = stats_map.get(user.user_id)
+    for signup, user, u_stats in res.all():
         v_count = votes_map.get(user.user_id, 0)
         
         players.append(PlayerDetailOut(

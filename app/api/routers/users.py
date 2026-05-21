@@ -7,8 +7,6 @@ from app.db.models import Chat, User, PlayerProfile, Game, RatingHistory, Signup
 from app.api.auth import validate_init_data, get_user_from_init_data, get_user_from_header
 from app.core.repositories.user_repository import UserRepository
 
-from app.config import settings
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

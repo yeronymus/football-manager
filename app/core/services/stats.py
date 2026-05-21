@@ -122,11 +122,18 @@ class StatsService:
         )
         players_data = result.all() # List of (User, Team, PlayerProfile)
         
+        # We'll use this to keep track of newly created profiles in this loop
+        # so they can be processed like existing ones
+        processed_players = []
+        
         for user, team, profile in players_data:
             if not profile:
                 profile = PlayerProfile(user_id=user.user_id, chat_id=game.chat_id)
                 self.session.add(profile)
-                
+            
+            processed_players.append((user, team, profile))
+
+        for user, team, profile in processed_players:
             old_rating = profile.rating or 100
             
             # Get base change from team_points
