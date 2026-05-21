@@ -24,7 +24,7 @@ class GroupOut(BaseModel):
     chat_id: int
     title: str
     is_active: Optional[bool] = True
-    language: Optional[Language] = Language.RU
+    language: Optional[Language] = Language.ru
     payment_info: Optional[str] = None
     default_location: Optional[str] = None
     default_price: Optional[int] = None

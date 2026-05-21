@@ -53,9 +53,9 @@ class Team(str, enum.Enum):
     C = "C"
 
 class Language(str, enum.Enum):
-    RU = "ru"
-    CZ = "cz"
-    EN = "en"
+    ru = "ru"
+    cz = "cz"
+    en = "en"
 
 class User(Base):
     __tablename__ = "users"
@@ -86,7 +86,7 @@ class Chat(Base):
     channel_id = Column(BigInteger, nullable=True)    # Linked Announcement Channel
 
     # SaaS / Group Settings
-    language = Column(Enum(Language, name="chat_language_enum", native_enum=False), default=Language.RU)
+    language = Column(Enum(Language, name="chat_language_enum", native_enum=False), default=Language.ru)
     payment_info = Column(String, nullable=True)     # If null, uses global default
     is_active = Column(Boolean, default=True)
 
