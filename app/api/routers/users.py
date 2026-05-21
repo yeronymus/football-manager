@@ -52,6 +52,8 @@ async def get_chats(
         {
             "id": c.chat_id, 
             "title": c.title,
+            "is_active": getattr(c, 'is_active', True) if getattr(c, 'is_active', True) is not None else True,
+            "language": getattr(c, 'language', 'ru') if getattr(c, 'language', 'ru') else 'ru',
             "default_location": c.default_location,
             "default_price": c.default_price,
             "default_team_count": c.default_team_count,
