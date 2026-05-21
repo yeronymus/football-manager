@@ -47,9 +47,8 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
         return False
 
 def get_user_from_init_data(init_data: str) -> int:
-    if settings.debug and not init_data:
-        # Default debug user ID (replace with your admin ID for testing)
-        return settings.admin_ids[0] if settings.admin_ids else 123456789
+    if not init_data:
+        raise HTTPException(status_code=401, detail="Missing initData")
         
     parsed_data = dict(urllib.parse.parse_qsl(init_data))
 

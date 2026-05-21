@@ -46,12 +46,18 @@ async def renumber_game_command(old_id: int, new_id: int):
         print(f"Renumbering Game {old_id} -> {new_id}...")
         
         # 1. Verify IDs
-        res_old = await session.execute(text(f"SELECT id FROM games WHERE id = {old_id}"))
+        res_old = await session.execute(
+            text("SELECT id FROM games WHERE id = :old_id"),
+            {"old_id": old_id}
+        )
         if not res_old.scalar():
             print(f"Game {old_id} not found. Aborting.")
             return
 
-        res_new = await session.execute(text(f"SELECT id FROM games WHERE id = {new_id}"))
+        res_new = await session.execute(
+            text("SELECT id FROM games WHERE id = :new_id"),
+            {"new_id": new_id}
+        )
         if res_new.scalar():
             print(f"Game {new_id} ALREADY exists. Aborting.")
             return
@@ -59,13 +65,21 @@ async def renumber_game_command(old_id: int, new_id: int):
         # 2. Update Foreign Keys
         tables = ["signups", "votes", "rating_history", "game_stats"]
         for table in tables:
-            await session.execute(text(f"UPDATE {table} SET game_id = {new_id} WHERE game_id = {old_id}"))
+            # Table names cannot be parameterized in the same way, but here they are from a fixed list.
+            # Still, we parameterize the IDs.
+            await session.execute(
+                text(f"UPDATE {table} SET game_id = :new_id WHERE game_id = :old_id"),
+                {"new_id": new_id, "old_id": old_id}
+            )
         
         # 3. Update Game
-        await session.execute(text(f"UPDATE games SET id = {new_id} WHERE id = {old_id}"))
+        await session.execute(
+            text("UPDATE games SET id = :new_id WHERE id = :old_id"),
+            {"new_id": new_id, "old_id": old_id}
+        )
         
         # 4. Optional: Reset sequence if new_id is the latest
-        await session.execute(text(f"SELECT setval('games_id_seq', (SELECT MAX(id) FROM games))"))
+        await session.execute(text("SELECT setval('games_id_seq', (SELECT MAX(id) FROM games))"))
         
         await session.commit()
         print(f"SUCCESS: Game {old_id} is now Game {new_id}.")
