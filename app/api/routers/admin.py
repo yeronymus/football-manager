@@ -8,7 +8,7 @@ import urllib.parse
 import time
 
 from app.db.database import get_session
-from app.db.models import Game, User, Signup, SignupStatus, Team, GameStatus
+from app.db.models import Game, User, Signup, SignupStatus, GameStatus
 from app.api.auth import validate_init_data, get_user_from_init_data, check_admin_rights
 from app.api.schemas import GameCreate, BalanceTeams, GameFinishRequest, UpdateTeamsRequest, GameUpdate, AddPlayerRequest, AddGuestRequest
 from app.core.repositories.user_repository import UserRepository
@@ -366,18 +366,15 @@ async def finish_game(data: GameFinishRequest, background_tasks: BackgroundTasks
         
         if voting_results:
             text += "\n⭐ <b>Голоса за MVP:</b>\n"
-            for name, count in voting_results:
-                text += f"- {name}: {count}\n"
+            text += "\n".join([f"- {name}: {count}" for name, count in voting_results]) + "\n"
 
         scorers = [p for p in data.player_stats if p.goals > 0]
         if scorers:
             text += "\n⚽ <b>Голы:</b>\n"
             scorer_ids = [s.user_id for s in scorers]
-            res = await session.execute(select(User).where(User.user_id.in_(scorer_ids)))
-            users_map = {u.user_id: u.full_name for u in res.scalars().all()}
-            for s in scorers:
-                name = users_map.get(s.user_id, "Неизвестный")
-                text += f"- {name}: {s.goals}\n"
+            res = await session.execute(select(User.user_id, User.full_name).where(User.user_id.in_(scorer_ids)))
+            users_map = {uid: name for uid, name in res.all()}
+            text += "\n".join([f"- {users_map.get(s.user_id, 'Неизвестный')}: {s.goals}" for s in scorers]) + "\n"
 
         background_tasks.add_task(event_bus.publish, GameFinishedEvent(
             game_id=game.id,
