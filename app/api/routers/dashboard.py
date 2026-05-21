@@ -23,9 +23,9 @@ def clean_location(loc: str) -> str:
 class GroupOut(BaseModel):
     chat_id: int
     title: str
-    is_active: bool
-    language: Language
-    payment_info: Optional[str]
+    is_active: Optional[bool] = True
+    language: Optional[Language] = Language.RU
+    payment_info: Optional[str] = None
     default_location: Optional[str] = None
     default_price: Optional[int] = None
     default_team_count: Optional[int] = None
