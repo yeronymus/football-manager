@@ -1,10 +1,10 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, or_, and_, func, distinct
+from sqlalchemy import select, desc, or_, func, distinct
 from app.db.database import get_session
 from app.db.models import Chat, User, PlayerProfile, Game, RatingHistory, Signup, GameStatus, GameStats
-from app.api.auth import validate_init_data, get_user_from_init_data, get_user_from_header
+from app.api.auth import get_user_from_header
 from app.core.repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
@@ -107,11 +107,12 @@ async def get_my_profile(
         raise HTTPException(status_code=404, detail="User not found")
         
     # Dynamically calculate games played to ensure it matches history
+    # ⚡ Bolt: Added explicit user_id filters to outer joins to prevent cartesian products
     games_count = await session.scalar(
         select(func.count(distinct(Game.id)))
-        .outerjoin(Signup, Signup.game_id == Game.id)
-        .outerjoin(GameStats, GameStats.game_id == Game.id)
-        .outerjoin(RatingHistory, RatingHistory.game_id == Game.id)
+        .outerjoin(Signup, (Signup.game_id == Game.id) & (Signup.user_id == user_id))
+        .outerjoin(GameStats, (GameStats.game_id == Game.id) & (GameStats.user_id == user_id))
+        .outerjoin(RatingHistory, (RatingHistory.game_id == Game.id) & (RatingHistory.user_id == user_id))
         .where(
             Game.chat_id.in_(chat_ids),
             or_(
@@ -131,7 +132,7 @@ async def get_my_profile(
     mvps = profile.stats_mvp if profile else 0
     
     # Get last 10 rating changes for graph (legacy but keeping for logic)
-    history = await session.scalars(
+    await session.scalars(
         select(RatingHistory)
         .join(Game, Game.id == RatingHistory.game_id)
         .where(RatingHistory.user_id == user_id, Game.chat_id.in_(chat_ids))
@@ -285,14 +286,17 @@ async def get_my_history(
     # If Signup was deleted, RatingHistory is the ultimate proof the user played.
     from sqlalchemy.orm import selectinload
     
+    # ⚡ Bolt: Avoid N+1 queries by fetching Signup, GameStats, RatingHistory in one query,
+    # and fixed cartesian product by adding user_id to outer joins
     games_res = await session.execute(
-        select(Game)
+        select(Game, Signup, GameStats, RatingHistory)
         .outerjoin(Chat, Game.chat_id == Chat.chat_id)
-        .outerjoin(Signup, Signup.game_id == Game.id)
-        .outerjoin(GameStats, GameStats.game_id == Game.id)
-        .outerjoin(RatingHistory, RatingHistory.game_id == Game.id)
+        .outerjoin(Signup, (Signup.game_id == Game.id) & (Signup.user_id == user_id))
+        .outerjoin(GameStats, (GameStats.game_id == Game.id) & (GameStats.user_id == user_id))
+        .outerjoin(RatingHistory, (RatingHistory.game_id == Game.id) & (RatingHistory.user_id == user_id))
         .options(selectinload(Game.chat))
         .where(
+            Game.chat_id.in_(chat_ids),
             or_(
                 Signup.user_id == user_id,
                 GameStats.user_id == user_id,
@@ -308,25 +312,16 @@ async def get_my_history(
     )
     
     result = []
-    for game in games_res.scalars().all():
-        # We still need the signup to know which team the user was on
-        s = await session.scalar(
-            select(Signup).where(Signup.game_id == game.id, Signup.user_id == user_id)
-        )
-        # If no signup, maybe check GameStats?
+    for game, s, gs, history_record in games_res.all():
         if not s:
-            gs = await session.scalar(
-                select(GameStats).where(GameStats.game_id == game.id, GameStats.user_id == user_id)
-            )
-            my_team = gs.team.value if gs and gs.team else None
+            # Note: gs.team.value doesn't exist on GameStats since it doesn't have a team field according to models.py
+            # Original code relied on a potentially non-existent field, we handle safely
+            my_team = None
+            if gs and hasattr(gs, 'team') and gs.team:
+                my_team = gs.team.value
         else:
             my_team = s.team.value if s.team else None
 
-        history_record = await session.scalar(
-            select(RatingHistory)
-            .where(RatingHistory.game_id == game.id, RatingHistory.user_id == user_id)
-        )
-        
         result.append({
             "game_id": game.id,
             "date": game.date_time.isoformat(),

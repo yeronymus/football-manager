@@ -1,0 +1,4 @@
+
+## 2024-05-24 - [Avoid Cartesian Products in outerjoins]
+**Learning:** When writing queries checking if a user played a game using multiple `outerjoin`s (e.g. joining `Signup`, `GameStats`, and `RatingHistory` against `Game`), omitting the user-specific filter (e.g. `Model.user_id == user_id`) in the `outerjoin(...)` condition creates a massive Cartesian product of all rows for the game before filtering it out in `.where()`. It's even worse when we execute the `.where` with `or_()`. This significantly degrades query performance for active players in large groups.
+**Action:** Always include the primary filter condition explicitly inside the `.outerjoin(Model, (Model.fk == Parent.id) & (Model.user_id == user_id))` statement instead of relying on `.where` to filter them post-join, especially when doing multiple outer joins on the same parent.
