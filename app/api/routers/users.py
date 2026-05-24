@@ -107,7 +107,15 @@ async def get_my_profile(
         raise HTTPException(status_code=404, detail="User not found")
         
     # Dynamically calculate games played to ensure it matches history
+<<<<<<< HEAD
     # ⚡ Bolt: Move user_id filter into outerjoin conditions to prevent Cartesian product (N^3)
+=======
+    # ⚡ Bolt Optimization:
+    # Moved `user_id` filters from `.where()` into the `.outerjoin()` ON clauses.
+    # Why: Previously, outer joining generically by game_id resulted in a Cartesian product
+    # of all signups/stats for a game before filtering, causing severe performance degradation.
+    # Impact: Reduces query time significantly and minimizes DB load.
+>>>>>>> e87fad8 (⚡ Bolt: [performance improvement] fix outerjoin cartesian products)
     games_count = await session.scalar(
         select(func.count(distinct(Game.id)))
         .outerjoin(Signup, (Signup.game_id == Game.id) & (Signup.user_id == user_id))
@@ -116,13 +124,19 @@ async def get_my_profile(
         .where(
             Game.chat_id.in_(chat_ids),
             or_(
+<<<<<<< HEAD
                 Signup.id.isnot(None),
                 GameStats.id.isnot(None),
                 RatingHistory.id.isnot(None)
+=======
+                Signup.user_id.isnot(None),
+                GameStats.user_id.isnot(None),
+                RatingHistory.user_id.isnot(None)
+>>>>>>> e87fad8 (⚡ Bolt: [performance improvement] fix outerjoin cartesian products)
             ),
             or_(
                 Game.status == GameStatus.FINISHED,
-                Game.score_a != None  # Any game with a score should probably count for history
+                Game.score_a.isnot(None)  # Any game with a score should probably count for history
             )
         )
     )
@@ -286,7 +300,10 @@ async def get_my_history(
     # If Signup was deleted, RatingHistory is the ultimate proof the user played.
     from sqlalchemy.orm import selectinload
     
-    # ⚡ Bolt: Move user_id filter into outerjoin conditions to prevent Cartesian product (N^3)
+    # ⚡ Bolt Optimization:
+    # Moved `user_id` filters from `.where()` into the `.outerjoin()` ON clauses.
+    # Why: Avoids Cartesian products from joining all users' data before filtering.
+    # Impact: Massive reduction in intermediate rows and faster execution time.
     games_res = await session.execute(
         select(Game)
         .outerjoin(Chat, Game.chat_id == Chat.chat_id)
@@ -302,7 +319,7 @@ async def get_my_history(
             ),
             or_(
                 Game.status == GameStatus.FINISHED,
-                Game.score_a != None
+                Game.score_a.isnot(None)
             )
         )
         .distinct()

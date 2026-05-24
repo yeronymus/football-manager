@@ -13,3 +13,7 @@
 ## 2024-05-22 - N+1 Query in app/api/routers/users.py:get_my_history
 **Learning:** The `get_my_history` endpoint performs N+1 queries by executing multiple `await session.scalar()` calls inside a loop over fetched games.
 **Action:** Optimize by pre-fetching the related `Signup`, `GameStats`, and `RatingHistory` records outside the loop using an `in_` filter based on the fetched game IDs.
+
+## 2024-05-24 - [Avoid Multiple Outerjoins on user specific datasets against a core model]
+**Learning:** Using `.outerjoin()` directly with a general clause like `Signup.game_id == Game.id` without restricting by `user_id` inside the join clause creates catastrophic Cartesian products, particularly when followed by a `.where(Signup.user_id == user_id)` filter.
+**Action:** Always include the specific constraints (like `& (Model.user_id == user_id)`) *inside* the `.outerjoin` condition instead of the `.where` clause for user-specific aggregations.
