@@ -1,10 +1,10 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, or_, and_, func, distinct
+from sqlalchemy import select, desc, or_, func, distinct
 from app.db.database import get_session
 from app.db.models import Chat, User, PlayerProfile, Game, RatingHistory, Signup, GameStatus, GameStats
-from app.api.auth import validate_init_data, get_user_from_init_data, get_user_from_header
+from app.api.auth import get_user_from_header
 from app.core.repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
@@ -107,17 +107,18 @@ async def get_my_profile(
         raise HTTPException(status_code=404, detail="User not found")
         
     # Dynamically calculate games played to ensure it matches history
+    # ⚡ Bolt: Move user_id filter into outerjoin conditions to prevent Cartesian product (N^3)
     games_count = await session.scalar(
         select(func.count(distinct(Game.id)))
-        .outerjoin(Signup, Signup.game_id == Game.id)
-        .outerjoin(GameStats, GameStats.game_id == Game.id)
-        .outerjoin(RatingHistory, RatingHistory.game_id == Game.id)
+        .outerjoin(Signup, (Signup.game_id == Game.id) & (Signup.user_id == user_id))
+        .outerjoin(GameStats, (GameStats.game_id == Game.id) & (GameStats.user_id == user_id))
+        .outerjoin(RatingHistory, (RatingHistory.game_id == Game.id) & (RatingHistory.user_id == user_id))
         .where(
             Game.chat_id.in_(chat_ids),
             or_(
-                Signup.user_id == user_id,
-                GameStats.user_id == user_id,
-                RatingHistory.user_id == user_id
+                Signup.id.isnot(None),
+                GameStats.id.isnot(None),
+                RatingHistory.id.isnot(None)
             ),
             or_(
                 Game.status == GameStatus.FINISHED,
@@ -285,18 +286,19 @@ async def get_my_history(
     # If Signup was deleted, RatingHistory is the ultimate proof the user played.
     from sqlalchemy.orm import selectinload
     
+    # ⚡ Bolt: Move user_id filter into outerjoin conditions to prevent Cartesian product (N^3)
     games_res = await session.execute(
         select(Game)
         .outerjoin(Chat, Game.chat_id == Chat.chat_id)
-        .outerjoin(Signup, Signup.game_id == Game.id)
-        .outerjoin(GameStats, GameStats.game_id == Game.id)
-        .outerjoin(RatingHistory, RatingHistory.game_id == Game.id)
+        .outerjoin(Signup, (Signup.game_id == Game.id) & (Signup.user_id == user_id))
+        .outerjoin(GameStats, (GameStats.game_id == Game.id) & (GameStats.user_id == user_id))
+        .outerjoin(RatingHistory, (RatingHistory.game_id == Game.id) & (RatingHistory.user_id == user_id))
         .options(selectinload(Game.chat))
         .where(
             or_(
-                Signup.user_id == user_id,
-                GameStats.user_id == user_id,
-                RatingHistory.user_id == user_id
+                Signup.id.isnot(None),
+                GameStats.id.isnot(None),
+                RatingHistory.id.isnot(None)
             ),
             or_(
                 Game.status == GameStatus.FINISHED,
