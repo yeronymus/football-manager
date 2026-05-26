@@ -92,7 +92,10 @@ async def process_position(callback: types.CallbackQuery, state: FSMContext, ses
             await callback.message.answer(text, reply_markup=get_game_keyboard(pending_game_id))
             
             # TRIGGER DASHBOARD UPDATE
-            from app.bot.admin_dashboard import update_dashboard_message
-            await update_dashboard_message(callback.bot, game.id, session)
+            try:
+                from app.bot.admin_dashboard import update_dashboard_message
+                await update_dashboard_message(callback.bot, game.id, session)
+            except (ImportError, Exception) as e:
+                pass
         else:
             await callback.message.answer("Игра, которую вы искали, не найдена, но вы теперь зарегистрированы!")

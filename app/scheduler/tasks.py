@@ -172,24 +172,32 @@ async def release_gk_slots(game_id: int):
                 
                 # Update Message
                 from app.bot.utils import format_game_message
-                from app.bot.keyboards import get_game_keyboard
-                from app.bot.admin_dashboard import update_dashboard_message
                 
                 text = await format_game_message(game, session)
                 
                 if game.message_id and game.chat_id:
+                    if game.channel_id == game.chat_id:
+                        from app.bot.keyboards import get_channel_game_keyboard
+                        kb = get_channel_game_keyboard(game.id)
+                    else:
+                        from app.bot.keyboards import get_game_keyboard
+                        kb = get_game_keyboard(game.id)
                     try:
                         await bot.edit_message_text(
                             chat_id=game.chat_id,
                             message_id=game.message_id,
                             text=text,
-                            reply_markup=get_game_keyboard(game.id),
+                            reply_markup=kb,
                             parse_mode="HTML"
                         )
                     except Exception:
                         pass
                 
-                await update_dashboard_message(bot, game.id, session)
+                try:
+                    from app.bot.admin_dashboard import update_dashboard_message
+                    await update_dashboard_message(bot, game.id, session)
+                except (ImportError, Exception) as e:
+                    logger.warning(f"Failed to update dashboard: {e}")
 
 async def publish_game_task(game_id: int):
     async with async_session_maker() as session:
@@ -215,11 +223,15 @@ async def publish_game_task(game_id: int):
 
         # 2. Publish to Group (Full mode per user request)
         text_short = await format_game_message(game, session, is_short=False)
+        if game.channel_id == game.chat_id:
+            kb = get_channel_game_keyboard(game.id)
+        else:
+            kb = get_game_keyboard(game.id)
         try:
             sent_message = await bot.send_message(
                 chat_id=game.chat_id,
                 text=text_short,
-                reply_markup=get_game_keyboard(game.id)
+                reply_markup=kb
             )
             
             game.message_id = sent_message.message_id

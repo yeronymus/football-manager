@@ -226,12 +226,17 @@ async def update_game_message(bot, game, session: AsyncSession):
 
     # 2. Update Primary Chat (Full mode by default per user request)
     text_short = await format_game_message(game, session, is_short=False, signups=signups)
+    if game.channel_id == game.chat_id:
+        from app.bot.keyboards import get_channel_game_keyboard
+        kb = get_channel_game_keyboard(game.id)
+    else:
+        kb = get_game_keyboard(game.id)
     try:
         await bot.edit_message_text(
             chat_id=game.chat_id,
             message_id=game.message_id,
             text=text_short,
-            reply_markup=get_game_keyboard(game.id),
+            reply_markup=kb,
             parse_mode="HTML"
         )
     except TelegramBadRequest as e:
@@ -240,10 +245,10 @@ async def update_game_message(bot, game, session: AsyncSession):
         logging.error(f"Unexpected error when editing message in chat {game.chat_id}: {e}")
 
     # 3. Trigger Admin Dashboard Update
-    from app.bot.admin_dashboard import update_dashboard_message
     try:
          # Note: Dashboard currently does its own fetching to ensure freshness and different filtering
+         from app.bot.admin_dashboard import update_dashboard_message
          await update_dashboard_message(bot, game.id, session)
-    except Exception as e:
+    except (ImportError, Exception) as e:
          import logging
          logging.warning(f"Failed to update dashboard for game {game.id}: {e}")
