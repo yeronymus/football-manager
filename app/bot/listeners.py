@@ -64,12 +64,9 @@ async def on_game_created(event: GameCreatedEvent):
 
             text = await format_game_message(game, session, is_short=False)
             
-            # Select keyboard based on chat type (web_app buttons are invalid in channels)
-            if is_channel or game.channel_id == game.chat_id:
-                from app.bot.keyboards import get_channel_game_keyboard
-                kb = get_channel_game_keyboard(game.id)
-            else:
-                kb = get_game_keyboard(game.id)
+            # Group chats and channels must always use the channel-safe keyboard (deep-link transitioning to private DMs)
+            from app.bot.keyboards import get_channel_game_keyboard
+            kb = get_channel_game_keyboard(game.id)
 
             msg = await bot.send_message(
                 chat_id=game.chat_id,
@@ -144,11 +141,8 @@ async def on_teams_published(event: TeamsPublishedEvent):
 
             public_text = await format_game_message(game, session)
             
-            if game.channel_id == game.chat_id:
-                from app.bot.keyboards import get_channel_game_keyboard
-                kb = get_channel_game_keyboard(game.id)
-            else:
-                kb = get_game_keyboard(game.id)
+            from app.bot.keyboards import get_channel_game_keyboard
+            kb = get_channel_game_keyboard(game.id)
 
             if game.message_id:
                 try:

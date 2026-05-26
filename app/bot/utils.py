@@ -233,11 +233,8 @@ async def update_game_message(bot, game, session: AsyncSession):
 
     # 2. Update Primary Chat (Full mode by default per user request)
     text_short = await format_game_message(game, session, is_short=False, signups=signups)
-    if game.channel_id == game.chat_id:
-        from app.bot.keyboards import get_channel_game_keyboard
-        kb = get_channel_game_keyboard(game.id)
-    else:
-        kb = get_game_keyboard(game.id)
+    from app.bot.keyboards import get_channel_game_keyboard
+    kb = get_channel_game_keyboard(game.id)
     try:
         await bot.edit_message_text(
             chat_id=game.chat_id,

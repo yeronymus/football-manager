@@ -176,12 +176,8 @@ async def release_gk_slots(game_id: int):
                 text = await format_game_message(game, session)
                 
                 if game.message_id and game.chat_id:
-                    if game.channel_id == game.chat_id:
-                        from app.bot.keyboards import get_channel_game_keyboard
-                        kb = get_channel_game_keyboard(game.id)
-                    else:
-                        from app.bot.keyboards import get_game_keyboard
-                        kb = get_game_keyboard(game.id)
+                    from app.bot.keyboards import get_channel_game_keyboard
+                    kb = get_channel_game_keyboard(game.id)
                     try:
                         await bot.edit_message_text(
                             chat_id=game.chat_id,
@@ -230,10 +226,7 @@ async def publish_game_task(game_id: int):
 
         # 2. Publish to Group (Full mode per user request)
         text_short = await format_game_message(game, session, is_short=False)
-        if game.channel_id == game.chat_id:
-            kb = get_channel_game_keyboard(game.id)
-        else:
-            kb = get_game_keyboard(game.id)
+        kb = get_channel_game_keyboard(game.id)
         try:
             sent_message = await bot.send_message(
                 chat_id=game.chat_id,
