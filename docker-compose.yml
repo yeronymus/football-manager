@@ -15,6 +15,22 @@ services:
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
 
+  staging-app:
+    image: ${GHCR_IMAGE:-ghcr.io/yeronymus/football-manager:latest}
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "${STAGING_PORT:-8001}:8000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - BOT_TOKEN=7652258054:AAGHBJf9rTMfLP9UCnad6zprZJYeGSF8caM
+      - BOT_USERNAME=footballManagerTestbot
+      - USE_POLLING=True
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+
   watchtower:
     image: containrrr/watchtower
     restart: always
