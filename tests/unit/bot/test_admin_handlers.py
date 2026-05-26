@@ -41,3 +41,27 @@ async def test_cmd_create_in_private_chat():
             
             # Verify it answered
             assert message.answer.called
+
+@pytest.mark.asyncio
+async def test_cmd_republish():
+    from app.bot.handlers.admin_handlers import cmd_republish
+    message = MagicMock()
+    message.chat.type = "private"
+    message.from_user.id = 12345
+    message.text = "/republish 17"
+    message.answer = AsyncMock()
+    
+    session = AsyncMock()
+    
+    with pytest.MonkeyPatch().context() as mp:
+        mp.setattr("app.bot.handlers.admin_handlers.settings.admin_ids", [12345])
+        mp.setattr("app.bot.handlers.admin_handlers.settings.system_owner_id", 0)
+        
+        mock_publish_task = AsyncMock()
+        mp.setattr("app.scheduler.tasks.publish_game_task", mock_publish_task)
+        
+        await cmd_republish(message, session)
+        
+        assert mock_publish_task.called
+        assert message.answer.called
+        assert "успешно переопубликована" in message.answer.call_args[0][0]
