@@ -325,22 +325,12 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 result = await session.execute(select(Game).where(Game.id == game_id))
                 game = result.scalar_one_or_none()
                 if game:
-                    if is_admin:
-                        # ULTRA-MINIMALISTIC INTERFACE FOR ADMINS
-                        webapp_url = settings.webapp_url.rstrip("/")
-                        web_url = f"{webapp_url}/web/draft.html?game_id={game_id}&v=2.2"
-                        kb = types.InlineKeyboardMarkup(inline_keyboard=[
-                            [types.InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=web_url))]
-                        ])
-                        await message.answer(f"⚽ <b>Игра #{game_id}: Составы</b>", reply_markup=kb, parse_mode="HTML")
-                        return
-
-                    # 1. Generate full game message text for regular users
+                    # 1. Generate full game message text
                     from app.bot.utils import format_game_message
                     text = await format_game_message(game, session)
                     
-                    # 2. Keyboard (Join/Leave only)
-                    kb = get_game_keyboard(game_id)
+                    # 2. Keyboard (includes Draft button for admins)
+                    kb = get_game_keyboard(game_id, is_admin=is_admin)
                     await message.answer(text, reply_markup=kb)
 
                     return

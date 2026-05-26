@@ -90,7 +90,7 @@ async function loadGroups() {
         await new Promise(r => setTimeout(r, 200));
         retryCount++;
     }
-    initData = window.Telegram.WebApp.initData;
+    initData = window.Telegram.WebApp.initData || initData;
 
     try {
         const groups = await apiCall('/groups');
