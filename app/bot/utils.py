@@ -211,6 +211,13 @@ async def update_game_message(bot, game, session: AsyncSession):
     if game.channel_id and game.channel_message_id:
         text_full = await format_game_message(game, session, is_short=False, signups=signups)
         text_full += "\n\n<b>Запись открыта. Переходите в чат.</b>"
+        
+        # Add hidden deep link so Telegram channel discussion forward carries the start link
+        from app.config import settings
+        bot_username = settings.bot_username
+        hidden_link = f'<a href="https://t.me/{bot_username}?start=game_{game.id}">&#8203;</a>'
+        text_full = hidden_link + text_full
+        
         try:
             await bot.edit_message_text(
                 chat_id=game.channel_id,

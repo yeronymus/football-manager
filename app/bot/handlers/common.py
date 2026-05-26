@@ -58,6 +58,16 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
                 game.channel_id = message.forward_from_chat.id
                 game.channel_message_id = message.forward_from_message_id
             
+            # --- Avoid Duplicates & Clean Up forwards ---
+            # If we already have the game posted directly in this chat, just delete the forward and exit!
+            if game.chat_id == message.chat.id and game.message_id:
+                try:
+                    await message.delete()
+                    logger.info(f"Duplicate forward for game {game_id} in current chat. Silently deleted.")
+                except Exception as e:
+                    logger.warning(f"Failed to delete duplicate forward: {e}")
+                return
+            
             # --- Attempt to replace the forward with our own message ---
             try:
                 from app.bot.keyboards import get_game_keyboard
