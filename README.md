@@ -104,6 +104,62 @@ PYTHONPATH=. uv run --python 3.12 pytest tests/
 
 ---
 
+## 🛠️ Isolated Local Development & Branching Strategy
+
+To keep development structured, clean, and protect the production environment from accidental downtime, we strictly enforce **Environment Isolation** and **Branch Policies**.
+
+### 🌿 Git Branching Flow
+1. **`Main` Branch (Production)**:
+   * **Only stable, tested production-ready code**. 
+   * Watchtower tracks this branch and auto-recreates production containers upon new pushes.
+   * **Strictly no direct pushes to `Main`** unless deploying an approved hotfix.
+2. **`develop` Branch (Integration & Staging)**:
+   * All new features, bugfixes, and code cleanups are integrated here first.
+   * Runs unit and integration tests continuously.
+3. **Feature Branches (`feat/feature-name` or `fix/bug-name`)**:
+   * Branch off `develop` to implement your changes locally.
+   * Once completed and tested, open a **Pull Request (PR)** to merge into `develop`.
+
+---
+
+### 🛡️ Setting up Local Developer Bot & Environment
+To run and test the bot locally without interfering with the live database or sending spam to the actual group chat, follow these steps:
+
+#### 1. Create a Dev Bot on Telegram
+1. Open [@BotFather](https://t.me/BotFather) on Telegram.
+2. Create a new bot (e.g., `football_manager_dev_bot`) and copy the **Bot Token**.
+3. Create a private test group chat in Telegram and add your developer bot to it as an administrator.
+4. Retrieve your Telegram User ID and the ID of your test group chat (you can get the group ID using tools like `@ShowJsonBot` or forwarding a message from it).
+
+#### 2. Configure Local Environment Variables
+Instead of sharing production settings, copy the `.env.dev.example` template:
+```bash
+cp .env.dev.example .env
+```
+Fill in your developer token and chat IDs:
+*   `BOT_TOKEN`: Your developer bot's token.
+*   `BOT_USERNAME`: Your developer bot's username.
+*   `ADMIN_IDS`: A JSON list containing your Telegram user ID (e.g. `[123456789]`).
+*   `INITIAL_CHATS`: A JSON list containing your test group's ID and name.
+
+#### 3. Run in Polling Mode (Zero Domain Config)
+Local development does not require configuring webhooks, domain names, or reverse proxies. Set `USE_POLLING=True` in `.env` to make the bot run locally in your terminal, listening directly to Telegram update streams.
+
+#### 4. Run the Local Stack
+Start the local databases (PostgreSQL and Redis) and launch the app in your local python virtual environment:
+```bash
+# 1. Start databases locally in background
+docker compose up db redis -d
+
+# 2. Run alembic migrations locally
+uv run alembic upgrade head
+
+# 3. Launch the application (bot starts automatically in Polling mode)
+uv run uvicorn app.api.main:app --reload
+```
+
+---
+
 ## ⚙️ Environment Variables Reference
 
 | Variable | Description | Default |
