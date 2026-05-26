@@ -194,7 +194,7 @@ async def update_game_message(bot, game, session: AsyncSession):
     Updates the live game message in both primary and channel chats.
     Now supports minimal view for primary chat.
     """
-    from app.bot.keyboards import get_game_keyboard
+    from app.bot.keyboards import get_game_keyboard, get_channel_game_keyboard
     from aiogram.exceptions import TelegramBadRequest
     import logging
     
@@ -216,7 +216,7 @@ async def update_game_message(bot, game, session: AsyncSession):
                 chat_id=game.channel_id,
                 message_id=game.channel_message_id,
                 text=text_full,
-                reply_markup=None,
+                reply_markup=get_channel_game_keyboard(game.id),
                 parse_mode="HTML"
             )
         except TelegramBadRequest as e:
