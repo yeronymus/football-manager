@@ -40,6 +40,7 @@ class GameLifecycleService:
         # 2. Create Game
         game = Game(
             chat_id=data.chat_id,
+            channel_id=chat.channel_id,
             created_by=creator_id,
             date_time=data.date_time,
             location=data.location,
