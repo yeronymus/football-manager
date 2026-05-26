@@ -4,6 +4,8 @@ services:
   app:
     image: ${GHCR_IMAGE:-ghcr.io/yeronymus/football-manager:latest}
     restart: always
+    volumes:
+      - .:/app
     env_file:
       - .env
     ports:
