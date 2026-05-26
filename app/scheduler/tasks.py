@@ -211,6 +211,13 @@ async def publish_game_task(game_id: int):
         # 1. Publish to Channel (Full)
         if game.channel_id:
             text_full = await format_game_message(game, session, is_short=False)
+            
+            # Add hidden deep link so Telegram channel discussion forward carries the start link
+            from app.config import settings
+            bot_username = settings.bot_username
+            hidden_link = f'<a href="https://t.me/{bot_username}?start=game_{game.id}">&#8203;</a>'
+            text_full = hidden_link + text_full
+            
             try:
                 sent_full = await bot.send_message(
                     chat_id=game.channel_id,
