@@ -149,34 +149,13 @@ async def cmd_refresh_game(message: types.Message, command: CommandObject, sessi
         await message.answer("Игра не найдена.")
         return
         
-    from app.bot.utils import format_game_message
-    from app.bot.keyboards import get_game_keyboard
+    from app.bot.utils import update_game_message
     
-    text = await format_game_message(game, session)
-    kb = get_game_keyboard(game.id)
-    
-    # Try to refresh messages
-    reports = []
-    
-    async def try_edit(chat_id, msg_id, label):
-        if not chat_id or not msg_id:
-            return f"❌ {label}: Нет ID"
-        try:
-            await message.bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=msg_id,
-                text=text,
-                reply_markup=kb,
-                parse_mode="HTML"
-            )
-            return f"✅ {label}: Сообщение обновлено"
-        except Exception as e:
-            return f"⚠️ {label}: Ошибка ({e})"
-
-    rep1 = await try_edit(game.chat_id, game.message_id, "Группа")
-    rep2 = await try_edit(game.channel_id, game.channel_message_id, "Канал")
-    
-    await message.answer(f"🔄 <b>Обновление игры #{game_id}:</b>\n\n{rep1}\n{rep2}", parse_mode="HTML")
+    try:
+        await update_game_message(message.bot, game, session)
+        await message.answer(f"🔄 <b>Игра #{game_id} успешно обновлена в группе и канале!</b>", parse_mode="HTML")
+    except Exception as e:
+        await message.answer(f"⚠️ <b>Ошибка при обновлении игры #{game_id}:</b> {e}", parse_mode="HTML")
 
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
