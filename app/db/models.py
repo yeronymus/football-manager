@@ -219,9 +219,9 @@ class Vote(Base):
     __tablename__ = "votes"
 
     id = Column(Integer, primary_key=True, index=True)
-    game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
-    voter_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
-    target_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
+    game_id = Column(Integer, ForeignKey("games.id"), nullable=False, index=True)
+    voter_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
+    target_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
     vote_team = Column(Enum(Team, name="vote_team_enum", native_enum=False), nullable=False)
 
     game = relationship("Game", back_populates="votes")
@@ -236,8 +236,8 @@ class RatingHistory(Base):
     __tablename__ = "rating_history"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
-    game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
+    game_id = Column(Integer, ForeignKey("games.id"), nullable=False, index=True)
     old_rating = Column(Integer, nullable=False)
     new_rating = Column(Integer, nullable=False)
     change = Column(Integer, nullable=False)
@@ -250,8 +250,8 @@ class GameStats(Base):
     __tablename__ = "game_stats"
     
     id = Column(Integer, primary_key=True)
-    game_id = Column(Integer, ForeignKey("games.id"))
-    user_id = Column(BigInteger, ForeignKey("users.user_id"))
+    game_id = Column(Integer, ForeignKey("games.id"), index=True)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"), index=True)
     
     goals = Column(Integer, default=0)
     assists = Column(Integer, default=0)
