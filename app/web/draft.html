@@ -457,6 +457,7 @@
         
         const urlParams = new URLSearchParams(window.location.search);
         let gameId = urlParams.get('game_id') || urlParams.get('id');
+        alert("DEBUG: gameId=" + gameId + "\nURL=" + window.location.href);
         const urlInitData = urlParams.get('initData');
         const initData = tg.initData || urlInitData || "";
         
