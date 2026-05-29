@@ -1,5 +1,6 @@
 # ⚽ Football Manager Bot
 
+[![NSS Status: Ready](https://img.shields.io/badge/NSS_Submission-Ready-success.svg?style=for-the-badge&logo=cvut&logoColor=white)](./NSS_FINAL_PRESENTATION.md)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Aiogram 3.x](https://img.shields.io/badge/Aiogram-3.x-red.svg?style=for-the-badge&logo=telegram&logoColor=white)](https://docs.aiogram.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -8,9 +9,18 @@
 [![Docker Compatible](https://img.shields.io/badge/Docker-Compatible-blue.svg?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![CI/CD Pipelines](https://img.shields.io/badge/CI/CD-GitHub_Actions-purple.svg?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/features/actions)
 
-Welcome to the **Football Manager Bot** — an industrial-grade, fully automated ecosystem designed to manage amateur football communities. Powering active matches, real-time signups, team balancing algorithms, dynamic ELO ratings, and user-friendly dashboards directly from Telegram.
+---
 
-Built with an asynchronous core using **Aiogram 3.x** and **FastAPI**, this is a production-ready solution to bring your amateur league, casual club, or weekend community matches to the professional level.
+## 🎓 NSS Course Submission (B6B36NSS)
+
+Этот проект подготовлен для сдачи семестровой работы по предмету NSS. Ниже приведены ссылки на ключевые материалы для оценки:
+
+*   **📘 [Итоговая презентация (TO-BE Архитектура)](./NSS_FINAL_PRESENTATION.md)** — Подробный разбор паттернов, UML диаграммы и доказательства реализации (Cache, Messaging, Interceptors).
+*   **🛠️ [Стратегия реализации архитектуры](../NSS_SUBMISSION_PLAN.md)** — План по устранению God Object и внедрению Transactional Outbox.
+*   **🧪 Тестовые эндпоинты:**
+    *   `GET /api/nss/cache/status` — Проверка кэширования (Passive Cache).
+    *   `POST /api/nss/messaging/publish` — Проверка шины сообщений (Redis Streams / Kafka-like).
+    *   `GET /api/nss/telemetry/status` — Проверка телеметрии (Interceptor + Elasticsearch).
 
 ---
 
@@ -100,6 +110,62 @@ docker compose exec app python app/presentation/cli/manage.py db seed-history
 Our codebase has **100% green test coverage** (59 robust unit and integration tests). Run them with:
 ```bash
 PYTHONPATH=. uv run --python 3.12 pytest tests/
+```
+
+---
+
+## 🛠️ Isolated Local Development & Branching Strategy
+
+To keep development structured, clean, and protect the production environment from accidental downtime, we strictly enforce **Environment Isolation** and **Branch Policies**.
+
+### 🌿 Git Branching Flow
+1. **`Main` Branch (Production)**:
+   * **Only stable, tested production-ready code**. 
+   * Watchtower tracks this branch and auto-recreates production containers upon new pushes.
+   * **Strictly no direct pushes to `Main`** unless deploying an approved hotfix.
+2. **`develop` Branch (Integration & Staging)**:
+   * All new features, bugfixes, and code cleanups are integrated here first.
+   * Runs unit and integration tests continuously.
+3. **Feature Branches (`feat/feature-name` or `fix/bug-name`)**:
+   * Branch off `develop` to implement your changes locally.
+   * Once completed and tested, open a **Pull Request (PR)** to merge into `develop`.
+
+---
+
+### 🛡️ Setting up Local Developer Bot & Environment
+To run and test the bot locally without interfering with the live database or sending spam to the actual group chat, follow these steps:
+
+#### 1. Create a Dev Bot on Telegram
+1. Open [@BotFather](https://t.me/BotFather) on Telegram.
+2. Create a new bot (e.g., `football_manager_dev_bot`) and copy the **Bot Token**.
+3. Create a private test group chat in Telegram and add your developer bot to it as an administrator.
+4. Retrieve your Telegram User ID and the ID of your test group chat (you can get the group ID using tools like `@ShowJsonBot` or forwarding a message from it).
+
+#### 2. Configure Local Environment Variables
+Instead of sharing production settings, copy the `.env.dev.example` template:
+```bash
+cp .env.dev.example .env
+```
+Fill in your developer token and chat IDs:
+*   `BOT_TOKEN`: Your developer bot's token.
+*   `BOT_USERNAME`: Your developer bot's username.
+*   `ADMIN_IDS`: A JSON list containing your Telegram user ID (e.g. `[123456789]`).
+*   `INITIAL_CHATS`: A JSON list containing your test group's ID and name.
+
+#### 3. Run in Polling Mode (Zero Domain Config)
+Local development does not require configuring webhooks, domain names, or reverse proxies. Set `USE_POLLING=True` in `.env` to make the bot run locally in your terminal, listening directly to Telegram update streams.
+
+#### 4. Run the Local Stack
+Start the local databases (PostgreSQL and Redis) and launch the app in your local python virtual environment:
+```bash
+# 1. Start databases locally in background
+docker compose up db redis -d
+
+# 2. Run alembic migrations locally
+uv run alembic upgrade head
+
+# 3. Launch the application (bot starts automatically in Polling mode)
+uv run uvicorn app.api.main:app --reload
 ```
 
 ---
