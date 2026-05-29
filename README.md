@@ -1,5 +1,6 @@
 # ⚽ Football Manager Bot
 
+[![NSS Status: Ready](https://img.shields.io/badge/NSS_Submission-Ready-success.svg?style=for-the-badge&logo=cvut&logoColor=white)](./NSS_FINAL_PRESENTATION.md)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Aiogram 3.x](https://img.shields.io/badge/Aiogram-3.x-red.svg?style=for-the-badge&logo=telegram&logoColor=white)](https://docs.aiogram.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -8,9 +9,18 @@
 [![Docker Compatible](https://img.shields.io/badge/Docker-Compatible-blue.svg?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![CI/CD Pipelines](https://img.shields.io/badge/CI/CD-GitHub_Actions-purple.svg?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/features/actions)
 
-Welcome to the **Football Manager Bot** — an industrial-grade, fully automated ecosystem designed to manage amateur football communities. Powering active matches, real-time signups, team balancing algorithms, dynamic ELO ratings, and user-friendly dashboards directly from Telegram.
+---
 
-Built with an asynchronous core using **Aiogram 3.x** and **FastAPI**, this is a production-ready solution to bring your amateur league, casual club, or weekend community matches to the professional level.
+## 🎓 NSS Course Submission (B6B36NSS)
+
+Этот проект подготовлен для сдачи семестровой работы по предмету NSS. Ниже приведены ссылки на ключевые материалы для оценки:
+
+*   **📘 [Итоговая презентация (TO-BE Архитектура)](./NSS_FINAL_PRESENTATION.md)** — Подробный разбор паттернов, UML диаграммы и доказательства реализации (Cache, Messaging, Interceptors).
+*   **🛠️ [Стратегия реализации архитектуры](../NSS_SUBMISSION_PLAN.md)** — План по устранению God Object и внедрению Transactional Outbox.
+*   **🧪 Тестовые эндпоинты:**
+    *   `GET /api/nss/cache/status` — Проверка кэширования (Passive Cache).
+    *   `POST /api/nss/messaging/publish` — Проверка шины сообщений (Redis Streams / Kafka-like).
+    *   `GET /api/nss/telemetry/status` — Проверка телеметрии (Interceptor + Elasticsearch).
 
 ---
 
