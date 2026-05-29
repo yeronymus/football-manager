@@ -389,6 +389,7 @@
         <h1>Драфт Составов</h1>
         <p style="text-align: center; color: var(--text-secondary); margin-top: -10px;">Выберите игру для редактирования</p>
         <div id="gameList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        <div id="debug-info" style="margin-top: 20px; font-size: 11px; color: #ff5555; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; font-family: monospace; display: none; word-break: break-all; border: 1px solid rgba(255, 85, 85, 0.3); text-align: left; max-height: 200px; overflow-y: auto;"></div>
     </div>
 
     <!-- ADD SEARCH MODAL -->
@@ -489,6 +490,23 @@
         if (!tg.initData && urlInitData) {
             console.log("Using initData from URL params");
         }
+        
+        // --- Populate troubleshooting debug overlay ---
+        const debugEl = document.getElementById('debug-info');
+        if (debugEl) {
+            debugEl.innerHTML = `
+                <strong>[TMA DIAGNOSTICS]</strong><br>
+                • Href: ${window.location.href}<br>
+                • Search: ${window.location.search || '(empty)'}<br>
+                • Parsed gameId: ${gameId || '(empty/falsy)'}<br>
+                • tg.WebApp present: ${!!(window.Telegram && window.Telegram.WebApp)}<br>
+                • tg.initData length: ${tg && tg.initData ? tg.initData.length : 0}
+            `;
+            if (!gameId || urlParams.get('debug') === 'true') {
+                debugEl.style.display = 'block';
+            }
+        }
+
         let allPlayers = {};
         let selectedPlayer = null;
         let selectedElement = null;
