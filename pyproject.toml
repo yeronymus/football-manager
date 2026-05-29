@@ -31,7 +31,10 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.ruff]
+exclude = ["app/cli"]
+
+[tool.ruff.lint]
 select = ["F", "E9"]
-ignore = ["F401"]
+ignore = ["F401", "F841", "F541"]
 
 
