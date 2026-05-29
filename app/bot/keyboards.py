@@ -77,8 +77,10 @@ def get_primary_select_keyboard(available: list[str]) -> InlineKeyboardMarkup:
 def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = "") -> InlineKeyboardMarkup:
     from app.config import settings
     
+    import time
+    timestamp = int(time.time())
     base_url = webapp_url if webapp_url else settings.webapp_url
-    game_url = f"{base_url.rstrip('/')}/web/game.html?game_id={game_id}&v=20"
+    game_url = f"{base_url.rstrip('/')}/web/game.html?game_id={game_id}&v={timestamp}"
     
     buttons = [
         [
@@ -87,7 +89,7 @@ def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = ""
     ]
     
     if is_admin:
-        draft_url = f"{base_url.rstrip('/')}/web/draft.html?game_id={game_id}&v=20"
+        draft_url = f"{base_url.rstrip('/')}/web/draft.html?game_id={game_id}&v={timestamp}"
         buttons.append([
             InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=draft_url))
         ])
