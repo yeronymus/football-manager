@@ -172,7 +172,14 @@
     </div>
 
     <script>
-        const tg = (window.parent && window.parent.Telegram && window.parent.Telegram.WebApp) ? window.parent.Telegram.WebApp : window.Telegram.WebApp;
+        let tg = window.Telegram.WebApp;
+        try {
+            if (window.parent && window.parent.Telegram && window.parent.Telegram.WebApp) {
+                tg = window.parent.Telegram.WebApp;
+            }
+        } catch (e) {
+            console.warn("Parent window access blocked due to cross-origin restriction:", e);
+        }
         
         // Robust initData retrieval (handle iframe case)
         const urlParams = new URLSearchParams(window.location.search);
