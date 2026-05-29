@@ -1,7 +1,7 @@
 import pytest
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from app.bot.handlers.setup_handlers import get_setup_keyboard
-from app.bot.keyboards import get_game_keyboard
+from app.bot.keyboards import get_game_keyboard, get_multiselect_keyboard
 
 def test_get_setup_keyboard():
     kb = get_setup_keyboard()
@@ -47,3 +47,32 @@ def test_get_game_keyboard_admin():
     assert admin_btn.text == "🛠 Составы (Draft)"
     assert "draft.html" in admin_btn.web_app.url
     assert "game_id=123" in admin_btn.web_app.url
+
+def test_get_multiselect_keyboard_none_selected():
+    kb = get_multiselect_keyboard([])
+    # Expected rows: GK, DEF(3), MID(2), MID(1), FWD(3), Back = 6 rows
+    assert len(kb.inline_keyboard) == 6
+    
+    # Verify no checkmarks
+    for row in kb.inline_keyboard:
+        for btn in row:
+            if "🔙" not in btn.text:
+                assert "✅" not in btn.text
+
+def test_get_multiselect_keyboard_with_selections():
+    kb = get_multiselect_keyboard(["GK", "CB", "FWD"])
+    # 5 rows + "Done" button row + "Back" button row = 7 rows
+    assert len(kb.inline_keyboard) == 7
+    
+    # Check if correct buttons have checkmarks
+    assert "✅ GK" in kb.inline_keyboard[0][0].text
+    assert "✅ CB" in kb.inline_keyboard[1][1].text
+    assert "✅ FWD" in kb.inline_keyboard[4][1].text
+    
+    # Done button (appended before Back)
+    assert kb.inline_keyboard[5][0].text == "✅ Готово"
+    assert kb.inline_keyboard[5][0].callback_data == "done_alt_pos"
+    
+    # Back button
+    assert kb.inline_keyboard[6][0].text == "🔙 Назад"
+    assert kb.inline_keyboard[6][0].callback_data == "back_to_edit_menu"
