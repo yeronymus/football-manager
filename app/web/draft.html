@@ -449,7 +449,7 @@
         tg.expand();
         
         const urlParams = new URLSearchParams(window.location.search);
-        let gameId = urlParams.get('game_id');
+        let gameId = urlParams.get('game_id') || urlParams.get('id');
         const urlInitData = urlParams.get('initData');
         const initData = tg.initData || urlInitData || "";
         
@@ -860,7 +860,7 @@
             if (activeTeams.includes('c')) data.team_c = gather('c');
 
 
-            # --- GATHER POOLS ---
+            // --- GATHER POOLS ---
             const gatherPool = (id) => {
                 const list = [];
                 document.getElementById(id).querySelectorAll('.player-card').forEach(c => {
