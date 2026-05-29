@@ -445,19 +445,44 @@
 
 
     <script>
-        let tg = window.Telegram.WebApp;
+        // --- Telegram WebApp init (resilient) ---
+        let tg = null;
         try {
-            if (window.parent && window.parent.Telegram && window.parent.Telegram.WebApp) {
-                tg = window.parent.Telegram.WebApp;
+            tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+            if (tg) {
+                try {
+                    if (window.parent && window.parent.Telegram && window.parent.Telegram.WebApp) {
+                        tg = window.parent.Telegram.WebApp;
+                    }
+                } catch (e) {
+                    console.warn("Parent window access blocked:", e);
+                }
+                tg.expand();
             }
         } catch (e) {
-            console.warn("Parent window access blocked due to cross-origin restriction:", e);
+            console.warn("Telegram WebApp init error:", e);
         }
-        tg.expand();
+        // Provide a safe fallback so tg.* calls don't throw
+        if (!tg) {
+            tg = { initData: "", showAlert: (msg) => alert(msg), close: () => {}, HapticFeedback: null };
+        }
         
+        // --- Parse game_id from URL ---
         const urlParams = new URLSearchParams(window.location.search);
         let gameId = urlParams.get('game_id') || urlParams.get('id');
-        alert("DEBUG: gameId=" + gameId + "\nURL=" + window.location.href);
+        
+        // Fallback: try Telegram start_param (deep links pass game_id there)
+        if (!gameId && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+            const sp = tg.initDataUnsafe.start_param;
+            if (sp.startsWith('draft_')) {
+                gameId = sp.replace('draft_', '');
+            } else if (/^\d+$/.test(sp)) {
+                gameId = sp;
+            }
+        }
+        
+        console.log("[Draft] gameId:", gameId, "URL:", window.location.href);
+        
         const urlInitData = urlParams.get('initData');
         const initData = tg.initData || urlInitData || "";
         
