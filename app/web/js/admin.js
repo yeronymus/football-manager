@@ -1,7 +1,7 @@
 let initData = "";
 let currentGroupId = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+function init() {
     if (window.Telegram && window.Telegram.WebApp) {
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
@@ -22,7 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadGroups();
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
 
 let currentGameId = null;
 
