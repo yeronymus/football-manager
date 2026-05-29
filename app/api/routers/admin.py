@@ -228,6 +228,7 @@ async def admin_update_teams(data: UpdateTeamsRequest, background_tasks: Backgro
     game = result.scalar_one_or_none()
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
+    await check_admin_rights(game.chat_id, user_id, session=session)
     try:
         from app.core.services.roster import RosterService
         from app.core.uow import UnitOfWork
