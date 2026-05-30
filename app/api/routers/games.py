@@ -140,23 +140,49 @@ async def get_editable_games(
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
+    from app.db.models import ChatAdmin
+
+    # ⚡ Bolt: Fix N+1 Iterative Permission Checks by moving logic to the database layer.
+    # We maintain identical functionality: pull up to 20 most recent games globally,
+    # then filter locally. BUT we do one single batch query to check admin rights
+    # instead of N+1 sequential database roundtrips.
+
     result = await session.execute(
         select(Game).order_by(Game.date_time.desc()).limit(20)
     )
     games = result.scalars().all()
     
+    if not games:
+        return []
+
+    # Check if user is a superadmin (global bypass)
+    is_global_admin = user_id in settings.admin_ids or user_id == settings.system_owner_id
+    if not is_global_admin:
+        user_res = await session.execute(select(User.is_superadmin).where(User.user_id == user_id))
+        is_global_admin = user_res.scalar_one_or_none() or False
+
+    # Get all chats where this user is an admin
+    admin_chat_ids = set()
+    if not is_global_admin:
+        game_chat_ids = list({g.chat_id for g in games})
+        if game_chat_ids:
+            admin_res = await session.execute(
+                select(ChatAdmin.chat_id)
+                .where(ChatAdmin.user_id == user_id)
+                .where(ChatAdmin.chat_id.in_(game_chat_ids))
+            )
+            admin_chat_ids = set(admin_res.scalars().all())
+
     editable = []
     for g in games:
-        try:
-            await check_admin_rights(g.chat_id, user_id)
+        # Replicate check_admin_rights access logic in memory
+        if is_global_admin or g.chat_id in admin_chat_ids:
             editable.append({
                 "id": g.id,
                 "location": g.location,
                 "date_time": g.date_time.isoformat(),
                 "status": g.status.value
             })
-        except:
-            pass
             
     return editable
 
