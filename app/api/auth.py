@@ -110,6 +110,24 @@ async def check_admin_rights(chat_id: int, user_id: int, session: Optional[Async
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Cannot verify user rights: {str(e)}")
 
+def build_admin_games_query(user_id: int, base_query):
+    """
+    Appends conditions to a SQLAlchemy query (usually selecting from `Game`)
+    to filter for games where the user has admin rights.
+    """
+    if user_id in settings.admin_ids or user_id == settings.system_owner_id:
+        return base_query
+
+    from app.db.models import User, ChatAdmin, Game
+    from sqlalchemy import or_, exists
+
+    return base_query.where(
+        or_(
+            exists().where(User.user_id == user_id).where(User.is_superadmin == True),
+            exists().where(ChatAdmin.chat_id == Game.chat_id).where(ChatAdmin.user_id == user_id)
+        )
+    )
+
 # --- Dependencies for FastAPI ---
 
 async def get_current_user_id(initData: str = Body(..., embed=False, alias="initData")) -> int:
