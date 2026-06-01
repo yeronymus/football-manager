@@ -140,23 +140,23 @@ async def get_editable_games(
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
-    result = await session.execute(
-        select(Game).order_by(Game.date_time.desc()).limit(20)
-    )
+    from app.api.auth import build_admin_games_query
+
+    # ⚡ Bolt: Apply admin rights check at the DB query level to avoid N+1 issues
+    base_query = select(Game).order_by(Game.date_time.desc()).limit(20)
+    authorized_query = await build_admin_games_query(user_id, session, base_query)
+
+    result = await session.execute(authorized_query)
     games = result.scalars().all()
     
     editable = []
     for g in games:
-        try:
-            await check_admin_rights(g.chat_id, user_id)
-            editable.append({
-                "id": g.id,
-                "location": g.location,
-                "date_time": g.date_time.isoformat(),
-                "status": g.status.value
-            })
-        except:
-            pass
+        editable.append({
+            "id": g.id,
+            "location": g.location,
+            "date_time": g.date_time.isoformat(),
+            "status": g.status.value
+        })
             
     return editable
 

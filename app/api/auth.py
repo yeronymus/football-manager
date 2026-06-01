@@ -110,6 +110,33 @@ async def check_admin_rights(chat_id: int, user_id: int, session: Optional[Async
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Cannot verify user rights: {str(e)}")
 
+async def build_admin_games_query(user_id: int, session: AsyncSession, base_query: Any) -> Any:
+    """
+    Optimizes N+1 database queries by applying admin authorization rules
+    directly to a SQLAlchemy Select statement querying the Game model.
+    """
+    from app.db.models import User, ChatAdmin, Game
+    from sqlalchemy import select
+
+    # 1. System admins bypass checks
+    if user_id in settings.admin_ids or user_id == settings.system_owner_id:
+        return base_query
+
+    # 2. Check if user is superadmin in DB
+    user_res = await session.execute(select(User).where(User.user_id == user_id))
+    user = user_res.scalar_one_or_none()
+
+    if user and getattr(user, 'is_superadmin', False):
+        return base_query
+
+    # 3. Restrict base_query to games where user is a ChatAdmin
+    # By placing this JOIN here, we enforce the same checks as check_admin_rights at the database level.
+    # Note: Using .join instead of .outerjoin because the user MUST be an admin.
+    return base_query.join(
+        ChatAdmin,
+        (ChatAdmin.chat_id == Game.chat_id) & (ChatAdmin.user_id == user_id)
+    )
+
 # --- Dependencies for FastAPI ---
 
 async def get_current_user_id(initData: str = Body(..., embed=False, alias="initData")) -> int:
