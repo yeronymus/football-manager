@@ -1,5 +1,5 @@
-from typing import List, Dict
-from app.db.models import User, Position, Team
+from typing import List
+from app.db.models import User, Position
 import enum
 import random
 from abc import ABC, abstractmethod
