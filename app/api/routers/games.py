@@ -3,12 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_session
 from app.db.models import Game, User, Signup, SignupStatus, Team, GameStatus
-from app.api.auth import check_admin_rights, get_user_from_header
+from app.api.auth import get_user_from_header
 from app.config import settings
 
-router = APIRouter()
-
 from app.core.services.cache import cache_service
+
+router = APIRouter()
 
 @router.get("/game/{game_id}")
 async def get_game_details(
@@ -115,12 +115,6 @@ async def get_chat_history(
     
     history = []
     for game in games:
-        winner_text = "Ничья"
-        if game.winner_team == Team.A:
-            winner_text = "Победа А"
-        elif game.winner_team == Team.B:
-            winner_text = "Победа Б"
-            
         history.append({
             "game_id": game.id,
             "date": game.date_time.isoformat(),
@@ -140,25 +134,41 @@ async def get_editable_games(
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
-    result = await session.execute(
-        select(Game).order_by(Game.date_time.desc()).limit(20)
-    )
+    from app.db.models import ChatAdmin
+
+    is_superadmin = False
+    if user_id in settings.admin_ids or user_id == settings.system_owner_id:
+        is_superadmin = True
+    else:
+        user_res = await session.execute(select(User).where(User.user_id == user_id))
+        user = user_res.scalar_one_or_none()
+        if user and getattr(user, 'is_superadmin', False):
+            is_superadmin = True
+
+    # ⚡ Bolt: Prevent N+1 queries by replacing iterative check_admin_rights in a loop with a SQL JOIN
+    if is_superadmin:
+        stmt = select(Game).order_by(Game.date_time.desc()).limit(20)
+    else:
+        stmt = (
+            select(Game)
+            .join(ChatAdmin, Game.chat_id == ChatAdmin.chat_id)
+            .where(ChatAdmin.user_id == user_id)
+            .order_by(Game.date_time.desc())
+            .limit(20)
+        )
+
+    result = await session.execute(stmt)
     games = result.scalars().all()
     
-    editable = []
-    for g in games:
-        try:
-            await check_admin_rights(g.chat_id, user_id)
-            editable.append({
-                "id": g.id,
-                "location": g.location,
-                "date_time": g.date_time.isoformat(),
-                "status": g.status.value
-            })
-        except:
-            pass
-            
-    return editable
+    return [
+        {
+            "id": g.id,
+            "location": g.location,
+            "date_time": g.date_time.isoformat(),
+            "status": g.status.value
+        }
+        for g in games
+    ]
 
 
 @router.post("/game/{game_id}/join")
