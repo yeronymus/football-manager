@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_session
 from app.db.models import Game, User, Signup, SignupStatus, Team, GameStatus
-from app.api.auth import check_admin_rights, get_user_from_header
+from app.api.auth import check_admin_rights, get_user_from_header, build_admin_games_query
 from app.config import settings
 
 router = APIRouter()
@@ -140,23 +140,20 @@ async def get_editable_games(
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
+    base_query = await build_admin_games_query(user_id, session)
     result = await session.execute(
-        select(Game).order_by(Game.date_time.desc()).limit(20)
+        base_query.order_by(Game.date_time.desc()).limit(20)
     )
     games = result.scalars().all()
     
     editable = []
     for g in games:
-        try:
-            await check_admin_rights(g.chat_id, user_id)
-            editable.append({
-                "id": g.id,
-                "location": g.location,
-                "date_time": g.date_time.isoformat(),
-                "status": g.status.value
-            })
-        except:
-            pass
+        editable.append({
+            "id": g.id,
+            "location": g.location,
+            "date_time": g.date_time.isoformat(),
+            "status": g.status.value
+        })
             
     return editable
 

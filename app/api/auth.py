@@ -153,3 +153,25 @@ async def get_user_from_header(
     return get_user_from_init_data(init_data)
 
 
+
+async def build_admin_games_query(user_id: int, session: AsyncSession):
+    """
+    Builds a SQLAlchemy query for Games that the user is allowed to manage.
+    Resolves N+1 queries by pushing authorization checks to the database level.
+    """
+    from app.db.models import Game, User, ChatAdmin
+    from sqlalchemy import select
+
+    # 1. System admins bypass checks entirely
+    if user_id in settings.admin_ids or user_id == settings.system_owner_id:
+        return select(Game)
+
+    # 2. Check if user is superadmin in DB
+    user_res = await session.execute(select(User).where(User.user_id == user_id))
+    user = user_res.scalar_one_or_none()
+
+    if user and getattr(user, 'is_superadmin', False):
+        return select(Game)
+
+    # 3. Restrict games to those where user is explicitly a ChatAdmin
+    return select(Game).join(ChatAdmin, Game.chat_id == ChatAdmin.chat_id).where(ChatAdmin.user_id == user_id)
