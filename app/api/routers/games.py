@@ -135,28 +135,10 @@ async def get_editable_games(
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
-    from app.db.models import ChatAdmin
+    from app.api.auth import build_admin_games_query
 
-    is_superadmin = False
-    if user_id in settings.admin_ids or user_id == settings.system_owner_id:
-        is_superadmin = True
-    else:
-        user_res = await session.execute(select(User).where(User.user_id == user_id))
-        user = user_res.scalar_one_or_none()
-        if user and getattr(user, 'is_superadmin', False):
-            is_superadmin = True
-
-    # ⚡ Bolt: Prevent N+1 queries by replacing iterative check_admin_rights in a loop with a SQL JOIN
-    if is_superadmin:
-        stmt = select(Game).order_by(Game.date_time.desc()).limit(20)
-    else:
-        stmt = (
-            select(Game)
-            .join(ChatAdmin, Game.chat_id == ChatAdmin.chat_id)
-            .where(ChatAdmin.user_id == user_id)
-            .order_by(Game.date_time.desc())
-            .limit(20)
-        )
+    base_query = await build_admin_games_query(user_id, session)
+    stmt = base_query.order_by(Game.date_time.desc()).limit(20)
 
     result = await session.execute(stmt)
     games = result.scalars().all()
@@ -170,6 +152,7 @@ async def get_editable_games(
         }
         for g in games
     ]
+
 
 
 @router.post("/game/{game_id}/join")
