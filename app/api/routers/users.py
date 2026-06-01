@@ -106,8 +106,11 @@ async def get_my_profile(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
-    # Dynamically calculate games played to ensure it matches history
-    # ⚡ Bolt: Move user_id filter into outerjoin conditions to prevent Cartesian product (N^3)
+    # ⚡ Bolt Optimization:
+    # Moved `user_id` filters from `.where()` into the `.outerjoin()` ON clauses.
+    # Why: Previously, outer joining generically by game_id resulted in a Cartesian product
+    # of all signups/stats for a game before filtering, causing severe performance degradation.
+    # Impact: Reduces query time significantly and minimizes DB load.
     games_count = await session.scalar(
         select(func.count(distinct(Game.id)))
         .outerjoin(Signup, (Signup.game_id == Game.id) & (Signup.user_id == user_id))
@@ -122,7 +125,7 @@ async def get_my_profile(
             ),
             or_(
                 Game.status == GameStatus.FINISHED,
-                Game.score_a != None  # Any game with a score should probably count for history
+                Game.score_a.isnot(None)  # Any game with a score should probably count for history
             )
         )
     )
@@ -286,7 +289,10 @@ async def get_my_history(
     # If Signup was deleted, RatingHistory is the ultimate proof the user played.
     from sqlalchemy.orm import selectinload
     
-    # ⚡ Bolt: Move user_id filter into outerjoin conditions to prevent Cartesian product (N^3)
+    # ⚡ Bolt Optimization:
+    # Moved `user_id` filters from `.where()` into the `.outerjoin()` ON clauses.
+    # Why: Avoids Cartesian products from joining all users' data before filtering.
+    # Impact: Massive reduction in intermediate rows and faster execution time.
     games_res = await session.execute(
         select(Game)
         .outerjoin(Chat, Game.chat_id == Chat.chat_id)
@@ -302,32 +308,51 @@ async def get_my_history(
             ),
             or_(
                 Game.status == GameStatus.FINISHED,
-                Game.score_a != None
+                Game.score_a.isnot(None)
             )
         )
         .distinct()
         .order_by(desc(Game.date_time))
     )
     
-    result = []
-    for game in games_res.scalars().all():
-        # We still need the signup to know which team the user was on
-        s = await session.scalar(
-            select(Signup).where(Signup.game_id == game.id, Signup.user_id == user_id)
+    games = games_res.scalars().all()
+    game_ids = [game.id for game in games]
+
+    signups_map = {}
+    gamestats_map = {}
+    history_map = {}
+
+    if game_ids:
+        # Pre-fetch Signups
+        s_res = await session.execute(
+            select(Signup).where(Signup.game_id.in_(game_ids), Signup.user_id == user_id)
         )
+        signups_map = {s.game_id: s for s in s_res.scalars().all()}
+
+        # Pre-fetch GameStats
+        gs_res = await session.execute(
+            select(GameStats).where(GameStats.game_id.in_(game_ids), GameStats.user_id == user_id)
+        )
+        gamestats_map = {gs.game_id: gs for gs in gs_res.scalars().all()}
+
+        # Pre-fetch RatingHistory
+        rh_res = await session.execute(
+            select(RatingHistory).where(RatingHistory.game_id.in_(game_ids), RatingHistory.user_id == user_id)
+        )
+        history_map = {rh.game_id: rh for rh in rh_res.scalars().all()}
+
+    result = []
+    for game in games:
+        # We still need the signup to know which team the user was on
+        s = signups_map.get(game.id)
         # If no signup, maybe check GameStats?
         if not s:
-            gs = await session.scalar(
-                select(GameStats).where(GameStats.game_id == game.id, GameStats.user_id == user_id)
-            )
+            gs = gamestats_map.get(game.id)
             my_team = gs.team.value if gs and gs.team else None
         else:
             my_team = s.team.value if s.team else None
 
-        history_record = await session.scalar(
-            select(RatingHistory)
-            .where(RatingHistory.game_id == game.id, RatingHistory.user_id == user_id)
-        )
+        history_record = history_map.get(game.id)
         
         result.append({
             "game_id": game.id,
