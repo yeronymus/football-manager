@@ -256,7 +256,7 @@ async def process_guest_position(callback: types.CallbackQuery, state: FSMContex
         new_signup = Signup(
             game_id=game_id,
             user_id=guest_id,
-            status=SignupStatus.RESERVE
+            status=SignupStatus.ACTIVE
         )
         session.add(new_signup)
         

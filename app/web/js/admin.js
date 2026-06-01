@@ -285,6 +285,8 @@ async function loadGameDetails(gameId) {
                     notifyBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 6px;" onclick="notifyPayment(${p.user_id}, ${gameId}, this)" title="Уведомить об оплате">🔔</button>`;
                 }
                 
+                let removeBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-left: 6px; border-color: rgba(239, 68, 68, 0.3); color: var(--danger);" onclick="kickPlayer(${p.signup_id}, ${gameId}, this)" title="Убрать игрока">❌</button>`;
+                
                 el.innerHTML = `
                     <div class="player-info">
                         <span class="player-name">${p.full_name} <div style="font-size:0.8rem; margin-left: 6px;">${statsHtml}</div></span>
@@ -294,6 +296,7 @@ async function loadGameDetails(gameId) {
                         <button class="payment-toggle ${btnClass}" onclick="togglePayment(${p.signup_id}, this, ${gameId})">
                             ${btnText}
                         </button>
+                        ${removeBtn}
                     </div>
                 `;
                 
@@ -571,5 +574,45 @@ async function togglePayment(signupId, btnEl, gameId) {
         alert("Failed to toggle payment");
     } finally {
         btnEl.disabled = false;
+    }
+}
+
+async function kickPlayer(signupId, gameId, btn) {
+    if (!confirm("Убрать этого игрока из игры?")) return;
+    
+    btn.disabled = true;
+    const origText = btn.innerHTML;
+    btn.innerHTML = '⏳';
+    
+    try {
+        await apiCall(`/signups/${signupId}`, { method: 'DELETE' });
+        loadGameDetails(gameId);
+    } catch (e) {
+        alert("Ошибка при удалении игрока: " + e.message);
+        btn.disabled = false;
+        btn.innerHTML = origText;
+    }
+}
+
+async function deleteGameClick() {
+    if (!currentGameId) return;
+    if (!confirm("⚠️ Вы уверены, что хотите полностью удалить эту игру? Это действие необратимо и удалит всю связанную статистику, голоса и состав!")) return;
+    
+    try {
+        await apiCall(`/games/${currentGameId}`, { method: 'DELETE' });
+        // Go back to group games list
+        if (currentGroupId) {
+            // Click active group again to reload its list
+            const activeGrp = document.querySelector('.group-item.active');
+            if (activeGrp) {
+                activeGrp.click();
+            } else {
+                showGroupsView();
+            }
+        } else {
+            showGroupsView();
+        }
+    } catch (e) {
+        alert("Ошибка при удалении игры: " + e.message);
     }
 }
