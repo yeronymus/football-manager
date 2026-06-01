@@ -43,6 +43,7 @@ async def get_game_details(
         
         return {
             "id": user.user_id,
+            "signup_id": signup.id,
             "name": user.full_name,
             "rating": user.rating,
             "position": eff_pos.value if eff_pos else "DEF",

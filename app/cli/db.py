@@ -8,7 +8,6 @@ from app.db.database import async_session_maker
 from app.db.models import Game, Signup, GameStats, Team, GameStatus, User, Chat, SignupStatus, RatingHistory
 from app.core.domain.historical_data import GAMES_1_7
 from sqlalchemy.dialects.postgresql import insert
-import pprint
 
 async def seed_chats_command(args):
     """Seed configured initial chats into the database via Upsert."""
