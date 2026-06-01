@@ -5,7 +5,7 @@ import json
 import time
 import logging
 from fastapi import HTTPException, Header, Depends, Body
-from typing import Optional, Dict, Any
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 

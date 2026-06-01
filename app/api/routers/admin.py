@@ -18,6 +18,7 @@ from app.core.events import (
     GameFinishedEvent, GameUpdatedEvent, TeamsPublishedEvent
 )
 from app.core.domain.dto import CreateGameDTO, UpdateGameDTO, FinishGameDTO, PlayerStatDTO
+from app.core.services.cache import cache_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -114,6 +115,7 @@ async def create_game(data: GameCreate, background_tasks: BackgroundTasks, sessi
                 should_publish=should_publish_now,
                 publish_at=data.publish_at,
             ))
+            await cache_service.evict(f"game_details:{new_game.id}")
             return {"game_id": new_game.id, "status": "created"}
         
     except ValueError as e:
@@ -178,6 +180,7 @@ async def update_game(data: GameUpdate, background_tasks: BackgroundTasks, sessi
             await uow.commit()
 
         # Delegate messaging to bot layer
+        await cache_service.evict(f"game_details:{updated_game.id}")
         background_tasks.add_task(event_bus.publish, GameUpdatedEvent(game_id=updated_game.id, changes=changes))
         return {"status": "updated", "id": updated_game.id}
     except ValueError as e:
@@ -210,6 +213,7 @@ async def admin_balance_teams(data: BalanceTeams, background_tasks: BackgroundTa
             await service.balance_teams(data.game_id)
             await uow.commit()
 
+        await cache_service.evict(f"game_details:{data.game_id}")
         background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id=data.game_id))
         return {"status": "balanced"}
     except ValueError as e:
@@ -263,6 +267,7 @@ async def admin_update_teams(data: UpdateTeamsRequest, background_tasks: Backgro
             
             await asyncio.gather(*(send_notify(uid) for uid in promoted_ids))
 
+        await cache_service.evict(f"game_details:{data.game_id}")
         background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id=data.game_id))
         return {"status": "updated"}
     except ValueError as e:
@@ -407,6 +412,7 @@ async def admin_add_player(data: AddPlayerRequest, background_tasks: BackgroundT
         if existing.status != SignupStatus.ACTIVE:
             existing.status = SignupStatus.ACTIVE
             await session.commit()
+            await cache_service.evict(f"game_details:{data.game_id}")
             background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id=data.game_id))
             return {"status": "updated", "message": "Player restored to Active"}
         else: return {"status": "ok", "message": "Already active"}
@@ -414,6 +420,7 @@ async def admin_add_player(data: AddPlayerRequest, background_tasks: BackgroundT
     signup = Signup(game_id=data.game_id, user_id=data.user_id, status=SignupStatus.ACTIVE)
     session.add(signup)
     await session.commit()
+    await cache_service.evict(f"game_details:{data.game_id}")
     background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id=data.game_id))
     return {"status": "added"}
 
@@ -456,13 +463,14 @@ async def admin_add_guest(data: AddGuestRequest, background_tasks: BackgroundTas
         new_signup = Signup(
             game_id=data.game_id, 
             user_id=guest_id, 
-            status=SignupStatus.RESERVE
+            status=SignupStatus.ACTIVE
         )
         session.add(new_signup)
         
         await session.commit()
         logger.info(f"Guest {guest_id} successfully added and committed")
         
+        await cache_service.evict(f"game_details:{data.game_id}")
         background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id=data.game_id))
         return {"status": "added", "user_id": guest_id}
         

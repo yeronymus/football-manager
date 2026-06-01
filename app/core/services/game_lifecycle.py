@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import logging
 
 from sqlalchemy import select, delete
-from app.db.models import Game, Chat, Signup, SignupStatus, GameStatus, GameStats, User
+from app.db.models import Game, Chat, Signup, SignupStatus, GameStatus, GameStats
 from app.core.domain.dto import CreateGameDTO, UpdateGameDTO, FinishGameDTO
 from app.core.services.stats import StatsService
 from app.infrastructure.scheduler.service import SchedulerService
