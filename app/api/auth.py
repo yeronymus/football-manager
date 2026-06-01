@@ -30,8 +30,9 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
         secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
         
-        if calculated_hash != hash_value:
-            logger.warning(f"validate_init_data failed: Hash mismatch. Calc: {calculated_hash}, Recieved: {hash_value}")
+        # 🛡️ Sentinel: Use constant-time comparison to prevent timing attacks
+        if not hmac.compare_digest(calculated_hash, hash_value):
+            logger.warning("validate_init_data failed: Hash mismatch.")
             return False
             
         # Check auth_date for replay attacks (Increased to 12h for ease of use)
