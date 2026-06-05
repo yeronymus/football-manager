@@ -1016,7 +1016,7 @@
                     const btn = document.createElement('div');
                     btn.className = 'game-option';
                     const d = new Date(g.date_time);
-                    btn.innerHTML = `${g.location} (${d.getDate()}.${d.getMonth() + 1})`;
+                    btn.innerHTML = `${g.location} (${d.toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', timeZone: 'Europe/Prague'})})`;
                     btn.onclick = () => {
                         gameId = g.id;
                         document.getElementById('gameSelector').style.display = 'none';
