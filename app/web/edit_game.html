@@ -183,8 +183,8 @@
                     mainPlayersInput.value = game.main_players_count || 22;
                     signupLimitInput.value = game.signup_limit || 999;
 
-                    // Init DatePicker with game date
-                    initDatePicker(game.date);
+                    // Init DatePicker with game date (parse as local timezone)
+                    initDatePicker(new Date(game.date));
 
                     document.getElementById('loader').style.display = 'none';
                     document.getElementById('form-content').style.display = 'block';
