@@ -174,7 +174,7 @@ async function loadGroupGames(group) {
             const el = document.createElement('div');
             el.className = 'game-card';
             
-            const dateStr = new Date(g.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
+            const dateStr = new Date(g.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague'});
             
             let scoreHtml = '';
             if (g.score_a !== null && g.score_b !== null) {
@@ -211,7 +211,7 @@ async function loadGameDetails(gameId) {
     try {
         const game = await apiCall(`/games/${gameId}`);
         
-        const dateStr = new Date(game.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
+        const dateStr = new Date(game.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague'});
         document.getElementById('game-title').textContent = `Game #${game.id}`;
         document.getElementById('game-date-location').textContent = `${game.location} • ${dateStr}`;
         
