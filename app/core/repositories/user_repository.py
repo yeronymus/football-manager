@@ -90,9 +90,9 @@ class UserRepository:
         """Search users by name or username (case-insensitive)."""
         clean_query = query.lstrip('@')
         stmt = select(User).where(
-            (User.full_name.ilike(f"%{query}%")) | 
-            (User.username.ilike(f"%{query}%")) |
-            (User.username.ilike(f"%{clean_query}%"))
+            (User.full_name.ilike('%' + query + '%')) | 
+            (User.username.ilike('%' + query + '%')) |
+            (User.username.ilike('%' + clean_query + '%'))
         ).limit(20)
         result = await self.session.execute(stmt)
         return result.scalars().all()
