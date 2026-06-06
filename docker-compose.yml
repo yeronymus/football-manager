@@ -44,7 +44,7 @@ services:
       - WATCHTOWER_POLL_INTERVAL=10
       - WATCHTOWER_INCLUDE_RESTARTING=true
       - DOCKER_API_VERSION=1.40
-    command: --interval 10 --cleanup
+    command: --interval 300 --cleanup
 
   db:
     image: postgres:15-alpine
