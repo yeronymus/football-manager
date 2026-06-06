@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # Infrastructure Options
     use_polling: bool = False
     webapp_url: str = "https://your-domain.com"
+    run_migrations: bool = True
+    run_scheduler: bool = True
+    run_consumer: bool = True
+    run_bot: bool = True
     
     @property
     def clean_webapp_url(self) -> str:
