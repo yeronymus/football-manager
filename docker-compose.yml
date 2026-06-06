@@ -41,7 +41,7 @@ services:
       - /root/.docker/config.json:/config.json
     environment:
       - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_POLL_INTERVAL=10
+      - WATCHTOWER_POLL_INTERVAL=300
       - WATCHTOWER_INCLUDE_RESTARTING=true
       - DOCKER_API_VERSION=1.40
     command: --interval 300 --cleanup
