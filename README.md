@@ -2,7 +2,6 @@
 
 [![ČVUT FEL](https://img.shields.io/badge/ČVUT-FEL-blue.svg?style=for-the-badge)](https://fel.cvut.cz/)
 [![Course](https://img.shields.io/badge/Předmět-B6B36NSS-orange.svg?style=for-the-badge)](https://cw.fel.cvut.cz/wiki/courses/b6b36nss/start)
-[![Hodnocení](https://img.shields.io/badge/Hodnocení-A--Výborně-brightgreen.svg?style=for-the-badge)](#)
 [![Cvičící](https://img.shields.io/badge/Cvičící-Ing._J._Šebek-blue.svg?style=for-the-badge)](#)
 
 Tento repozitář obsahuje semestrální projekt předmětu **B6B36NSS (Návrh softwarových systémů)** na ČVUT FEL. Projekt je vyvíjen **samostatně** autorem **Yernur Bauyrzhanuly**.
@@ -11,141 +10,119 @@ Jedná se o komplexní produkční systém pro správu amatérské fotbalové ko
 
 ---
 
-## 🗺️ Architektonický přehled a splněné požadavky
+## 🗺️ Splnění požadavků (Mandatory & Optional Criteria)
 
-Tento dokument slouží jako **hlavní rozcestník pro hodnocení** semestrální práce. Níže jsou zdokumentovány cesty k souborům, třídám a testovacím REST API endpoinům pro ověření všech požadovaných architektonických komponent podle pokynů cvičícího.
+Tato sekce slouží jako **hlavní rozcestník pro hodnocení** 2. odevzdání semestrální práce. Níže je detailně popsáno splnění všech povinných i volitelných požadavků ze zadání s přesným umístěním v kódu.
 
-### 📋 Tabulka architektonických požadavků
+### 📌 1. Povinné požadavky (Mandatory Requirements)
 
-| Požadavek předmětu | Stav | Umístění v kódu (cesta / třídy / metody) |
-| :--- | :--- | :--- |
-| **1. Návrhové vzory (Design Patterns)** | **Splněno (5)** | **Strategy**, **Facade**, **Repository**, **Unit of Work**, **Observer**. Podrobný popis níže. |
-| **2. Cachování (Cache)** | **Splněno** | Hybridní look-aside + active invalidation + tech endpointy. [cache.py](app/core/services/cache.py) |
-| **3. Fronty zpráv (Messaging)** | **Splněno** | Redis Streams (Kafka-like consumer groups, asynchronní ACK). [messaging.py](app/infrastructure/messaging.py) |
-| **4. Interceptory (Interceptors)** | **Splněno** | Telemetrický asynchronní interceptor pro HTTP latenci. [middlewares.py](app/api/middlewares.py) |
-| **5. Vyhledávání (Elasticsearch)** | **Splněno** | Asynchronní sběr logů a telemetrie do Elasticsearch. [middlewares.py](app/api/middlewares.py) |
-| **6. Zabezpečení (Security)** | **Splněno** | Telegram HMAC-SHA256 validace + role adminů. [auth.py](app/api/auth.py) |
-
----
-
-## 🎨 1. Podrobný popis Návrhových vzorů (Design Patterns)
-
-Pro splnění povinného kritéria předmětu NSS bylo implementováno celkem **5 architektonických návrhových vzorů**:
-
-### 1.1 Strategy Pattern (Vzor Strategie)
-*   **Motivace:** Týmy pro zápasy je potřeba rozdělovat různými způsoby: na základě složení rolí (GK/DEF/MID/FWD), čistě podle vyváženosti ELO ratingu (vyvážený průměr), nebo zcela náhodně.
-*   **Implementace:**
-    *   `BalancingStrategy` (Abstraktní rozhraní): [balancer.py#L48-L53](app/core/domain/balancer.py#L48-L53)
-    *   `RoleBasedBalancingStrategy` (Pokročilý vyvažovací algoritmus podle pozic): [balancer.py#L56-L121](app/core/domain/balancer.py#L56-L121)
-    *   `RatingSnakeBalancingStrategy` (ELO Snake draft pro optimální průměrný rating): [balancer.py#L124-L149](app/core/domain/balancer.py#L124-L149)
-    *   `RandomBalancingStrategy` (Náhodné zamíchání): [balancer.py#L152-L167](app/core/domain/balancer.py#L152-L167)
-    *   `TeamBalancer` (Kontextová třída delegující práci vybrané strategii): [balancer.py#L170-L180](app/core/domain/balancer.py#L170-L180)
-
-### 1.2 Facade Pattern (Vzor Fasáda)
-*   **Motivace:** Vytvoření, aktualizace nebo ukončení zápasu vyžaduje koordinaci databázových modelů, naplánování upomínek na Telegramu a aktualizaci statistik. Aby klientské controllery nebyly svázány se všemi subsystémy, všechny složité vazby skrývá fasáda `GameLifecycleService`.
-*   **Implementace:**
-    *   `GameLifecycleService`: [game_lifecycle.py](app/core/services/game_lifecycle.py) (Metody `create_game`, `update_game`, `finish_game` obsluhují kompletní orchestraci na pozadí).
-
-### 1.3 Repository Pattern (Repozitář)
-*   **Motivace:** Odstínění aplikační logiky od detailů PostgreSQL ORM (SQLAlchemy) a udržení čistého doménového modelu.
-*   **Implementace:**
-    *   Rozhraní a implementace repozitářů v [app/core/repositories/](app/core/repositories/). Obsahuje konkrétní třídy jako `GameRepository`, `UserRepository`, `StatsRepository`.
-
-### 1.4 Unit of Work Pattern (UoW)
-*   **Motivace:** Zajištění transakční konzistence (ACID) napříč více repozitáři v rámci jednoho požadavku.
-*   **Implementace:**
-    *   `UnitOfWork`: [uow.py](app/core/uow.py) (Pomocí asynchronního kontext manažeru garantuje `commit` nebo `rollback` celého bloku).
-
-### 1.5 Observer Pattern (Publisher-Subscriber)
-*   **Motivace:** Snížení těsné vazby (low coupling) mezi službami. Změna stavu zápasu publikuje událost na `EventBus`, na kterou reagují asynchronní posluchači (např. automatický update Telegram zpráv).
-*   **Implementace:**
-    *   `EventBus`, `Event`, `GameStateChangedEvent` v [events.py](app/core/events.py).
+*   **Výběr vhodné technologie a jazyka (Python 3.12 / FastAPI / Aiogram 3)**
+    *   *Popis:* Zvolen moderní asynchronní stack na bázi Pythonu, který je ideální pro zpracování I/O operací při komunikaci s Telegram API a WebApp klienty.
+    *   *Umístění:* Celý repozitář (soubor [pyproject.toml](pyproject.toml) a složka [app/](app/)).
+*   **Využití DB (Relační)**
+    *   *Popis:* Použitá asynchronní databáze PostgreSQL 15 s SQLAlchemy ORM a migračním nástrojem Alembic.
+    *   *Umístění:* Konfigurace v [app/db/session.py](app/db/session.py) a datové modely v [app/db/models.py](app/db/models.py).
+*   **Výběr vhodné architektury (Event-Driven / Layered)**
+    *   *Popis:* Aplikace je rozdělena na prezentační vrstvu (Telegram Bot & REST API), aplikační služby (Service Layer), doménový model a infrastrukturu. Je použita architektura řízená událostmi (Event-Driven Architecture) pomocí asynchronního Event Busu a persistentního Redis Streams Brokeru.
+    *   *Umístění:* [app/core/events.py](app/core/events.py) a [app/infrastructure/messaging.py](app/infrastructure/messaging.py).
+*   **Použití alespoň 5 design patternů**
+    *   *1. Strategy (Vzor Strategie):* Pro balancování týmů na základě různých algoritmů (Snake draft podle ELO, pozice hráčů, náhodně). 
+        *   Třídy `RoleBasedBalancingStrategy`, `RatingSnakeBalancingStrategy`, `RandomBalancingStrategy` v [balancer.py#L48-L167](app/core/domain/balancer.py#L48-L167).
+    *   *2. Facade (Vzor Fasáda):* Sjednocuje a zjednodušuje orchestraci vytváření, ukončování a aktualizace zápasů (databáze, notifikace, statistiky).
+        *   Třída `GameLifecycleService` v [game_lifecycle.py](app/core/services/game_lifecycle.py).
+    *   *3. Repository (Repozitář):* Odstiňuje databázové operace od doménové logiky.
+        *   Rozhraní a implementace v [app/core/repositories/](app/core/repositories/).
+    *   *4. Unit of Work (UoW):* Zabezpečuje transakční konzistenci (ACID) napříč více repozitáři v jednom requestu.
+        *   Asynchronní kontextový manažer `UnitOfWork` v [uow.py](app/core/uow.py).
+    *   *5. Observer (Publisher-Subscriber):* Asynchronní zpracování stavových událostí zápasu bez těsné vazby.
+        *   Třída `EventBus` v [events.py](app/core/events.py).
+*   **Use Cases (UC) - Netriviální systém**
+    *   *Popis:* Systém obsahuje netriviální logiku pro správu hráčů, zápisy, balancování, ELO výpočty, a kompletní administrátorské rozhraní.
+    *   *Příklady:* Zápis hráče a validace limitů ([roster.py](app/core/services/roster.py)), dokončení zápasu a přepočet ELO ([stats.py](app/core/services/stats.py)).
+*   **Inicializační postup (Deployment & Seeding)**
+    *   *Popis:* Popsán níže v sekci *Jak spustit a otestovat*. Obsahuje automatické migrace i seedování CLI příkazy.
+    *   *Umístění:* CLI nástroj v [app/presentation/cli/manage.py](app/presentation/cli/manage.py) a [docker-compose.yml](docker-compose.yml).
 
 ---
 
-## ⚡ 2. Cachování (Cache)
+### ⚡ 2. Volitelné a bonusové požadavky (Optional & Bonus Criteria)
 
-Systém využívá hybridní asynchronní kešovací mechanismus nad Redis 7:
-1.  **Pasivní Look-aside Cache**: Nejfrekventovanější operace (čtení detailů zápasu `GET /api/game/{game_id}`) nejprve zkontroluje Redis. Při cache miss se data načtou z DB, serializují se do JSON a uloží se s TTL 300 sekund. ([games.py](app/api/routers/games.py))
-2.  **Aktivní invalidace (Active Eviction)**: Jakýkoliv zápis (přihlášení/odhlášení hráče) okamžitě volá `cache_service.evict` pro zahození nekonzistentních dat. ([roster.py](app/core/services/roster.py))
-3.  **Technické Endpointy**:
-    *   `GET /api/nss/cache/status` — Zobrazení statistik hitů, misses a evictionů.
-    *   `POST /api/nss/cache/evict` — Manuální smazání klíče či kompletní flush cache.
-
----
-
-## 📮 3. Asynchronní fronty zpráv (Redis Streams Broker)
-
-Pro ochranu proti ztrátě událostí při pádu procesu a vyřešení problému *Dual Session* byl implementován message broker běžící nad **Redis Streams** (Kafka-like log):
-*   **Producer**: Ukládá události do append-only streamu `nss_events_stream`. ([messaging.py](app/infrastructure/messaging.py))
-*   **Consumer**: Worker běžící na pozadí, který čte zprávy pomocí spotřebitelské skupiny `nss_consumer_group` a po úspěšném zpracování posílá explicitní potvrzení `XACK`.
-*   **API pro testování**: `POST /api/nss/messaging/publish?message=...` pro okamžité otestování.
-
----
-
-## 🔌 4. Interceptor & Elasticsearch Telemetrie
-
-*   **FastAPI Middleware Interceptor**: `TelemetryInterceptorMiddleware` zachycuje každý příchozí a odchozí HTTP požadavek, měří latenci v milisekundách a loguje stavový kód. ([middlewares.py](app/api/middlewares.py))
-*   **Elasticsearch Logger**: Interceptor asynchronně na pozadí (přes `asyncio.create_task` pro zamezení blokování hlavního vlákna) odesílá logy do Elasticsearch do indexu `nss_telemetry`.
-*   **Resilience (Fail-safe)**: Pokud Elasticsearch není dostupný, interceptor chybu tiše odchytí a zaloguje, aniž by to jakkoliv ovlivnilo běh aplikace.
-
----
-
-## 🔒 5. Zabezpečení (Security)
-
-1.  **Telegram WebApp Validace**: Backend validuje asynchronně HMAC-SHA256 podpis `initData` odeslaný z Telegram klientského rozhraní pomocí tajného bot tokenu. ([auth.py](app/api/auth.py))
-2.  **Role chat administrátorů**: Citlivé operace ověřují, zda je uživatel administrátorem v dané skupině. Rekurzivně se dotazuje Telegram API pro zjištění práv.
+*   **Využití Cache (Redis 7)**
+    *   *Popis:* Implementována hybridní asynchronní cache. *Passive cache* (look-aside) kešuje náročné dotazy na detaily hry a sestav. *Active invalidation* okamžitě maže klíče z keše při jakémkoliv zápisu do soupisky (např. join/leave hráče).
+    *   *Umístění:* Služba [app/core/services/cache.py](app/core/services/cache.py), použití v routeru [games.py](app/api/routers/games.py) a zneplatnění v [roster.py](app/core/services/roster.py).
+*   **Využití Messaging principu (Redis Streams - Kafka-like Broker)**
+    *   *Popis:* Implementován persistentní a robustní message broker nad Redis Streams. Zajišťuje doručení událostí (např. herních změn) asynchronním konzumentům s podporou spotřebitelských skupin (Consumer Groups) a explicitním potvrzováním (ACK - `XACK`). Chová se identicky jako Apache Kafka.
+    *   *Umístění:* Producent a konzument v [app/infrastructure/messaging.py](app/infrastructure/messaging.py).
+*   **Zabezpečení (Security - Telegram HMAC & OAuth2 analog)**
+    *   *Popis:* Backend ověřuje kryptografický podpis `initData` přicházející z Telegram WebApp rozhraní pomocí SHA-256 HMAC klíče generovaného z bot tokenu (zaručuje autenticitu uživatele). Citlivé operace jsou dále chráněny kontrolou administrátorských oprávnění v chatu.
+    *   *Umístění:* [app/api/auth.py](app/api/auth.py).
+*   **Využití Interceptorů (FastAPI Middleware)**
+    *   *Popis:* Třída `TelemetryInterceptorMiddleware` zachycuje veškerou HTTP komunikaci na vstupu i výstupu, měří čas odezvy v milisekundách a předává ji asynchronně logovacímu subsystému.
+    *   *Umístění:* [app/api/middlewares.py](app/api/middlewares.py).
+*   **REST API**
+    *   *Popis:* Kompletní asynchronní rozhraní vystavené pomocí FastAPI s automatickou generací OpenAPI (Swagger) dokumentace.
+    *   *Umístění:* Endpointy v [app/api/routers/](app/api/routers/).
+*   **Využití Elasticsearch**
+    *   *Popis:* Zachycená telemetrie z interceptoru je asynchronně (pomocí neblokujícího na pozadí běžícího `asyncio.create_task`) odesílána do Elasticsearch indexu `nss_telemetry` pro logování. Implementován fail-safe mechanismus, který v případě nedostupnosti ES aplikaci nijevak neovlivní.
+    *   *Umístění:* [app/api/middlewares.py#L55-L71](app/api/middlewares.py#L55-L71).
+*   **Nasazení na produkční server (Bonus +2)**
+    *   *Důkaz:* Běžící instance a CI/CD nasazení:
+        *   **Telegram Bot (živá produkční instance):** [@fm_prague_bot](https://t.me/fm_prague_bot) (vyzkoušejte přímo v Telegramu!)
+        *   **Produkční API & WebApp Swagger:** [https://fmbot.bauer.cvut.cz/docs](https://fmbot.bauer.cvut.cz/docs)
+        *   **Automatické CI/CD:** Konfigurováno přes GitHub Actions v [.github/workflows/deploy.yml](.github/workflows/deploy.yml) a automatické přenasazení přes Watchtower na serveru FEL ČVUT při každém pushi.
 
 ---
 
 ## 🧪 Jak spustit a otestovat (Scénář pro hodnocení)
 
-Následující kroky popisují kompletní scénář, jak může cvičící (Ing. Šebek) ověřit funkčnost celého systému.
+Vyučující může veškeré technologie a splnění požadavků ověřit lokálně v několika jednoduchých krocích.
 
 ### Krok 1: Příprava prostředí a konfigurace
+Zkopírujte příkladový konfigurační soubor:
 ```bash
-# Vytvoření konfiguračního souboru
 cp .env.example .env
 ```
-*Tip: Soubor `.env` je přednastaven tak, aby vše ihned fungovalo lokálně přes Docker.*
+*Poznámka: Výchozí hodnoty v `.env.example` jsou přednastavené tak, aby vše okamžitě fungovalo v Docker prostředí.*
 
 ### Krok 2: Spuštění kompletního stacku
-Spusťte aplikační kontejnery (App, PostgreSQL DB, Redis, Elasticsearch):
+Pomocí Docker Compose spusťte aplikaci, databázi, Redis a Elasticsearch:
 ```bash
 docker compose up --build -d
 ```
-*Note: Databázové migrace (`alembic`) se spouští automaticky při startu kontejneru.*
+*Poznámka: Databázové migrace (`alembic upgrade head`) se spustí automaticky uvnitř kontejneru při startu.*
 
-### Krok 3: Vygenerování testovacích dat (Seeding)
+### Krok 3: Inicializace dat (Seeding)
+Spusťte předpřipravené CLI příkazy pro autorizaci testovacích chatů a naplnění historie zápasů:
 ```bash
-# Autorizace chatů ze souboru .env
+# Autorizace výchozích chatů z .env konfigurace
 docker compose exec app python app/presentation/cli/manage.py db seed-chats
 
-# Naplnění databáze historií zápasů a hráčů pro testování statistik
+# Generování hráčů, zápasů a historie výsledků pro výpočet ELO statistik
 docker compose exec app python app/presentation/cli/manage.py db seed-history
 ```
 
 ### Krok 4: Spuštění sady testů
-Uvnitř lokálního prostředí (vyžaduje `uv` nebo standardní virtualenv):
+Pro ověření bezchybnosti kódu (100% úspěšnost testů) spusťte:
 ```bash
 PYTHONPATH=. uv run pytest tests/
 ```
-*Všechny unit i integrační testy jsou 100% zelené a pokrývají i kritické autorizační a vyvažovací větve.*
 
-### Krok 5: Ověření architektonických celků přes REST API
-Otevřete API dokumentaci na adrese: `http://localhost:8000/docs` (Swagger UI).
+### Krok 5: Verifikace technologií přes Swagger UI
+Otevřete v prohlížeči adresu: **`http://localhost:8000/docs`**
 
-1.  **Ověření Caching**:
-    *   Zavolejte `GET /api/game/1`. V logách uvidíte `❄️ Cache Miss for key: game_details:1`.
-    *   Zavolejte jej podruhé. Načte se z keše s latencí pod 2ms a v logách uvidíte `⚡ Cache Hit`.
-    *   Zkontrolujte statistiky na `GET /api/nss/cache/status`.
-2.  **Ověření Message Brokeru**:
-    *   Pošlete POST na `/api/nss/messaging/publish?message=AhojNSS`.
-    *   V konzoli serveru uvidíte asynchronní zpracování:
-        *   `$$ -> Producing message --> {"content": "AhojNSS"}`
-        *   `$$ -> Consumed Message -> {"content": "AhojNSS"}`
-3.  **Ověření Elasticsearch**:
-    *   Zavolejte `GET /api/nss/telemetry/status`. Uvidíte stav `"connected"` a celkový počet zaindexovaných telemetrických záznamů.
+1.  **Ověření Caching (Redis 7)**:
+    *   Zavolejte `GET /api/game/1`. V logách aplikace uvidíte `❄️ Cache Miss for key: game_details:1`.
+    *   Zavolejte endpoint podruhé. Data se okamžitě načtou z keše a v logách se vypíše `⚡ Cache Hit`.
+    *   Stav a statistiky keše můžete sledovat na `GET /api/nss/cache/status`.
+2.  **Ověření Message Brokeru (Redis Streams)**:
+    *   Pošlete POST request na `/api/nss/messaging/publish?message=HelloNSS`.
+    *   V logách uvidíte asynchronní doručení zprávy producentem do streamu a její následné vyzvednutí konzumentem pod příslušnou spotřebitelskou skupinou:
+        *   `$$ -> Producing message --> {"content": "HelloNSS"}`
+        *   `$$ -> Consumed Message -> {"content": "HelloNSS"}`
+3.  **Ověření Interceptoru a Elasticsearch**:
+    *   Pošlete libovolný HTTP request (např. status cache). Middleware interceptor změří dobu trvání.
+    *   Ověřte stav připojení k Elasticsearch na `GET /api/nss/telemetry/status` (pokud lokální ES kontejner plně nastartoval, uvidíte stav `"connected"` a počet logů).
 
 ---
 *Vyvinuto s ohledem na čistotu kódu, vzornou architekturu a spolehlivost.*
+
