@@ -107,7 +107,7 @@ function renderGameHeader() {
     
     // Date & Time
     const dt = new Date(currentGame.date);
-    document.getElementById('game-date').innerText = `📅 ${dt.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+    document.getElementById('game-date').innerText = `📅 ${dt.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague' })}`;
     
     // Price and Format
     document.getElementById('game-price').innerText = `${currentGame.price} CZK`;

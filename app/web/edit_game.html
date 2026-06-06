@@ -183,8 +183,10 @@
                     mainPlayersInput.value = game.main_players_count || 22;
                     signupLimitInput.value = game.signup_limit || 999;
 
-                    // Init DatePicker with game date (parse as local timezone)
-                    initDatePicker(new Date(game.date));
+                    // Convert UTC date to Prague local string for flatpickr
+                    // This ensures correct time display regardless of browser timezone
+                    const pragueStr = new Date(game.date).toLocaleString('sv-SE', {timeZone: 'Europe/Prague'}).replace(' ', 'T').slice(0, 16);
+                    initDatePicker(pragueStr);
 
                     document.getElementById('loader').style.display = 'none';
                     document.getElementById('form-content').style.display = 'block';
@@ -215,7 +217,7 @@
             try {
                 const payload = {
                     game_id: parseInt(gameId),
-                    date_time: new Date(dateTime).toISOString(),
+                    date_time: dateTime,
                     location: location,
                     max_players: parseInt(maxPlayers),
                     price: parseInt(priceInput.value) || 0,
