@@ -20,13 +20,25 @@ async def get_chat_admins(
     try:
         from app.bot.instance import bot
         admins = await bot.get_chat_administrators(chat_id)
+        
+        # Batch-fetch User records to prevent individual N+1 lazy loading
+        admin_user_ids = [a.user.id for a in admins if not a.user.is_bot]
+        users_map = {}
+        if admin_user_ids:
+            res = await session.execute(select(User).where(User.user_id.in_(admin_user_ids)))
+            users_map = {u.user_id: u for u in res.scalars().all()}
+            
         result = []
         for a in admins:
             if not a.user.is_bot:
+                # Fallback to telegram details if user profile not found in db
+                db_user = users_map.get(a.user.id)
+                first_name = db_user.full_name if db_user else a.user.first_name
+                username = db_user.username if db_user else a.user.username
                 result.append({
                     "id": a.user.id,
-                    "first_name": a.user.first_name,
-                    "username": a.user.username
+                    "first_name": first_name,
+                    "username": username
                 })
         return result
     except Exception as e:
@@ -345,12 +357,7 @@ async def get_my_history(
     for game in games:
         # We still need the signup to know which team the user was on
         s = signups_map.get(game.id)
-        # If no signup, maybe check GameStats?
-        if not s:
-            gs = gamestats_map.get(game.id)
-            my_team = gs.team.value if gs and gs.team else None
-        else:
-            my_team = s.team.value if s.team else None
+        my_team = s.team.value if s and s.team else None
 
         history_record = history_map.get(game.id)
         

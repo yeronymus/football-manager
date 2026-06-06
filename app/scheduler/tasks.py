@@ -202,7 +202,7 @@ async def publish_game_task(game_id: int):
             return
 
         from app.bot.utils import format_game_message
-        from app.bot.keyboards import get_game_keyboard, get_channel_game_keyboard
+        from app.bot.keyboards import get_channel_game_keyboard
         
         # 1. Publish to Channel (Full)
         if game.channel_id:
