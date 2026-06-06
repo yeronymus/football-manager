@@ -66,10 +66,10 @@ Tato sekce slouží jako **hlavní rozcestník pro hodnocení** 2. odevzdání s
     *   *Popis:* Zachycená telemetrie z interceptoru je asynchronně (pomocí neblokujícího na pozadí běžícího `asyncio.create_task`) odesílána do Elasticsearch indexu `nss_telemetry` pro logování. Implementován fail-safe mechanismus, který v případě nedostupnosti ES aplikaci nijevak neovlivní.
     *   *Umístění:* [app/api/middlewares.py#L55-L71](app/api/middlewares.py#L55-L71).
 *   **Nasazení na produkční server (Bonus +2)**
-    *   *Důkaz:* Běžící instance a CI/CD nasazení:
-        *   **Telegram Bot (živá produkční instance):** [@fm_prague_bot](https://t.me/fm_prague_bot) (vyzkoušejte přímo v Telegramu!)
-        *   **Produkční API & WebApp Swagger:** [https://fmbot.bauer.cvut.cz/docs](https://fmbot.bauer.cvut.cz/docs)
-        *   **Automatické CI/CD:** Konfigurováno přes GitHub Actions v [.github/workflows/deploy.yml](.github/workflows/deploy.yml) a automatické přenasazení přes Watchtower na serveru FEL ČVUT při každém pushi.
+    *   *Důkaz a poznámky:* 
+        *   **Telegram Bot (živá produkční instance):** [@fm_prague_bot](https://t.me/fm_prague_bot) (Běží asynchronně 24/7 z produkčního serveru).
+        *   **Produkční API & WebApp Swagger:** `https://fmbot.bauer.cvut.cz/docs` (*Poznámka: Server a subdoména jsou hostovány na infrastruktuře ČVUT FEL a jsou přístupné výhradně přes školní VPN / síť Eduroam. Pokud nejste připojeni k VPN FEL, prohlížeč vrátí chybu DNS/připojení.*).
+        *   **Demonstrace a lokální fallback:** Celý deploy proces je plně automatizován přes GitHub Actions v [.github/workflows/deploy.yml](.github/workflows/deploy.yml) (vytvoření Docker image do GitHub Container Registry - GHCR) a na serveru běžící Watchtower, který image automaticky stahuje. Aplikaci lze bez jakýchkoliv omezení spustit a demonstrovat lokálně na vývojářském stroji (viz kapitola níže).
 
 ---
 
