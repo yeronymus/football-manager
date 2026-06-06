@@ -52,21 +52,21 @@ async def on_startup():
 
         logger.info(f"Configuration: USE_POLLING={settings.use_polling}, WEBHOOK_URL={settings.webhook_url}")
 
+        import asyncio
+        if not hasattr(app.state, "bg_tasks"):
+            app.state.bg_tasks = []
+
         if not settings.use_polling:
-            # Webhook mode: Block to ensure it's set
-            logger.info("Starting in Webhook mode...")
-            await safe_start_bot()
+            # Webhook mode: Background setup
+            logger.info("Starting in Webhook mode (Background setup)...")
+            setup_task = asyncio.create_task(safe_start_bot())
+            app.state.bg_tasks.append(setup_task)
         else:
             # Polling mode: Background
-            import asyncio
             logger.info("Starting in Polling mode...")
             # Start polling
             logger.info("Deleting webhook before polling...")
             await bot.delete_webhook(drop_pending_updates=True)
-            
-            # Keep strong references to background tasks to prevent GC from killing polling
-            if not hasattr(app.state, "bg_tasks"):
-                app.state.bg_tasks = []
             
             logger.info("Launching start_polling task...")
             polling_task = asyncio.create_task(dp.start_polling(bot))
