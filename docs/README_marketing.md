@@ -6,43 +6,26 @@
 [![PostgreSQL 15](https://img.shields.io/badge/PostgreSQL-15-blue.svg?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis 7](https://img.shields.io/badge/Redis-7-red.svg?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
 [![Docker Compatible](https://img.shields.io/badge/Docker-Compatible-blue.svg?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![CI/CD Pipelines](https://img.shields.io/badge/CI/CD-GitHub_Actions-purple.svg?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/features/actions)
 
-Welcome to the **Football Manager Bot** — an industrial-grade, fully automated ecosystem designed to manage amateur football communities. Powering active matches, real-time signups, team balancing algorithms, dynamic ELO ratings, and user-friendly dashboards directly from Telegram.
+Automated system to manage amateur football communities. Handles active matches, signups, team balancing, ELO ratings, and user dashboards directly from Telegram.
 
-Built with an asynchronous core using **Aiogram 3.x** and **FastAPI**, this is a production-ready solution to bring your amateur league, casual club, or weekend community matches to the professional level.
+Built with an asynchronous core using **Aiogram 3.x** and **FastAPI** to manage casual club or weekend community matches.
 
 ---
 
-## ✨ Outstanding Core Features
+## Core Features
 
-### ⚽ Intelligent Match Balancing
-No more unfair teams or manual coordination headaches! The system features an advanced team balancer delegating work through a clean **Strategy Pattern**:
-*   **🐍 Rating Snake Draft Strategy**: The optimal approach for rating-based balancing. Matches players sequentially to distribute skill ratings evenly across teams.
-*   **🛡️ Role-Based Strategy**: Balances teams based on player positions (Goalkeepers, Defenders, Midfielders, Forwards) ensuring no team is left without a keeper or overloaded with strikers.
-*   **🎲 Random Shuffling**: Perfect for lighthearted training sessions and quick scrimmages.
-
-### 📊 Interactive WebApp Dashboard
-A responsive, high-performance HTML5/JS WebApp integrated natively inside Telegram. Players can view stats, register for upcoming fixtures, and manage their player cards with zero friction.
-*   **Live Match Drafts**: Admins can run live drafts, balancing teams and instantly updating players.
-*   **Dynamic Stats**: Full view of clean historical matches, player rankings, ELO distribution, goals, and MVP counts.
-
-### ⚡ Blazing-Fast Performance
-*   **Hybrid Caching Engine**: Integrates a Redis-backed *Passive Look-aside Cache* combined with *Active Invalidation* on writes. Response times for critical game detail queries drop under **1.5ms**!
-*   **N+1 Query Elimination**: Critical service layers (stats reversion, lifecycle state changes) are audited and optimized with SQLAlchemy bulk fetches, ensuring zero redundant database trips.
-
-### 📮 Reliable Messaging Engine
-*   **Redis Streams (Kafka-like)**: Replaced volatile in-memory busses with persistent append-only logs. Supports publisher/consumer configurations with consumer groups and explicit ACKs. Your events are never lost, even if a process restarts.
-
-### 🔒 Enterprise-Grade Security
-*   **Telegram WebApp HMAC Validation**: Protects all API routes by parsing and validating Telegram `initData` signatures using the bot's secret token.
-*   **Role-Based Access Control**: Sensitive actions (roster updates, match finalization, database seeding) are restricted via strict group-admin role validation.
+*   **Match Balancing**: Team balancer supporting ELO rating snake draft, role-based distribution (by positions), or random shuffling.
+*   **Telegram WebApp**: Interface inside Telegram where players can view stats, register for fixtures, and view player ratings.
+*   **Caching**: Redis-backed cache for game details with eviction on write.
+*   **Messaging**: Event processing using Redis Streams with consumer groups.
+*   **Security**: Signature validation for Telegram initData and role validation for group admins.
 
 ---
 
 ## 📸 App Preview
 
-Here is a sneak peek of our beautiful Telegram WebApp and Bot interface:
+Here is a sneak peek of the Telegram WebApp and Bot interface:
 
 <p align="center">
   <img src="assets/f5718e0db0b206883782208dceb69bb2.png" alt="Roster Management" width="280" style="margin: 10px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);"/>
@@ -61,7 +44,7 @@ Here is a sneak peek of our beautiful Telegram WebApp and Bot interface:
 | **Caching** | Redis 7 | High-performance look-aside cache, active invalidation routes. |
 | **Broker** | Redis Streams | Persistent pub/sub event processing with ACK validation. |
 | **Search/Logs** | Elasticsearch · Telemetry Middleware | Resilient async HTTP logging with fail-safe fallbacks. |
-| **CI/CD** | GitHub Actions · GHCR · Watchtower | Zero-downtime automated deployment pipelines. |
+| **CI/CD** | GitHub Actions · GHCR · Watchtower | Automated deployment pipelines. |
 
 ---
 
@@ -114,6 +97,3 @@ PYTHONPATH=. uv run --python 3.12 pytest tests/
 | `ELASTICSEARCH_URL`| Elasticsearch logging sink | `http://elasticsearch:9200` |
 | `ADMIN_IDS` | JSON list of static admin IDs | `[]` |
 | `SYSTEM_OWNER_ID` | Telegram ID of the system owner | `100000000` |
-
----
-*Created with Passion & Engineered for Performance. Elevating Amateur Football Everywhere.*

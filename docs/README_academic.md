@@ -65,11 +65,12 @@ Tato sekce slouží jako **hlavní rozcestník pro hodnocení** 2. odevzdání s
 *   **Využití Elasticsearch**
     *   *Popis:* Zachycená telemetrie z interceptoru je asynchronně (pomocí neblokujícího na pozadí běžícího `asyncio.create_task`) odesílána do Elasticsearch indexu `nss_telemetry` pro logování. Implementován fail-safe mechanismus, který v případě nedostupnosti ES aplikaci nijevak neovlivní.
     *   *Umístění:* [app/api/middlewares.py#L55-L71](app/api/middlewares.py#L55-L71).
-*   **Nasazení na produkční server (Bonus +2)**
-    *   *Důkaz a poznámky:* 
-        *   **Telegram Bot (živá produkční instance):** [@fm_prague_bot](https://t.me/fm_prague_bot) (Běží asynchronně 24/7 z produkčního serveru).
-        *   **Produkční API & WebApp Swagger:** `https://fmbot.bauer.cvut.cz/docs` (*Poznámka: Server a subdoména jsou hostovány na infrastruktuře ČVUT FEL a jsou přístupné výhradně přes školní VPN / síť Eduroam. Pokud nejste připojeni k VPN FEL, prohlížeč vrátí chybu DNS/připojení.*).
-        *   **Demonstrace a lokální fallback:** Celý deploy proces je plně automatizován přes GitHub Actions v [.github/workflows/deploy.yml](.github/workflows/deploy.yml) (vytvoření Docker image do GitHub Container Registry - GHCR) a na serveru běžící Watchtower, který image automaticky stahuje. Aplikaci lze bez jakýchkoliv omezení spustit a demonstrovat lokálně na vývojářském stroji (viz kapitola níže).
+*   **Nasazení na produkční server**
+    *   *Způsob ověření a demonstrace:*
+        *   Aplikace je plně kontejnerizována pomocí Dockeru a připravena pro provoz na libovolném Linux serveru (např. v Proxmox virtualizačním prostředí jako VM/LXC, nebo na privátním cloudu).
+        *   **Ověření běžících služeb:** Běh všech kontejnerů na serveru lze ověřit příkazem `docker compose ps` (případně `docker ps`), který ukáže aktivní služby: FastAPI (`app`), PostgreSQL (`db`), Redis (`redis`) a Elasticsearch (`elasticsearch`).
+        *   **Kontrola logů v reálném čase:** Aktivitu bota a zpracování zpráv na serveru lze sledovat pomocí `docker compose logs -f app` (zde se vypisují asynchronní zprávy o doručení z brokeru a telemetrické logy z interceptoru).
+        *   **CI/CD Pipeline:** Sestavení a publikace obrazů probíhá automaticky přes GitHub Actions (.github/workflows/deploy.yml).
 
 ---
 
@@ -123,6 +124,4 @@ Otevřete v prohlížeči adresu: **`http://localhost:8000/docs`**
     *   Pošlete libovolný HTTP request (např. status cache). Middleware interceptor změří dobu trvání.
     *   Ověřte stav připojení k Elasticsearch na `GET /api/nss/telemetry/status` (pokud lokální ES kontejner plně nastartoval, uvidíte stav `"connected"` a počet logů).
 
----
-*Vyvinuto s ohledem na čistotu kódu, vzornou architekturu a spolehlivost.*
 
