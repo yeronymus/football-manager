@@ -4,8 +4,8 @@ import sys
 import time
 
 SERVER_USER = "root"
-SERVER_HOST = "147.32.107.65"
-SERVER_PORT = "2222"
+SERVER_HOST = "100.105.7.87"
+SERVER_PORT = "22"
 PASSWORD = "" # Should be provided via env or prompt
 
 def run_interactive(cmd_list):

@@ -1,6 +1,6 @@
 import asyncio
 from app.bot.instance import bot
-from app.db.database import get_session
+from app.db.database import async_session_maker
 from app.db.models import Game, Signup, User, SignupStatus, GameStatus, Team
 from sqlalchemy import select, func
 from aiogram import types
@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 async def send_voting_message(game_id: int):
-    async for session in get_session():
+    async with async_session_maker() as session:
         result = await session.execute(select(Game).where(Game.id == game_id))
         game = result.scalar_one_or_none()
         
@@ -61,7 +61,7 @@ async def send_voting_message(game_id: int):
         await session.commit()
 
 async def calculate_mvp(game_id: int):
-    async for session in get_session():
+    async with async_session_maker() as session:
         # Get game info
         result = await session.execute(select(Game).where(Game.id == game_id))
         game = result.scalar_one_or_none()
@@ -84,7 +84,7 @@ async def calculate_mvp(game_id: int):
 
 
 async def remind_admin_to_finish(game_id: int):
-    async for session in get_session():
+    async with async_session_maker() as session:
         # 1. Берем игру
         game = await session.get(Game, game_id)
         
@@ -129,7 +129,7 @@ async def release_gk_slots(game_id: int):
     Releases the "GK Reservation" by auto-promoting players from the waiting list
     if there are still empty slots (which were effectively reserved).
     """
-    async for session in get_session():
+    async with async_session_maker() as session:
         game = await session.get(Game, game_id)
         if not game or game.status not in [GameStatus.OPEN, GameStatus.ACTIVE]:
             return
@@ -172,37 +172,48 @@ async def release_gk_slots(game_id: int):
                 
                 # Update Message
                 from app.bot.utils import format_game_message
-                from app.bot.keyboards import get_game_keyboard
-                from app.bot.admin_dashboard import update_dashboard_message
                 
                 text = await format_game_message(game, session)
                 
                 if game.message_id and game.chat_id:
+                    from app.bot.keyboards import get_channel_game_keyboard
+                    kb = get_channel_game_keyboard(game.id)
                     try:
                         await bot.edit_message_text(
                             chat_id=game.chat_id,
                             message_id=game.message_id,
                             text=text,
-                            reply_markup=get_game_keyboard(game.id),
+                            reply_markup=kb,
                             parse_mode="HTML"
                         )
                     except Exception:
                         pass
                 
-                await update_dashboard_message(bot, game.id, session)
+                try:
+                    from app.bot.admin_dashboard import update_dashboard_message
+                    await update_dashboard_message(bot, game.id, session)
+                except (ImportError, Exception) as e:
+                    logger.warning(f"Failed to update dashboard: {e}")
 
 async def publish_game_task(game_id: int):
-    async for session in get_session():
+    async with async_session_maker() as session:
         game = await session.get(Game, game_id)
         if not game:
             return
 
         from app.bot.utils import format_game_message
-        from app.bot.keyboards import get_game_keyboard, get_channel_game_keyboard
+        from app.bot.keyboards import get_channel_game_keyboard
         
         # 1. Publish to Channel (Full)
         if game.channel_id:
             text_full = await format_game_message(game, session, is_short=False)
+            
+            # Add hidden deep link so Telegram channel discussion forward carries the start link
+            from app.config import settings
+            bot_username = settings.bot_username
+            hidden_link = f'<a href="https://t.me/{bot_username}?start=game_{game.id}">&#8203;</a>'
+            text_full = hidden_link + text_full
+            
             try:
                 sent_full = await bot.send_message(
                     chat_id=game.channel_id,
@@ -215,11 +226,12 @@ async def publish_game_task(game_id: int):
 
         # 2. Publish to Group (Full mode per user request)
         text_short = await format_game_message(game, session, is_short=False)
+        kb = get_channel_game_keyboard(game.id)
         try:
             sent_message = await bot.send_message(
                 chat_id=game.chat_id,
                 text=text_short,
-                reply_markup=get_game_keyboard(game.id)
+                reply_markup=kb
             )
             
             game.message_id = sent_message.message_id

@@ -53,16 +53,16 @@ class Team(str, enum.Enum):
     C = "C"
 
 class Language(str, enum.Enum):
-    RU = "ru"
-    CZ = "cz"
-    EN = "en"
+    ru = "ru"
+    cz = "cz"
+    en = "en"
 
 class User(Base):
     __tablename__ = "users"
     user_id = Column(BigInteger, primary_key=True, index=True)
     username = Column(String, nullable=True)
     full_name = Column(String, nullable=False)
-    player_position = Column(Enum(Position, name="user_position"), nullable=False)
+    player_position = Column(Enum(Position, name="user_position", native_enum=False), nullable=False)
     stats_matches = Column(Integer, default=0)
     stats_mvp = Column(Integer, default=0)
     rating = Column(Integer, default=100)  # ELO Rating
@@ -86,7 +86,7 @@ class Chat(Base):
     channel_id = Column(BigInteger, nullable=True)    # Linked Announcement Channel
 
     # SaaS / Group Settings
-    language = Column(Enum(Language, name="chat_language_enum"), default=Language.RU)
+    language = Column(Enum(Language, name="chat_language_enum", native_enum=False), default=Language.ru)
     payment_info = Column(String, nullable=True)     # If null, uses global default
     is_active = Column(Boolean, default=True)
 
@@ -167,9 +167,9 @@ class Game(Base):
     team_count = Column(Integer, default=2)
     gk_hours = Column(Integer, default=48)
     duration = Column(Float, default=2.0) # Match duration in hours
-    status = Column(Enum(GameStatus), default=GameStatus.OPEN)
-    game_type = Column(Enum(GameType, name="game_type_enum"), default=GameType.REGULAR)
-    winner_team = Column(Enum(Team), nullable=True)
+    status = Column(Enum(GameStatus, native_enum=False), default=GameStatus.OPEN)
+    game_type = Column(Enum(GameType, name="game_type_enum", native_enum=False), default=GameType.REGULAR)
+    winner_team = Column(Enum(Team, native_enum=False), nullable=True)
     score_a = Column(Integer, nullable=True)
     score_b = Column(Integer, nullable=True)
     score_c = Column(Integer, nullable=True)
@@ -202,9 +202,9 @@ class Signup(Base):
     id = Column(Integer, primary_key=True, index=True)
     game_id = Column(Integer, ForeignKey("games.id"), nullable=False, index=True)
     user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
-    status = Column(Enum(SignupStatus), default=SignupStatus.ACTIVE)
-    team = Column(Enum(Team), nullable=True)
-    position = Column(Enum(Position, name="signup_position_enum"), nullable=True) # Per-match override
+    status = Column(Enum(SignupStatus, native_enum=False), default=SignupStatus.ACTIVE)
+    team = Column(Enum(Team, native_enum=False), nullable=True)
+    position = Column(Enum(Position, name="signup_position_enum", native_enum=False), nullable=True) # Per-match override
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     is_paid = Column(Boolean, default=False)
 
@@ -219,10 +219,10 @@ class Vote(Base):
     __tablename__ = "votes"
 
     id = Column(Integer, primary_key=True, index=True)
-    game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
-    voter_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
-    target_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
-    vote_team = Column(Enum(Team, name="vote_team_enum"), nullable=False)
+    game_id = Column(Integer, ForeignKey("games.id"), nullable=False, index=True)
+    voter_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
+    target_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
+    vote_team = Column(Enum(Team, name="vote_team_enum", native_enum=False), nullable=False)
 
     game = relationship("Game", back_populates="votes")
     voter = relationship("User", foreign_keys=[voter_id], back_populates="votes_cast")
@@ -236,8 +236,8 @@ class RatingHistory(Base):
     __tablename__ = "rating_history"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
-    game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
+    game_id = Column(Integer, ForeignKey("games.id"), nullable=False, index=True)
     old_rating = Column(Integer, nullable=False)
     new_rating = Column(Integer, nullable=False)
     change = Column(Integer, nullable=False)
@@ -250,8 +250,8 @@ class GameStats(Base):
     __tablename__ = "game_stats"
     
     id = Column(Integer, primary_key=True)
-    game_id = Column(Integer, ForeignKey("games.id"))
-    user_id = Column(BigInteger, ForeignKey("users.user_id"))
+    game_id = Column(Integer, ForeignKey("games.id"), index=True)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"), index=True)
     
     goals = Column(Integer, default=0)
     assists = Column(Integer, default=0)

@@ -8,7 +8,6 @@ from app.db.database import async_session_maker
 from app.db.models import Game, Signup, GameStats, Team, GameStatus, User, Chat, SignupStatus, RatingHistory
 from app.core.domain.historical_data import GAMES_1_7
 from sqlalchemy.dialects.postgresql import insert
-import pprint
 
 async def seed_chats_command(args):
     """Seed configured initial chats into the database via Upsert."""
@@ -23,23 +22,20 @@ async def seed_chats_command(args):
         for chat_data in settings.initial_chats:
             chat_id = chat_data.get("id")
             title = chat_data.get("title", "")
-            admin_chat_id = chat_data.get("admin_chat_id")
             
             if chat_id is None:
                 continue
                 
             stmt = insert(Chat).values(
                 chat_id=chat_id,
-                title=title,
-                admin_chat_id=admin_chat_id
+                title=title
             )
             
             # UPSERT logic protecting from duplicate errors
             stmt = stmt.on_conflict_do_update(
                 index_elements=['chat_id'],
                 set_={
-                    'title': stmt.excluded.title,
-                    'admin_chat_id': stmt.excluded.admin_chat_id
+                    'title': stmt.excluded.title
                 }
             )
             

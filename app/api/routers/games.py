@@ -3,12 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_session
 from app.db.models import Game, User, Signup, SignupStatus, Team, GameStatus
-from app.api.auth import validate_init_data, get_user_from_init_data, check_admin_rights, get_user_from_header
+from app.api.auth import get_user_from_header
 from app.config import settings
 
-router = APIRouter()
-
 from app.core.services.cache import cache_service
+
+router = APIRouter()
 
 @router.get("/game/{game_id}")
 async def get_game_details(
@@ -43,6 +43,7 @@ async def get_game_details(
         
         return {
             "id": user.user_id,
+            "signup_id": signup.id,
             "name": user.full_name,
             "rating": user.rating,
             "position": eff_pos.value if eff_pos else "DEF",
@@ -115,12 +116,6 @@ async def get_chat_history(
     
     history = []
     for game in games:
-        winner_text = "Ничья"
-        if game.winner_team == Team.A:
-            winner_text = "Победа А"
-        elif game.winner_team == Team.B:
-            winner_text = "Победа Б"
-            
         history.append({
             "game_id": game.id,
             "date": game.date_time.isoformat(),
@@ -140,22 +135,110 @@ async def get_editable_games(
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
-    result = await session.execute(
-        select(Game).order_by(Game.date_time.desc()).limit(20)
-    )
+    from app.api.auth import build_admin_games_query
+
+    base_query = await build_admin_games_query(user_id, session)
+    stmt = base_query.order_by(Game.date_time.desc()).limit(20)
+
+    result = await session.execute(stmt)
     games = result.scalars().all()
     
-    editable = []
-    for g in games:
-        try:
-            await check_admin_rights(g.chat_id, user_id)
-            editable.append({
-                "id": g.id,
-                "location": g.location,
-                "date_time": g.date_time.isoformat(),
-                "status": g.status.value
-            })
-        except:
-            pass
+    return [
+        {
+            "id": g.id,
+            "location": g.location,
+            "date_time": g.date_time.isoformat(),
+            "status": g.status.value
+        }
+        for g in games
+    ]
+
+
+
+@router.post("/game/{game_id}/join")
+async def join_game(
+    game_id: int,
+    user_id: int = Depends(get_user_from_header)
+):
+    from app.core.uow import UnitOfWork
+    from app.core.services.roster import RosterService, PlayerJoinedEvent
+    from app.core.events import event_bus
+    import logging
+
+    try:
+        async with UnitOfWork() as uow:
+            user = await uow.user_repo.get_by_id(user_id)
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found. Please register first.")
             
-    return editable
+            service = RosterService(uow)
+            is_admin = user_id in settings.admin_ids or user_id == settings.system_owner_id
+            result = await service.join_player(game_id, user, ignore_limit=is_admin)
+            
+            if not result.success:
+                raise HTTPException(status_code=400, detail=result.message)
+            
+            alert_msg = result.message
+            event_payload = None
+            if result.signup:
+                event_payload = PlayerJoinedEvent(
+                    game_id=game_id,
+                    user_id=user_id,
+                    signup=result.signup,
+                    is_reserve=result.is_reserve,
+                    message=alert_msg
+                )
+            
+            await uow.commit()
+            
+        if event_payload:
+            await event_bus.publish(event_payload)
+            
+        return {"success": True, "message": alert_msg, "is_reserve": result.is_reserve}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"API Join Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/game/{game_id}/leave")
+async def leave_game(
+    game_id: int,
+    user_id: int = Depends(get_user_from_header)
+):
+    from app.core.uow import UnitOfWork
+    from app.core.services.roster import RosterService, PlayerLeftEvent
+    from app.core.events import event_bus
+    import logging
+
+    try:
+        async with UnitOfWork() as uow:
+            service = RosterService(uow)
+            is_admin = user_id in settings.admin_ids or user_id == settings.system_owner_id
+            success, msg, promoted = await service.leave_player(game_id, user_id, is_admin)
+            
+            if not success:
+                raise HTTPException(status_code=400, detail=msg)
+                
+            await uow.commit()
+            
+        if promoted:
+            try:
+                from app.bot.instance import bot
+                await bot.send_message(
+                    promoted.user_id,
+                    "🎉 <b>Вас перевели в основной состав!</b>\nКто-то выписался из игры.",
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logging.warning(f"Failed to notify promoted user in API leave: {e}")
+                
+        await event_bus.publish(PlayerLeftEvent(game_id, user_id, msg, promoted))
+        return {"success": True, "message": msg}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"API Leave Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+

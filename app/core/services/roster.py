@@ -99,6 +99,8 @@ class RosterService:
         # Invalidate Cache
         from app.core.services.cache import cache_service
         await cache_service.evict(f"game_details:{game_id}")
+        from app.bot.utils import evict_game_signups_cache
+        evict_game_signups_cache(game_id)
         
         return JoinResult(True, signup, alert_msg, is_reserve)
 
@@ -133,6 +135,8 @@ class RosterService:
         # Invalidate Cache
         from app.core.services.cache import cache_service
         await cache_service.evict(f"game_details:{game_id}")
+        from app.bot.utils import evict_game_signups_cache
+        evict_game_signups_cache(game_id)
 
         return True, "Вы выписались.", promoted_user
 
@@ -183,6 +187,8 @@ class RosterService:
         # Invalidate Cache
         from app.core.services.cache import cache_service
         await cache_service.evict(f"game_details:{game_id}")
+        from app.bot.utils import evict_game_signups_cache
+        evict_game_signups_cache(game_id)
 
         return True
 

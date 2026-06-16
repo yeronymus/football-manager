@@ -22,6 +22,28 @@ async def recalculate_stats_command(dry_run: bool = True):
         games = res.scalars().all()
         print(f"\n⚙️  Processing {len(games)} games...\n")
 
+        # Pre-fetch all active signups for these games to avoid N+1
+        game_ids = [g.id for g in games]
+        p_res = await s.execute(
+            select(Signup.game_id, User, Signup.team)
+            .join(User, User.user_id == Signup.user_id)
+            .where(Signup.game_id.in_(game_ids), Signup.status == SignupStatus.ACTIVE)
+        )
+        # Group signups by game_id
+        from collections import defaultdict
+        game_players = defaultdict(list)
+        for gid, user, team in p_res.all():
+            game_players[gid].append((user, team))
+
+        # Pre-fetch all MVP records
+        mvp_res = await s.execute(
+            select(GameStats.game_id, GameStats.user_id)
+            .where(GameStats.game_id.in_(game_ids), GameStats.is_mvp == True)
+        )
+        game_mvps = defaultdict(set)
+        for gid, uid in mvp_res.all():
+            game_mvps[gid].add(uid)
+
         for game in games:
             date_str = game.date_time.strftime('%d.%m.%Y')
             print(f"  Game #{game.id} ({date_str}) {game.score_a}:{game.score_b}" +
@@ -50,18 +72,9 @@ async def recalculate_stats_command(dry_run: bool = True):
                         r = unique.index(sc)
                         team_points[t] = 10 if r == 0 else (0 if r == 1 else -5)
 
-            # Get MVPs and Players
-            p_res = await s.execute(
-                select(User, Signup.team)
-                .join(Signup)
-                .where(Signup.game_id == game.id, Signup.status == SignupStatus.ACTIVE)
-            )
-            players_data = p_res.all()
-            
-            mvp_res = await s.execute(
-                select(GameStats).where(GameStats.game_id == game.id, GameStats.is_mvp == True)
-            )
-            mvp_ids = set(m.user_id for m in mvp_res.scalars().all())
+            # Get MVPs and Players from pre-fetched data
+            players_data = game_players.get(game.id, [])
+            mvp_ids = game_mvps.get(game.id, set())
 
             for user, team in players_data:
                 old_rating = user.rating

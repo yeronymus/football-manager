@@ -29,7 +29,7 @@ async def cmd_create(message: types.Message):
     if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
         return
 
-    web_app_url = f"{settings.webapp_url.rstrip('/')}/web/index.html?v=1.3"
+    web_app_url = f"{settings.webapp_url.rstrip('/')}/web/index.html?v={int(time.time())}"
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(text="➕ Создать новую игру", web_app=types.WebAppInfo(url=web_app_url))]
     ])
@@ -59,7 +59,7 @@ async def cmd_dashboard(message: types.Message, session: AsyncSession):
             return
 
     try:
-        webapp_url = f"{settings.webapp_url.rstrip('/')}/web/admin.html"
+        webapp_url = f"{settings.webapp_url.rstrip('/')}/web/admin.html?v={int(time.time())}"
         kb = types.InlineKeyboardMarkup(inline_keyboard=[
             [types.InlineKeyboardButton(text="🛠 Открыть Dashboard", web_app=types.WebAppInfo(url=webapp_url))]
         ])
@@ -93,6 +93,30 @@ async def cmd_force_refresh(message: types.Message, session: AsyncSession):
     except Exception as e:
         logger.error(f"Force refresh error: {e}")
         await message.answer(f"❌ Ошибка: {e}")
+
+@router.message(Command("republish"))
+async def cmd_republish(message: types.Message, session: AsyncSession):
+    if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
+        return
+
+    try:
+        args = message.text.split()
+        if len(args) != 2:
+            await message.answer("⚠️ Использование: `/republish <game_id>`")
+            return
+            
+        game_id = int(args[1])
+        
+        from app.scheduler.tasks import publish_game_task
+        await publish_game_task(game_id)
+        
+        await message.answer(f"✅ Игра #{game_id} успешно переопубликована в канал и группу!")
+
+    except ValueError:
+        await message.answer("⚠️ ID игры должен быть числом.")
+    except Exception as e:
+        logger.error(f"Republish error: {e}")
+        await message.answer(f"❌ Ошибка перепубликации: {e}")
 
 @router.message(Command("start_voting"))
 async def cmd_start_voting(message: types.Message, session: AsyncSession):
@@ -232,7 +256,7 @@ async def process_guest_position(callback: types.CallbackQuery, state: FSMContex
         new_signup = Signup(
             game_id=game_id,
             user_id=guest_id,
-            status=SignupStatus.RESERVE
+            status=SignupStatus.ACTIVE
         )
         session.add(new_signup)
         

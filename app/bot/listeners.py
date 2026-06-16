@@ -53,18 +53,25 @@ async def on_game_created(event: GameCreatedEvent):
             from app.bot.keyboards import get_game_keyboard
 
             # Check if chat is a channel
+            is_channel = False
             try:
                 chat_info = await bot.get_chat(event.chat_id)
                 if chat_info.type == "channel":
                     game.channel_id = event.chat_id
+                    is_channel = True
             except Exception as e:
                 logger.warning(f"Failed to check chat type: {e}")
 
             text = await format_game_message(game, session, is_short=False)
+            
+            # Group chats and channels must always use the channel-safe keyboard (deep-link transitioning to private DMs)
+            from app.bot.keyboards import get_channel_game_keyboard
+            kb = get_channel_game_keyboard(game.id)
+
             msg = await bot.send_message(
                 chat_id=game.chat_id,
                 text=text,
-                reply_markup=get_game_keyboard(game.id),
+                reply_markup=kb,
                 parse_mode="HTML"
             )
             game.message_id = msg.message_id
@@ -133,7 +140,9 @@ async def on_teams_published(event: TeamsPublishedEvent):
             from app.bot.keyboards import get_game_keyboard
 
             public_text = await format_game_message(game, session)
-            kb = get_game_keyboard(game.id)
+            
+            from app.bot.keyboards import get_channel_game_keyboard
+            kb = get_channel_game_keyboard(game.id)
 
             if game.message_id:
                 try:
@@ -268,10 +277,10 @@ async def _refresh_public_message(game_id: int):
 async def _refresh_dashboard(game_id: int):
     """Refresh only the admin dashboard message."""
     async with async_session_maker() as session:
-        from app.bot.admin_dashboard import update_dashboard_message
         try:
+            from app.bot.admin_dashboard import update_dashboard_message
             await update_dashboard_message(bot, game_id, session)
-        except Exception as e:
+        except (ImportError, Exception) as e:
             logger.warning(f"Failed to update dashboard for game {game_id}: {e}")
 
 
