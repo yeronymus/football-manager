@@ -24,7 +24,7 @@ Tato sekce slouží jako **hlavní rozcestník pro hodnocení** 2. odevzdání s
     *   *Umístění:* Konfigurace v [app/db/session.py](app/db/session.py) a datové modely v [app/db/models.py](app/db/models.py).
 *   **Výběr vhodné architektury (Event-Driven / Layered)**
     *   *Popis:* Aplikace je rozdělena na prezentační vrstvu (Telegram Bot & REST API), aplikační služby (Service Layer), doménový model a infrastrukturu. Je použita architektura řízená událostmi (Event-Driven Architecture) pomocí asynchronního Event Busu a persistentního Redis Streams Brokeru.
-    *   *Umístění:* [app/core/events.py](app/core/events.py) a [app/infrastructure/messaging.py](app/infrastructure/messaging.py).
+    *   *Umístění:* [app/core/events.py](app/core/events.py) and [app/infrastructure/messaging.py](app/infrastructure/messaging.py).
 *   **Použití alespoň 5 design patternů**
     *   *1. Strategy (Vzor Strategie):* Pro balancování týmů na základě různých algoritmů (Snake draft podle ELO, pozice hráčů, náhodně). 
         *   Třídy `RoleBasedBalancingStrategy`, `RatingSnakeBalancingStrategy`, `RandomBalancingStrategy` v [balancer.py#L48-L167](app/core/domain/balancer.py#L48-L167).
@@ -69,6 +69,9 @@ Tato sekce slouží jako **hlavní rozcestník pro hodnocení** 2. odevzdání s
     *   *Způsob ověření a demonstrace:*
         *   Aplikace je plně kontejnerizována pomocí Dockeru a připravena pro provoz na libovolném Linux serveru (např. v Proxmox virtualizačním prostředí jako VM/LXC, nebo na privátním cloudu).
         *   **Ověření běžících služeb:** Běh všech kontejnerů na serveru lze ověřit příkazem `docker compose ps` (případně `docker ps`), který ukáže aktivní služby: FastAPI (`app`), PostgreSQL (`db`), Redis (`redis`) a Elasticsearch (`elasticsearch`).
+        *   **Běh na serveru (Proxmox):** Produkční bot a související infrastruktura běží na serveru v rámci Docker kontejnerů. Níže je screenshot z administrace Proxmoxu s výpisem běžících kontejnerů (`docker ps`):
+            
+            ![Běh služeb v Dockeru na Proxmoxu](assets/docker_ps.png)
         *   **Kontrola logů v reálném čase:** Aktivitu bota a zpracování zpráv na serveru lze sledovat pomocí `docker compose logs -f app` (zde se vypisují asynchronní zprávy o doručení z brokeru a telemetrické logy z interceptoru).
         *   **CI/CD Pipeline:** Sestavení a publikace obrazů probíhá automaticky přes GitHub Actions (.github/workflows/deploy.yml).
 
@@ -123,5 +126,3 @@ Otevřete v prohlížeči adresu: **`http://localhost:8000/docs`**
 3.  **Ověření Interceptoru a Elasticsearch**:
     *   Pošlete libovolný HTTP request (např. status cache). Middleware interceptor změří dobu trvání.
     *   Ověřte stav připojení k Elasticsearch na `GET /api/nss/telemetry/status` (pokud lokální ES kontejner plně nastartoval, uvidíte stav `"connected"` a počet logů).
-
-
