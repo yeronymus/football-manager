@@ -295,3 +295,37 @@ async def test_update_game_message_telegram_bad_request(session: AsyncSession):
     
     assert bot.edit_message_text.call_count == 2
     mock_dashboard_module.update_dashboard_message.assert_called_once_with(bot, game.id, session)
+
+@pytest.mark.asyncio
+async def test_update_game_message_telegram_generic_exception(session: AsyncSession):
+    creator, chat = await setup_base_entities(session)
+    
+    game = Game(
+        id=129,
+        chat_id=chat.chat_id,
+        created_by=creator.user_id,
+        date_time=datetime(2026, 5, 20, 18, 0, tzinfo=timezone.utc),
+        location="Stadium",
+        max_players=10,
+        status=GameStatus.OPEN,
+        message_id=9905,
+        channel_id=-1002,
+        channel_message_id=9906
+    )
+    session.add(game)
+    await session.commit()
+    
+    bot = MagicMock()
+    # Mock bot.edit_message_text to raise a generic Exception
+    bot.edit_message_text = AsyncMock(
+        side_effect=Exception("Unknown telegram network error")
+    )
+    
+    # Reset mock_dashboard_module
+    mock_dashboard_module.update_dashboard_message.reset_mock()
+    
+    # This call should not raise an error as general Exception is caught and logged
+    await update_game_message(bot, game, session)
+    
+    assert bot.edit_message_text.call_count == 2
+    mock_dashboard_module.update_dashboard_message.assert_called_once_with(bot, game.id, session)
