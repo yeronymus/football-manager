@@ -4,10 +4,9 @@ import urllib.parse
 import json
 import time
 import logging
-from fastapi import HTTPException, Header, Depends, Body, Path
-from typing import Optional, Dict, Any
+from fastapi import HTTPException, Header, Depends, Body
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -31,8 +30,9 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
         secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
         
-        if calculated_hash != hash_value:
-            logger.warning(f"validate_init_data failed: Hash mismatch. Calc: {calculated_hash}, Recieved: {hash_value}")
+        # 🛡️ Sentinel: Use constant-time comparison to prevent timing attacks
+        if not hmac.compare_digest(calculated_hash, hash_value):
+            logger.warning("validate_init_data failed: Hash mismatch.")
             return False
             
         # Check auth_date for replay attacks (Increased to 12h for ease of use)
@@ -47,9 +47,8 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
         return False
 
 def get_user_from_init_data(init_data: str) -> int:
-    if settings.debug and not init_data:
-        # Default debug user ID (replace with your admin ID for testing)
-        return settings.admin_ids[0] if settings.admin_ids else 123456789
+    if not init_data:
+        raise HTTPException(status_code=401, detail="Missing initData")
         
     parsed_data = dict(urllib.parse.parse_qsl(init_data))
 
@@ -153,5 +152,29 @@ async def get_user_from_header(
         raise HTTPException(status_code=403, detail="Invalid initData")
         
     return get_user_from_init_data(init_data)
+
+
+async def build_admin_games_query(user_id: int, session: AsyncSession):
+    """
+    Builds a SQLAlchemy query for Games that the user is allowed to manage.
+    Resolves N+1 queries by pushing authorization checks to the database level.
+    """
+    from app.db.models import Game, User, ChatAdmin
+    from sqlalchemy import select
+
+    # 1. System admins bypass checks entirely
+    if user_id in settings.admin_ids or user_id == settings.system_owner_id:
+        return select(Game)
+
+    # 2. Check if user is superadmin in DB
+    user_res = await session.execute(select(User).where(User.user_id == user_id))
+    user = user_res.scalar_one_or_none()
+
+    if user and getattr(user, 'is_superadmin', False):
+        return select(Game)
+
+    # 3. Restrict games to those where user is explicitly a ChatAdmin
+    return select(Game).join(ChatAdmin, Game.chat_id == ChatAdmin.chat_id).where(ChatAdmin.user_id == user_id)
+
 
 

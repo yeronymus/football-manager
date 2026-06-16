@@ -2,6 +2,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.models import Game, Signup, User, SignupStatus, Position, Team, GameStatus
 import html
+import time
+
+# Simple in-memory cache for game signups to optimize busy chat lookups
+_signups_cache = {}
+
+def evict_game_signups_cache(game_id: int):
+    """Evict the cached signups for a given game ID."""
+    _signups_cache.pop(game_id, None)
 
 def format_positions(user, signup) -> str:
     main_pos = signup.position.value if signup.position else user.player_position.value
@@ -48,6 +56,46 @@ def _format_header_section(game, date_str: str) -> str:
     return text
 
 
+def _format_single_team(game, signups, team_enum, team_name, needed_gk) -> str:
+    text = ""
+    t_players = [
+        (s, u) for (s, u) in signups 
+        if s.status == SignupStatus.ACTIVE and s.team == team_enum
+    ]
+    text += f"{team_name} ({len(t_players)}):\n"
+    
+    groups = {"GK": [], "DEF": [], "MID": [], "FWD": []}
+    for s, u in t_players:
+        pos_enum = s.position if s.position else u.player_position
+        pos_str = pos_enum.value if pos_enum else "DEF"
+        if pos_str == "GK": groups["GK"].append((s, u))
+        elif pos_str in ["CB", "LB", "RB", "LWB", "RWB"]: groups["DEF"].append((s, u))
+        elif pos_str in ["CM", "CDM", "CAM", "LM", "RM"]: groups["MID"].append((s, u))
+        elif pos_str in ["ST", "CF", "FWD", "LW", "RW"]: groups["FWD"].append((s, u))
+        else: groups["DEF"].append((s, u))
+    
+    headers = {"GK": "<b>Вратари</b>", "DEF": "<b>Защита</b>", "MID": "<b>Полузащита</b>", "FWD": "<b>Нападение</b>"}
+    team_counter = 1
+    has_gk = False
+    for cat in ["GK", "DEF", "MID", "FWD"]:
+        plist = groups[cat]
+        if not plist: continue
+        text += f"<i>{headers[cat]}</i>\n"
+        for signup, user in plist:
+            if cat == "GK": has_gk = True
+            text += f"{team_counter}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
+            # Add subs separator if needed (assuming 11 per team for 11x11/22 format)
+            m_per_team = (getattr(game, 'main_players_count', 22) or 22) // (game.team_count or 2)
+            if team_counter == m_per_team:
+                 text += "   --- замена ---\n"
+            team_counter += 1
+    
+    if not has_gk and needed_gk:
+         text += "<i>🧤 Вратарь решается на поле</i>\n"
+    text += "\n"
+    return text
+
+
 def _format_teams_section(game, signups) -> str:
     text = ""
     team_map = {0: Team.A, 1: Team.B, 2: Team.C}
@@ -60,43 +108,10 @@ def _format_teams_section(game, signups) -> str:
         team_enum = team_map.get(i)
         if not team_enum: continue
         
-        t_players = [
-            (s, u) for (s, u) in signups 
-            if s.status == SignupStatus.ACTIVE and s.team == team_enum
-        ]
         t_name = team_names[i] if i < len(team_names) else f"Команда {i+1}"
-        text += f"{t_name} ({len(t_players)}):\n"
-        
-        groups = {"GK": [], "DEF": [], "MID": [], "FWD": []}
-        for s, u in t_players:
-            pos_enum = s.position if s.position else u.player_position
-            pos_str = pos_enum.value if pos_enum else "DEF"
-            if pos_str == "GK": groups["GK"].append((s, u))
-            elif pos_str in ["CB", "LB", "RB", "LWB", "RWB"]: groups["DEF"].append((s, u))
-            elif pos_str in ["CM", "CDM", "CAM", "LM", "RM"]: groups["MID"].append((s, u))
-            elif pos_str in ["ST", "CF", "FWD", "LW", "RW"]: groups["FWD"].append((s, u))
-            else: groups["DEF"].append((s, u))
-        
-        headers = {"GK": "<b>Вратари</b>", "DEF": "<b>Защита</b>", "MID": "<b>Полузащита</b>", "FWD": "<b>Нападение</b>"}
-        team_counter = 1
-        has_gk = False
-        for cat in ["GK", "DEF", "MID", "FWD"]:
-            plist = groups[cat]
-            if not plist: continue
-            text += f"<i>{headers[cat]}</i>\n"
-            for signup, user in plist:
-                if cat == "GK": has_gk = True
-                text += f"{team_counter}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
-                # Add subs separator if needed (assuming 11 per team for 11x11/22 format)
-                m_per_team = (getattr(game, 'main_players_count', 22) or 22) // (game.team_count or 2)
-                if team_counter == m_per_team:
-                     text += "   --- замена ---\n"
-                team_counter += 1
-        
         needed_gk = team_gk_flags[i] if i < len(team_gk_flags) else True
-        if not has_gk and needed_gk:
-             text += "<i>🧤 Вратарь решается на поле</i>\n"
-        text += "\n"
+        
+        text += _format_single_team(game, signups, team_enum, t_name, needed_gk)
     
     unassigned = [s for s in signups if s[0].status == SignupStatus.ACTIVE and s[0].team is None]
     if unassigned:
@@ -194,29 +209,42 @@ async def update_game_message(bot, game, session: AsyncSession):
     Updates the live game message in both primary and channel chats.
     Now supports minimal view for primary chat.
     """
-    from app.bot.keyboards import get_game_keyboard
+    from app.bot.keyboards import get_game_keyboard, get_channel_game_keyboard
     from aiogram.exceptions import TelegramBadRequest
     import logging
     
-    # Pre-fetch signups once for performance
-    result = await session.execute(
-        select(Signup, User)
-        .join(User)
-        .where(Signup.game_id == game.id)
-        .order_by(Signup.created_at)
-    )
-    signups = result.all()
+    # Pre-fetch signups once for performance, checking in-memory cache first
+    now = time.time()
+    cached = _signups_cache.get(game.id)
+    if cached and now - cached[0] < 300:
+        signups = cached[1]
+    else:
+        result = await session.execute(
+            select(Signup, User)
+            .join(User)
+            .where(Signup.game_id == game.id)
+            .order_by(Signup.created_at)
+        )
+        signups = result.all()
+        _signups_cache[game.id] = (now, signups)
     
     # 1. Update Channel (Full mode)
     if game.channel_id and game.channel_message_id:
         text_full = await format_game_message(game, session, is_short=False, signups=signups)
         text_full += "\n\n<b>Запись открыта. Переходите в чат.</b>"
+        
+        # Add hidden deep link so Telegram channel discussion forward carries the start link
+        from app.config import settings
+        bot_username = settings.bot_username
+        hidden_link = f'<a href="https://t.me/{bot_username}?start=game_{game.id}">&#8203;</a>'
+        text_full = hidden_link + text_full
+        
         try:
             await bot.edit_message_text(
                 chat_id=game.channel_id,
                 message_id=game.channel_message_id,
                 text=text_full,
-                reply_markup=None,
+                reply_markup=get_channel_game_keyboard(game.id),
                 parse_mode="HTML"
             )
         except TelegramBadRequest as e:
@@ -226,12 +254,14 @@ async def update_game_message(bot, game, session: AsyncSession):
 
     # 2. Update Primary Chat (Full mode by default per user request)
     text_short = await format_game_message(game, session, is_short=False, signups=signups)
+    from app.bot.keyboards import get_channel_game_keyboard
+    kb = get_channel_game_keyboard(game.id)
     try:
         await bot.edit_message_text(
             chat_id=game.chat_id,
             message_id=game.message_id,
             text=text_short,
-            reply_markup=get_game_keyboard(game.id),
+            reply_markup=kb,
             parse_mode="HTML"
         )
     except TelegramBadRequest as e:
@@ -240,10 +270,10 @@ async def update_game_message(bot, game, session: AsyncSession):
         logging.error(f"Unexpected error when editing message in chat {game.chat_id}: {e}")
 
     # 3. Trigger Admin Dashboard Update
-    from app.bot.admin_dashboard import update_dashboard_message
     try:
          # Note: Dashboard currently does its own fetching to ensure freshness and different filtering
+         from app.bot.admin_dashboard import update_dashboard_message
          await update_dashboard_message(bot, game.id, session)
-    except Exception as e:
+    except (ImportError, Exception) as e:
          import logging
          logging.warning(f"Failed to update dashboard for game {game.id}: {e}")

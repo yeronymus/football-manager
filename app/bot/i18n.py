@@ -26,6 +26,7 @@ class SimpleI18n:
         logger.info(f"Loaded translations for: {list(self.translations.keys())}")
 
     def get_text(self, lang: str, key: str, **kwargs) -> str:
+        lang = str(lang).lower()
         # Fallback to English if language not found, or directly to key
         lang_dict = self.translations.get(lang, self.translations.get("ru", {}))
         text = lang_dict.get(key, key)

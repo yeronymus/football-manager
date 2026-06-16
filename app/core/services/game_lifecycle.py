@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import logging
 
 from sqlalchemy import select, delete
-from app.db.models import Game, Chat, Signup, SignupStatus, GameStatus, GameStats, User, Team
+from app.db.models import Game, Chat, Signup, SignupStatus, GameStatus, GameStats
 from app.core.domain.dto import CreateGameDTO, UpdateGameDTO, FinishGameDTO
 from app.core.services.stats import StatsService
 from app.infrastructure.scheduler.service import SchedulerService
@@ -40,6 +40,7 @@ class GameLifecycleService:
         # 2. Create Game
         game = Game(
             chat_id=data.chat_id,
+            channel_id=chat.channel_id,
             created_by=creator_id,
             date_time=data.date_time,
             location=data.location,
@@ -195,6 +196,7 @@ class GameLifecycleService:
         
         processed_users = set()
 
+        stats_to_add = []
         if data.player_stats:
             for p_stat in data.player_stats:
                 is_mvp = (p_stat.user_id in mvp_ids)
@@ -205,14 +207,17 @@ class GameLifecycleService:
                         goals=p_stat.goals,
                         is_mvp=is_mvp
                     )
-                    self.session.add(stat)
+                    stats_to_add.append(stat)
                     processed_users.add(p_stat.user_id)
         
         # Handle MVPs with no goals
         for mid in mvp_ids:
             if mid not in processed_users:
-                self.session.add(GameStats(game_id=game.id, user_id=mid, goals=0, is_mvp=True))
+                stats_to_add.append(GameStats(game_id=game.id, user_id=mid, goals=0, is_mvp=True))
                 processed_users.add(mid) # Avoid double add if loop logic changes
+                
+        if stats_to_add:
+            self.session.add_all(stats_to_add)
                 
         # Call Stats Service for Ratings
         await self.stats.apply_game_results(game, mvp_ids)

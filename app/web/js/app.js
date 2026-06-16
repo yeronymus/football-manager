@@ -366,7 +366,7 @@ window.renderHistory = async function(mode = null) {
                 </div>
                 <div style="text-align:right">
                     <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color:${statusColor}">${statusText}</div>
-                    <span class="subtitle" style="font-weight: 600; font-size:12px;">${new Date(g.date).toLocaleDateString('ru-RU')}</span>
+                    <span class="subtitle" style="font-weight: 600; font-size:12px;">${new Date(g.date).toLocaleDateString('ru-RU', {timeZone: 'Europe/Prague'})}</span>
                 </div>
             </div>
 
@@ -410,7 +410,7 @@ window.showGameDetails = async function(gameId) {
             <div style="text-align:center; margin-bottom:30px;">
                 <h1 style="font-size:48px; margin:10px 0; font-weight:900; letter-spacing:-1px;">${scoreHtml}</h1>
                 <div class="subtitle" style="font-size:16px; margin-bottom:4px;">📍 ${game.location}</div>
-                <div class="subtitle" style="font-size:14px;">📅 ${new Date(game.date).toLocaleString('ru-RU')}</div>
+                <div class="subtitle" style="font-size:14px;">📅 ${new Date(game.date).toLocaleString('ru-RU', {timeZone: 'Europe/Prague'})}</div>
             </div>
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">

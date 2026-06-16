@@ -366,7 +366,7 @@
             inset: 0;
             background: var(--bg-color);
             z-index: 3000;
-            display: flex;
+            display: none;
             flex-direction: column;
             padding: 24px;
             gap: 16px;
@@ -389,6 +389,7 @@
         <h1>Драфт Составов</h1>
         <p style="text-align: center; color: var(--text-secondary); margin-top: -10px;">Выберите игру для редактирования</p>
         <div id="gameList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        <div id="debug-info" style="margin-top: 20px; font-size: 11px; color: #ff5555; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; font-family: monospace; display: none; word-break: break-all; border: 1px solid rgba(255, 85, 85, 0.3); text-align: left; max-height: 200px; overflow-y: auto;"></div>
     </div>
 
     <!-- ADD SEARCH MODAL -->
@@ -445,17 +446,67 @@
 
 
     <script>
-        const tg = (window.parent && window.parent.Telegram && window.parent.Telegram.WebApp) ? window.parent.Telegram.WebApp : window.Telegram.WebApp;
-        tg.expand();
+        // --- Telegram WebApp init (resilient) ---
+        let tg = null;
+        try {
+            tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+            if (tg) {
+                try {
+                    if (window.parent && window.parent.Telegram && window.parent.Telegram.WebApp) {
+                        tg = window.parent.Telegram.WebApp;
+                    }
+                } catch (e) {
+                    console.warn("Parent window access blocked:", e);
+                }
+                tg.expand();
+            }
+        } catch (e) {
+            console.warn("Telegram WebApp init error:", e);
+        }
+        // Provide a safe fallback so tg.* calls don't throw
+        if (!tg) {
+            tg = { initData: "", showAlert: (msg) => alert(msg), close: () => {}, HapticFeedback: null };
+        }
         
+        // --- Parse game_id from URL ---
         const urlParams = new URLSearchParams(window.location.search);
-        let gameId = urlParams.get('game_id');
+        let gameId = urlParams.get('game_id') || urlParams.get('id');
+        
+        // Fallback: try Telegram start_param (deep links pass game_id there)
+        if (!gameId && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+            const sp = tg.initDataUnsafe.start_param;
+            if (sp.startsWith('draft_')) {
+                gameId = sp.replace('draft_', '');
+            } else if (/^\d+$/.test(sp)) {
+                gameId = sp;
+            }
+        }
+        
+        console.log("[Draft] gameId:", gameId, "URL:", window.location.href);
+        
         const urlInitData = urlParams.get('initData');
         const initData = tg.initData || urlInitData || "";
         
         if (!tg.initData && urlInitData) {
             console.log("Using initData from URL params");
         }
+        
+        // --- Populate troubleshooting debug overlay ---
+        const debugEl = document.getElementById('debug-info');
+        if (debugEl) {
+            debugEl.innerHTML = `
+                <strong>[TMA DIAGNOSTICS]</strong><br>
+                • Href: ${window.location.href}<br>
+                • Search: ${window.location.search || '(empty)'}<br>
+                • Parsed gameId: ${gameId || '(empty/falsy)'}<br>
+                • tg.WebApp present: ${!!(window.Telegram && window.Telegram.WebApp)}<br>
+                • tg.initData length: ${tg && tg.initData ? tg.initData.length : 0}
+            `;
+            if (!gameId || urlParams.get('debug') === 'true') {
+                debugEl.style.display = 'block';
+            }
+        }
+
         let allPlayers = {};
         let selectedPlayer = null;
         let selectedElement = null;
@@ -517,11 +568,12 @@
             const dispPos = p.original_position || p.position;
 
             div.innerHTML = `
-                <div class="player-info">
+                <div class="player-info" style="display: flex; align-items: center; gap: 4px; width: 100%;">
+                    <button class="remove-player-btn" onclick="kickPlayer(${p.signup_id}, event)" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 2px 6px; font-weight: bold; font-size: 14px; line-height: 1; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.15)'" onmouseout="this.style.background='none'" title="Убрать игрока">×</button>
                     <div class="player-pos pos-${dispPos}">${dispPos}</div>
-                    <div class="player-name">${p.name}${alts}</div>
+                    <div class="player-name" style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.name}${alts}</div>
                 </div>
-                <div class="player-rating">${p.rating || '-'}</div>
+                <div class="player-rating" style="margin-left: auto;">${p.rating || '-'}</div>
             `;
             targetList.appendChild(div);
         }
@@ -860,7 +912,7 @@
             if (activeTeams.includes('c')) data.team_c = gather('c');
 
 
-            # --- GATHER POOLS ---
+            // --- GATHER POOLS ---
             const gatherPool = (id) => {
                 const list = [];
                 document.getElementById(id).querySelectorAll('.player-card').forEach(c => {
@@ -964,7 +1016,7 @@
                     const btn = document.createElement('div');
                     btn.className = 'game-option';
                     const d = new Date(g.date_time);
-                    btn.innerHTML = `${g.location} (${d.getDate()}.${d.getMonth() + 1})`;
+                    btn.innerHTML = `${g.location} (${d.toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', timeZone: 'Europe/Prague'})})`;
                     btn.onclick = () => {
                         gameId = g.id;
                         document.getElementById('gameSelector').style.display = 'none';
@@ -1088,6 +1140,49 @@
                 tg.showAlert("Гость добавлен!");
             } catch (e) {
                 alert("Ошибка: " + e.message);
+            }
+        }
+
+        async function kickPlayer(signupId, event) {
+            if (event) event.stopPropagation();
+            if (!confirm("Убрать этого игрока из игры?")) return;
+            
+            try {
+                const response = await fetch(`/api/dashboard/signups/${signupId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `tma ${initData}` }
+                });
+                
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Error");
+                }
+                
+                tg.showAlert("Игрок убран!");
+                await loadGame(gameId);
+            } catch (e) {
+                alert("Ошибка при удалении игрока: " + e.message);
+            }
+        }
+
+        async function deleteGameClick() {
+            if (!confirm("⚠️ Вы уверены, что хотите полностью удалить эту игру? Это действие необратимо и удалит всю статистику, состав и голоса!")) return;
+            
+            try {
+                const response = await fetch(`/api/dashboard/games/${gameId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `tma ${initData}` }
+                });
+                
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Error");
+                }
+                
+                tg.showAlert("Игра успешно удалена!");
+                tg.close();
+            } catch (e) {
+                alert("Ошибка при удалении игры: " + e.message);
             }
         }
     </script>

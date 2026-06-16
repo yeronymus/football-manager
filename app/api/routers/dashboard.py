@@ -8,9 +8,10 @@ import logging
 import re
 
 from app.db.database import get_session
-from app.db.models import Chat, ChatAdmin, User, Game, GameStatus, Signup, SignupStatus, Language
+from app.db.models import Chat, ChatAdmin, User, Game, Signup, SignupStatus, Language
 from app.api.auth import get_user_from_header, check_admin_rights
 from app.config import settings
+from app.core.services.cache import cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,9 @@ def clean_location(loc: str) -> str:
 class GroupOut(BaseModel):
     chat_id: int
     title: str
-    is_active: bool
-    language: Language
-    payment_info: Optional[str]
+    is_active: Optional[bool] = True
+    language: Optional[Language] = Language.ru
+    payment_info: Optional[str] = None
     default_location: Optional[str] = None
     default_price: Optional[int] = None
     default_team_count: Optional[int] = None
@@ -219,20 +220,8 @@ async def get_game_details(
         
     await check_admin_rights(game.chat_id, user_id)
     
-    stmt = (
-        select(Signup, User)
-        .join(User, User.user_id == Signup.user_id)
-        .where(Signup.game_id == game_id)
-        .order_by(Signup.created_at)
-    )
-    res = await session.execute(stmt)
-    
-    # Also fetch GameStats
-    from app.db.models import GameStats, Vote
-    stats_res = await session.execute(select(GameStats).where(GameStats.game_id == game_id))
-    stats_map = {s.user_id: s for s in stats_res.scalars().all()}
-    
     # Also fetch Vote counts
+    from app.db.models import GameStats, Vote
     from sqlalchemy import func
     votes_res = await session.execute(
         select(Vote.target_id, func.count(Vote.id))
@@ -240,6 +229,15 @@ async def get_game_details(
         .group_by(Vote.target_id)
     )
     votes_map = {v[0]: v[1] for v in votes_res.all()}
+
+    stmt = (
+        select(Signup, User, GameStats)
+        .join(User, User.user_id == Signup.user_id)
+        .outerjoin(GameStats, (GameStats.game_id == Signup.game_id) & (GameStats.user_id == Signup.user_id))
+        .where(Signup.game_id == game_id)
+        .order_by(Signup.created_at)
+    )
+    res = await session.execute(stmt)
     
     cleaned_loc = clean_location(game.location)
     if cleaned_loc != game.location:
@@ -247,8 +245,7 @@ async def get_game_details(
         await session.commit()
 
     players = []
-    for signup, user in res.all():
-        u_stats = stats_map.get(user.user_id)
+    for signup, user, u_stats in res.all():
         v_count = votes_map.get(user.user_id, 0)
         
         players.append(PlayerDetailOut(
@@ -331,10 +328,12 @@ async def add_guest(
     new_signup = Signup(
         game_id=game_id, 
         user_id=guest_id, 
-        status=SignupStatus.RESERVE
+        status=SignupStatus.ACTIVE
     )
     session.add(new_signup)
     await session.commit()
+    
+    await cache_service.evict(f"game_details:{game_id}")
     
     return {"status": "added", "user_id": guest_id}
 
@@ -502,3 +501,44 @@ async def notify_player_payment(
         return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/games/{game_id}")
+async def delete_game(
+    game_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    game = await session.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, user_id, session=session)
+    
+    # 1. Cancel scheduler tasks
+    try:
+        from app.infrastructure.scheduler.service import SchedulerService
+        scheduler = SchedulerService()
+        scheduler.cancel_game_tasks(game_id)
+    except Exception as e:
+        logger.warning(f"Failed to cancel scheduler tasks for game {game_id}: {e}")
+        
+    # 2. Try to delete public messages
+    try:
+        from app.bot.main import bot
+        if game.chat_id and game.message_id:
+            await bot.delete_message(chat_id=game.chat_id, message_id=game.message_id)
+        if game.chat_id and game.admin_message_id:
+            await bot.delete_message(chat_id=game.chat_id, message_id=game.admin_message_id)
+        if game.chat_id and game.voting_message_id:
+            await bot.delete_message(chat_id=game.chat_id, message_id=game.voting_message_id)
+    except Exception as e:
+        logger.warning(f"Failed to delete telegram messages for deleted game {game_id}: {e}")
+
+    # 3. Evict cache
+    await cache_service.evict(f"game_details:{game_id}")
+        
+    # 4. Delete the game itself
+    await session.delete(game)
+    await session.commit()
+    
+    return {"status": "ok", "message": "Game deleted successfully"}

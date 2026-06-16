@@ -1,7 +1,7 @@
 let initData = "";
 let currentGroupId = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+function init() {
     if (window.Telegram && window.Telegram.WebApp) {
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
@@ -22,7 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadGroups();
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
 
 let currentGameId = null;
 
@@ -90,7 +96,7 @@ async function loadGroups() {
         await new Promise(r => setTimeout(r, 200));
         retryCount++;
     }
-    initData = window.Telegram.WebApp.initData;
+    initData = window.Telegram.WebApp.initData || initData;
 
     try {
         const groups = await apiCall('/groups');
@@ -168,7 +174,7 @@ async function loadGroupGames(group) {
             const el = document.createElement('div');
             el.className = 'game-card';
             
-            const dateStr = new Date(g.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
+            const dateStr = new Date(g.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague'});
             
             let scoreHtml = '';
             if (g.score_a !== null && g.score_b !== null) {
@@ -205,7 +211,7 @@ async function loadGameDetails(gameId) {
     try {
         const game = await apiCall(`/games/${gameId}`);
         
-        const dateStr = new Date(game.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
+        const dateStr = new Date(game.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague'});
         document.getElementById('game-title').textContent = `Game #${game.id}`;
         document.getElementById('game-date-location').textContent = `${game.location} • ${dateStr}`;
         
@@ -279,6 +285,8 @@ async function loadGameDetails(gameId) {
                     notifyBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 6px;" onclick="notifyPayment(${p.user_id}, ${gameId}, this)" title="Уведомить об оплате">🔔</button>`;
                 }
                 
+                let removeBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-left: 6px; border-color: rgba(239, 68, 68, 0.3); color: var(--danger);" onclick="kickPlayer(${p.signup_id}, ${gameId}, this)" title="Убрать игрока">❌</button>`;
+                
                 el.innerHTML = `
                     <div class="player-info">
                         <span class="player-name">${p.full_name} <div style="font-size:0.8rem; margin-left: 6px;">${statsHtml}</div></span>
@@ -288,6 +296,7 @@ async function loadGameDetails(gameId) {
                         <button class="payment-toggle ${btnClass}" onclick="togglePayment(${p.signup_id}, this, ${gameId})">
                             ${btnText}
                         </button>
+                        ${removeBtn}
                     </div>
                 `;
                 
@@ -565,5 +574,45 @@ async function togglePayment(signupId, btnEl, gameId) {
         alert("Failed to toggle payment");
     } finally {
         btnEl.disabled = false;
+    }
+}
+
+async function kickPlayer(signupId, gameId, btn) {
+    if (!confirm("Убрать этого игрока из игры?")) return;
+    
+    btn.disabled = true;
+    const origText = btn.innerHTML;
+    btn.innerHTML = '⏳';
+    
+    try {
+        await apiCall(`/signups/${signupId}`, { method: 'DELETE' });
+        loadGameDetails(gameId);
+    } catch (e) {
+        alert("Ошибка при удалении игрока: " + e.message);
+        btn.disabled = false;
+        btn.innerHTML = origText;
+    }
+}
+
+async function deleteGameClick() {
+    if (!currentGameId) return;
+    if (!confirm("⚠️ Вы уверены, что хотите полностью удалить эту игру? Это действие необратимо и удалит всю связанную статистику, голоса и состав!")) return;
+    
+    try {
+        await apiCall(`/games/${currentGameId}`, { method: 'DELETE' });
+        // Go back to group games list
+        if (currentGroupId) {
+            // Click active group again to reload its list
+            const activeGrp = document.querySelector('.group-item.active');
+            if (activeGrp) {
+                activeGrp.click();
+            } else {
+                showGroupsView();
+            }
+        } else {
+            showGroupsView();
+        }
+    } catch (e) {
+        alert("Ошибка при удалении игры: " + e.message);
     }
 }

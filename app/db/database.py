@@ -22,5 +22,31 @@ async def get_session() -> AsyncSession:
         yield session
 
 async def init_models():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    import asyncio
+    import logging
+    import sys
+    
+    logger = logging.getLogger(__name__)
+    logger.info("Running database migrations via Alembic...")
+    try:
+        # Run "alembic upgrade head" using the current python executable to guarantee venv compatibility
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, "-m", "alembic", "upgrade", "head",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode == 0:
+            logger.info("Alembic migrations completed successfully.")
+            if stdout:
+                logger.info(f"Migrations output:\n{stdout.decode().strip()}")
+        else:
+            logger.error(f"Alembic migrations failed with exit code {process.returncode}")
+            logger.error(f"Error output:\n{stderr.decode().strip()}")
+            raise RuntimeError("Alembic upgrade head failed")
+    except Exception as e:
+        logger.error(f"Failed to run database migrations via Alembic: {e}", exc_info=True)
+        logger.warning("Attempting safe fallback to Base.metadata.create_all...")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)

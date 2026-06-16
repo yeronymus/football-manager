@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Telegram WebApp -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="css/admin.css?v=1.0">
+    <link rel="stylesheet" href="/web/css/admin.css?v=1.3.0">
 </head>
 <body>
     <div id="app-container">
@@ -136,6 +136,9 @@
                     <button class="action-tile primary" onclick="openApp('draft')">
                         <span class="icon">🛡</span> Manage Draft
                     </button>
+                    <button class="action-tile danger" onclick="deleteGameClick()" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: var(--danger);">
+                        <span class="icon">🗑</span> Delete Game
+                    </button>
                 </div>
 
                 <div class="roster-section">
@@ -171,6 +174,12 @@
     <iframe id="app-iframe"></iframe>
 </div>
 
-<script src="js/admin.js?v=1.9"></script>
+<script>
+    (function() {
+        var script = document.createElement('script');
+        script.src = 'js/admin.js?v=' + Date.now();
+        document.body.appendChild(script);
+    })();
+</script>
 </body>
 </html>

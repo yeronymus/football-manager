@@ -58,6 +58,16 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
                 game.channel_id = message.forward_from_chat.id
                 game.channel_message_id = message.forward_from_message_id
             
+            # --- Avoid Duplicates & Clean Up forwards ---
+            # If we already have the game posted directly in this chat, just delete the forward and exit!
+            if game.chat_id == message.chat.id and game.message_id:
+                try:
+                    await message.delete()
+                    logger.info(f"Duplicate forward for game {game_id} in current chat. Silently deleted.")
+                except Exception as e:
+                    logger.warning(f"Failed to delete duplicate forward: {e}")
+                return
+            
             # --- Attempt to replace the forward with our own message ---
             try:
                 from app.bot.keyboards import get_game_keyboard
@@ -139,34 +149,13 @@ async def cmd_refresh_game(message: types.Message, command: CommandObject, sessi
         await message.answer("Игра не найдена.")
         return
         
-    from app.bot.utils import format_game_message
-    from app.bot.keyboards import get_game_keyboard
+    from app.bot.utils import update_game_message
     
-    text = await format_game_message(game, session)
-    kb = get_game_keyboard(game.id)
-    
-    # Try to refresh messages
-    reports = []
-    
-    async def try_edit(chat_id, msg_id, label):
-        if not chat_id or not msg_id:
-            return f"❌ {label}: Нет ID"
-        try:
-            await message.bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=msg_id,
-                text=text,
-                reply_markup=kb,
-                parse_mode="HTML"
-            )
-            return f"✅ {label}: Сообщение обновлено"
-        except Exception as e:
-            return f"⚠️ {label}: Ошибка ({e})"
-
-    rep1 = await try_edit(game.chat_id, game.message_id, "Группа")
-    rep2 = await try_edit(game.channel_id, game.channel_message_id, "Канал")
-    
-    await message.answer(f"🔄 <b>Обновление игры #{game_id}:</b>\n\n{rep1}\n{rep2}", parse_mode="HTML")
+    try:
+        await update_game_message(message.bot, game, session)
+        await message.answer(f"🔄 <b>Игра #{game_id} успешно обновлена в группе и канале!</b>", parse_mode="HTML")
+    except Exception as e:
+        await message.answer(f"⚠️ <b>Ошибка при обновлении игры #{game_id}:</b> {e}", parse_mode="HTML")
 
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
@@ -325,22 +314,12 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 result = await session.execute(select(Game).where(Game.id == game_id))
                 game = result.scalar_one_or_none()
                 if game:
-                    if is_admin:
-                        # ULTRA-MINIMALISTIC INTERFACE FOR ADMINS
-                        webapp_url = settings.webapp_url.rstrip("/")
-                        web_url = f"{webapp_url}/web/draft.html?game_id={game_id}&v=2.2"
-                        kb = types.InlineKeyboardMarkup(inline_keyboard=[
-                            [types.InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=web_url))]
-                        ])
-                        await message.answer(f"⚽ <b>Игра #{game_id}: Составы</b>", reply_markup=kb, parse_mode="HTML")
-                        return
-
-                    # 1. Generate full game message text for regular users
+                    # 1. Generate full game message text
                     from app.bot.utils import format_game_message
                     text = await format_game_message(game, session)
                     
-                    # 2. Keyboard (Join/Leave only)
-                    kb = get_game_keyboard(game_id)
+                    # 2. Keyboard (includes Draft button for admins)
+                    kb = get_game_keyboard(game_id, is_admin=is_admin)
                     await message.answer(text, reply_markup=kb)
 
                     return

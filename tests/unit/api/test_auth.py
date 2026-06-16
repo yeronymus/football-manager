@@ -29,6 +29,17 @@ def test_get_user_from_init_data_missing_id():
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "User ID not found in initData"
 
+def test_get_user_from_init_data_empty_input():
+    with pytest.raises(HTTPException) as exc_info:
+        get_user_from_init_data("")
+    assert exc_info.value.status_code == 401
+    assert "Missing initData" in exc_info.value.detail
+
+def test_get_user_from_init_data_none_input():
+    with pytest.raises(HTTPException) as exc_info:
+        get_user_from_init_data(None)
+    assert exc_info.value.status_code == 401
+
 
 # ===========================================================================
 # 2. TESTS FOR validate_init_data (HMAC SHA-256 Signature Verification)

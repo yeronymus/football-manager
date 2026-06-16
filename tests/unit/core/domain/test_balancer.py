@@ -143,3 +143,46 @@ def test_balance_teams_3_teams():
     # Each team has 1 GK
     for t in teams:
         assert len([p for p in t if get_bucket_for_position(p.position) == BalanceBucket.GK]) == 1
+
+def test_balance_teams_no_gks():
+    # 6 Field players, no GKs
+    players = [create_mock_player(i, Position.CB, 100) for i in range(1, 7)]
+    teams = balance_teams(players, team_count=2)
+    assert len(teams[0]) == 3
+    assert len(teams[1]) == 3
+
+def test_balance_teams_too_many_gks():
+    # 3 GKs for 2 teams. 1 team will get 2 GKs (one acting as field player)
+    players = [create_mock_player(i, Position.GK, 100) for i in range(1, 4)]
+    players += [create_mock_player(i, Position.CM, 100) for i in range(4, 11)] # 7 field players
+    # Total 10 players -> 5 per team
+    
+    teams = balance_teams(players, team_count=2)
+    assert len(teams[0]) == 5
+    assert len(teams[1]) == 5
+    
+    # Total GKs should still be 3
+    total_gks = sum(1 for t in teams for p in t if get_bucket_for_position(p.position) == BalanceBucket.GK)
+    assert total_gks == 3
+
+def test_balance_teams_extreme_ratings():
+    # One very good player, many average
+    players = [create_mock_player(1, Position.CM, 200)]
+    players += [create_mock_player(i, Position.CM, 100) for i in range(2, 7)]
+    # Total 6 players. T1: 200, 100, 100 = 400. T2: 100, 100, 100 = 300.
+    # Distribute list: 200 -> T0. 100 -> T1. 100 -> T1. 100 -> T0. 100 -> T1. 100 -> T0.
+    # T0: [200, 100, 100] = 400
+    # T1: [100, 100, 100] = 300
+    # Actually:
+    # 200 -> T0 (T0:200, T1:0)
+    # 100 -> T1 (T0:200, T1:100)
+    # 100 -> T1 (T0:200, T1:200)
+    # 100 -> T0 (T0:300, T1:200)
+    # 100 -> T1 (T0:300, T1:300)
+    # 100 -> T0 (T0:400, T1:300)
+    
+    teams = balance_teams(players, team_count=2)
+    sum0 = sum(p.rating for p in teams[0])
+    sum1 = sum(p.rating for p in teams[1])
+    
+    assert (sum0 == 400 and sum1 == 300) or (sum0 == 300 and sum1 == 400)

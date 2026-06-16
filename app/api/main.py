@@ -30,54 +30,58 @@ app.add_middleware(
 @app.on_event("startup")
 async def on_startup():
     try:
-        from app.db.database import init_models
-        from app.scheduler.main import start_scheduler
+        if settings.run_migrations:
+            from app.db.database import init_models
+            await init_models()
         
-        await init_models()
-        await start_scheduler()
+        if settings.run_scheduler:
+            from app.scheduler.main import start_scheduler
+            await start_scheduler()
         
-        # Start persistent messaging consumer for volatile event safety
-        from app.infrastructure.messaging import consumer as msg_consumer
-        await msg_consumer.start()
+        if settings.run_consumer:
+            # Start persistent messaging consumer for volatile event safety
+            from app.infrastructure.messaging import consumer as msg_consumer
+            await msg_consumer.start()
         
-        # STARTUP LOGIC
-        # If Webhook: we await start_bot (critical path).
-        # If Polling: we run start_bot in background to avoid blocking startup (network logs).
-        
-        async def safe_start_bot():
-            try:
-                await start_bot()
-            except Exception as e:
-                logger.error(f"Failed to set commands/webhook: {e}")
-
-        logger.info(f"Configuration: USE_POLLING={settings.use_polling}, WEBHOOK_URL={settings.webhook_url}")
-
-        if not settings.use_polling:
-            # Webhook mode: Block to ensure it's set
-            logger.info("Starting in Webhook mode...")
-            await safe_start_bot()
-        else:
-            # Polling mode: Background
-            import asyncio
-            logger.info("Starting in Polling mode...")
-            # Start polling
-            logger.info("Deleting webhook before polling...")
-            await bot.delete_webhook(drop_pending_updates=True)
+        if settings.run_bot:
+            # STARTUP LOGIC
+            # If Webhook: we await start_bot (critical path).
+            # If Polling: we run start_bot in background to avoid blocking startup (network logs).
             
-            # Keep strong references to background tasks to prevent GC from killing polling
+            async def safe_start_bot():
+                try:
+                    await start_bot()
+                except Exception as e:
+                    logger.error(f"Failed to set commands/webhook: {e}")
+
+            logger.info(f"Configuration: USE_POLLING={settings.use_polling}, WEBHOOK_URL={settings.webhook_url}")
+
+            import asyncio
             if not hasattr(app.state, "bg_tasks"):
                 app.state.bg_tasks = []
-            
-            logger.info("Launching start_polling task...")
-            polling_task = asyncio.create_task(dp.start_polling(bot))
-            app.state.bg_tasks.append(polling_task)
-            
-            # Start commands setup in background
-            logger.info("Launching safe_start_bot task...")
-            setup_task = asyncio.create_task(safe_start_bot())
-            app.state.bg_tasks.append(setup_task)
-            
-            logger.info("Bot started in Polling Mode (Background setup)")
+
+            if not settings.use_polling:
+                # Webhook mode: Background setup
+                logger.info("Starting in Webhook mode (Background setup)...")
+                setup_task = asyncio.create_task(safe_start_bot())
+                app.state.bg_tasks.append(setup_task)
+            else:
+                # Polling mode: Background
+                logger.info("Starting in Polling mode...")
+                # Start polling
+                logger.info("Deleting webhook before polling...")
+                await bot.delete_webhook(drop_pending_updates=True)
+                
+                logger.info("Launching start_polling task...")
+                polling_task = asyncio.create_task(dp.start_polling(bot))
+                app.state.bg_tasks.append(polling_task)
+                
+                # Start commands setup in background
+                logger.info("Launching safe_start_bot task...")
+                setup_task = asyncio.create_task(safe_start_bot())
+                app.state.bg_tasks.append(setup_task)
+                
+                logger.info("Bot started in Polling Mode (Background setup)")
             
         logger.info("Application started successfully")
     except Exception as e:
@@ -85,12 +89,22 @@ async def on_startup():
 
 @app.on_event("shutdown")
 async def on_shutdown():
-    from app.infrastructure.messaging import consumer as msg_consumer
-    try:
-        await msg_consumer.stop()
-    except Exception as e:
-        logger.error(f"Failed to stop messaging consumer: {e}")
-    await stop_bot()
+    if settings.run_consumer:
+        from app.infrastructure.messaging import consumer as msg_consumer
+        try:
+            await msg_consumer.stop()
+        except Exception as e:
+            logger.error(f"Failed to stop messaging consumer: {e}")
+            
+    if settings.run_scheduler:
+        try:
+            from app.scheduler.main import stop_scheduler
+            await stop_scheduler()
+        except Exception as e:
+            logger.error(f"Failed to stop scheduler: {e}")
+
+    if settings.run_bot:
+        await stop_bot()
 
 # Routers
 app.include_router(games.router, prefix="/api", tags=["Games"])
