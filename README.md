@@ -79,9 +79,6 @@ Tato sekce slouží jako **hlavní rozcestník pro hodnocení** 2. odevzdání s
 
 ## 🧪 Jak spustit a otestovat (Scénář pro hodnocení)
 
-> [!NOTE]
-> Aplikace je již nasazena a plně funkční na produkčním serveru (viz sekce **Nasazení na produkční server** výše). Tento návod slouží pro případné lokální spuštění a otestování vyučujícím.
-
 Vyučující může veškeré technologie a splnění požadavků ověřit lokálně v několika jednoduchých krocích.
 
 ### Krok 1: Příprava prostředí a konfigurace
