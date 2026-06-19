@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Football Manager Bot API")
 
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
+
 # Middlewares
 from app.api.middlewares import TelemetryInterceptorMiddleware
 app.add_middleware(TelemetryInterceptorMiddleware)

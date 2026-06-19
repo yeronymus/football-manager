@@ -66,6 +66,7 @@ BACKLOG.md
 NSS_presentation.md
 scratch/
 temp/
+.local_notes/
 
 # --- OS Specific ---
 .DS_Store
