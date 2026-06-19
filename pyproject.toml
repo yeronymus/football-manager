@@ -17,6 +17,8 @@ dependencies = [
     "alembic==1.13.1",
     "pydantic-settings>=2.0.0",
     "aiosqlite>=0.22.1",
+    "prometheus-client>=0.17.1",
+    "prometheus-fastapi-instrumentator>=6.0.0",
 ]
 
 [dependency-groups]
