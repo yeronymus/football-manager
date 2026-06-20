@@ -2,6 +2,7 @@ import json
 import logging
 import asyncio
 from typing import Optional
+from abc import ABC, abstractmethod
 import redis.asyncio as aioredis
 from app.config import settings
 
@@ -11,7 +12,21 @@ STREAM_NAME = "nss_events_stream"
 GROUP_NAME = "nss_consumer_group"
 CONSUMER_NAME = "nss_consumer_1"
 
-class MessageProducer:
+class MessageBroker(ABC):
+    """
+    Interface for the messaging system broker.
+    Provides dependency inversion for producing/publishing messages.
+    """
+    @abstractmethod
+    async def publish_message(self, topic: str, data: dict) -> str:
+        """Publishes a structured event message to the broker."""
+        pass
+
+class MessageProducer(MessageBroker):
+    """
+    Redis Streams implementation of the MessageBroker interface.
+    Handles persistent event publishing.
+    """
     def __init__(self):
         self.redis_url = settings.REDIS_URL
         self._client: Optional[aioredis.Redis] = None

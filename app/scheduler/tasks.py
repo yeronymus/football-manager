@@ -84,11 +84,15 @@ async def calculate_mvp(game_id: int):
 
 
 async def remind_admin_to_finish(game_id: int):
+    """
+    Sends a notification reminder to the game creator to complete/log the match stats
+    once the game duration is expected to be over.
+    """
     async with async_session_maker() as session:
-        # 1. Берем игру
+        # 1. Fetch game
         game = await session.get(Game, game_id)
         
-        # Если игру уже закрыли - не беспокоим
+        # If game is already finished, do not disturb
         if not game or game.status == GameStatus.FINISHED:
             return
 
@@ -103,10 +107,10 @@ async def remind_admin_to_finish(game_id: int):
              # This is an old job firing for a game that was moved to the future. Ignore.
              return
 
-        # 2. Находим создателя игры (обычно он админ и был на поле)
+        # 2. Find game creator
         creator_id = game.created_by
         
-        # 3. Формируем кнопку сразу на экран завершения
+        # 3. Build inline button for game completion screen
         web_app_url = f"{settings.webapp_url.rstrip('/')}/web/finish.html?id={game.id}"
         
         kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -116,12 +120,12 @@ async def remind_admin_to_finish(game_id: int):
         try:
             await bot.send_message(
                 chat_id=creator_id,
-                text=f"⏰ Матч <b>#{game.id}</b> уже должен закончиться.\n\nПожалуйста, внесите счет и авторов голов, чтобы обновить статистику!",
+                text=f"⏰ Матч <b>#{game.id}</b> uže by měl skončit.\n\nZadejte prosím skóre a střelce gólů pro aktualizaci statistik!",
                 reply_markup=kb,
                 parse_mode="HTML"
             )
         except Exception as e:
-            # Админ мог заблочить бота
+            # Admin could have blocked the bot
              print(f"Failed to remind admin: {e}")
 async def release_gk_slots(game_id: int):
     """
