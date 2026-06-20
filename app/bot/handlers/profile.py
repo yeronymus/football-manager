@@ -14,10 +14,10 @@ router = Router()
 
 @router.message(Command("history"))
 async def cmd_history(message: types.Message):
-    # Мы берем ID текущего чата, где написали команду
+    # Get the ID of the current chat where the command was written
     current_chat_id = message.chat.id
     
-    # Формируем URL с параметром
+    # Format URL with chat_id parameter
     web_app_url = f"{settings.webapp_url.rstrip('/')}/web/history.html?chat_id={current_chat_id}&v=7"
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[

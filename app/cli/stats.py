@@ -108,9 +108,9 @@ async def export_stats_csv_command(output_file: str = "FM_Player_Stats.csv"):
         
         with open(output_file, "w", newline="", encoding="utf-8-sig") as f:
             writer = csv.writer(f)
-            writer.writerow(["#", "Игрок", "ELO", "Игры", "MVP", "Г/И", "Ораза"])
+            writer.writerow(["#", "Player", "ELO", "Games", "MVP", "G/M", "Fasting"])
             for i, u in enumerate(users, 1):
-                fasting = "Да" if u.full_name in FAST_SET else ""
+                fasting = "Yes" if u.full_name in FAST_SET else ""
                 gpi = f"{u.stats_matches/u.games_played:.1f}" if u.games_played > 0 else "-" # This is actually just a placeholder for goals
                 writer.writerow([i, u.full_name, u.rating, u.games_played, u.stats_mvp, "-", fasting])
         print(f"Stats exported to {output_file}")
@@ -166,7 +166,7 @@ async def generate_stats_command(max_game_id: int, output_file: str = "FM_Player
     ws = wb.active
     ws.title = f"Player Stats {max_game_id}G"
 
-    headers = ["#", "Группа", "Игрок", "Поз", "Альт. позиции", "ELO", "Игры", "Голы", "Победы", "Пораж.", "Win%", "MVP", "Г/И", "Ораза"]
+    headers = ["#", "Group", "Player", "Pos", "Alt Positions", "ELO", "Matches", "Goals", "Wins", "Losses", "Win%", "MVP", "G/M", "Fasting"]
     for i in range(1, max_game_id + 1): headers.append(f"G{i}")
 
     for col, h in enumerate(headers, 1):
@@ -174,16 +174,16 @@ async def generate_stats_command(max_game_id: int, output_file: str = "FM_Player
         c.font = HFont; c.fill = HF; c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True); c.border = B
     
     all_players = sorted(stats.keys(), key=lambda p: (-stats[p]["elo"], -stats[p]["g"], -stats[p]["gp"]))
-    SECTIONS = [("ВРАТАРИ", []), ("ЗАЩИТА", []), ("ПОЛУЗАЩИТА", []), ("НАПАДЕНИЕ", []), ("БЕЗ СТАТЫ", [])]
+    SECTIONS = [("GOALKEEPERS", []), ("DEFENDERS", []), ("MIDFIELDERS", []), ("ATTACKERS", []), ("NO STATS", [])]
     
     for p in all_players:
         st = stats[p]
         props = PLAYER_PROPS.get(p, {"pos": "CM", "alt": ""})
-        grp = POS_GRP.get(props["pos"], "МИД")
+        grp = POS_GRP.get(props["pos"], "MID")
         gpi = f"{st['g']/st['gp']:.1f}" if st['gp'] > 0 else "-"
-        d_tuple = (p, props["pos"], props.get("alt", ""), grp, st["elo"], st["gp"], st["g"], st["w"], st["l"], calc_win_pct(st['w'], st['d'], st['l']), st["mvp"], gpi, "Да" if p in FAST_SET else "", st["logs"])
+        d_tuple = (p, props["pos"], props.get("alt", ""), grp, st["elo"], st["gp"], st["g"], st["w"], st["l"], calc_win_pct(st['w'], st['d'], st['l']), st["mvp"], gpi, "Yes" if p in FAST_SET else "", st["logs"])
         
-        target = 4 if st["gp"] == 0 else (0 if grp == "ВРТ" else (1 if grp == "ЗАЩ" else (2 if grp == "МИД" else 3)))
+        target = 4 if st["gp"] == 0 else (0 if grp == "GK" else (1 if grp == "DEF" else (2 if grp == "MID" else 3)))
         SECTIONS[target][1].append(d_tuple)
 
     row_idx = 2; num = 1
