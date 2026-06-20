@@ -6,6 +6,9 @@ from sqlalchemy.orm import DeclarativeBase
 ModelType = TypeVar("ModelType", bound=DeclarativeBase)
 
 class BaseRepository(Generic[ModelType]):
+    """
+    Base generic repository providing standard CRUD operations.
+    """
     def __init__(self, session: AsyncSession, model: Type[ModelType]):
         self.session = session
         self.model = model
@@ -25,6 +28,7 @@ class BaseRepository(Generic[ModelType]):
         return list(result.scalars().all())
 
     def add(self, obj: ModelType) -> ModelType:
+        """Adds a database object to the current session."""
         self.session.add(obj)
         return obj
 
