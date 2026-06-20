@@ -109,7 +109,7 @@ FAST_SET = {
 }
 
 POS_GRP = {
-    "GK": "ВРТ", "CB": "ЗАЩ", "LB": "ЗАЩ", "RB": "ЗАЩ",
-    "CM": "МИД", "CDM": "МИД", "CAM": "МИД", "LM": "МИД", "RM": "МИД",
-    "FWD": "АТК", "LW": "АТК", "RW": "АТК", "ST": "АТК"
+    "GK": "GK", "CB": "DEF", "LB": "DEF", "RB": "DEF",
+    "CM": "MID", "CDM": "MID", "CAM": "MID", "LM": "MID", "RM": "MID",
+    "FWD": "ATT", "LW": "ATT", "RW": "ATT", "ST": "ATT"
 }

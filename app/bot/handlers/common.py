@@ -72,16 +72,15 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
             try:
                 from app.bot.keyboards import get_game_keyboard
                 from app.bot.utils import format_game_message
-                
-                # Удаляем пересланное сообщение из канала
+                # Delete the forwarded message from the channel
                 await message.delete()
                 
-                # Проверка статуса админа (чтобы кнопки появились сразу в группе)
+                # Check admin status (to show buttons in the group immediately)
                 is_admin = False
                 if message.from_user.id in settings.admin_ids or message.from_user.id == settings.system_owner_id:
                     is_admin = True
                 
-                # Формируем и отправляем новое сообщение с кнопками
+                # Format and send the new message with buttons
                 text_short = await format_game_message(game, session, is_short=True)
                 kb = get_game_keyboard(game_id, is_admin=is_admin, webapp_url=settings.webapp_url)
                 
@@ -94,12 +93,12 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
                 
                 logger.info(f"Successfully replaced auto-forward with message {sent_msg.message_id} in {message.chat.id}")
                 
-                # Обновляем ID сообщения в базе, чтобы бот мог его редактировать при записи
+                # Update message ID in DB so the bot can edit it on registration changes
                 game.chat_id = message.chat.id
                 game.message_id = sent_msg.message_id
                 await session.commit()
                 
-                # Пробуем закрепить
+                # Try to pin
                 try:
                     await message.bot.pin_chat_message(chat_id=message.chat.id, message_id=sent_msg.message_id)
                 except:
@@ -195,11 +194,6 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
             
         # Send a self-destructing prompt to go to private
         # USER REQUEST: Silent in groups. Just delete.
-        # bot = await message.bot.get_me()
-        # msg = await message.answer(
-        #     f"👋 Привет! Чтобы использовать бота, напишите мне в ЛС:\n\n👉 t.me/{bot.username}?start=reg",
-        #     disable_web_page_preview=True
-        # )
         return
 
     args = command.args
