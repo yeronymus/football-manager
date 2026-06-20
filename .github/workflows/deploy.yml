@@ -2,9 +2,9 @@ name: Build and Deploy
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ Main, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ Main, develop ]
 
 env:
   REGISTRY: ghcr.io
@@ -45,7 +45,7 @@ jobs:
 
   build:
     needs: test-and-lint
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/Main' || github.ref == 'refs/heads/develop')
     runs-on: ubuntu-latest
     permissions:
       contents: read
