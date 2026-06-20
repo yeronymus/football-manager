@@ -68,6 +68,8 @@ scratch/
 temp/
 .local_notes/
 .jules/
+nss_docs/
+docs/
 
 # --- OS Specific ---
 .DS_Store
