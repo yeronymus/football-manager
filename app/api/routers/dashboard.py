@@ -208,6 +208,35 @@ class GameDetailOut(BaseModel):
     score_c: Optional[int] = None
     players: List[PlayerDetailOut]
 
+async def _get_game_votes_map(session: AsyncSession, game_id: int) -> dict[int, int]:
+    """Helper to fetch voting results maps target_id -> count."""
+    from app.db.models import Vote
+    votes_res = await session.execute(
+        select(Vote.target_id, func.count(Vote.id))
+        .where(Vote.game_id == game_id)
+        .group_by(Vote.target_id)
+    )
+    return {v[0]: v[1] for v in votes_res.all()}
+
+def _format_game_players(rows, votes_map) -> List[PlayerDetailOut]:
+    """Helper to format the players list from joined query rows."""
+    players = []
+    for signup, user, u_stats in rows:
+        v_count = votes_map.get(user.user_id, 0)
+        players.append(PlayerDetailOut(
+            signup_id=signup.id,
+            user_id=user.user_id,
+            full_name=user.full_name,
+            status=signup.status.value,
+            is_paid=signup.is_paid,
+            position=signup.position.value if signup.position else (user.player_position.value if user.player_position else None),
+            team=signup.team.value if signup.team else None,
+            goals=u_stats.goals if u_stats else 0,
+            mvp_votes=v_count,
+            is_mvp=u_stats.is_mvp if u_stats else False
+        ))
+    return players
+
 @router.get("/games/{game_id}", response_model=GameDetailOut)
 async def get_game_details(
     game_id: int,
@@ -220,16 +249,9 @@ async def get_game_details(
         
     await check_admin_rights(game.chat_id, user_id)
     
-    # Also fetch Vote counts
-    from app.db.models import GameStats, Vote
-    from sqlalchemy import func
-    votes_res = await session.execute(
-        select(Vote.target_id, func.count(Vote.id))
-        .where(Vote.game_id == game_id)
-        .group_by(Vote.target_id)
-    )
-    votes_map = {v[0]: v[1] for v in votes_res.all()}
+    votes_map = await _get_game_votes_map(session, game_id)
 
+    from app.db.models import GameStats
     stmt = (
         select(Signup, User, GameStats)
         .join(User, User.user_id == Signup.user_id)
@@ -244,22 +266,7 @@ async def get_game_details(
         game.location = cleaned_loc
         await session.commit()
 
-    players = []
-    for signup, user, u_stats in res.all():
-        v_count = votes_map.get(user.user_id, 0)
-        
-        players.append(PlayerDetailOut(
-            signup_id=signup.id,
-            user_id=user.user_id,
-            full_name=user.full_name,
-            status=signup.status.value,
-            is_paid=signup.is_paid,
-            position=signup.position.value if signup.position else (user.player_position.value if user.player_position else None),
-            team=signup.team.value if signup.team else None,
-            goals=u_stats.goals if u_stats else 0,
-            mvp_votes=v_count,
-            is_mvp=u_stats.is_mvp if u_stats else False
-        ))
+    players = _format_game_players(res.all(), votes_map)
         
     return GameDetailOut(
         id=game.id,

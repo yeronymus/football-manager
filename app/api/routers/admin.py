@@ -303,6 +303,51 @@ async def admin_publish_teams(data: BalanceTeams, background_tasks: BackgroundTa
     background_tasks.add_task(event_bus.publish, TeamsPublishedEvent(game_id=game.id))
     return {"status": "published"}
 
+async def _get_voting_results(session: AsyncSession, game_id: int):
+    """Helper to fetch top 5 MVP voting results for finished game."""
+    from app.db.models import Vote
+    res_v = await session.execute(
+        select(User.full_name, func.count(Vote.id))
+        .join(Vote, User.user_id == Vote.target_id)
+        .where(Vote.game_id == game_id)
+        .group_by(User.full_name)
+        .order_by(func.count(Vote.id).desc())
+        .limit(5)
+    )
+    return res_v.all()
+
+async def _build_finish_announcement(session: AsyncSession, game, voting_results, data) -> str:
+    """Helper to build HTML announcement message text for a finished game."""
+    text = f"🏁 <b>Матч завершен!</b>\n\n"
+    text += f"Команда оранжевые 🟠 {game.score_a}:{game.score_b} 🟢 Команда зеленые\n"
+    
+    async def get_names(uids):
+        if not uids: return []
+        res = await session.execute(select(User).where(User.user_id.in_(uids)))
+        return [u.full_name for u in res.scalars().all()]
+
+    mvp_ids = []
+    if data.mvp_team_a: mvp_ids.append(data.mvp_team_a)
+    if data.mvp_team_b: mvp_ids.append(data.mvp_team_b)
+    
+    if mvp_ids:
+        mvp_names = await get_names(mvp_ids)
+        if mvp_names:
+            text += "🌟 <b>MVP:</b> " + ", ".join(mvp_names) + "\n"
+    
+    if voting_results:
+        text += "\n⭐ <b>Голоса за MVP:</b>\n"
+        text += "\n".join([f"- {name}: {count}" for name, count in voting_results]) + "\n"
+
+    scorers = [p for p in data.player_stats if p.goals > 0]
+    if scorers:
+        text += "\n⚽ <b>Голы:</b>\n"
+        scorer_ids = [s.user_id for s in scorers]
+        res = await session.execute(select(User.user_id, User.full_name).where(User.user_id.in_(scorer_ids)))
+        users_map = {uid: name for uid, name in res.all()}
+        text += "\n".join([f"- {users_map.get(s.user_id, 'Неизвестный')}: {s.goals}" for s in scorers]) + "\n"
+    return text
+
 @router.post("/finish_game")
 async def finish_game(data: GameFinishRequest, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(data.initData, settings.bot_token):
@@ -322,7 +367,6 @@ async def finish_game(data: GameFinishRequest, background_tasks: BackgroundTasks
         from app.core.services.game_lifecycle import GameLifecycleService
         from app.core.uow import UnitOfWork
         
-        # Map Pydantic schema -> Domain DTO
         dto = FinishGameDTO(
             game_id=data.game_id,
             score_a=data.score_a,
@@ -340,47 +384,8 @@ async def finish_game(data: GameFinishRequest, background_tasks: BackgroundTasks
             game = await lifecycle.finish_game(dto)
             await uow.commit()
 
-        # 4. Fetch Voting Results (Stars)
-        from app.db.models import Vote
-        res_v = await session.execute(
-            select(User.full_name, func.count(Vote.id))
-            .join(Vote, User.user_id == Vote.target_id)
-            .where(Vote.game_id == game.id)
-            .group_by(User.full_name)
-            .order_by(func.count(Vote.id).desc())
-            .limit(5)
-        )
-        voting_results = res_v.all()
-
-        # Build result text — pure string, no bot needed
-        text = f"🏁 <b>Матч завершен!</b>\n\n"
-        text += f"Команда оранжевые 🟠 {game.score_a}:{game.score_b} 🟢 Команда зеленые\n"
-        
-        async def get_names(uids):
-            if not uids: return []
-            res = await session.execute(select(User).where(User.user_id.in_(uids)))
-            return [u.full_name for u in res.scalars().all()]
-
-        mvp_ids = []
-        if data.mvp_team_a: mvp_ids.append(data.mvp_team_a)
-        if data.mvp_team_b: mvp_ids.append(data.mvp_team_b)
-        
-        if mvp_ids:
-            mvp_names = await get_names(mvp_ids)
-            if mvp_names:
-                text += "🌟 <b>MVP:</b> " + ", ".join(mvp_names) + "\n"
-        
-        if voting_results:
-            text += "\n⭐ <b>Голоса за MVP:</b>\n"
-            text += "\n".join([f"- {name}: {count}" for name, count in voting_results]) + "\n"
-
-        scorers = [p for p in data.player_stats if p.goals > 0]
-        if scorers:
-            text += "\n⚽ <b>Голы:</b>\n"
-            scorer_ids = [s.user_id for s in scorers]
-            res = await session.execute(select(User.user_id, User.full_name).where(User.user_id.in_(scorer_ids)))
-            users_map = {uid: name for uid, name in res.all()}
-            text += "\n".join([f"- {users_map.get(s.user_id, 'Неизвестный')}: {s.goals}" for s in scorers]) + "\n"
+        voting_results = await _get_voting_results(session, game.id)
+        text = await _build_finish_announcement(session, game, voting_results, data)
 
         background_tasks.add_task(event_bus.publish, GameFinishedEvent(
             game_id=game.id,
@@ -424,12 +429,30 @@ async def admin_add_player(data: AddPlayerRequest, background_tasks: BackgroundT
     background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id=data.game_id))
     return {"status": "added"}
 
+def _create_guest_user(session: AsyncSession, name: str, position_str: str, guest_id: int, alt_positions: list):
+    """Helper to create and add a guest User record to the session."""
+    from app.db.models import Position
+    pos_str = position_str.upper().strip()
+    if pos_str not in Position.__members__:
+        pos_str = "CM"
+    new_guest = User(
+        user_id=guest_id, 
+        full_name=f"{name} (Guest)", 
+        username=None, 
+        player_position=Position[pos_str], 
+        alt_positions=alt_positions or [],
+        rating=100
+    )
+    session.add(new_guest)
+    return new_guest
+
 @router.post("/add_guest")
 async def admin_add_guest(data: AddGuestRequest, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
     if not validate_init_data(data.initData, settings.bot_token):
         logger.warning(f"Invalid initData in add_guest for game {data.game_id}")
         raise HTTPException(status_code=403, detail="Invalid initData")
     
+    import time
     user_id = get_user_from_init_data(data.initData)
     result = await session.execute(select(Game).where(Game.id == data.game_id))
     game = result.scalar_one_or_none()
@@ -437,34 +460,13 @@ async def admin_add_guest(data: AddGuestRequest, background_tasks: BackgroundTas
         raise HTTPException(status_code=404, detail="Game not found")
     
     await check_admin_rights(game.chat_id, user_id, session=session)
-    
-    # Generate unique negative ID for guest
-    guest_id = -int(time.time() * 1000) # Reduced precision to stay safe within some JS limits, but still unique enough
+    guest_id = -int(time.time() * 1000)
     
     try:
-        from app.db.models import Position
-        pos_str = data.position.upper().strip()
-        if pos_str not in Position.__members__:
-            pos_str = "CM"
-        
         logger.info(f"Adding guest '{data.name}' to game {data.game_id} with ID {guest_id}")
+        _create_guest_user(session, data.name, data.position, guest_id, data.alt_positions)
         
-        new_guest = User(
-            user_id=guest_id, 
-            full_name=f"{data.name} (Guest)", 
-            username=None, 
-            player_position=Position[pos_str], 
-            alt_positions=data.alt_positions or [],
-            rating=100
-        )
-        session.add(new_guest)
-        
-        # Use relationship-aware signup
-        new_signup = Signup(
-            game_id=data.game_id, 
-            user_id=guest_id, 
-            status=SignupStatus.ACTIVE
-        )
+        new_signup = Signup(game_id=data.game_id, user_id=guest_id, status=SignupStatus.ACTIVE)
         session.add(new_signup)
         
         await session.commit()

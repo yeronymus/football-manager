@@ -67,6 +67,7 @@ NSS_presentation.md
 scratch/
 temp/
 .local_notes/
+.jules/
 
 # --- OS Specific ---
 .DS_Store
