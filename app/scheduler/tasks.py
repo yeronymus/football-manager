@@ -12,6 +12,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 async def send_voting_message(game_id: int):
+    """
+    Sends the MVP voting message with inline player buttons to the chat.
+    Triggered when a game is finished.
+    """
     async with async_session_maker() as session:
         result = await session.execute(select(Game).where(Game.id == game_id))
         game = result.scalar_one_or_none()
@@ -61,6 +65,10 @@ async def send_voting_message(game_id: int):
         await session.commit()
 
 async def calculate_mvp(game_id: int):
+    """
+    Closes the MVP voting by editing the voting message and removing the keyboard.
+    Triggered 24 hours after the voting starts.
+    """
     async with async_session_maker() as session:
         # Get game info
         result = await session.execute(select(Game).where(Game.id == game_id))
@@ -200,6 +208,9 @@ async def release_gk_slots(game_id: int):
                     logger.warning(f"Failed to update dashboard: {e}")
 
 async def publish_game_task(game_id: int):
+    """
+    Publishes a scheduled game to its respective channels and group chats.
+    """
     async with async_session_maker() as session:
         game = await session.get(Game, game_id)
         if not game:
