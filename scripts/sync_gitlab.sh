@@ -15,11 +15,19 @@ fi
 
 ACTIVE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 TEMP_BRANCH="gitlab-sync-temp-$$"
+BACKUP_DIR="../.academic_docs_backup_$$"
 
 echo "🔄 Starting GitLab sync from branch '$ACTIVE_BRANCH'..."
 
 # Cleanup trap to ensure we return to the active branch no matter what
-trap 'echo "🧹 Cleaning up..."; git checkout -f "$ACTIVE_BRANCH"; git branch -D "$TEMP_BRANCH" || true; echo "✅ Cleanup complete."' EXIT
+# and restore the untracked docs/ and nss_docs/ folders!
+trap 'echo "🧹 Cleaning up..."; git checkout -f "$ACTIVE_BRANCH"; git branch -D "$TEMP_BRANCH" || true; if [ -d "$BACKUP_DIR" ]; then echo "📦 Restoring local academic files..."; rm -rf docs nss_docs; cp -r "$BACKUP_DIR"/* ./; rm -rf "$BACKUP_DIR"; fi; echo "✅ Cleanup complete."' EXIT
+
+# Back up docs/ and nss_docs/ to a temp folder outside git so git checkout does not delete them
+echo "📦 Backing up local academic files..."
+rm -rf "$BACKUP_DIR"
+mkdir -p "$BACKUP_DIR"
+cp -r docs nss_docs "$BACKUP_DIR"/
 
 # 3. Create a temporary branch for the deployment build
 git checkout -b "$TEMP_BRANCH"
