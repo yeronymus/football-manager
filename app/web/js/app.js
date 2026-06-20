@@ -85,10 +85,20 @@ async function init() {
             errorDetail = "Нет связи с сервером. Проверьте интернет или VPN.";
         }
 
+        const escapeHTML = str => str ? String(str).replace(/[&<>'"]/g, 
+            tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag] || tag)
+        ) : '';
+
         document.body.innerHTML = `
             <div class="card" style="margin:20px; text-align:center;">
-                <h3 style="color:#f44336">${errorTitle}</h3>
-                <p class="subtitle" style="word-break: break-all;">${errorDetail}</p>
+                <h3 style="color:#f44336">${escapeHTML(errorTitle)}</h3>
+                <p class="subtitle" style="word-break: break-all;">${escapeHTML(errorDetail)}</p>
                 <button onclick="location.reload()" class="group-btn" style="margin-top:20px; background:var(--accent-color); color:white; justify-content:center;">Попробовать снова</button>
             </div>
         `;

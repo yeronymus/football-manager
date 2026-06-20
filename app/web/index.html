@@ -259,11 +259,23 @@
                     }
                 } else {
                     const errorMsg = await response.text();
-                    chatSelect.innerHTML = `<option value="" disabled selected>Ошибка: ${response.status} ${errorMsg}</option>`;
+                    const option = document.createElement('option');
+                    option.value = "";
+                    option.disabled = true;
+                    option.selected = true;
+                    option.textContent = `Ошибка: ${response.status} ${errorMsg}`;
+                    chatSelect.innerHTML = '';
+                    chatSelect.appendChild(option);
                     console.error("Failed to fetch chats", errorMsg);
                 }
             } catch (e) {
-                chatSelect.innerHTML = `<option value="" disabled selected>Ошибка сети: ${e.message}</option>`;
+                const option = document.createElement('option');
+                option.value = "";
+                option.disabled = true;
+                option.selected = true;
+                option.textContent = `Ошибка сети: ${e.message}`;
+                chatSelect.innerHTML = '';
+                chatSelect.appendChild(option);
                 console.error(e);
             }
         }

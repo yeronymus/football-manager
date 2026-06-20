@@ -98,31 +98,18 @@ async def search_users(
         for u in users
     ]
 
-@router.get("/users/me/profile")
-async def get_my_profile(
-    chat_id: int, 
-    user_id: int = Depends(get_user_from_header), 
-    session: AsyncSession = Depends(get_session)
-):
-    # Handle Telegram supergroup ID migration (-100 prefix) and potential legacy positive IDs
+def _resolve_chat_ids(chat_id: int) -> list[int]:
+    """Resolves chat_id variations including legacy positive IDs."""
     chat_id_str = str(chat_id)
     alt_chat_id = int(chat_id_str.replace("-100", "-")) if "-100" in chat_id_str else int("-100" + chat_id_str.replace("-", ""))
-    chat_ids = list(set([chat_id, alt_chat_id, abs(chat_id), abs(alt_chat_id)]))
+    return list(set([chat_id, alt_chat_id, abs(chat_id), abs(alt_chat_id)]))
 
+async def _fetch_profile_summary(session: AsyncSession, user_id: int, chat_ids: list[int]):
+    """Fetches rating, games played count, MVP count, and total goals for a profile."""
     profile = await session.scalar(
         select(PlayerProfile)
         .where(PlayerProfile.user_id == user_id, PlayerProfile.chat_id.in_(chat_ids))
     )
-    user = await session.get(User, user_id)
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-        
-    # ⚡ Bolt Optimization:
-    # Moved `user_id` filters from `.where()` into the `.outerjoin()` ON clauses.
-    # Why: Previously, outer joining generically by game_id resulted in a Cartesian product
-    # of all signups/stats for a game before filtering, causing severe performance degradation.
-    # Impact: Reduces query time significantly and minimizes DB load.
     games_count = await session.scalar(
         select(func.count(distinct(Game.id)))
         .outerjoin(Signup, (Signup.game_id == Game.id) & (Signup.user_id == user_id))
@@ -137,30 +124,33 @@ async def get_my_profile(
             ),
             or_(
                 Game.status == GameStatus.FINISHED,
-                Game.score_a.isnot(None)  # Any game with a score should probably count for history
+                Game.score_a.isnot(None)
             )
         )
     )
-    
-    rating = profile.rating if profile else 100
-    games_played = games_count or 0
-    mvps = profile.stats_mvp if profile else 0
-    
-    # Get last 10 rating changes for graph (legacy but keeping for logic)
-    history = await session.scalars(
-        select(RatingHistory)
-        .join(Game, Game.id == RatingHistory.game_id)
-        .where(RatingHistory.user_id == user_id, Game.chat_id.in_(chat_ids))
-        .order_by(desc(RatingHistory.date))
-        .limit(10)
-    )
-    
-    # Total goals calculation
     total_goals = await session.scalar(
         select(func.sum(GameStats.goals))
         .join(Game, Game.id == GameStats.game_id)
         .where(GameStats.user_id == user_id, Game.chat_id.in_(chat_ids))
     )
+    rating = profile.rating if profile else 100
+    games_played = games_count or 0
+    mvps = profile.stats_mvp if profile else 0
+    return rating, games_played, mvps, int(total_goals or 0)
+
+@router.get("/users/me/profile")
+async def get_my_profile(
+    chat_id: int, 
+    user_id: int = Depends(get_user_from_header), 
+    session: AsyncSession = Depends(get_session)
+):
+    chat_ids = _resolve_chat_ids(chat_id)
+    user = await session.get(User, user_id)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    rating, games_played, mvps, total_goals = await _fetch_profile_summary(session, user_id, chat_ids)
 
     return {
         "user_id": user.user_id,
@@ -170,7 +160,7 @@ async def get_my_profile(
         "rating": rating,
         "games_played": games_played,
         "mvp_count": mvps,
-        "total_goals": int(total_goals or 0)
+        "total_goals": total_goals
     }
 
 @router.get("/chats/{chat_id}/leaderboard")
@@ -286,25 +276,53 @@ async def register_user(
     await session.commit()
     return {"status": "ok", "user_id": user_id}
 
+async def _fetch_history_details(session: AsyncSession, game_ids: list[int], user_id: int):
+    """Pre-fetches signups, stats, and ELO history maps to prevent N+1 queries."""
+    signups_map = {}
+    gamestats_map = {}
+    history_map = {}
+    if game_ids:
+        s_res = await session.execute(select(Signup).where(Signup.game_id.in_(game_ids), Signup.user_id == user_id))
+        signups_map = {s.game_id: s for s in s_res.scalars().all()}
+        
+        gs_res = await session.execute(select(GameStats).where(GameStats.game_id.in_(game_ids), GameStats.user_id == user_id))
+        gamestats_map = {gs.game_id: gs for gs in gs_res.scalars().all()}
+        
+        rh_res = await session.execute(select(RatingHistory).where(RatingHistory.game_id.in_(game_ids), RatingHistory.user_id == user_id))
+        history_map = {rh.game_id: rh for rh in rh_res.scalars().all()}
+    return signups_map, gamestats_map, history_map
+
+def _format_game_history(games, signups_map, history_map) -> list[dict]:
+    """Formats games list with user's specific performance details."""
+    result = []
+    for game in games:
+        s = signups_map.get(game.id)
+        my_team = s.team.value if s and s.team else None
+        history_record = history_map.get(game.id)
+        
+        result.append({
+            "game_id": game.id,
+            "date": game.date_time.isoformat(),
+            "location": game.location,
+            "score_a": game.score_a,
+            "score_b": game.score_b,
+            "score_c": game.score_c,
+            "team_count": game.team_count,
+            "my_team": my_team,
+            "winner_team": game.winner_team.value if game.winner_team else None,
+            "rating_change": history_record.change if history_record else 0
+        })
+    return result
+
 @router.get("/users/me/history")
 async def get_my_history(
     chat_id: int,
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session)
 ):
-    # Handle Telegram supergroup ID migration and potential legacy positive IDs
-    chat_id_str = str(chat_id)
-    alt_chat_id = int(chat_id_str.replace("-100", "-")) if "-100" in chat_id_str else int("-100" + chat_id_str.replace("-", ""))
-    chat_ids = list(set([chat_id, alt_chat_id, abs(chat_id), abs(alt_chat_id)]))
-
-    # Robust query: check Signups, GameStats AND RatingHistory.
-    # If Signup was deleted, RatingHistory is the ultimate proof the user played.
+    chat_ids = _resolve_chat_ids(chat_id)
     from sqlalchemy.orm import selectinload
     
-    # ⚡ Bolt Optimization:
-    # Moved `user_id` filters from `.where()` into the `.outerjoin()` ON clauses.
-    # Why: Avoids Cartesian products from joining all users' data before filtering.
-    # Impact: Massive reduction in intermediate rows and faster execution time.
     games_res = await session.execute(
         select(Game)
         .outerjoin(Chat, Game.chat_id == Chat.chat_id)
@@ -329,49 +347,6 @@ async def get_my_history(
     
     games = games_res.scalars().all()
     game_ids = [game.id for game in games]
-
-    signups_map = {}
-    gamestats_map = {}
-    history_map = {}
-
-    if game_ids:
-        # Pre-fetch Signups
-        s_res = await session.execute(
-            select(Signup).where(Signup.game_id.in_(game_ids), Signup.user_id == user_id)
-        )
-        signups_map = {s.game_id: s for s in s_res.scalars().all()}
-
-        # Pre-fetch GameStats
-        gs_res = await session.execute(
-            select(GameStats).where(GameStats.game_id.in_(game_ids), GameStats.user_id == user_id)
-        )
-        gamestats_map = {gs.game_id: gs for gs in gs_res.scalars().all()}
-
-        # Pre-fetch RatingHistory
-        rh_res = await session.execute(
-            select(RatingHistory).where(RatingHistory.game_id.in_(game_ids), RatingHistory.user_id == user_id)
-        )
-        history_map = {rh.game_id: rh for rh in rh_res.scalars().all()}
-
-    result = []
-    for game in games:
-        # We still need the signup to know which team the user was on
-        s = signups_map.get(game.id)
-        my_team = s.team.value if s and s.team else None
-
-        history_record = history_map.get(game.id)
-        
-        result.append({
-            "game_id": game.id,
-            "date": game.date_time.isoformat(),
-            "location": game.location,
-            "score_a": game.score_a,
-            "score_b": game.score_b,
-            "score_c": game.score_c,
-            "team_count": game.team_count,
-            "my_team": my_team,
-            "winner_team": game.winner_team.value if game.winner_team else None,
-            "rating_change": history_record.change if history_record else 0
-        })
-    return result
+    signups_map, gamestats_map, history_map = await _fetch_history_details(session, game_ids, user_id)
+    return _format_game_history(games, signups_map, history_map)
 

@@ -127,12 +127,10 @@ async def restore_january_2026():
             print("❌ Critical: No Chat or Admin found in DB. Cannot insert games.")
             return
 
-        # 3. RESTORE GAMES LOOP
-        for i, g_data in enumerate(ALL_GAMES, 1):
+        # 3. RESTORE GAMES
+        games = []
+        for g_data in ALL_GAMES:
             dt = datetime.strptime(g_data["date"], "%Y-%m-%d %H:%M")
-            print(f"\nExample {i}: Restoring Game {dt}...")
-            
-            # Create Game
             game = Game(
                 chat_id=chat.chat_id,
                 created_by=admin.user_id,
@@ -147,7 +145,13 @@ async def restore_january_2026():
                 gk_hours=24
             )
             session.add(game)
-            await session.flush() # Get ID
+            games.append((game, g_data))
+            
+        await session.flush() # Get IDs for all games in a single batch
+        
+        for i, (game, g_data) in enumerate(games, 1):
+            dt = datetime.strptime(g_data["date"], "%Y-%m-%d %H:%M")
+            print(f"\nExample {i}: Restoring Game {dt}...")
             
             # Map Team Data
             teams_map = {Team.A: g_data["team_a"], Team.B: g_data["team_b"]}

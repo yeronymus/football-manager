@@ -60,19 +60,15 @@ async def renumber_game_command(old_id: int, new_id: int):
             print(f"Game {new_id} ALREADY exists. Aborting.")
             return
 
-        # 2. Update Foreign Keys
-        tables = ["signups", "votes", "rating_history", "game_stats"]
-        for table in tables:
-            # Table names cannot be parameterized in the same way, but here they are from a fixed list.
-            # Still, we parameterize the IDs.
-            await session.execute(
-                text(f"UPDATE {table} SET game_id = :new_id WHERE game_id = :old_id"),
-                {"new_id": new_id, "old_id": old_id}
-            )
+        # 2. Update Foreign Keys and Game ID in a single round-trip
+        queries = [
+            f"UPDATE {table} SET game_id = :new_id WHERE game_id = :old_id"
+            for table in ["signups", "votes", "rating_history", "game_stats"]
+        ]
+        queries.append("UPDATE games SET id = :new_id WHERE id = :old_id")
         
-        # 3. Update Game
         await session.execute(
-            text("UPDATE games SET id = :new_id WHERE id = :old_id"),
+            text("; ".join(queries)),
             {"new_id": new_id, "old_id": old_id}
         )
         
