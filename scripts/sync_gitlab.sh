@@ -28,6 +28,7 @@ git checkout -b "$TEMP_BRANCH"
 if [ -f "nss_docs/README_CZ.md" ]; then
     echo "📄 Copying Czech academic README from nss_docs/README_CZ.md..."
     cp nss_docs/README_CZ.md README.md
+    rm -f nss_docs/README_CZ.md
 else
     echo "⚠️ Warning: nss_docs/README_CZ.md not found! Root README.md will not be replaced."
 fi
