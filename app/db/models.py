@@ -58,6 +58,10 @@ class Language(str, enum.Enum):
     en = "en"
 
 class User(Base):
+    """
+    Database model representing a system user/football player.
+    Stores ELO rating, total matches played, MVP count, and player preferences.
+    """
     __tablename__ = "users"
     user_id = Column(BigInteger, primary_key=True, index=True)
     username = Column(String, nullable=True)
@@ -79,6 +83,10 @@ class User(Base):
     admin_in_chats = relationship("ChatAdmin", back_populates="user", cascade="all, delete-orphan")
 
 class Chat(Base):
+    """
+    Database model representing a Telegram group or channel chat.
+    Stores group-specific settings for SaaS tenancy, default limits, and pricing.
+    """
     __tablename__ = "chats"
 
     chat_id = Column(BigInteger, primary_key=True, index=True)
@@ -106,6 +114,10 @@ class Chat(Base):
     admins = relationship("ChatAdmin", back_populates="chat", cascade="all, delete-orphan")
 
 class PlayerProfile(Base):
+    """
+    Database model representing a player's statistics specific to a single chat group.
+    Used to support different stats/ratings for different leagues/chats.
+    """
     __tablename__ = "player_profiles"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -125,6 +137,9 @@ class PlayerProfile(Base):
     )
 
 class ChatAdmin(Base):
+    """
+    Database model representing admin privileges of a user within a specific group chat.
+    """
     __tablename__ = "chat_admins"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -142,6 +157,9 @@ class ChatAdmin(Base):
     )
 
 class AdBanner(Base):
+    """
+    Database model representing advertisement banners shown to users.
+    """
     __tablename__ = "ad_banners"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -154,6 +172,10 @@ class AdBanner(Base):
     chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=True) # If null, show everywhere
 
 class Game(Base):
+    """
+    Database model representing a football match.
+    Stores metadata like location, pricing, limits, scores, winner, and telegram message links.
+    """
     __tablename__ = "games"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -197,6 +219,10 @@ class Game(Base):
     stats = relationship("GameStats", back_populates="game", cascade="all, delete-orphan")
 
 class Signup(Base):
+    """
+    Database model representing a player's signup registration for a specific game.
+    Tracks signup status (ACTIVE/RESERVE), assigned team, and payment confirmation.
+    """
     __tablename__ = "signups"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -216,6 +242,9 @@ class Signup(Base):
     )
 
 class Vote(Base):
+    """
+    Database model representing a user's vote cast for MVP.
+    """
     __tablename__ = "votes"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -233,6 +262,9 @@ class Vote(Base):
     )
 
 class RatingHistory(Base):
+    """
+    Database model tracking historical ELO changes of a player per match.
+    """
     __tablename__ = "rating_history"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -247,6 +279,9 @@ class RatingHistory(Base):
     game = relationship("Game", back_populates="rating_history")
 
 class GameStats(Base):
+    """
+    Database model storing match statistics (goals, assists, MVP status) for a player in a game.
+    """
     __tablename__ = "game_stats"
     
     id = Column(Integer, primary_key=True)

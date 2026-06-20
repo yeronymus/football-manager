@@ -3,6 +3,9 @@ from sqlalchemy import select, func, update, delete
 from app.db.models import User, Position, GameStats, PlayerProfile
 
 class UserRepository:
+    """
+    Repository for managing user accounts, profiles, stats, and user account merging.
+    """
     def __init__(self, session: AsyncSession):
         self.session = session
 
