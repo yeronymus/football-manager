@@ -1,5 +1,3 @@
-
-
 services:
   app:
     image: ${GHCR_IMAGE:-ghcr.io/yeronymus/football-manager:latest}
@@ -9,11 +7,13 @@ services:
     ports:
       - "${APP_PORT:-8000}:8000"
     depends_on:
-      - db
-      - redis
-      - worker
-    command: uv run --no-sync uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --workers 4
-    # Entrypoint is now defined in the Dockerfile
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      worker:
+        condition: service_started
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --workers 4
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - RUN_MIGRATIONS=False
@@ -27,9 +27,11 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
-      - redis
-    command: uv run --no-sync python app/worker.py
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: python app/worker.py
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
 
@@ -41,12 +43,14 @@ services:
     ports:
       - "${STAGING_PORT:-8001}:8000"
     depends_on:
-      - db
-      - redis
-    command: sh -c "uv run --no-sync alembic upgrade head && uv run --no-sync uvicorn app.api.main:app --host 0.0.0.0 --port 8000"
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: sh -c "alembic upgrade head && uvicorn app.api.main:app --host 0.0.0.0 --port 8000"
     environment:
-      - BOT_TOKEN=7652258054:AAGHBJf9rTMfLP9UCnad6zprZJYeGSF8caM
-      - BOT_USERNAME=footballManagerTestbot
+      - BOT_TOKEN=${STAGING_BOT_TOKEN:-}
+      - BOT_USERNAME=${STAGING_BOT_USERNAME:-footballManagerTestbot}
       - USE_POLLING=True
       - REDIS_PASSWORD=${REDIS_PASSWORD}
 
@@ -73,6 +77,11 @@ services:
       TZ: Europe/Prague
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -80,6 +89,21 @@ services:
     command: redis-server --requirepass "${REDIS_PASSWORD}"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - app
 
 volumes:
   postgres_data:
@@ -88,3 +112,5 @@ volumes:
   redis_data:
     external: true
     name: football-prod_redis_data
+
+
