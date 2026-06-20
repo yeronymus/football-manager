@@ -59,15 +59,8 @@ git_status.txt
 # --- Documentation & Internal ---
 /*.md
 !/README.md
-# Explicitly ignore context/agent docs
-PROJECT.md
-AGENTS.md
-BACKLOG.md
-NSS_presentation.md
 scratch/
 temp/
-.local_notes/
-.jules/
 nss_docs/
 docs/
 
