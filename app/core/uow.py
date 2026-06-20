@@ -6,8 +6,8 @@ from app.core.repositories.user_repository import UserRepository
 
 class UnitOfWork:
     """
-    Обеспечивает атомарность операций. 
-    Все репозитории внутри одного 'async with' делят одну сессию БД.
+    Provides transaction atomicity (Unit of Work pattern).
+    Ensures all repositories share the same database session within an 'async with' block.
     """
     def __init__(self, session_factory=async_session_maker, session: AsyncSession | None = None):
         self._session_factory = session_factory
@@ -18,7 +18,7 @@ class UnitOfWork:
         if not self._session:
             self._session = self._session_factory()
             
-        # ВАЖНО: Передаем одну сессию во все репозитории
+        # IMPORTANT: Pass the same session to all repositories
         self.game_repo = GameRepository(self._session)
         self.user_repo = UserRepository(self._session)
         return self

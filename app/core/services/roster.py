@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from app.core.uow import UnitOfWork
 
-from app.db.models import User, Signup, SignupStatus, GameStatus, Position, Team
+from app.db.models import User, Signup, SignupStatus, GameStatus, Position, Team, Game
 from app.core.events import Event
 
 @dataclass
@@ -31,69 +31,52 @@ class JoinResult:
     is_reserve: bool
 
 class RosterService:
+    """
+    Service responsible for managing player registration (roster) logic.
+    Handles joining, leaving, and balancing rosters.
+    """
     def __init__(self, uow: "UnitOfWork"):
         self.uow = uow
 
     async def join_player(self, game_id: int, user: User, ignore_limit: bool = False) -> JoinResult:
-        # 1. Concurrency Safety: Блокировка строки игры (SELECT ... FOR UPDATE)
+        """
+        Registers a player to a game.
+        Handles game availability, idempotency, registration windows, limits, and goalie priority.
+        """
+        # 1. Concurrency Safety: Lock game row (SELECT ... FOR UPDATE)
         game = await self.uow.game_repo.get_with_lock(game_id)
         
-        if not game:
-            return JoinResult(False, None, "Игра не найдена", False)
+        status_error = self._validate_game_status(game)
+        if status_error:
+            return status_error
         
-        if game.status not in [GameStatus.OPEN, GameStatus.ACTIVE]:
-             return JoinResult(False, None, "Запись закрыта!", False)
-             
-        # 2. Идемпотентность: проверка дублей
+        # 2. Idempotency: Check if player is already signed up
         existing = await self.uow.game_repo.get_signup(game_id, user.user_id)
         if existing:
-            # Если уже записан, возвращаем успех, но помечаем что ничего не изменилось
             return JoinResult(False, existing, "Вы уже записаны!", existing.status == SignupStatus.RESERVE)
 
-        # 3. Проверка времени (Game Date limits)
-        if game.date_time:
-             now = datetime.now().replace(tzinfo=None)
-             game_dt = game.date_time.replace(tzinfo=None)
-             if game_dt < now:
-                 return JoinResult(False, None, "Игра уже прошла!", False)
+        # 3. Time and Limit validations
+        limit_error = await self._validate_registration_limits(game, game_id, ignore_limit)
+        if limit_error:
+            return limit_error
 
-        # 3.1 Configurable Registration Window (Game #6+)
-        if game.created_at and game.registration_hours and game.registration_hours > 0 and not ignore_limit:
-             now_ts = datetime.now().replace(tzinfo=None)
-             created_at = game.created_at.replace(tzinfo=None)
-             diff = (now_ts - created_at).total_seconds() / 3600
-             if diff > float(game.registration_hours):
-                  return JoinResult(False, None, f"⏳ Запись закрыта (прошло {game.registration_hours} ч.)", False)
-
-        # 3.2 Total Signup Limit
-        if getattr(game, 'signup_limit', None) and game.signup_limit > 0 and not ignore_limit:
-             total_count = await self.uow.game_repo.get_total_signups_count(game_id)
-             if total_count >= game.signup_limit:
-                  return JoinResult(False, None, f"❌ Мест нет! (Лимит {game.signup_limit})", False)
-
-        # 4. Логика слотов (Основной vs Резерв)
+        # 4. Slot allocation logic (Main vs Reserve)
         active_count = await self.uow.game_repo.get_active_signups_count(game_id)
         status = SignupStatus.ACTIVE
         alert_msg = "Вы записаны!"
         is_reserve = False
         
-        # Логика приоритета вратарей (GK Priority)
-        is_gk_priority = False
-        if not ignore_limit and game.created_at:
-             now_ts = datetime.now().replace(tzinfo=None)
-             created_at = game.created_at.replace(tzinfo=None)
-             age_hours = (now_ts - created_at).total_seconds() / 3600
-             if age_hours < game.gk_hours and user.player_position != Position.GK:
-                 slots_left = game.max_players - active_count
-                 if slots_left <= 2: # Последние 2 слота держим для вратарей
-                     is_gk_priority = True
-        
-        if (active_count >= game.max_players) or is_gk_priority:
+        # Goalkeeper priority slots check
+        if self._check_gk_priority(game, active_count, user, ignore_limit):
             status = SignupStatus.RESERVE
-            alert_msg = "🧤 Места только для вратарей! Вы в РЕЗЕРВЕ." if is_gk_priority else "Резерв (мест нет)"
+            alert_msg = "🧤 Места только для вратарей! Вы в РЕЗЕРВЕ."
+            is_reserve = True
+        elif active_count >= game.max_players:
+            status = SignupStatus.RESERVE
+            alert_msg = "Резерв (мест нет)"
             is_reserve = True
             
-        # 5. Создание записи
+        # 5. Create signup record
         signup = self.uow.game_repo.create_signup(game_id, user.user_id, status)
         
         # Invalidate Cache
@@ -104,7 +87,56 @@ class RosterService:
         
         return JoinResult(True, signup, alert_msg, is_reserve)
 
+    def _validate_game_status(self, game: Optional[Game]) -> Optional[JoinResult]:
+        """Validates if the game exists and is in an open/active state."""
+        if not game:
+            return JoinResult(False, None, "Игра не найдена", False)
+        
+        if game.status not in [GameStatus.OPEN, GameStatus.ACTIVE]:
+             return JoinResult(False, None, "Запись закрыта!", False)
+        return None
+
+    async def _validate_registration_limits(self, game: Game, game_id: int, ignore_limit: bool) -> Optional[JoinResult]:
+        """Validates registration deadlines, windows, and total signup limits."""
+        # 3. Validate game date limits
+        if game.date_time:
+             now = datetime.now().replace(tzinfo=None)
+             game_dt = game.date_time.replace(tzinfo=None)
+             if game_dt < now:
+                 return JoinResult(False, None, "Игра уже прошла!", False)
+
+        # Configurable Registration Window
+        if game.created_at and game.registration_hours and game.registration_hours > 0 and not ignore_limit:
+             now_ts = datetime.now().replace(tzinfo=None)
+             created_at = game.created_at.replace(tzinfo=None)
+             diff = (now_ts - created_at).total_seconds() / 3600
+             if diff > float(game.registration_hours):
+                  return JoinResult(False, None, f"⏳ Запись закрыта (прошло {game.registration_hours} ч.)", False)
+
+        # Total Signup Limit
+        if getattr(game, 'signup_limit', None) and game.signup_limit > 0 and not ignore_limit:
+             total_count = await self.uow.game_repo.get_total_signups_count(game_id)
+             if total_count >= game.signup_limit:
+                  return JoinResult(False, None, f"❌ Мест нет! (Лимит {game.signup_limit})", False)
+        return None
+
+    def _check_gk_priority(self, game: Game, active_count: int, user: User, ignore_limit: bool) -> bool:
+        """Checks if the remaining slots should be reserved exclusively for Goalies."""
+        if not ignore_limit and game.created_at:
+             now_ts = datetime.now().replace(tzinfo=None)
+             created_at = game.created_at.replace(tzinfo=None)
+             age_hours = (now_ts - created_at).total_seconds() / 3600
+             if age_hours < game.gk_hours and user.player_position != Position.GK:
+                  slots_left = game.max_players - active_count
+                  if slots_left <= 2:  # Reserve last 2 slots for goalies
+                      return True
+        return False
+
     async def leave_player(self, game_id: int, user_id: int, is_admin: bool = False) -> tuple[bool, str, User | None]:
+        """
+        Removes a player from the game signup list.
+        Promotes first reserve player to active list if applicable.
+        """
         game = await self.uow.game_repo.get_with_lock(game_id)
         if not game:
             return False, "Игра не найдена.", None

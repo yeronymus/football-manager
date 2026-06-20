@@ -39,8 +39,8 @@ class GameStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 class GameType(str, enum.Enum):
-    REGULAR = "regular"   # Общая игра
-    DRAFT = "draft"       # Драфт
+    REGULAR = "regular"   # Regular match
+    DRAFT = "draft"       # Draft match
 
 class SignupStatus(str, enum.Enum):
     ACTIVE = "active"
