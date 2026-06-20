@@ -25,11 +25,11 @@ trap 'echo "🧹 Cleaning up..."; git checkout -f "$ACTIVE_BRANCH"; git branch -
 git checkout -b "$TEMP_BRANCH"
 
 # 4. Copy academic Czech README to root README.md
-if [ -f "nss_docs/NSS_milestone2.md" ]; then
-    echo "📄 Copying Czech academic README from nss_docs/NSS_milestone2.md..."
-    cp nss_docs/NSS_milestone2.md README.md
+if [ -f "nss_docs/README_CZ.md" ]; then
+    echo "📄 Copying Czech academic README from nss_docs/README_CZ.md..."
+    cp nss_docs/README_CZ.md README.md
 else
-    echo "⚠️ Warning: nss_docs/NSS_milestone2.md not found! Root README.md will not be replaced."
+    echo "⚠️ Warning: nss_docs/README_CZ.md not found! Root README.md will not be replaced."
 fi
 
 # 5. Modify .gitignore to allow docs/ and nss_docs/ to be tracked
