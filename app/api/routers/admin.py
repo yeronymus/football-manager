@@ -452,7 +452,6 @@ async def admin_add_guest(data: AddGuestRequest, background_tasks: BackgroundTas
         logger.warning(f"Invalid initData in add_guest for game {data.game_id}")
         raise HTTPException(status_code=403, detail="Invalid initData")
     
-    import time
     user_id = get_user_from_init_data(data.initData)
     result = await session.execute(select(Game).where(Game.id == data.game_id))
     game = result.scalar_one_or_none()
