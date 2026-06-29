@@ -27,10 +27,8 @@ linting:
   stage: lint
   image: python:3.12-slim
   script:
-    - pip install uv
-    - uv venv
-    - .venv/bin/pip install ruff
-    - .venv/bin/ruff check app/
+    - pip install ruff
+    - ruff check app/
   allow_failure: false
 
 # Stage 2: Integration tests with PostgreSQL database
