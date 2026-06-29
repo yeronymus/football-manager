@@ -54,7 +54,16 @@ integration_tests:
               print('Waiting for Postgres...')
               time.sleep(1)
       "
-    - uv run alembic upgrade head
+    - |
+      uv run python -c "
+      import asyncio
+      from app.db.database import Base, engine
+      async def main():
+          async with engine.begin() as conn:
+              await conn.run_sync(Base.metadata.create_all)
+      asyncio.run(main())
+      "
+    - uv run alembic stamp head
     - uv run pytest tests/
   only:
     - merge_requests
