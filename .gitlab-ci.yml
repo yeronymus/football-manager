@@ -42,6 +42,18 @@ integration_tests:
     - apt-get update && apt-get install -y libpq-dev gcc
     - pip install uv
     - uv sync
+    - |
+      uv run python -c "
+      import time, socket
+      for _ in range(30):
+          try:
+              with socket.create_connection(('postgres', 5432), timeout=1):
+                  print('Postgres is ready!')
+                  break
+          except Exception:
+              print('Waiting for Postgres...')
+              time.sleep(1)
+      "
     - uv run alembic upgrade head
     - uv run pytest tests/
   only:
