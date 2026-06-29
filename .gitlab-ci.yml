@@ -1,0 +1,103 @@
+stages:
+  - lint
+  - test
+  - build
+  - deploy
+
+variables:
+  POSTGRES_DB: test_db
+  POSTGRES_USER: test_user
+  POSTGRES_PASSWORD: test_password
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  BOT_TOKEN: "123456:dummytoken_for_ci_testing"
+  BOT_USERNAME: "fm_metabot"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .cache/pip
+    - .cache/uv
+    - .venv/
+
+# Stage 1: Quality checks and Linting
+linting:
+  stage: lint
+  image: python:3.12-slim
+  script:
+    - pip install uv
+    - uv venv
+    - .venv/bin/pip install ruff
+    - .venv/bin/ruff check app/
+    - .venv/bin/ruff format --check app/
+  allow_failure: false
+
+# Stage 2: Integration tests with PostgreSQL database
+integration_tests:
+  stage: test
+  image: python:3.12-slim
+  services:
+    - name: postgres:15-alpine
+      alias: postgres
+  script:
+    - apt-get update && apt-get install -y libpq-dev gcc
+    - pip install uv
+    - uv sync
+    - uv run alembic upgrade head
+    - uv run pytest tests/
+  only:
+    - merge_requests
+    - main
+    - develop
+    - release
+
+# Stage 3: Containerize and Build
+docker_build:
+  stage: build
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  script:
+    # Log in to GitLab Container Registry if credentials are provided
+    - |
+      if [ -n "$CI_REGISTRY_USER" ]; then
+        echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+      fi
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA -t $CI_REGISTRY_IMAGE:latest .
+    - |
+      if [ -n "$CI_REGISTRY_USER" ]; then
+        docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+        docker push $CI_REGISTRY_IMAGE:latest
+      fi
+  only:
+    - main
+    - release
+
+# Stage 4: Deploy (Simulation / Environment Showcase)
+deploy_staging:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - echo "Deploying build $CI_COMMIT_SHORT_SHA to Staging environment..."
+    - echo "Executing remote migration & container restart script..."
+  environment:
+    name: staging
+    url: https://staging.fm-bot.cz
+  only:
+    - develop
+
+deploy_production:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - echo "Deploying build $CI_COMMIT_SHORT_SHA to Production environment..."
+    - echo "Deploy completed successfully."
+  environment:
+    name: production
+    url: https://fm-bot.cz
+  only:
+    - main
+    - release
+  when: manual
