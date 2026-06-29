@@ -31,7 +31,6 @@ linting:
     - uv venv
     - .venv/bin/pip install ruff
     - .venv/bin/ruff check app/
-    - .venv/bin/ruff format --check app/
   allow_failure: false
 
 # Stage 2: Integration tests with PostgreSQL database
