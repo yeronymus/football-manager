@@ -14,6 +14,7 @@ variables:
   BOT_USERNAME: "fm_metabot"
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+  PYTHONPATH: "$CI_PROJECT_DIR"
 
 cache:
   key: "$CI_COMMIT_REF_SLUG"
