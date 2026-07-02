@@ -16,7 +16,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY pyproject.toml uv.lock ./
 
 # Build the virtual environment using uv
-RUN uv sync --frozen --no-cache
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-cache
 
 # Stage 2: Final lightweight runtime
 FROM python:3.11-slim AS runner
