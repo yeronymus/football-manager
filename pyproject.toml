@@ -1,6 +1,6 @@
 [project]
 name = "football-manager"
-version = "0.1.0"
+version = "1.0.0"
 description = "Telegram Bot and WebApp for amateur football match management"
 readme = "README.md"
 requires-python = ">=3.11"

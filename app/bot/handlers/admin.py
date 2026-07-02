@@ -24,14 +24,14 @@ async def cmd_register_chat(message: types.Message, session: AsyncSession):
     if message.is_automatic_forward:
         return
 
-    # В каналах message.from_user может быть None.
-    # Если это канал, мы считаем, что писать от имени канала может только админ.
-    # Если это группа, проверяем ID юзера.
+    # In channels, message.from_user might be None.
+    # If it is a channel, we assume only an admin can post.
+    # If it is a group, check the user's ID.
     if message.chat.type in ["group", "supergroup"]:
         if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
             return 
     elif message.chat.type == "channel":
-        # В канале просто доверяем, так как постит админ
+        # In a channel we just trust it, since only admins can post
         pass
     else:
         # User is likely trying to register THEMSELVES, not a chat.

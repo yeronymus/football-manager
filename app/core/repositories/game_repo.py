@@ -4,6 +4,9 @@ from app.core.repositories.base import BaseRepository
 from app.db.models import Game, Signup, SignupStatus, User
 
 class GameRepository(BaseRepository[Game]):
+    """
+    Repository for managing game registrations, signups, and slot allocations.
+    """
     def __init__(self, session: AsyncSession):
         super().__init__(session, Game)
 
@@ -30,6 +33,7 @@ class GameRepository(BaseRepository[Game]):
         return result.scalar_one_or_none()
 
     def create_signup(self, game_id: int, user_id: int, status: SignupStatus) -> Signup:
+        """Creates and persists a signup registration record for a game."""
         signup = Signup(game_id=game_id, user_id=user_id, status=status)
         self.session.add(signup)
         return signup

@@ -64,8 +64,8 @@ async def generate_draft_report_command(args):
                 
         draft_stats.sort(key=lambda x: (-x[2], -x[4], -x[3]))
         
-        f.write("| Игрок | Поз | ELO | Игры | Голы | Win% | MVP | Ораза |\n")
-        f.write("|-------|-----|-----|------|------|------|-----|-------|\n")
+        f.write("| Player | Pos | ELO | Games | Goals | Win% | MVP | Fasting |\n")
+        f.write("|--------|-----|-----|-------|-------|------|-----|---------|\n")
         for row in draft_stats:
             mvp_star = f"⭐{row[6]}" if row[6] > 0 else ""
             f.write(f"| {row[0]} | {row[1]} | **{row[2]}** | {row[3]} | {row[4]} | {row[5]} | {mvp_star} | {row[7]} |\n")

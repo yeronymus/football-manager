@@ -16,9 +16,9 @@ async def process_join(callback: types.CallbackQuery, _):
     event_payload = None
 
     try:
-        # ЗАПУСК ТРАНЗАКЦИИ
+        # TRANSACTION START
         async with UnitOfWork() as uow:
-            # 1. Получаем пользователя (БЕЗ сырого SQL, через репозиторий)
+            # 1. Get user (via repository, NO raw SQL)
             user = await uow.user_repo.get_by_id(tg_id)
             
             if not user:
@@ -26,14 +26,14 @@ async def process_join(callback: types.CallbackQuery, _):
                 await callback.answer("Нужна регистрация!", url=f"https://t.me/{bot_user.username}?start=reg")
                 return
 
-            # 2. Вызываем сервис
+            # 2. Invoke the service
             service = RosterService(uow)
             is_admin = tg_id in settings.admin_ids or tg_id == settings.system_owner_id
             result = await service.join_player(game_id, user, ignore_limit=is_admin)
             
             if not result.success:
                 await callback.answer(result.message, show_alert=True)
-                return # Выход без commit (авто-rollback)
+                return # Exit without commit (auto-rollback)
 
             # Override messages with translation (demonstration)
             if result.success and not result.is_reserve:
@@ -52,11 +52,11 @@ async def process_join(callback: types.CallbackQuery, _):
                     message=alert_msg
                 )
 
-            # 4. ФИКСАЦИЯ ИЗМЕНЕНИЙ
+            # 4. COMMIT CHANGES
             await uow.commit()
 
-        # --- ЗА ПРЕДЕЛАМИ ТРАНЗАКЦИИ ---
-        # Отправляем события только если commit прошел успешно
+        # --- OUTSIDE TRANSACTION ---
+        # Only publish events if the commit succeeded
         if event_payload:
             await event_bus.publish(event_payload)
 
