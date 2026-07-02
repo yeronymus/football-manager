@@ -20,6 +20,8 @@ services:
       - RUN_SCHEDULER=False
       - RUN_CONSUMER=False
       - RUN_BOT=False
+    volumes:
+      - /app/.venv
 
   worker:
     image: ${GHCR_IMAGE:-ghcr.io/yeronymus/football-manager:latest}
@@ -53,6 +55,8 @@ services:
       - BOT_USERNAME=${STAGING_BOT_USERNAME:-footballManagerTestbot}
       - USE_POLLING=True
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - /app/.venv
 
   watchtower:
     image: containrrr/watchtower
