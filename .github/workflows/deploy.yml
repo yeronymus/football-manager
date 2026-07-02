@@ -9,7 +9,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  BOT_TOKEN: "123456789:AABBCCDDEEFFGgHHiijjkklLMMNNooppQQ" # Mock token for config validation
+  BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN || '123456789:AABBCCDDEEFFGgHHiijjkklLMMNNooppQQ' }} # Decoupled fallback token for config validation
 
 jobs:
   test-and-lint:

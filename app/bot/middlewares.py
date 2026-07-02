@@ -30,10 +30,22 @@ class InstanceAccessMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: Dict[str, Any],
     ) -> Any:
-        # Immobilizer disabled for production use
-        # if settings.SYSTEM_OWNER_ID and event.from_user and event.from_user.id != settings.SYSTEM_OWNER_ID:
-        #     return
-            
+        # Whitelist filtering for staging/private environments
+        if settings.allowed_users and event.from_user:
+            if event.from_user.id not in settings.allowed_users:
+                # Intercept update and reply with access denied if it's a message
+                if isinstance(event, Message):
+                    try:
+                        await event.answer("Staging environment. Access denied.")
+                    except Exception:
+                        pass
+                elif isinstance(event, CallbackQuery):
+                    try:
+                        await event.answer("Staging environment. Access denied.", show_alert=True)
+                    except Exception:
+                        pass
+                return
+
         return await handler(event, data)
 
 class TenantMiddleware(BaseMiddleware):
