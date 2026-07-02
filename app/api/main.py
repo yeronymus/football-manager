@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Header, HTTPException
+from typing import Optional
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -126,7 +127,9 @@ async def health_check():
     return {"status": "ok"}
 
 @app.post("/api/webhook")
-async def webhook(request: Request):
+async def webhook(request: Request, x_telegram_bot_api_secret_token: Optional[str] = Header(None)):
+    if settings.webhook_secret_token and x_telegram_bot_api_secret_token != settings.webhook_secret_token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     from aiogram.types import Update
     update = Update.model_validate(await request.json(), context={"bot": bot})
     await dp.feed_update(bot, update)

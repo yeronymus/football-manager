@@ -127,6 +127,23 @@ async def restore_january_2026():
             print("❌ Critical: No Chat or Admin found in DB. Cannot insert games.")
             return
 
+        # Pre-fetch all users to prevent N+1 queries during resolution
+        all_users = (await session.execute(select(User))).scalars().all()
+        
+        def local_resolve_user(name: str):
+            if not name:
+                return None
+            name_stripped = name.strip().lower()
+            # 1. Exact match (case insensitive)
+            for u in all_users:
+                if u.full_name.lower() == name_stripped:
+                    return u
+            # 2. Contains match
+            for u in all_users:
+                if name_stripped in u.full_name.lower():
+                    return u
+            return None
+
         # 3. RESTORE GAMES
         games = []
         for g_data in ALL_GAMES:
@@ -162,7 +179,7 @@ async def restore_january_2026():
             # Process Players
             for team_enum, t_info in teams_map.items():
                 for p_name in t_info["members"]:
-                    user = await resolve_user(session, p_name)
+                    user = local_resolve_user(p_name)
                     if not user:
                         print(f"  ⚠️ User NOT FOUND: {p_name} (skipping)")
                         continue
@@ -231,8 +248,9 @@ async def restore_january_2026():
         print("\n📊 VERIFICATION CHECK:")
         check_users = ["Daryn Bakyrkhan", "Raimbek Sarzhakov", "Viktor Snytkin", "Dias Bekbosyn"]
         for name in check_users:
-            u = await resolve_user(session, name)
+            u = local_resolve_user(name)
             if u:
                 print(f"  🔹 {u.full_name}: Games: {u.games_played}, Rating: {u.rating} (Expected: Check T-Z)")
             else:
                 print(f"  ❌ {name} not found in DB")
+

@@ -60,17 +60,21 @@ async def renumber_game_command(old_id: int, new_id: int):
             print(f"Game {new_id} ALREADY exists. Aborting.")
             return
 
-        # 2. Update Foreign Keys and Game ID in a single round-trip
+        # 2. Update Foreign Keys and Game ID
         queries = [
-            f"UPDATE {table} SET game_id = :new_id WHERE game_id = :old_id"
-            for table in ["signups", "votes", "rating_history", "game_stats"]
+            "UPDATE signups SET game_id = :new_id WHERE game_id = :old_id",
+            "UPDATE votes SET game_id = :new_id WHERE game_id = :old_id",
+            "UPDATE rating_history SET game_id = :new_id WHERE game_id = :old_id",
+            "UPDATE game_stats SET game_id = :new_id WHERE game_id = :old_id",
+            "UPDATE games SET id = :new_id WHERE id = :old_id"
         ]
-        queries.append("UPDATE games SET id = :new_id WHERE id = :old_id")
         
-        await session.execute(
-            text("; ".join(queries)),
-            {"new_id": new_id, "old_id": old_id}
-        )
+        for query in queries:
+            await session.execute(
+                text(query),
+                {"new_id": new_id, "old_id": old_id}
+            )
+
         
         # 4. Optional: Reset sequence if new_id is the latest
         await session.execute(text("SELECT setval('games_id_seq', (SELECT MAX(id) FROM games))"))

@@ -88,6 +88,11 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
         player.rating = 100
         await session.commit()
         
+    if user and user.rating == 1200:
+        user.rating = 100
+        await session.commit()
+
+        
     text += f"📊 Рейтинг: <b>{player.rating if player else '(Смотрите в группе)'}</b>\n"
     
     text += f"🎮 Матчей: <b>{player.games_played if player else '-'}</b>\n"

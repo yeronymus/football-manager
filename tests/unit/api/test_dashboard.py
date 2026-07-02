@@ -37,3 +37,51 @@ async def test_delete_game_scheduler_error(mock_bot, mock_scheduler_class, mock_
     assert res == {"status": "ok", "message": "Game deleted successfully"}
     session.delete.assert_called_once_with(game)
     session.commit.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_add_guest_game_not_found():
+    from app.api.routers.dashboard import add_guest, GuestCreate
+    session = AsyncMock()
+    session.get.return_value = None
+    data = GuestCreate(name="John Doe", position="CM")
+    with pytest.raises(HTTPException) as exc_info:
+        await add_guest(game_id=999, data=data, user_id=123, session=session)
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Game not found"
+
+@pytest.mark.asyncio
+async def test_get_game_votes_game_not_found():
+    from app.api.routers.dashboard import get_game_votes
+    session = AsyncMock()
+    session.get.return_value = None
+    with pytest.raises(HTTPException) as exc_info:
+        await get_game_votes(game_id=999, user_id=123, session=session)
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Game not found"
+
+@pytest.mark.asyncio
+async def test_update_player_status_invalid_status():
+    from app.api.routers.dashboard import update_player_status, StatusUpdate
+    from app.db.models import Signup, Game
+    session = AsyncMock()
+    
+    signup = Signup(game_id=1, user_id=123)
+    game = Game(chat_id=-1001)
+    
+    # Mocking session.get calls (first for Signup, second for Game)
+    def mock_get(model, ident):
+        if model == Signup:
+            return signup
+        if model == Game:
+            return game
+        return None
+    session.get.side_effect = mock_get
+    
+    data = StatusUpdate(status="invalid_status")
+    with patch("app.api.routers.dashboard.check_admin_rights", new_callable=AsyncMock) as mock_check_admin:
+        with pytest.raises(HTTPException) as exc_info:
+            await update_player_status(signup_id=1, data=data, user_id=123, session=session)
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail == "Invalid status"
+        mock_check_admin.assert_called_once_with(-1001, 123)
+

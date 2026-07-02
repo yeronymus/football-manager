@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # PostgreSQL
     postgres_user: str = "postgres"
-    postgres_password: str = "password"
+    postgres_password: str = ""
     postgres_host: str = "db"
     postgres_port: int = 5432
     postgres_db: str = "football"
@@ -66,6 +66,12 @@ class Settings(BaseSettings):
         if self.redis_password:
             return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/0"
         return f"redis://{self.redis_host}:{self.redis_port}/0"
+
+    @property
+    def webhook_secret_token(self) -> str:
+        import hashlib
+        return hashlib.sha256(self.bot_token.encode()).hexdigest()
+
 
 # Instantiating the Singleton config. 
 # This will Fail-Fast (raise ValidationError) if critical items like `BOT_TOKEN` are omitted in `.env`

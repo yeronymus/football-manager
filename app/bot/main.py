@@ -60,7 +60,8 @@ async def start_bot():
     if settings.webhook_url and not settings.use_polling:
         webhook_info = await bot.get_webhook_info()
         if webhook_info.url != settings.webhook_url:
-            await bot.set_webhook(settings.webhook_url)
+            await bot.set_webhook(settings.webhook_url, secret_token=settings.webhook_secret_token)
+
 
     logging.info(f"Webhook set to {settings.webhook_url}")
 
@@ -104,11 +105,16 @@ async def start_bot():
     await bot.set_my_commands([], scope=types.BotCommandScopeDefault())
     
     # Set Admin Scope (For specific admins in private chat)
-    for admin_id in settings.admin_ids:
+    import asyncio
+    
+    async def set_admin_cmds(admin_id):
         try:
             await bot.set_my_commands(admin_commands, scope=types.BotCommandScopeChat(chat_id=admin_id))
         except Exception as e:
             logging.warning(f"Failed to set commands for admin {admin_id}: {e}")
+
+    await asyncio.gather(*(set_admin_cmds(aid) for aid in settings.admin_ids))
+
 
     logging.info("Set role-based commands successfully.")
     
