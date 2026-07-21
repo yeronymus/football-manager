@@ -205,6 +205,9 @@
 
         // 1. Fetch Chats
         async function loadChats() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetChatId = urlParams.get('target_chat_id');
+
             if (!initData) {
                 chatSelect.innerHTML = '<option value="" disabled>ERROR: No InitData</option>';
                 return;
@@ -214,69 +217,89 @@
                 const response = await fetch('/api/chats?initData=' + encodeURIComponent(initData), {
                     headers: { 'Authorization': `tma ${initData}` }
                 });
+                let chats = [];
                 if (response.ok) {
-                    const chats = await response.json();
-                    let chatData = {};
-                    if (chats.length === 0) {
-                        const option = document.createElement('option');
-                        option.text = "Нет доступных чатов";
-                        option.disabled = true;
-                        chatSelect.add(option);
-                    } else {
-                        chats.forEach(chat => {
-                            const option = document.createElement('option');
-                            option.value = chat.id;
-                            option.text = chat.title;
-                            chatSelect.add(option);
-                            chatData[chat.id] = chat;
-                        });
+                    chats = await response.json();
+                } else {
+                    console.error("Failed to fetch chats", await response.text());
+                }
 
-                        // Function to apply defaults
-                        window.applyChatDefaults = function(chatId) {
-                            const chat = chatData[chatId];
-                            if (!chat) return;
-                            
-                            if (chat.default_location) document.getElementById('location').value = chat.default_location;
-                            if (chat.default_price) document.getElementById('price').value = chat.default_price;
-                            if (chat.payment_info) document.getElementById('payment_info').value = chat.payment_info;
-                            if (chat.default_max_players) document.getElementById('max_players').value = chat.default_max_players;
-                            if (chat.default_main_players_count) document.getElementById('main_players_count').value = chat.default_main_players_count;
-                            if (chat.default_signup_limit) document.getElementById('signup_limit').value = chat.default_signup_limit;
-                            if (chat.default_team_count) document.getElementById('team_count').value = chat.default_team_count;
-                            if (chat.default_duration) document.getElementById('duration').value = chat.default_duration;
-                            if (chat.default_gk_hours !== undefined) document.getElementById('gk_hours').value = chat.default_gk_hours;
-                            if (chat.default_registration_hours !== undefined) document.getElementById('registration_hours').value = chat.default_registration_hours;
-                        };
+                // Clear dropdown loading/error
+                chatSelect.innerHTML = '';
 
-                        // Auto-select if target_chat_id provided
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const targetChatId = urlParams.get('target_chat_id');
-                        if (targetChatId) {
-                            chatSelect.value = targetChatId;
-                            applyChatDefaults(targetChatId);
-                            chatSelect.dispatchEvent(new Event('change'));
+                let chatData = {};
+                chats.forEach(chat => {
+                    const option = document.createElement('option');
+                    option.value = chat.id;
+                    option.text = chat.title;
+                    chatSelect.add(option);
+                    chatData[chat.id] = chat;
+                });
+
+                // Function to apply defaults
+                window.applyChatDefaults = function(chatId) {
+                    const chat = chatData[chatId];
+                    if (!chat) return;
+                    
+                    if (chat.default_location) document.getElementById('location').value = chat.default_location;
+                    if (chat.default_price) document.getElementById('price').value = chat.default_price;
+                    if (chat.payment_info) document.getElementById('payment_info').value = chat.payment_info;
+                    if (chat.default_max_players) document.getElementById('max_players').value = chat.default_max_players;
+                    if (chat.default_main_players_count) document.getElementById('main_players_count').value = chat.default_main_players_count;
+                    if (chat.default_signup_limit) document.getElementById('signup_limit').value = chat.default_signup_limit;
+                    if (chat.default_team_count) document.getElementById('team_count').value = chat.default_team_count;
+                    if (chat.default_duration) document.getElementById('duration').value = chat.default_duration;
+                    if (chat.default_gk_hours !== undefined) document.getElementById('gk_hours').value = chat.default_gk_hours;
+                    if (chat.default_registration_hours !== undefined) document.getElementById('registration_hours').value = chat.default_registration_hours;
+                };
+
+                // If targetChatId is provided, ensure it exists in options and is selected
+                if (targetChatId) {
+                    let optionExists = false;
+                    for (let i = 0; i < chatSelect.options.length; i++) {
+                        if (chatSelect.options[i].value === targetChatId) {
+                            optionExists = true;
+                            break;
                         }
                     }
-                } else {
-                    const errorMsg = await response.text();
+                    if (!optionExists) {
+                        const option = document.createElement('option');
+                        option.value = targetChatId;
+                        option.text = `Текущий чат (${targetChatId})`;
+                        chatSelect.add(option);
+                    }
+                    chatSelect.value = targetChatId;
+                    applyChatDefaults(targetChatId);
+                    chatSelect.dispatchEvent(new Event('change'));
+                } else if (chats.length === 0) {
                     const option = document.createElement('option');
-                    option.value = "";
+                    option.text = "Нет доступных чатов";
                     option.disabled = true;
                     option.selected = true;
-                    option.textContent = `Ошибка: ${response.status} ${errorMsg}`;
-                    chatSelect.innerHTML = '';
-                    chatSelect.appendChild(option);
-                    console.error("Failed to fetch chats", errorMsg);
+                    chatSelect.add(option);
+                } else {
+                    // Select first available
+                    chatSelect.selectedIndex = 0;
+                    applyChatDefaults(chatSelect.value);
+                    chatSelect.dispatchEvent(new Event('change'));
                 }
+
             } catch (e) {
-                const option = document.createElement('option');
-                option.value = "";
-                option.disabled = true;
-                option.selected = true;
-                option.textContent = `Ошибка сети: ${e.message}`;
+                console.error("loadChats error:", e);
                 chatSelect.innerHTML = '';
-                chatSelect.appendChild(option);
-                console.error(e);
+                if (targetChatId) {
+                    const option = document.createElement('option');
+                    option.value = targetChatId;
+                    option.text = `Текущий чат (${targetChatId})`;
+                    chatSelect.add(option);
+                    chatSelect.value = targetChatId;
+                    chatSelect.dispatchEvent(new Event('change'));
+                } else {
+                    const option = document.createElement('option');
+                    option.text = `Ошибка загрузки: ${e.message}`;
+                    option.disabled = true;
+                    chatSelect.add(option);
+                }
             }
         }
 
