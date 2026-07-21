@@ -62,9 +62,7 @@ async def start_bot():
     setup_listeners()
 
     if settings.webhook_url and not settings.use_polling:
-        webhook_info = await bot.get_webhook_info()
-        if webhook_info.url != settings.webhook_url:
-            await bot.set_webhook(settings.webhook_url, secret_token=settings.webhook_secret_token)
+        await bot.set_webhook(settings.webhook_url, secret_token=settings.webhook_secret_token)
 
 
     logging.info(f"Webhook set to {settings.webhook_url}")
