@@ -50,12 +50,32 @@ async def get_chats(
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
-    """Returns chats where the user has a PlayerProfile."""
-    result = await session.execute(
-        select(Chat)
-        .join(PlayerProfile, Chat.chat_id == PlayerProfile.chat_id)
-        .where(PlayerProfile.user_id == user_id)
-    )
+    """Returns chats the user has access to for creating/managing games."""
+    # Check if user is superadmin
+    is_superadmin = user_id in settings.admin_ids or user_id == settings.system_owner_id
+    if not is_superadmin:
+        user = await session.get(User, user_id)
+        if user and getattr(user, 'is_superadmin', False):
+            is_superadmin = True
+
+    if is_superadmin:
+        # Superadmins see all chats
+        result = await session.execute(select(Chat))
+    else:
+        # Regular admins see chats where they have a PlayerProfile OR are ChatAdmin
+        from app.db.models import ChatAdmin
+        result = await session.execute(
+            select(Chat)
+            .outerjoin(PlayerProfile, Chat.chat_id == PlayerProfile.chat_id)
+            .outerjoin(ChatAdmin, Chat.chat_id == ChatAdmin.chat_id)
+            .where(
+                or_(
+                    PlayerProfile.user_id == user_id,
+                    ChatAdmin.user_id == user_id
+                )
+            )
+            .distinct()
+        )
     chats = result.scalars().all()
     
     return [
