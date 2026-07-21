@@ -51,7 +51,7 @@ services:
         condition: service_started
     command: sh -c "alembic upgrade head && uvicorn app.api.main:app --host 0.0.0.0 --port 8000"
     environment:
-      - BOT_TOKEN=${STAGING_BOT_TOKEN:-}
+      - BOT_TOKEN=${STAGING_BOT_TOKEN:-$BOT_TOKEN}
       - BOT_USERNAME=${STAGING_BOT_USERNAME:-footballManagerTestbot}
       - USE_POLLING=True
       - REDIS_PASSWORD=${REDIS_PASSWORD}

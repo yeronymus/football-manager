@@ -40,9 +40,13 @@ from app.bot.i18n import SimpleI18n, I18nMiddleware
 i18n_instance = SimpleI18n("app/bot/locales")
 
 dp.update.middleware(DbSessionMiddleware(session_pool=async_session_maker))
-dp.update.middleware(TenantMiddleware())
-dp.update.middleware(I18nMiddleware(i18n=i18n_instance))
-dp.update.middleware(InstanceAccessMiddleware())
+
+# Register tenant and i18n middlewares on message and callback query handlers
+dp.message.outer_middleware(TenantMiddleware())
+dp.message.outer_middleware(I18nMiddleware(i18n=i18n_instance))
+
+dp.callback_query.outer_middleware(TenantMiddleware())
+dp.callback_query.outer_middleware(I18nMiddleware(i18n=i18n_instance))
 
 async def start_bot():
     """
