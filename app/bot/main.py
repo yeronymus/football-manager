@@ -48,6 +48,9 @@ dp.message.outer_middleware(I18nMiddleware(i18n=i18n_instance))
 dp.callback_query.outer_middleware(TenantMiddleware())
 dp.callback_query.outer_middleware(I18nMiddleware(i18n=i18n_instance))
 
+# Register event bus listeners unconditionally
+setup_listeners()
+
 async def start_bot():
     """
     Function to start the bot. Called from FastAPI startup event.
@@ -59,7 +62,6 @@ async def start_bot():
     except Exception as e:
         logging.warning(f"Failed to dynamically retrieve bot username, using default: {settings.bot_username}. Error: {e}")
 
-    setup_listeners()
 
     if settings.webhook_url and not settings.use_polling:
         await bot.set_webhook(settings.webhook_url, secret_token=settings.webhook_secret_token)
