@@ -73,8 +73,17 @@ class SchedulerService:
         if game.gk_hours <= 0:
             return
             
-        run_date = game.created_at + timedelta(hours=game.gk_hours)
-        now_tz = datetime.now(game.created_at.tzinfo) if game.created_at.tzinfo else datetime.now()
+        created_at = game.created_at
+        if not created_at:
+            import zoneinfo
+            try:
+                prague_tz = zoneinfo.ZoneInfo("Europe/Prague")
+                created_at = datetime.now(prague_tz)
+            except Exception:
+                created_at = datetime.now()
+            
+        run_date = created_at + timedelta(hours=game.gk_hours)
+        now_tz = datetime.now(created_at.tzinfo) if created_at.tzinfo else datetime.now()
         
         if run_date > now_tz:
             job_id = f"gk_release_{game.id}"
