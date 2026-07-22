@@ -73,7 +73,7 @@ async def get_chats(
         {
             "id": c.chat_id, 
             "title": c.title,
-            "type": c.chat_type,
+            "type": getattr(c, 'chat_type', 'supergroup'),
             "is_active": c.is_active
         }
         for c in chats
