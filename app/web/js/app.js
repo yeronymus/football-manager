@@ -49,18 +49,18 @@ async function init() {
     try {
         const chats = await fetchAPI('/chats');
         
-        if (chats.length === 0) {
-            document.body.innerHTML = '<div class="card" style="margin:20px;text-align:center">Вы не состоите ни в одной группе бота.</div>';
-            return;
-        }
-
         if (urlChatId) {
             currentChatId = urlChatId;
-        } else {
+        } else if (chats && chats.length > 0) {
             currentChatId = chats[0].id;
         }
 
-        const currentChat = chats.find(c => c.id == currentChatId) || chats[0];
+        if (!currentChatId && (!chats || chats.length === 0)) {
+            document.body.innerHTML = '<div class="card" style="margin:20px;text-align:center">Вы еще не состояли ни в одной группе.</div>';
+            return;
+        }
+
+        const currentChat = (chats && chats.find(c => c.id == currentChatId)) || { id: currentChatId, title: "Группа" };
         const groupDisplay = document.getElementById('group-name-display');
         if (groupDisplay) groupDisplay.innerText = currentChat.title;
         

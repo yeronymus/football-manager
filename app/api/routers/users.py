@@ -51,51 +51,17 @@ async def get_chats(
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
-    """Returns chats the user has access to for creating/managing games."""
-    # Check if user is superadmin
-    is_superadmin = user_id in settings.admin_ids or user_id == settings.system_owner_id
-    if not is_superadmin:
-        user = await session.get(User, user_id)
-        if user and getattr(user, 'is_superadmin', False):
-            is_superadmin = True
-
-    if is_superadmin:
-        # Superadmins see all chats
-        result = await session.execute(select(Chat))
-    else:
-        # Regular admins see chats where they have a PlayerProfile OR are ChatAdmin
-        from app.db.models import ChatAdmin
-        result = await session.execute(
-            select(Chat)
-            .outerjoin(PlayerProfile, Chat.chat_id == PlayerProfile.chat_id)
-            .outerjoin(ChatAdmin, Chat.chat_id == ChatAdmin.chat_id)
-            .where(
-                or_(
-                    PlayerProfile.user_id == user_id,
-                    ChatAdmin.user_id == user_id
-                )
-            )
-            .distinct()
-        )
+    """Returns active chats for the Mini-App."""
+    result = await session.execute(select(Chat))
     chats = result.scalars().all()
     
     return [
         {
             "id": c.chat_id, 
             "title": c.title,
-            "is_active": getattr(c, 'is_active', True) if getattr(c, 'is_active', True) is not None else True,
-            "language": getattr(c, 'language', 'ru') if getattr(c, 'language', 'ru') else 'ru',
-            "default_location": c.default_location,
-            "default_price": c.default_price,
-            "default_team_count": c.default_team_count,
-            "default_max_players": c.default_max_players,
-            "default_main_players_count": c.default_main_players_count,
-            "default_duration": c.default_duration,
-            "default_gk_hours": c.default_gk_hours,
-            "default_registration_hours": c.default_registration_hours,
-            "default_signup_limit": c.default_signup_limit,
-            "payment_info": c.payment_info
-        } 
+            "type": c.chat_type,
+            "is_active": c.is_active
+        }
         for c in chats
     ]
 
@@ -131,32 +97,31 @@ async def _fetch_profile_summary(session: AsyncSession, user_id: int, chat_ids: 
         select(PlayerProfile)
         .where(PlayerProfile.user_id == user_id, PlayerProfile.chat_id.in_(chat_ids))
     )
-    games_count = await session.scalar(
-        select(func.count(distinct(Game.id)))
-        .outerjoin(Signup, (Signup.game_id == Game.id) & (Signup.user_id == user_id))
-        .outerjoin(GameStats, (GameStats.game_id == Game.id) & (GameStats.user_id == user_id))
-        .outerjoin(RatingHistory, (RatingHistory.game_id == Game.id) & (RatingHistory.user_id == user_id))
+    
+    # Calculate games played directly from signups for accuracy across legacy records
+    from sqlalchemy import func
+    from app.db.models import GameStats, Game, SignupStatus
+    games_count_res = await session.scalar(
+        select(func.count(func.distinct(Game.id)))
+        .join(Signup, Signup.game_id == Game.id)
         .where(
+            Signup.user_id == user_id,
             Game.chat_id.in_(chat_ids),
-            or_(
-                Signup.id.isnot(None),
-                GameStats.id.isnot(None),
-                RatingHistory.id.isnot(None)
-            ),
-            or_(
-                Game.status == GameStatus.FINISHED,
-                Game.score_a.isnot(None)
-            )
+            Signup.status.in_([SignupStatus.ACTIVE, SignupStatus.RESERVE])
         )
     )
+    games_played = games_count_res if games_count_res and games_count_res > 0 else (profile.games_played if profile else 0)
+    
+    # Calculate total goals in this chat
     total_goals = await session.scalar(
         select(func.sum(GameStats.goals))
         .join(Game, Game.id == GameStats.game_id)
         .where(GameStats.user_id == user_id, Game.chat_id.in_(chat_ids))
     )
-    rating = profile.rating if profile else 100
-    games_played = games_count or 0
+    
     mvps = profile.stats_mvp if profile else 0
+    rating = profile.rating if profile else 100
+    
     return rating, games_played, mvps, int(total_goals or 0)
 
 @router.get("/users/me/profile")
@@ -194,11 +159,13 @@ async def get_leaderboard(
     from sqlalchemy import func
     from app.db.models import GameStats, Game
 
+    chat_ids = _resolve_chat_ids(chat_id)
+
     # Subquery to count total goals per user in this chat
     goals_sub = (
         select(GameStats.user_id, func.sum(GameStats.goals).label("total_goals"))
         .join(Game, Game.id == GameStats.game_id)
-        .where(Game.chat_id == chat_id)
+        .where(Game.chat_id.in_(chat_ids))
         .group_by(GameStats.user_id)
     ).subquery()
 
@@ -206,9 +173,14 @@ async def get_leaderboard(
         select(PlayerProfile, goals_sub.c.total_goals, User)
         .join(User, User.user_id == PlayerProfile.user_id)
         .outerjoin(goals_sub, PlayerProfile.user_id == goals_sub.c.user_id)
-        .where(PlayerProfile.chat_id == chat_id)
-        .order_by(desc(PlayerProfile.rating))
-        .limit(50)
+        .where(PlayerProfile.chat_id.in_(chat_ids))
+        .order_by(
+            desc(PlayerProfile.rating),
+            desc(PlayerProfile.games_played),
+            desc(func.coalesce(goals_sub.c.total_goals, 0)),
+            User.full_name.asc()
+        )
+        .limit(100)
     )
     
     result = []
