@@ -255,16 +255,22 @@ async def register_user(
         
     # If chat_id is provided, create a profile for that chat immediately
     if chat_id:
-        chat = await session.get(Chat, int(chat_id))
-        if chat:
+        try:
+            resolved_cids = _resolve_chat_ids(int(chat_id))
+            chat_stmt = select(Chat).where(Chat.chat_id.in_(resolved_cids))
+            chat = await session.scalar(chat_stmt)
+            target_chat_id = chat.chat_id if chat else int(chat_id)
+            
             stmt = select(PlayerProfile).where(
                 PlayerProfile.user_id == user_id, 
-                PlayerProfile.chat_id == chat.chat_id
+                PlayerProfile.chat_id == target_chat_id
             )
             profile = await session.scalar(stmt)
             if not profile:
-                profile = PlayerProfile(user_id=user_id, chat_id=chat.chat_id, rating=100)
+                profile = PlayerProfile(user_id=user_id, chat_id=target_chat_id, rating=100)
                 session.add(profile)
+        except Exception as ex:
+            logger.warning(f"Failed to create initial profile during registration: {ex}")
 
     await session.commit()
     return {"status": "ok", "user_id": user_id}

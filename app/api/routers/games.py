@@ -98,19 +98,14 @@ async def get_chat_history(
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
-    from app.bot.instance import bot
-    try:
-        member = await bot.get_chat_member(chat_id, user_id)
-        if member.status in ["left", "kicked"]:
-            raise HTTPException(status_code=403, detail="Access denied")
-    except Exception:
-        raise HTTPException(status_code=400, detail="Chat access error")
+    from app.api.routers.users import _resolve_chat_ids
+    chat_ids = _resolve_chat_ids(chat_id)
 
     result = await session.execute(
         select(Game)
-        .where(Game.chat_id == chat_id, Game.status == GameStatus.FINISHED)
+        .where(Game.chat_id.in_(chat_ids), Game.status == GameStatus.FINISHED)
         .order_by(Game.date_time.desc())
-        .limit(50)
+        .limit(100)
     )
     games = result.scalars().all()
     

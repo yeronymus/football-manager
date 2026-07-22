@@ -47,25 +47,28 @@ async function init() {
     }
 
     try {
-        const chats = await fetchAPI('/chats');
+        let chats = [];
+        try {
+            chats = await fetchAPI('/chats');
+        } catch (e) {
+            console.warn("Failed to load chats:", e);
+        }
         
         if (urlChatId) {
             currentChatId = urlChatId;
         } else if (chats && chats.length > 0) {
             currentChatId = chats[0].id;
+        } else {
+            currentChatId = '0';
         }
 
-        if (!currentChatId && (!chats || chats.length === 0)) {
-            document.body.innerHTML = '<div class="card" style="margin:20px;text-align:center">Вы еще не состояли ни в одной группе.</div>';
-            return;
+        if (chats && chats.length > 0) {
+            const currentChat = chats.find(c => c.id == currentChatId) || chats[0];
+            const groupDisplay = document.getElementById('group-name-display');
+            if (groupDisplay) groupDisplay.innerText = currentChat.title;
+            const header = document.getElementById('group-header');
+            if (header) header.style.display = 'flex';
         }
-
-        const currentChat = (chats && chats.find(c => c.id == currentChatId)) || { id: currentChatId, title: "Группа" };
-        const groupDisplay = document.getElementById('group-name-display');
-        if (groupDisplay) groupDisplay.innerText = currentChat.title;
-        
-        const header = document.getElementById('group-header');
-        if (header) header.style.display = 'flex';
         
         await switchTab(currentTab);
         
