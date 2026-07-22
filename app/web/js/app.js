@@ -284,6 +284,53 @@ window.closeModal = function() {
     if(modal) modal.remove();
 }
 
+const escapeHTML = str => str ? String(str).replace(/[&<>'"]/g, 
+    tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+    }[tag] || tag)
+) : '';
+
+window.showGroupSelector = async function() {
+    loader.style.display = 'flex';
+    try {
+        const chats = await fetchAPI('/chats');
+        const listHtml = chats.map(c => `
+            <button onclick="selectGroup('${c.id}', '${escapeHTML(c.title)}')" class="group-btn" style="width:100%; margin-bottom:10px; padding:14px 16px; border-radius:12px; justify-content:space-between; background:${c.id == currentChatId ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)'}; color:${c.id == currentChatId ? 'white' : 'var(--text-color)'}; font-weight:600; cursor:pointer;">
+                <span>${escapeHTML(c.title)}</span>
+                ${c.id == currentChatId ? '✓' : ''}
+            </button>
+        `).join('');
+
+        const modalHtml = `
+            <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
+                <div class="card" style="width:90%; max-width:400px; padding:24px; max-height:85vh; overflow-y:auto; border:1px solid rgba(255,255,255,0.1)">
+                    <h3 style="margin-bottom:8px; text-align:center;">Выберите группу</h3>
+                    <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">Выберите лигу для просмотра статистики</p>
+                    <div>${listHtml}</div>
+                    <button onclick="closeModal()" style="margin-top:20px; width:100%; color:var(--hint-color); background:none; border:none; cursor:pointer; font-weight:600;">Отмена</button>
+                </div>
+            </div>
+        `;
+        renderModal(modalHtml);
+    } catch (e) {
+        console.error("showGroupSelector error:", e);
+    } finally {
+        loader.style.display = 'none';
+    }
+};
+
+window.selectGroup = async function(chatId, title) {
+    currentChatId = chatId;
+    const groupDisplay = document.getElementById('group-name-display');
+    if (groupDisplay) groupDisplay.innerText = title;
+    closeModal();
+    await switchTab(currentTab);
+};
+
 async function renderLeaderboard() {
     const data = await fetchAPI(`/chats/${currentChatId}/leaderboard`);
     
