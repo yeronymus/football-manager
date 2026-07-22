@@ -51,8 +51,23 @@ async def get_chats(
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
-    """Returns active chats for the Mini-App."""
-    result = await session.execute(select(Chat))
+    """Returns active chats for the Mini-App ordered by activity."""
+    from sqlalchemy import func
+    from app.db.models import Game
+    
+    # Subquery to count games per chat
+    games_sub = (
+        select(Game.chat_id, func.count(Game.id).label("game_count"))
+        .group_by(Game.chat_id)
+    ).subquery()
+
+    result = await session.execute(
+        select(Chat)
+        .outerjoin(games_sub, Chat.chat_id == games_sub.c.chat_id)
+        .where(Chat.chat_id != -1000000000001)
+        .where(~Chat.title.ilike('%unknown%'))
+        .order_by(desc(func.coalesce(games_sub.c.game_count, 0)), Chat.chat_id.desc())
+    )
     chats = result.scalars().all()
     
     return [
