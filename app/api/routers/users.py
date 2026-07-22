@@ -52,7 +52,6 @@ async def get_chats(
     session: AsyncSession = Depends(get_session)
 ):
     """Returns active chats for the Mini-App ordered by activity."""
-    from sqlalchemy import func
     from app.db.models import Game
     
     # Subquery to count games per chat
@@ -114,7 +113,6 @@ async def _fetch_profile_summary(session: AsyncSession, user_id: int, chat_ids: 
     )
     
     # Calculate games played directly from signups for accuracy across legacy records
-    from sqlalchemy import func
     from app.db.models import GameStats, Game, SignupStatus
     games_count_res = await session.scalar(
         select(func.count(func.distinct(Game.id)))
@@ -171,7 +169,6 @@ async def get_leaderboard(
     session: AsyncSession = Depends(get_session)
 ):
     """Returns top players in the group for the Mini-App with goals."""
-    from sqlalchemy import func
     from app.db.models import GameStats, Game
 
     chat_ids = _resolve_chat_ids(chat_id)
