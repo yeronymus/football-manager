@@ -98,6 +98,12 @@
         </div>
 
         <div class="form-group">
+            <label for="duration">Длительность (часов)</label>
+            <input type="number" id="duration" min="0.5" max="10" step="0.5" inputmode="decimal">
+            <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Например: 2.0</small>
+        </div>
+
+        <div class="form-group">
             <label for="price">Взнос (CZK)</label>
             <input type="number" id="price" min="0" step="10" inputmode="numeric">
         </div>
@@ -138,6 +144,7 @@
         const dateTimeInput = document.getElementById('date_time');
         const locationInput = document.getElementById('location');
         const maxPlayersInput = document.getElementById('max_players');
+        const durationInput = document.getElementById('duration');
         const priceInput = document.getElementById('price');
         const paymentInput = document.getElementById('payment_info');
         const gkHoursInput = document.getElementById('gk_hours');
@@ -176,6 +183,7 @@
                     // Fill basic inputs
                     locationInput.value = game.location;
                     maxPlayersInput.value = game.max_players;
+                    durationInput.value = game.duration || 2.0;
                     priceInput.value = game.price;
                     paymentInput.value = game.payment_info;
                     gkHoursInput.value = game.gk_hours;
@@ -220,6 +228,7 @@
                     date_time: dateTime,
                     location: location,
                     max_players: parseInt(maxPlayers),
+                    duration: parseFloat(durationInput.value) || 2.0,
                     price: parseInt(priceInput.value) || 0,
                     payment_info: paymentInput.value,
                     gk_hours: parseInt(gkHoursInput.value) || 0,

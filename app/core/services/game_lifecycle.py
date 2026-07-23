@@ -152,6 +152,7 @@ class GameLifecycleService:
              game.gk_hours = data.gk_hours
              
         if data.duration is not None and data.duration != game.duration:
+             changes.append(f"🕒 Длительность: {game.duration:g}ч -> {data.duration:g}ч")
              game.duration = data.duration
               
         if data.registration_hours is not None and data.registration_hours != game.registration_hours:

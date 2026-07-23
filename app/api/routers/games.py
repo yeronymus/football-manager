@@ -73,6 +73,7 @@ async def get_game_details(
         "registration_hours": getattr(game, 'registration_hours', 0),
         "main_players_count": getattr(game, 'main_players_count', 22),
         "signup_limit": getattr(game, 'signup_limit', 999),
+        "duration": getattr(game, 'duration', 2.0),
         "chat_id": game.chat_id,
         "team_a": team_a,
         "team_b": team_b,
