@@ -67,7 +67,7 @@ async def test_format_game_message_empty(session: AsyncSession):
     # 1. Test short version
     text_short = await format_game_message(game, session, is_short=True, signups=[])
     assert "🟢 <b>Общая игра</b>" in text_short
-    assert "#123" in text_short
+    assert "#1" in text_short
     assert "Prague Stadium" in text_short
     assert "Игроков" in text_short
     assert "0/14" in text_short

@@ -55,9 +55,11 @@ async def send_voting_message(game_id: int):
             except Exception as e:
                 logger.warning(f"Failed to delete old voting message for game {game_id}: {e}")
         
+        from app.bot.utils import get_group_game_number
+        game_num = await get_group_game_number(session, game)
         msg = await bot.send_message(
             chat_id=game.chat_id,
-            text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды), нажав на кнопки ниже.",
+            text=f"Матч <b>#{game_num}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды), нажав на кнопки ниже.",
             reply_markup=keyboard,
             parse_mode="HTML"
         )
@@ -80,10 +82,12 @@ async def calculate_mvp(game_id: int):
         # Silently edit old voting message to clean it up and remove keyboard
         if game.voting_message_id:
             try:
+                from app.bot.utils import get_group_game_number
+                game_num = await get_group_game_number(session, game)
                 await bot.edit_message_text(
                     chat_id=game.chat_id,
                     message_id=game.voting_message_id,
-                    text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP закрыто!</b>",
+                    text=f"Матч <b>#{game_num}</b> завершен.\n\n<b>Голосование за MVP закрыто!</b>",
                     reply_markup=None,
                     parse_mode="HTML"
                 )
@@ -126,9 +130,11 @@ async def remind_admin_to_finish(game_id: int):
         ])
         
         try:
+            from app.bot.utils import get_group_game_number
+            game_num = await get_group_game_number(session, game)
             await bot.send_message(
                 chat_id=creator_id,
-                text=f"⏰ Матч <b>#{game.id}</b> uže by měl skončit.\n\nZadejte prosím skóre a střelce gólů pro aktualizaci statistik!",
+                text=f"⏰ Матч <b>#{game_num}</b> уже должен закончиться.\n\nЗаполните счет и забитые голы для обновления статистики!",
                 reply_markup=kb,
                 parse_mode="HTML"
             )
@@ -166,11 +172,13 @@ async def release_gk_slots(game_id: int):
             promoted_signups = reserves_result.scalars().all()
             
             if promoted_signups:
+                from app.bot.utils import get_group_game_number
+                game_num = await get_group_game_number(session, game)
                 async def notify_user(signup):
                     try:
                         await bot.send_message(
                             signup.user_id, 
-                            f"🧤 Бронь вратарей снята (24ч)!\nВы переведены в основной состав на матч #{game.id}!"
+                            f"🧤 Бронь вратарей снята (24ч)!\nВы переведены в основной состав на матч #{game_num}!"
                         )
                     except Exception as e:
                         print(f"Failed to notify user {signup.user_id}: {e}")

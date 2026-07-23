@@ -38,10 +38,34 @@ def _format_date(game_date_time) -> str:
     return date_str
 
 
-def _format_header_section(game, date_str: str) -> str:
+async def get_group_game_number(session: AsyncSession, game: Game) -> int:
+    """Returns 1-based sequential game number within its chat group."""
+    if not game or not getattr(game, 'chat_id', None):
+        return game.id if game else 1
+    try:
+        from sqlalchemy import func
+        chat_id_str = str(game.chat_id)
+        alt_chat_id = int(chat_id_str.replace("-100", "-")) if "-100" in chat_id_str else int("-100" + chat_id_str.replace("-", ""))
+        chat_ids = list(set([game.chat_id, alt_chat_id, abs(game.chat_id), abs(alt_chat_id)]))
+
+        res = await session.execute(
+            select(func.count(Game.id)).where(
+                Game.chat_id.in_(chat_ids),
+                Game.id <= game.id
+            )
+        )
+        val = res.scalar()
+        return val if val else game.id
+    except Exception:
+        return game.id
+
+
+def _format_header_section(game, date_str: str, game_number: int = None) -> str:
     game_type_val = (game.game_type.value if hasattr(game.game_type, 'value') else str(game.game_type or "")).lower()
     is_draft = game_type_val == "draft"
     type_label = "🎯 <b>Драфт</b>" if is_draft else "🟢 <b>Общая игра</b>"
+    
+    num_str = f"#{game_number}" if game_number is not None else f"#{game.id}"
     
     duration_val = f"{game.duration:g}" if game.duration else ""
     duration_str = f" 🕒 {duration_val} часа" if duration_val else ""
@@ -49,7 +73,7 @@ def _format_header_section(game, date_str: str) -> str:
     mpc = getattr(game, 'main_players_count', 22) or 22
     team_format = f"{mpc // 2}x{mpc // 2}"
     
-    text = f"{type_label} <b>#{game.id}</b>\n"
+    text = f"{type_label} <b>{num_str}</b>\n"
     text += f"⚽ <b>Формат: {team_format}</b> (нужно {game.max_players} человек)\n"
     text += f"📅 <b>{date_str}{duration_str}</b>\n"
     text += f"📍 <b>{html.escape(game.location)}</b>\n"
@@ -170,8 +194,9 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
     active_players = [s for s in signups if s[0].status == SignupStatus.ACTIVE]
     reserve_players = [s for s in signups if s[0].status == SignupStatus.RESERVE]
 
+    game_number = await get_group_game_number(session, game)
     date_str = _format_date(game.date_time)
-    text = _format_header_section(game, date_str)
+    text = _format_header_section(game, date_str, game_number=game_number)
     
     if is_short:
         text += f"——————————————————\n"

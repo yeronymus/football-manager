@@ -92,7 +92,8 @@ async function init() {
 }
 
 function renderGameHeader() {
-    document.getElementById('game-label').innerText = `Матч #${currentGame.id}`;
+    const num = currentGame.game_number || currentGame.id;
+    document.getElementById('game-label').innerText = `Матч #${num}`;
     
     // Status
     const statusText = currentGame.status === 'open' ? 'ОТКРЫТ' : (currentGame.status === 'active' ? 'АКТИВЕН' : 'ЗАВЕРШЕН');

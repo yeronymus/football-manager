@@ -61,8 +61,12 @@ async def get_game_details(
     unassigned = [serialize_player(p) for p in players_data if not p[1].team and p[1].status == SignupStatus.ACTIVE]
     reserve = [serialize_player(p) for p in players_data if not p[1].team and p[1].status == SignupStatus.RESERVE]
     
+    from app.bot.utils import get_group_game_number
+    game_number = await get_group_game_number(session, game)
+
     response_data = {
         "id": game.id,
+        "game_number": game_number,
         "location": game.location,
         "date": game.date_time.isoformat(),
         "max_players": game.max_players,
@@ -100,6 +104,7 @@ async def get_chat_history(
     session: AsyncSession = Depends(get_session)
 ):
     from app.api.routers.users import _resolve_chat_ids
+    from app.bot.utils import get_group_game_number
     chat_ids = _resolve_chat_ids(chat_id)
 
     result = await session.execute(
@@ -112,8 +117,10 @@ async def get_chat_history(
     
     history = []
     for game in games:
+        g_num = await get_group_game_number(session, game)
         history.append({
             "game_id": game.id,
+            "game_number": g_num,
             "date": game.date_time.isoformat(),
             "location": game.location,
             "score_a": game.score_a if game.score_a is not None else 0,

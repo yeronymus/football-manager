@@ -303,16 +303,19 @@ async def _fetch_history_details(session: AsyncSession, game_ids: list[int], use
         history_map = {rh.game_id: rh for rh in rh_res.scalars().all()}
     return signups_map, gamestats_map, history_map
 
-def _format_game_history(games, signups_map, history_map) -> list[dict]:
+async def _format_game_history(games, signups_map, history_map, session: AsyncSession) -> list[dict]:
     """Formats games list with user's specific performance details."""
+    from app.bot.utils import get_group_game_number
     result = []
     for game in games:
         s = signups_map.get(game.id)
         my_team = s.team.value if s and s.team else None
         history_record = history_map.get(game.id)
+        g_num = await get_group_game_number(session, game)
         
         result.append({
             "game_id": game.id,
+            "game_number": g_num,
             "date": game.date_time.isoformat(),
             "location": game.location,
             "score_a": game.score_a,
@@ -359,5 +362,5 @@ async def get_my_history(
     games = games_res.scalars().all()
     game_ids = [game.id for game in games]
     signups_map, gamestats_map, history_map = await _fetch_history_details(session, game_ids, user_id)
-    return _format_game_history(games, signups_map, history_map)
+    return await _format_game_history(games, signups_map, history_map, session)
 

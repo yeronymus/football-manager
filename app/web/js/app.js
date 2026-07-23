@@ -419,7 +419,7 @@ window.renderHistory = async function(mode = null) {
         <div class="card" onclick="showGameDetails(${g.game_id})" style="cursor:pointer; border-left: 4px solid ${historyMode === 'mine' ? resColor : 'transparent'};">
             <div class="flex-between" style="margin-bottom: 8px;">
                 <div style="display:flex; flex-direction:column">
-                    <span style="font-size: 10px; font-weight: 800; color:var(--accent-color); margin-bottom: 2px;">ИГРА ${g.game_id}</span>
+                    <span style="font-size: 10px; font-weight: 800; color:var(--accent-color); margin-bottom: 2px;">ИГРА #${g.game_number || g.game_id}</span>
                     <span style="font-size: 20px; font-weight: 800; letter-spacing: 1px;">
                         ${scoreHtml}
                     </span>
