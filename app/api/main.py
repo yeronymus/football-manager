@@ -21,7 +21,14 @@ Instrumentator().instrument(app).expose(app)
 
 # Middlewares
 from app.api.middlewares import TelemetryInterceptorMiddleware
-app.add_middleware(TelemetryInterceptorMiddleware)
+@app.middleware("http")
+async def add_no_cache_header_for_web(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/web"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,

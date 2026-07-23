@@ -228,7 +228,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     web_url = f"{base}/web/finish.html?game_id={game_id}&mode=edit"
                     label = "🏁 Заполнить результаты"
                 else:
-                    web_url = f"{base}/web/edit_game.html?game_id={game_id}&v=1.3"
+                    web_url = f"{base}/web/edit_game.html?game_id={game_id}&v=2.2.0"
                     label = "✏️ Открыть редактор"
                 
                 kb = types.InlineKeyboardMarkup(inline_keyboard=[
@@ -268,7 +268,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 if not is_admin:
                     await message.answer("⛔ Только для админов.")
                     return
-                web_app_url = f"{settings.webapp_url.rstrip('/')}/web/edit_game.html?game_id={game_id}&v=1.3"
+                web_app_url = f"{settings.webapp_url.rstrip('/')}/web/edit_game.html?game_id={game_id}&v=2.2.0"
                 kb = types.InlineKeyboardMarkup(inline_keyboard=[
                     [types.InlineKeyboardButton(text="✏️ Открыть редактор (WebApp)", web_app=types.WebAppInfo(url=web_app_url))]
                 ])
