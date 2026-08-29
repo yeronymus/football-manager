@@ -118,6 +118,7 @@ class StatsService:
         if is_mvp:
             profile.stats_mvp = (profile.stats_mvp or 0) + 1
             
+        user.rating = (user.rating or 100) + change
         user.games_played = (user.games_played or 0) + 1
         user.stats_matches = (user.stats_matches or 0) + 1
         if is_mvp:

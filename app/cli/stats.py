@@ -11,6 +11,7 @@ async def recalculate_stats_command(dry_run: bool = True):
             from sqlalchemy import text, delete
             from app.db.models import RatingHistory
             await s.execute(text("UPDATE users SET rating=100, games_played=0, stats_mvp=0, stats_matches=0"))
+            await s.execute(text("UPDATE player_profiles SET rating=100, games_played=0, stats_mvp=0, stats_matches=0"))
             await s.execute(delete(RatingHistory))
 
         # 2. Get all finished games in order

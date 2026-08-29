@@ -116,6 +116,7 @@ async def restore_january_2026():
         # 2. RESET ALL USERS STATS TO ZERO/BASELINE
         print("🔄 Resetting ALL users to baseline (100 MMR, 0 Games)...")
         await session.execute(text("UPDATE users SET rating = 100, games_played = 0, stats_mvp = 0, stats_matches = 0"))
+        await session.execute(text("UPDATE player_profiles SET rating = 100, games_played = 0, stats_mvp = 0, stats_matches = 0"))
         
         await session.commit()
         print("✅ Data Wiped. Ready to Restore.")

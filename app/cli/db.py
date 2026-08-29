@@ -39,10 +39,6 @@ async def seed_chats_command(args):
         await db.commit()
         print("Chats seeding completed successfully.")
 
-async def seed_history_command(args):
-    """Seed historical games (1-7) into the database."""
-    async with async_session_maker() as db:
-        try:
 async def _ensure_archive_chat(db, archive_chat_id):
     chat_res = await db.execute(select(Chat).where(Chat.chat_id == archive_chat_id))
     chat = chat_res.scalar_one_or_none()
@@ -137,11 +133,21 @@ async def seed_history_command(args):
             import traceback
             traceback.print_exc()
 
+async def reset_ratings_command(args=None):
+    """Force reset all user and player profile ratings to 100 while keeping games and stats intact."""
+    async with async_session_maker() as db:
+        print("Forcing rating to 100 for all users and player profiles...")
+        await db.execute(text("UPDATE users SET rating=100"))
+        await db.execute(text("UPDATE player_profiles SET rating=100"))
+        await db.commit()
+        print("✅ All ratings set to 100 (games and match history preserved).")
+
 async def reset_db_command(args):
     """Reset all user ratings and counters."""
     async with async_session_maker() as db:
-        print("Resetting all users to 100 ELO, 0 games...")
+        print("Resetting all users and player profiles to 100 ELO, 0 games...")
         await db.execute(text("UPDATE users SET rating=100, games_played=0, stats_mvp=0, stats_matches=0"))
+        await db.execute(text("UPDATE player_profiles SET rating=100, games_played=0, stats_mvp=0, stats_matches=0"))
         print("Clearing rating history...")
         await db.execute(delete(RatingHistory))
         await db.commit()

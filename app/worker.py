@@ -1,9 +1,11 @@
 import asyncio
 import logging
 import sys
+from app.config import settings
 from app.db.database import init_models
 from app.scheduler.main import start_scheduler, stop_scheduler
 from app.infrastructure.messaging import consumer as msg_consumer
+from app.bot.instance import bot
 from app.bot.main import start_bot, stop_bot
 
 # Setup logging to stdout
@@ -39,6 +41,12 @@ async def main():
     except Exception as e:
         logger.error(f"Failed to initialize bot: {e}", exc_info=True)
         
+    polling_task = None
+    if settings.use_polling:
+        logger.info("Starting bot in POLLING mode in worker...")
+        from app.bot.main import dp
+        polling_task = asyncio.create_task(dp.start_polling(bot))
+
     logger.info("Worker is fully started and running.")
     
     # Keep the worker running until interrupted
@@ -49,6 +57,11 @@ async def main():
         logger.info("Shutdown signal received. Shutting down worker...")
     finally:
         # Cleanup
+        if polling_task and not polling_task.done():
+            from app.bot.main import dp
+            await dp.stop_polling()
+            polling_task.cancel()
+
         logger.info("Stopping scheduler...")
         await stop_scheduler()
         
