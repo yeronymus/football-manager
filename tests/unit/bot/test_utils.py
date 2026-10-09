@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Game, Signup, User, SignupStatus, Position, Team, GameStatus, GameType, Chat
-from app.bot.utils import format_game_message, update_game_message, format_positions
+from app.bot.utils import format_game_message, update_game_message, format_positions, get_group_game_number
 
 async def setup_base_entities(session: AsyncSession):
     creator = User(
@@ -329,3 +329,75 @@ async def test_update_game_message_telegram_generic_exception(session: AsyncSess
     
     assert bot.edit_message_text.call_count == 2
     mock_dashboard_module.update_dashboard_message.assert_called_once_with(bot, game.id, session)
+
+
+@pytest.mark.asyncio
+async def test_get_group_game_number_sequential_and_cancelled(session: AsyncSession):
+    """
+    Verifies that:
+    1. Active/finished games increment sequential number: 1..18.
+    2. Cancelled games (19..43) are excluded from the sequential count.
+    3. Game #44 is correctly numbered as 19, resolving the bug:
+       'Почему-то после 18-ой игры начинается 44-ая'.
+    """
+    creator, chat = await setup_base_entities(session)
+
+    # Create 18 finished/open games
+    games = []
+    for i in range(1, 19):
+        g = Game(
+            id=i,
+            chat_id=chat.chat_id,
+            created_by=creator.user_id,
+            date_time=datetime(2026, 5, 20, 18, 0, tzinfo=timezone.utc),
+            location="Stadium",
+            status=GameStatus.FINISHED if i < 18 else GameStatus.OPEN
+        )
+        session.add(g)
+        games.append(g)
+    await session.commit()
+
+    # Check game 18 is #18
+    num_18 = await get_group_game_number(session, games[17])
+    assert num_18 == 18
+
+    # Create 25 CANCELLED games (IDs 19..43)
+    cancelled_games = []
+    for i in range(19, 44):
+        g = Game(
+            id=i,
+            chat_id=chat.chat_id,
+            created_by=creator.user_id,
+            date_time=datetime(2026, 5, 20, 18, 0, tzinfo=timezone.utc),
+            location="Stadium",
+            status=GameStatus.CANCELLED
+        )
+        session.add(g)
+        cancelled_games.append(g)
+    await session.commit()
+
+    # Create Game with ID 44 as OPEN
+    game_44 = Game(
+        id=44,
+        chat_id=chat.chat_id,
+        created_by=creator.user_id,
+        date_time=datetime(2026, 5, 20, 18, 0, tzinfo=timezone.utc),
+        location="Stadium",
+        status=GameStatus.OPEN
+    )
+    session.add(game_44)
+    await session.commit()
+
+    # Crucial test: Game 44 should be sequentially numbered as 19, NOT 44!
+    num_44 = await get_group_game_number(session, game_44)
+    assert num_44 == 19
+
+
+@pytest.mark.asyncio
+async def test_get_group_game_number_fallback_safety(session: AsyncSession):
+    """Fallback when game is None or chat_id is missing returns 1, not 0 or raw ID."""
+    assert await get_group_game_number(session, None) == 1
+
+    game_no_chat = Game(id=44, chat_id=None)
+    assert await get_group_game_number(session, game_no_chat) == 1
+

@@ -37,16 +37,22 @@ async def send_voting_message(game_id: int):
 
         team_a = []
         team_b = []
+        team_c = []
+        unassigned = []
         
         for user, team in players_data:
             if team == Team.A:
                 team_a.append(user)
             elif team == Team.B:
                 team_b.append(user)
+            elif team == Team.C:
+                team_c.append(user)
+            else:
+                unassigned.append(user)
 
         # Create inline keyboard with players
-        from app.bot.keyboards import get_voting_keyboard
-        keyboard = get_voting_keyboard(game_id, team_a, team_b)
+        from app.bot.keyboards import get_voting_keyboard, get_channel_voting_keyboard
+        keyboard = get_voting_keyboard(game_id, team_a, team_b, team_c=team_c, unassigned=unassigned)
         
         # Delete old voting message if it exists
         if game.voting_message_id:
@@ -57,14 +63,33 @@ async def send_voting_message(game_id: int):
         
         from app.bot.utils import get_group_game_number
         game_num = await get_group_game_number(session, game)
-        msg = await bot.send_message(
-            chat_id=game.chat_id,
-            text=f"Матч <b>#{game_num}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды), нажав на кнопки ниже.",
-            reply_markup=keyboard,
-            parse_mode="HTML"
-        )
-        game.voting_message_id = msg.message_id
-        await session.commit()
+        text = f"Матч <b>#{game_num}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков, нажав на кнопки ниже."
+
+        msg = None
+        try:
+            msg = await bot.send_message(
+                chat_id=game.chat_id,
+                text=text,
+                reply_markup=keyboard,
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send standard voting keyboard (e.g. channel or markup limits): {e}, falling back to channel-safe deep link keyboard")
+            try:
+                channel_kb = get_channel_voting_keyboard(game_id)
+                msg = await bot.send_message(
+                    chat_id=game.chat_id,
+                    text=text,
+                    reply_markup=channel_kb,
+                    parse_mode="HTML"
+                )
+            except Exception as ex:
+                logger.error(f"Failed to send fallback voting message for game {game_id}: {ex}")
+                return
+
+        if msg:
+            game.voting_message_id = msg.message_id
+            await session.commit()
 
 async def calculate_mvp(game_id: int):
     """

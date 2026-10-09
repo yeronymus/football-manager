@@ -265,6 +265,9 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 except Exception:
                     pass
             
+            from app.bot.utils import get_group_game_number
+            game_num = await get_group_game_number(session, game) if game else game_id
+
             if action_type == "edit":
                 if not is_admin:
                     await message.answer("⛔ Только для админов.")
@@ -273,7 +276,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 kb = types.InlineKeyboardMarkup(inline_keyboard=[
                     [types.InlineKeyboardButton(text="✏️ Открыть редактор (WebApp)", web_app=types.WebAppInfo(url=web_app_url))]
                 ])
-                await message.answer(f"✏️ <b>Редактирование игры #{game_id}</b>", reply_markup=kb)
+                await message.answer(f"✏️ <b>Редактирование игры #{game_num}</b>", reply_markup=kb)
                 return
                 
             elif action_type == "finish":
@@ -284,7 +287,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 kb = types.InlineKeyboardMarkup(inline_keyboard=[
                     [types.InlineKeyboardButton(text="🏁 Открыть завершение (WebApp)", web_app=types.WebAppInfo(url=web_app_url))]
                 ])
-                await message.answer(f"🏁 <b>Завершение игры #{game_id}</b>", reply_markup=kb)
+                await message.answer(f"🏁 <b>Завершение игры #{game_num}</b>", reply_markup=kb)
                 return
 
             elif action_type == "vote":
@@ -292,7 +295,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 kb = types.InlineKeyboardMarkup(inline_keyboard=[
                     [types.InlineKeyboardButton(text="🏆 Голосовать (WebApp)", web_app=types.WebAppInfo(url=web_app_url))]
                 ])
-                await message.answer(f"🏆 <b>Голосование за MVP (Игра #{game_id})</b>\nНажмите кнопку ниже, чтобы выбрать игроков.", reply_markup=kb)
+                await message.answer(f"🏆 <b>Голосование за MVP (Игра #{game_num})</b>\nНажмите кнопку ниже, чтобы выбрать игроков.", reply_markup=kb)
                 return
 
             elif action_type == "addguest":
@@ -301,7 +304,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     return
                 await state.update_data(guest_game_id=game_id)
                 await state.set_state(GuestAddition.waiting_for_name)
-                await message.answer(f"👤 <b>Добавление гостя в игру #{game_id}</b>\n\nВведите имя гостя:")
+                await message.answer(f"👤 <b>Добавление гостя в игру #{game_num}</b>\n\nВведите имя гостя:")
                 return
 
             # Show Game Interface (default "game_" action)

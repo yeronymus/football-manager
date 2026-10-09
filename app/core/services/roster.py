@@ -62,12 +62,16 @@ class RosterService:
 
         # 4. Slot allocation logic (Main vs Reserve)
         active_count = await self.uow.game_repo.get_active_signups_count(game_id)
+        active_gk_count = 0
+        if hasattr(self.uow.game_repo, 'get_active_gk_count'):
+            active_gk_count = await self.uow.game_repo.get_active_gk_count(game_id)
+            
         status = SignupStatus.ACTIVE
         alert_msg = "Вы записаны!"
         is_reserve = False
         
         # Goalkeeper priority slots check
-        if self._check_gk_priority(game, active_count, user, ignore_limit):
+        if self._check_gk_priority(game, active_count, user, ignore_limit, active_gk_count=active_gk_count):
             status = SignupStatus.RESERVE
             alert_msg = "🧤 Места только для вратарей! Вы в РЕЗЕРВЕ."
             is_reserve = True
@@ -120,16 +124,19 @@ class RosterService:
                   return JoinResult(False, None, f"❌ Мест нет! (Лимит {game.signup_limit})", False)
         return None
 
-    def _check_gk_priority(self, game: Game, active_count: int, user: User, ignore_limit: bool) -> bool:
+    def _check_gk_priority(self, game: Game, active_count: int, user: User, ignore_limit: bool, active_gk_count: int = 0) -> bool:
         """Checks if the remaining slots should be reserved exclusively for Goalies."""
-        if not ignore_limit and game.created_at:
+        if not ignore_limit and game.created_at and getattr(game, 'gk_hours', 0) and game.gk_hours > 0:
              now_ts = datetime.now().replace(tzinfo=None)
              created_at = game.created_at.replace(tzinfo=None)
              age_hours = (now_ts - created_at).total_seconds() / 3600
              if age_hours < game.gk_hours and user.player_position != Position.GK:
-                  slots_left = game.max_players - active_count
-                  if slots_left <= 2:  # Reserve last 2 slots for goalies
-                      return True
+                  needed_gks = min(2, getattr(game, 'team_count', 2) or 2)
+                  remaining_gk_needed = max(0, needed_gks - active_gk_count)
+                  if remaining_gk_needed > 0:
+                      slots_left = game.max_players - active_count
+                      if slots_left <= remaining_gk_needed:
+                          return True
         return False
 
     async def leave_player(self, game_id: int, user_id: int, is_admin: bool = False) -> tuple[bool, str, User | None]:
@@ -179,16 +186,16 @@ class RosterService:
         signups_with_user = await self.uow.game_repo.get_all_signups_sorted(game_id)
         
         active_count = 0
-        gk_reserved_slots = 0
+        active_gk_count = 0
+        needed_gks = min(2, getattr(game, 'team_count', 2) or 2)
         
         is_gk_window = False
-        if game.created_at:
+        if game.created_at and getattr(game, 'gk_hours', 0) and game.gk_hours > 0:
              now_ts = datetime.now().replace(tzinfo=None)
              created_at = game.created_at.replace(tzinfo=None)
              age_hours = (now_ts - created_at).total_seconds() / 3600
              if age_hours < game.gk_hours:
                  is_gk_window = True
-                 gk_reserved_slots = 2
 
         for signup, user in signups_with_user:
             is_gk = (user.player_position == Position.GK)
@@ -199,22 +206,18 @@ class RosterService:
                     signup.status = SignupStatus.RESERVE
                 continue
 
-            effective_max = game.max_players
-            if is_gk_window and not is_gk:
-                effective_max = game.max_players - gk_reserved_slots
+            remaining_gk_needed = max(0, needed_gks - active_gk_count) if is_gk_window else 0
+            effective_max = game.max_players - remaining_gk_needed if not is_gk else game.max_players
             
             if active_count < effective_max:
                 if signup.status != SignupStatus.ACTIVE:
                     signup.status = SignupStatus.ACTIVE
                 active_count += 1
-            elif is_gk and active_count < game.max_players:
-                if signup.status != SignupStatus.ACTIVE:
-                    signup.status = SignupStatus.ACTIVE
-                active_count += 1
+                if is_gk:
+                    active_gk_count += 1
             else:
                 if signup.status != SignupStatus.RESERVE:
                     signup.status = SignupStatus.RESERVE
-                active_count += 1 # Important: count everyone to maintain order
         
         # Invalidate Cache
         from app.core.services.cache import cache_service

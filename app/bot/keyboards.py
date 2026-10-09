@@ -162,38 +162,40 @@ def get_cancel_keyboard() -> InlineKeyboardMarkup:
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_voting_keyboard(game_id: int, team_a: list, team_b: list) -> InlineKeyboardMarkup:
+def get_channel_voting_keyboard(game_id: int) -> InlineKeyboardMarkup:
+    """Returns a channel-safe keyboard with deep-link URL button for voting."""
+    from app.config import settings
+    bot_username = settings.bot_username.lstrip("@")
+    deep_link = f"https://t.me/{bot_username}?start=vote_{game_id}"
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏆 Проголосовать за MVP (WebApp)", url=deep_link)]
+    ])
+
+def get_voting_keyboard(game_id: int, team_a: list, team_b: list, team_c: list = None, unassigned: list = None) -> InlineKeyboardMarkup:
     buttons = []
     
-    # Team A Header
-    buttons.append([InlineKeyboardButton(text="🟠 --- КОМАНДА А --- 🟠", callback_data="noop")])
-    
-    # Team A Players (2 per row)
-    row = []
-    for user in team_a:
-        # User object or Signup object with user relation
-        name = user.full_name
-        uid = user.user_id
-        row.append(InlineKeyboardButton(text=name, callback_data=f"vote_{game_id}_{uid}"))
-        if len(row) == 2:
+    def _add_team_section(title: str, players: list):
+        if not players:
+            return
+        buttons.append([InlineKeyboardButton(text=title, callback_data="noop")])
+        row = []
+        for user in players:
+            name = getattr(user, 'full_name', str(user))
+            uid = getattr(user, 'user_id', user)
+            row.append(InlineKeyboardButton(text=name, callback_data=f"vote_{game_id}_{uid}"))
+            if len(row) == 2:
+                buttons.append(row)
+                row = []
+        if row:
             buttons.append(row)
-            row = []
-    if row:
-        buttons.append(row)
-        
-    # Team B Header
-    buttons.append([InlineKeyboardButton(text="🟢 --- КОМАНДА Б --- 🟢", callback_data="noop")])
-    
-    # Team B Players (2 per row)
-    row = []
-    for user in team_b:
-        name = user.full_name
-        uid = user.user_id
-        row.append(InlineKeyboardButton(text=name, callback_data=f"vote_{game_id}_{uid}"))
-        if len(row) == 2:
-            buttons.append(row)
-            row = []
-    if row:
-        buttons.append(row)
+
+    if team_a:
+        _add_team_section("🟠 --- КОМАНДА А --- 🟠", team_a)
+    if team_b:
+        _add_team_section("🟢 --- КОМАНДА Б --- 🟢", team_b)
+    if team_c:
+        _add_team_section("🔵 --- КОМАНДА С --- 🔵", team_c)
+    if not team_a and not team_b and not team_c and unassigned:
+        _add_team_section("⚽ --- ИГРОКИ --- ⚽", unassigned)
         
     return InlineKeyboardMarkup(inline_keyboard=buttons)

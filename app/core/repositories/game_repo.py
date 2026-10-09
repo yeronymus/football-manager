@@ -1,7 +1,7 @@
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.repositories.base import BaseRepository
-from app.db.models import Game, Signup, SignupStatus, User
+from app.db.models import Game, Signup, SignupStatus, User, Position
 
 class GameRepository(BaseRepository[Game]):
     """
@@ -14,6 +14,19 @@ class GameRepository(BaseRepository[Game]):
         result = await self.session.execute(
             select(func.count(Signup.id))
             .where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
+        )
+        return result.scalar() or 0
+
+    async def get_active_gk_count(self, game_id: int) -> int:
+        """Fetch count of active players registered as Goalkeepers (GK)."""
+        result = await self.session.execute(
+            select(func.count(Signup.id))
+            .join(User, Signup.user_id == User.user_id)
+            .where(
+                Signup.game_id == game_id,
+                Signup.status == SignupStatus.ACTIVE,
+                User.player_position == Position.GK
+            )
         )
         return result.scalar() or 0
     

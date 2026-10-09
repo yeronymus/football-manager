@@ -186,7 +186,7 @@ async function loadGroupGames(group) {
             
             el.innerHTML = `
                 <div class="game-info" style="flex: 1;">
-                    <h3 style="margin-bottom: 4px; font-size: 1.2rem;">Game #${g.id}</h3>
+                    <h3 style="margin-bottom: 4px; font-size: 1.2rem;">Game #${g.game_number || g.id}</h3>
                     ${scoreHtml}
                     <p style="color: var(--text-main); font-weight: 500; margin-bottom: 2px;">${g.location}</p>
                     <p style="font-size: 0.85rem;">${dateStr} • Players: ${g.players_count}/${g.max_players} • Paid: ${g.paid_count}/${g.players_count}</p>
@@ -212,7 +212,7 @@ async function loadGameDetails(gameId) {
         const game = await apiCall(`/games/${gameId}`);
         
         const dateStr = new Date(game.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague'});
-        document.getElementById('game-title').textContent = `Game #${game.id}`;
+        document.getElementById('game-title').textContent = `Game #${game.game_number || game.id}`;
         document.getElementById('game-date-location').textContent = `${game.location} • ${dateStr}`;
         
         const badge = document.getElementById('game-status-badge');

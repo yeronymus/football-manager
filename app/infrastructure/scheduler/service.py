@@ -28,14 +28,15 @@ class SchedulerService:
         if not game.date_time:
              return
 
-        self.schedule_voting(game.id, game.date_time)
+        duration = getattr(game, 'duration', 2.0) or 2.0
+        self.schedule_voting(game.id, game.date_time, duration=duration)
         self.schedule_admin_reminder(game.id, game.date_time)
         self.schedule_gk_release(game)
 
-    def schedule_voting(self, game_id: int, date_time: datetime):
-        """Schedules voting task."""
-        # Voting opens 2.5h after game start
-        run_date = date_time + timedelta(hours=2, minutes=30)
+    def schedule_voting(self, game_id: int, date_time: datetime, duration: float = 2.0):
+        """Schedules voting task based on match duration."""
+        match_hours = float(duration) if duration and duration > 0 else 2.0
+        run_date = date_time + timedelta(hours=match_hours)
         now_tz = datetime.now(date_time.tzinfo) if date_time.tzinfo else datetime.now()
         
         if run_date > now_tz:

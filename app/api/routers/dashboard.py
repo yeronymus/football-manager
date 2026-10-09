@@ -39,6 +39,7 @@ class GroupOut(BaseModel):
 
 class GameSummaryOut(BaseModel):
     id: int
+    game_number: Optional[int] = None
     location: str
     date_time: datetime.datetime
     status: str
@@ -159,15 +160,18 @@ async def get_group_games(
     
     out = []
     has_changes = False
+    from app.bot.utils import get_group_game_number
     for game, count, paid_count in rows:
         cleaned_loc = clean_location(game.location)
         if cleaned_loc != game.location:
             game.location = cleaned_loc
             has_changes = True
             
+        g_num = await get_group_game_number(session, game)
         out.append(
             GameSummaryOut(
                 id=game.id,
+                game_number=g_num,
                 location=game.location,
                 date_time=game.date_time,
                 status=game.status.value,
@@ -198,6 +202,7 @@ class PlayerDetailOut(BaseModel):
 
 class GameDetailOut(BaseModel):
     id: int
+    game_number: Optional[int] = None
     location: str
     date_time: datetime.datetime
     status: str
@@ -267,9 +272,12 @@ async def get_game_details(
         await session.commit()
 
     players = _format_game_players(res.all(), votes_map)
+    from app.bot.utils import get_group_game_number
+    g_num = await get_group_game_number(session, game)
         
     return GameDetailOut(
         id=game.id,
+        game_number=g_num,
         location=game.location,
         date_time=game.date_time,
         status=game.status.value,

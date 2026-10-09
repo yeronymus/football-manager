@@ -435,7 +435,7 @@
                     payment_info: document.getElementById('payment_info').value || "",
                     team_count: parseInt(document.getElementById('team_count').value) || 2,
                     game_type: document.getElementById('game_type').value || "regular",
-                    gk_hours: parseInt(document.getElementById('gk_hours').value) || 24,
+                    gk_hours: isNaN(parseInt(document.getElementById('gk_hours').value)) ? 0 : parseInt(document.getElementById('gk_hours').value),
                     registration_hours: parseInt(document.getElementById('registration_hours').value) || 0,
                     duration: parseFloat(document.getElementById('duration').value) || 2,
                     auto_join_ids: checkedAdmins,

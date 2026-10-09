@@ -146,15 +146,18 @@ async def get_editable_games(
     result = await session.execute(stmt)
     games = result.scalars().all()
     
-    return [
-        {
+    from app.bot.utils import get_group_game_number
+    res_list = []
+    for g in games:
+        g_num = await get_group_game_number(session, g)
+        res_list.append({
             "id": g.id,
+            "game_number": g_num,
             "location": g.location,
             "date_time": g.date_time.isoformat(),
             "status": g.status.value
-        }
-        for g in games
-    ]
+        })
+    return res_list
 
 
 

@@ -108,10 +108,12 @@ async def on_game_finished(event: GameFinishedEvent):
         game = await session.get(Game, event.game_id)
         if game and game.voting_message_id:
             try:
+                from app.bot.utils import get_group_game_number
+                game_num = await get_group_game_number(session, game)
                 await bot.edit_message_text(
                     chat_id=game.chat_id,
                     message_id=game.voting_message_id,
-                    text=f"Матч <b>#{game.id}</b> завершен.\n\n<b>Голосование за MVP закрыто!</b>\nРезультаты опубликованы ниже.",
+                    text=f"Матч <b>#{game_num}</b> завершен.\n\n<b>Голосование за MVP закрыто!</b>\nРезультаты опубликованы ниже.",
                     reply_markup=None,
                     parse_mode="HTML"
                 )

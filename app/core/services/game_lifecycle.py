@@ -129,7 +129,7 @@ class GameLifecycleService:
                      self.scheduler.cancel_game_tasks(game.id)
                      # Always attempt to schedule voting/reminder. 
                      # The scheduler methods themselves check if run_date is in the future.
-                     self.scheduler.schedule_voting(game.id, game.date_time)
+                     self.scheduler.schedule_voting(game.id, game.date_time, duration=game.duration)
                      self.scheduler.schedule_admin_reminder(game.id, game.date_time)
                      
                      # NEW: Schedule MVP Calc (Game Start + 7.5h)

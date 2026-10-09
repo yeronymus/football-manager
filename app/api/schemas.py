@@ -11,7 +11,7 @@ class GameCreate(BaseModel):
     price: int = 100
     payment_info: str = "2924402033/0800"
     team_count: int = 2
-    gk_hours: int = 48
+    gk_hours: int = 0
     duration: float = 2.0
     registration_hours: int = 0
     game_type: str = "regular"

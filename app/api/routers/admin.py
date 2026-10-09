@@ -318,7 +318,9 @@ async def _get_voting_results(session: AsyncSession, game_id: int):
 
 async def _build_finish_announcement(session: AsyncSession, game, voting_results, data) -> str:
     """Helper to build HTML announcement message text for a finished game."""
-    text = f"🏁 <b>Матч завершен!</b>\n\n"
+    from app.bot.utils import get_group_game_number
+    game_num = await get_group_game_number(session, game)
+    text = f"🏁 <b>Матч #{game_num} завершен!</b>\n\n"
     text += f"Команда оранжевые 🟠 {game.score_a}:{game.score_b} 🟢 Команда зеленые\n"
     
     async def get_names(uids):

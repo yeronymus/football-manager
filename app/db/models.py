@@ -187,7 +187,7 @@ class Game(Base):
     price = Column(Integer, default=100)
     payment_info = Column(String, default="2924402033/0800")
     team_count = Column(Integer, default=2)
-    gk_hours = Column(Integer, default=48)
+    gk_hours = Column(Integer, default=0)
     duration = Column(Float, default=2.0) # Match duration in hours
     status = Column(Enum(GameStatus, native_enum=False), default=GameStatus.OPEN)
     game_type = Column(Enum(GameType, name="game_type_enum", native_enum=False), default=GameType.REGULAR)

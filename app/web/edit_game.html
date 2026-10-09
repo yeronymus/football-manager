@@ -186,7 +186,7 @@
                     durationInput.value = game.duration || 2.0;
                     priceInput.value = game.price;
                     paymentInput.value = game.payment_info;
-                    gkHoursInput.value = game.gk_hours;
+                    gkHoursInput.value = (game.gk_hours !== undefined && game.gk_hours !== null) ? game.gk_hours : 0;
                     registrationHoursInput.value = game.registration_hours || 0;
                     mainPlayersInput.value = game.main_players_count || 22;
                     signupLimitInput.value = game.signup_limit || 999;

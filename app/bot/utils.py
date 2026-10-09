@@ -41,23 +41,39 @@ def _format_date(game_date_time) -> str:
 async def get_group_game_number(session: AsyncSession, game: Game) -> int:
     """Returns 1-based sequential game number within its chat group."""
     if not game or not getattr(game, 'chat_id', None):
-        return game.id if game else 1
+        return 1
     try:
-        from sqlalchemy import func
+        from sqlalchemy import func, or_
         chat_id_str = str(game.chat_id)
         alt_chat_id = int(chat_id_str.replace("-100", "-")) if "-100" in chat_id_str else int("-100" + chat_id_str.replace("-", ""))
-        chat_ids = list(set([game.chat_id, alt_chat_id, abs(game.chat_id), abs(alt_chat_id)]))
+        chat_ids = {game.chat_id, alt_chat_id, abs(game.chat_id), abs(alt_chat_id)}
+
+        if getattr(game, 'channel_id', None):
+            chan_str = str(game.channel_id)
+            alt_chan = int(chan_str.replace("-100", "-")) if "-100" in chan_str else int("-100" + chan_str.replace("-", ""))
+            chat_ids.update([game.channel_id, alt_chan, abs(game.channel_id), abs(alt_chan)])
+
+        chat_cond = Game.chat_id.in_(chat_ids)
+        if hasattr(Game, 'channel_id'):
+            chat_cond = or_(chat_cond, Game.channel_id.in_(chat_ids))
+
+        # Exclude cancelled games unless it's the queried game itself
+        status_cond = or_(Game.status != GameStatus.CANCELLED, Game.id == game.id)
 
         res = await session.execute(
             select(func.count(Game.id)).where(
-                Game.chat_id.in_(chat_ids),
+                chat_cond,
+                status_cond,
                 Game.id <= game.id
             )
         )
         val = res.scalar()
-        return val if val else game.id
+        if val is not None and val > 0:
+            return val
+        return 1
     except Exception:
-        return game.id
+        return 1
+
 
 
 def _format_header_section(game, date_str: str, game_number: int = None) -> str:

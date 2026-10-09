@@ -60,7 +60,7 @@ async def test_send_voting_message_success(mock_get_keyboard, mock_bot, mock_ses
     mock_bot.delete_message.assert_called_once_with(chat_id=-1001, message_id=123)
     mock_bot.send_message.assert_called_once_with(
         chat_id=-1001,
-        text="Матч <b>#1</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков (по одному от команды), нажав на кнопки ниже.",
+        text="Матч <b>#1</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков, нажав на кнопки ниже.",
         reply_markup=mock_keyboard,
         parse_mode="HTML"
     )

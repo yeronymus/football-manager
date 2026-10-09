@@ -22,6 +22,9 @@ class MockRepo:
     async def get_active_signups_count(self, game_id):
          return len([s for s in self.signups if s.game_id == game_id and s.status == SignupStatus.ACTIVE])
          
+    async def get_active_gk_count(self, game_id):
+         return getattr(self, 'active_gk_count', 0)
+         
     def create_signup(self, gid, uid, status):
          s = Signup(game_id=gid, user_id=uid, status=status)
          self.signups.append(s)
@@ -93,6 +96,43 @@ async def _run_async_tests():
          uow.game_repo.signups.append(Signup(game_id=5, user_id=100+i, status=SignupStatus.ACTIVE))
 
     res = await service.join_player(5, user)
+    assert res.success is True
+    assert res.is_reserve is False
+
+    # Case 6: 18 Players, 16 active, 0 GKs -> non-GK should be reserve (held for GKs)
+    g6 = Game(id=6, status=GameStatus.OPEN, max_players=18, registration_hours=0, gk_hours=48)
+    g6.date_time = datetime.now() + timedelta(hours=10)
+    g6.created_at = datetime.now()
+    uow.game_repo.games[6] = g6
+    uow.game_repo.active_gk_count = 0
+    for i in range(16):
+        uow.game_repo.signups.append(Signup(game_id=6, user_id=200+i, status=SignupStatus.ACTIVE))
+    res = await service.join_player(6, user)
+    assert res.success is True
+    assert res.is_reserve is True
+    assert "вратарей" in res.message.lower()
+
+    # Case 7: 18 Players, 16 active, 2 GKs already present -> non-GK should be ACTIVE (bug fixed!)
+    g7 = Game(id=7, status=GameStatus.OPEN, max_players=18, registration_hours=0, gk_hours=48)
+    g7.date_time = datetime.now() + timedelta(hours=10)
+    g7.created_at = datetime.now()
+    uow.game_repo.games[7] = g7
+    uow.game_repo.active_gk_count = 2
+    for i in range(16):
+        uow.game_repo.signups.append(Signup(game_id=7, user_id=300+i, status=SignupStatus.ACTIVE))
+    res = await service.join_player(7, user)
+    assert res.success is True
+    assert res.is_reserve is False
+
+    # Case 8: 18 Players, 16 active, gk_hours = 0 -> non-GK should be ACTIVE
+    g8 = Game(id=8, status=GameStatus.OPEN, max_players=18, registration_hours=0, gk_hours=0)
+    g8.date_time = datetime.now() + timedelta(hours=10)
+    g8.created_at = datetime.now()
+    uow.game_repo.games[8] = g8
+    uow.game_repo.active_gk_count = 0
+    for i in range(16):
+        uow.game_repo.signups.append(Signup(game_id=8, user_id=400+i, status=SignupStatus.ACTIVE))
+    res = await service.join_player(8, user)
     assert res.success is True
     assert res.is_reserve is False
 
