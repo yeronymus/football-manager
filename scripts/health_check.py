@@ -2,6 +2,13 @@ import sys
 import ast
 from pathlib import Path
 
+# Ensure UTF-8 output encoding across platforms
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 def check_project_health():
     print("🚀 Starting Football Manager Bot Health Check...")
     
@@ -32,7 +39,7 @@ def check_project_health():
             continue
             
         try:
-            with open(full_path) as f:
+            with open(full_path, encoding="utf-8") as f:
                 ast.parse(f.read())
             print(f"✅ OK: {file_path}")
         except SyntaxError as e:
@@ -43,7 +50,7 @@ def check_project_health():
     
     # core/ must NOT import from api/
     for py_file in (base_path / "app/core").rglob("*.py"):
-        with open(py_file) as f:
+        with open(py_file, encoding="utf-8") as f:
             content = f.read()
         if "from app.api" in content or "import app.api" in content:
             rel = py_file.relative_to(base_path)
@@ -55,7 +62,7 @@ def check_project_health():
         rel = py_file.relative_to(base_path)
         if "main.py" in str(rel):
             continue  # bootstrap is allowed
-        with open(py_file) as f:
+        with open(py_file, encoding="utf-8") as f:
             try:
                 tree = ast.parse(f.read())
             except SyntaxError:
@@ -68,7 +75,7 @@ def check_project_health():
 
     # instance.py must not import from bot.main
     try:
-        with open(base_path / "app/bot/instance.py") as f:
+        with open(base_path / "app/bot/instance.py", encoding="utf-8") as f:
             content = f.read()
         if "app.bot.main" in content:
             print("❌ CIRCULAR HAZARD: instance.py imports from app.bot.main!")

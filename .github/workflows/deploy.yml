@@ -26,10 +26,13 @@ jobs:
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-extras
 
       - name: Run Ruff (Linting)
-        run: uv run ruff check app/
+        run: uv run ruff check .
+
+      - name: Architecture & Layer Health Check
+        run: uv run python scripts/health_check.py
 
       - name: Check Configuration Security (Trivy scan)
         uses: aquasecurity/trivy-action@master
@@ -40,8 +43,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Run Pytest
-        # Only running unit tests in CI as integration/e2e require PostgreSQL
-        run: PYTHONPATH=. uv run pytest tests/unit/
+        run: PYTHONPATH=. uv run pytest tests/
 
   build:
     needs: test-and-lint

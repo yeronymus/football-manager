@@ -10,6 +10,8 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7.x-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![GitLab CI](https://img.shields.io/badge/GitLab_CI-Production_Ready-FC6D26?style=for-the-badge&logo=gitlab&logoColor=white)](./.gitlab-ci.yml)
+[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-Passing-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](./.github/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
 [![Tests Passing](https://img.shields.io/badge/Tests-115%20Passing-brightgreen.svg?style=for-the-badge)](./tests)
 
@@ -26,6 +28,13 @@
   - [System Architecture](#system-architecture)
   - [Match Lifecycle & Event Flow](#match-lifecycle--event-flow)
   - [Concurrency-Safe Roster Allocation](#concurrency-safe-roster-allocation)
+- [CI/CD, DevOps & Production Infrastructure](#cicd-devops--production-infrastructure)
+  - [Dual CI/CD Pipeline Architecture](#dual-cicd-pipeline-architecture)
+  - [GitLab CI/CD Pipeline (Battle-Tested)](#gitlab-cicd-pipeline-battle-tested)
+  - [GitHub Actions Pipeline](#github-actions-pipeline)
+  - [Rootless Multi-Stage Containerization](#rootless-multi-stage-containerization)
+  - [Network Isolation & Zero-Downtime CD](#network-isolation--zero-downtime-cd)
+  - [Monitoring & Observability](#monitoring--observability)
 - [Tech Stack](#tech-stack)
 - [Core Features](#core-features)
   - [Telegram Bot & Group Automation](#telegram-bot--group-automation)
@@ -161,6 +170,86 @@ flowchart TD
     SaveDB --> Commit[Commit Transaction & Evict Cache]
     Commit --> UpdateMsg[Trigger Bot Message Update]
 ```
+
+---
+
+## CI/CD, DevOps & Production Infrastructure
+
+Prague Football Manager treats operational reliability, security, and continuous deployment as first-class architectural requirements. The project incorporates an automated, hardened DevOps foundation supporting both enterprise **GitLab CI/CD** environments and **GitHub Actions**.
+
+```mermaid
+flowchart LR
+    subgraph CI["Automated CI/CD Pipeline (GitLab CI & GitHub Actions)"]
+        direction TB
+        Lint["Stage 1: Linting<br/>• Ruff static analysis<br/>• Zero warning tolerance"]
+        Test["Stage 2: Live Integration<br/>• PostgreSQL 15 Container<br/>• Async DDL Migrations<br/>• 115 Pytest Test Suite<br/>• Architecture Health Check"]
+        Security["Security Audit<br/>• Trivy Config Scanning<br/>• Secret leakage prevention"]
+        Build["Stage 3: Containerization<br/>• Multi-Stage Rootless Docker<br/>• uv Package Cache Mount<br/>• Dual Tagging (:sha, :latest)"]
+        Deploy["Stage 4: CD & Orchestration<br/>• Automated Staging Delivery<br/>• Watchtower Zero-Downtime Rollout<br/>• Manual Production Approval"]
+        
+        Lint --> Test
+        Lint --> Security
+        Test --> Build
+        Security --> Build
+        Build --> Deploy
+    end
+```
+
+### Dual CI/CD Pipeline Architecture
+
+The platform features pre-configured, tested configurations for both major continuous integration platforms:
+- **GitLab CI/CD** ([`.gitlab-ci.yml`](./.gitlab-ci.yml)): Designed for self-hosted or cloud GitLab instances with native service containers, live PostgreSQL integration, and multi-environment orchestration.
+- **GitHub Actions** ([`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml)): Optimized for GitHub Enterprise/Cloud with GitHub Container Registry (GHCR) and GitHub Actions cache backends.
+
+---
+
+### GitLab CI/CD Pipeline (Battle-Tested)
+
+The repository provides a complete, working GitLab CI pipeline configured across four automated stages:
+
+| Stage | Job | Environment / Image | Key Actions |
+|:---|:---|:---|:---|
+| **`lint`** | `linting` | `python:3.12-slim` | Executes `ruff check .` across all application modules and test files. |
+| **`test`** | `integration_tests` | `python:3.12-slim` + `postgres:15-alpine` | • Launches ephemeral PostgreSQL service container.<br/>• Uses socket polling loop waiting for port 5432 readiness.<br/>• Runs live async database table creation via SQLAlchemy & asyncpg.<br/>• Stamps schema version via `alembic stamp head`.<br/>• Validates architecture layer boundaries via `scripts/health_check.py`.<br/>• Runs full test suite (**115 passing tests**). |
+| **`build`** | `docker_build` | `docker:24.0.5` + `docker:dind` | Builds production runner image and pushes to GitLab Container Registry (`$CI_REGISTRY_IMAGE`) with both commit SHA and `:latest` tags. |
+| **`deploy`** | `deploy_staging`<br/>`deploy_production` | `alpine:latest` | • **Staging**: Automatically triggered on commits to `develop`.<br/>• **Production**: Protected, manual-trigger deployment (`when: manual`) for `main` and `release` branches. |
+
+---
+
+### GitHub Actions Pipeline
+
+Complementing GitLab CI, the GitHub Actions workflow executes on pull requests and pushes to `main` and `develop`:
+- **Fast uv Synchronization**: Installs Python dependencies in seconds using `uv sync --all-extras`.
+- **Trivy Vulnerability Audit**: Scans infrastructure configurations against `CRITICAL` and `HIGH` CVEs.
+- **Architecture Integrity**: Runs `scripts/health_check.py` to prevent circular dependencies between bot, API, and core domains.
+- **GHCR Integration**: Authenticates and uploads production images to GitHub Container Registry (`ghcr.io`) utilizing Docker Buildx with GitHub Actions layer cache (`cache-from: type=gha`).
+
+---
+
+### Rootless Multi-Stage Containerization
+
+The production [`Dockerfile`](./Dockerfile) is engineered with strict container security best practices:
+- **Two-Stage Build**:
+  - `builder` stage: Compiles binary extensions (`libpq-dev`, `gcc`), mounting `uv` package caches (`--mount=type=cache,target=/root/.cache/uv`).
+  - `runner` stage: Ships an ultra-slim runtime image containing only runtime dynamic libraries (`postgresql-client`) and the pre-built virtual environment (`/app/.venv`).
+- **Non-Root Execution**: Runs strictly under a non-privileged system user (`appuser`, group `appuser`). Root execution is explicitly disabled before container entrypoint execution.
+- **Dynamic Container Healthcheck**: Includes a Docker `HEALTHCHECK` running `scripts/health_check.py` to verify AST syntax validity, layer boundaries, and file integrity every 30 seconds.
+
+---
+
+### Network Isolation & Zero-Downtime CD
+
+Configured in [`docker-compose.yml`](./docker-compose.yml):
+- **Bridge Network Segmentation**: The PostgreSQL database (`db`) and Redis broker (`redis`) reside strictly on internal bridge networks with zero direct internet or WAN port exposure.
+- **Password-Hardened Cache**: Redis enforces authentication via `--requirepass` and restricts local host bindings to `127.0.0.1`.
+- **Automated Rolling Updates**: Integrated **Watchtower** service polls the container registry every 300 seconds, pulls updated images, and executes zero-downtime container swaps with automatic dangling image cleanup (`--cleanup`).
+
+---
+
+### Monitoring & Observability
+
+- **Prometheus Telemetry**: The application exposes operational metrics (`/metrics`) using `prometheus-fastapi-instrumentator`.
+- **Pre-Configured Scraper**: The repository includes [`monitoring/prometheus.yml`](./monitoring/prometheus.yml) for Prometheus integration, tracking request latencies, HTTP response codes, active bot connections, and DB pool utilization.
 
 ---
 

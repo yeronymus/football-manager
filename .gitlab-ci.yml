@@ -29,7 +29,7 @@ linting:
   image: python:3.12-slim
   script:
     - pip install ruff
-    - ruff check app/
+    - ruff check .
   allow_failure: false
 
 # Stage 2: Integration tests with PostgreSQL database
@@ -65,6 +65,7 @@ integration_tests:
       asyncio.run(main())
       "
     - uv run alembic stamp head
+    - uv run python scripts/health_check.py
     - uv run pytest tests/
   only:
     - merge_requests
