@@ -85,3 +85,55 @@ async def test_update_player_status_invalid_status():
         assert exc_info.value.detail == "Invalid status"
         mock_check_admin.assert_called_once_with(-1001, 123)
 
+@pytest.mark.asyncio
+async def test_update_player_status_signup_not_found():
+    from app.api.routers.dashboard import update_player_status, StatusUpdate
+    session = AsyncMock()
+    session.get.return_value = None
+    data = StatusUpdate(status="active")
+    with pytest.raises(HTTPException) as exc_info:
+        await update_player_status(signup_id=999, data=data, user_id=123, session=session)
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Signup not found"
+
+@pytest.mark.asyncio
+async def test_kick_player_signup_not_found():
+    from app.api.routers.dashboard import kick_player
+    session = AsyncMock()
+    session.get.return_value = None
+    with pytest.raises(HTTPException) as exc_info:
+        await kick_player(signup_id=999, user_id=123, session=session)
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Signup not found"
+
+@pytest.mark.asyncio
+async def test_delete_game_not_found():
+    from app.api.routers.dashboard import delete_game
+    session = AsyncMock()
+    session.get.return_value = None
+    with pytest.raises(HTTPException) as exc_info:
+        await delete_game(game_id=999, user_id=123, session=session)
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Game not found"
+
+@pytest.mark.asyncio
+@patch("app.api.routers.dashboard.check_admin_rights", new_callable=AsyncMock)
+@patch("app.api.routers.dashboard.cache_service")
+async def test_add_guest_invalid_position_fallback(mock_cache, mock_check_admin):
+    from app.api.routers.dashboard import add_guest, GuestCreate
+    from app.db.models import Game, Position
+    mock_cache.evict = AsyncMock()
+    session = AsyncMock()
+    game = Game(id=1, chat_id=-1001)
+    session.get.return_value = game
+
+    data = GuestCreate(name="Guest Alex", position="INVALID_POS")
+    res = await add_guest(game_id=1, data=data, user_id=123, session=session)
+
+    assert res["status"] == "added"
+    # Find user added to session
+    added_users = [arg[0][0] for arg in session.add.call_args_list if hasattr(arg[0][0], "player_position")]
+    assert len(added_users) == 1
+    assert added_users[0].player_position == Position.CM
+
+
