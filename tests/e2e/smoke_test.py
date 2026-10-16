@@ -1,5 +1,4 @@
 import unittest
-from unittest.mock import MagicMock
 from app.db.models import Team, GameStatus
 
 class SmokeTest(unittest.TestCase):

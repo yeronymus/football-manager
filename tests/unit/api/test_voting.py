@@ -2,7 +2,7 @@ import pytest
 from fastapi import HTTPException
 from unittest.mock import AsyncMock, MagicMock, patch
 from app.api.routers.voting import get_vote_data, submit_vote
-from app.db.models import Signup, User, Vote, Team, Position
+from app.db.models import Signup, User, Team, Position
 from app.api.schemas import VoteRequest
 
 @pytest.mark.asyncio

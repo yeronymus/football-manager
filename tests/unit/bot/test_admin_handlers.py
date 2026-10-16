@@ -27,7 +27,6 @@ async def test_cmd_create_in_private_chat():
     message.from_user.id = 12345
     message.answer = AsyncMock()
     
-    from app.config import settings
     with MagicMock() as mock_settings:
         # Instead of patching settings object, we can patch the module level access if needed,
         # but let's try to patch settings directly where it's used.

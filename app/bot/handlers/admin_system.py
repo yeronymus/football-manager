@@ -1,9 +1,7 @@
-from aiogram import Router, F, types
+from aiogram import Router, types
 from aiogram.filters import Command, CommandObject
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text
-from sqlalchemy.orm import selectinload
-from app.db.models import Chat, Game, GameStatus
+from app.db.models import Chat, Game
 from app.config import settings
 
 router = Router()

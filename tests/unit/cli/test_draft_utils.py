@@ -1,4 +1,3 @@
-import pytest
 from app.cli.draft import calc_win_pct
 
 def test_calc_win_pct_zero_total():

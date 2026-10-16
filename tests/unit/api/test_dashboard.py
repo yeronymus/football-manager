@@ -137,3 +137,40 @@ async def test_add_guest_invalid_position_fallback(mock_cache, mock_check_admin)
     assert added_users[0].player_position == Position.CM
 
 
+@pytest.mark.asyncio
+async def test_toggle_payment_signup_not_found():
+    from app.api.routers.dashboard import toggle_payment
+    session = AsyncMock()
+    session.get.return_value = None
+
+    with pytest.raises(HTTPException) as exc_info:
+        await toggle_payment(signup_id=999, user_id=123, session=session)
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Signup not found"
+
+
+@pytest.mark.asyncio
+@patch("app.api.routers.dashboard.check_admin_rights", new_callable=AsyncMock)
+async def test_toggle_payment_success(mock_check_admin):
+    from app.api.routers.dashboard import toggle_payment
+    from app.db.models import Signup, Game
+    session = AsyncMock()
+    signup = Signup(id=10, game_id=1, user_id=456, is_paid=False)
+    game = Game(id=1, chat_id=-1001)
+
+    async def mock_get(model, pk):
+        if model is Signup:
+            return signup
+        if model is Game:
+            return game
+        return None
+
+    session.get.side_effect = mock_get
+    res = await toggle_payment(signup_id=10, user_id=123, session=session)
+
+    assert res["status"] == "ok"
+    assert res["is_paid"] is True
+    assert signup.is_paid is True
+    session.commit.assert_awaited_once()
+
+

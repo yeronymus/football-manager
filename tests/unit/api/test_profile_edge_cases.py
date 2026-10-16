@@ -1,8 +1,8 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from fastapi import HTTPException
 from app.api.routers.users import get_my_profile, register_user, update_my_profile
-from app.db.models import PlayerProfile, User, Chat, Position
+from app.db.models import User, Position
 
 @pytest.mark.asyncio
 async def test_get_my_profile_without_profile():

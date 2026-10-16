@@ -7,7 +7,6 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.db.models import Chat, ChatAdmin, Language
-from app.core.uow import UnitOfWork
 
 router = Router()
 

@@ -1,6 +1,6 @@
 import pytest
 from fastapi import HTTPException
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from app.api.routers.nss import get_cache_status
 
 @pytest.mark.asyncio

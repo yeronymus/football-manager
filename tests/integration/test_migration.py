@@ -1,9 +1,7 @@
 import pytest
 from datetime import datetime, timedelta
-from sqlalchemy import select
 from app.db.models import User, Game, Signup, SignupStatus
-from app.core.services.roster import RosterService, JoinResult
-from app.core.repositories.game_repo import GameRepository
+from app.core.services.roster import RosterService
 
 @pytest.mark.asyncio
 async def test_migration_completed(session):

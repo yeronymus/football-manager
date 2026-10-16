@@ -422,21 +422,35 @@ footballManagerBot/
 
 ---
 
-### Docker Compose Deployment
+### Docker Compose Deployment & Server Setup
 
 The repository includes a production-hardened `docker-compose.yml` supporting isolated internal networking, healthchecks, and non-root execution:
 
-1. **Launch the Core Production Stack**:
+1. **Pre-flight Server Setup (Automatic)**:
+   ```bash
+   chmod +x scripts/setup_server.sh
+   ./scripts/setup_server.sh
+   ```
+   *Or manually create the isolated persistent volumes*:
+   ```bash
+   docker volume create --name=football-prod_postgres_data
+   docker volume create --name=football-prod_redis_data
+   ```
+
+2. **Configure Environment Variables**:
+   Copy `.env.example` to `.env` and specify your credentials (`BOT_TOKEN`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, etc.).
+
+3. **Launch the Core Production Stack**:
    ```bash
    docker compose up -d --build
    ```
 
-2. **Verify Services Health**:
+4. **Verify Services Health**:
    ```bash
    docker compose ps
    ```
 
-3. **Deploy Staging Profile (Optional)**:
+5. **Deploy Staging Profile (Optional)**:
    ```bash
    docker compose --profile staging up -d
    ```

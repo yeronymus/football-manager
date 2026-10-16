@@ -1,12 +1,11 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, or_, func, distinct
+from sqlalchemy import select, desc, or_, func
 from app.db.database import get_session
 from app.db.models import Chat, User, PlayerProfile, Game, RatingHistory, Signup, GameStatus, GameStats
 from app.api.auth import get_user_from_header
 from app.core.repositories.user_repository import UserRepository
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

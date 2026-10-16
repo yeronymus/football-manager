@@ -20,7 +20,6 @@ from prometheus_fastapi_instrumentator import Instrumentator
 Instrumentator().instrument(app).expose(app)
 
 # Middlewares
-from app.api.middlewares import TelemetryInterceptorMiddleware
 @app.middleware("http")
 async def add_no_cache_header_for_web(request: Request, call_next):
     response = await call_next(request)
@@ -134,8 +133,16 @@ async def health_check():
     return {"status": "ok"}
 
 @app.post("/api/webhook")
-async def webhook(request: Request, x_telegram_bot_api_secret_token: Optional[str] = Header(None)):
-    if settings.webhook_secret_token and x_telegram_bot_api_secret_token != settings.webhook_secret_token:
+async def webhook(
+    request: Request,
+    x_telegram_bot_api_secret_token: Optional[str] = Header(None),
+):
+    import hmac
+
+    expected_token = settings.webhook_secret_token
+    if not x_telegram_bot_api_secret_token or not hmac.compare_digest(
+        x_telegram_bot_api_secret_token, expected_token
+    ):
         raise HTTPException(status_code=401, detail="Unauthorized")
     from aiogram.types import Update
     update = Update.model_validate(await request.json(), context={"bot": bot})

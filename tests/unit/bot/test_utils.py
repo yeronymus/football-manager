@@ -9,9 +9,8 @@ sys.modules["app.bot.admin_dashboard"] = mock_dashboard_module
 
 import pytest
 import html
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from aiogram.exceptions import TelegramBadRequest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Game, Signup, User, SignupStatus, Position, Team, GameStatus, GameType, Chat

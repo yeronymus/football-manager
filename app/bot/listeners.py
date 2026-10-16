@@ -50,7 +50,6 @@ async def on_game_created(event: GameCreatedEvent):
 
         try:
             from app.bot.utils import format_game_message
-            from app.bot.keyboards import get_game_keyboard
 
             # Check if chat is a channel
             is_channel = False
@@ -139,7 +138,6 @@ async def on_teams_published(event: TeamsPublishedEvent):
 
         try:
             from app.bot.utils import format_game_message
-            from app.bot.keyboards import get_game_keyboard
 
             public_text = await format_game_message(game, session)
             

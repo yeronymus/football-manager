@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from app.api.routers.users import get_leaderboard
 from app.db.models import PlayerProfile, User
 

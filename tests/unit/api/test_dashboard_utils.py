@@ -1,4 +1,3 @@
-import pytest
 from app.api.routers.dashboard import clean_location
 
 def test_clean_location_empty():

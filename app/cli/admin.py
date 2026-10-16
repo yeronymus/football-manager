@@ -39,6 +39,8 @@ async def add_player_command(game_id: int, user_id: int, force: bool = False):
 
 async def renumber_game_command(old_id: int, new_id: int):
     """Renumber a game ID and all related records."""
+    old_id = int(old_id)
+    new_id = int(new_id)
     async with async_session_maker() as session:
         from sqlalchemy import text
         print(f"Renumbering Game {old_id} -> {new_id}...")

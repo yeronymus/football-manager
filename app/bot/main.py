@@ -1,9 +1,6 @@
 import logging
 import sys
-from sqlalchemy import select
-from aiogram import Bot, Dispatcher, types
-from aiogram.enums import ParseMode
-from aiogram.client.default import DefaultBotProperties
+from aiogram import Dispatcher, types
 from app.config import settings
 from app.bot.middlewares import DbSessionMiddleware, InstanceAccessMiddleware, TenantMiddleware
 

@@ -1,4 +1,3 @@
-import pytest
 from app.bot.elo import calculate_expected_score, calculate_new_rating
 
 def test_calculate_expected_score_equal_ratings():

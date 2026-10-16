@@ -4,7 +4,7 @@ from app.core.services.game_lifecycle import GameLifecycleService
 from app.core.services.stats import StatsService
 from app.infrastructure.scheduler.service import SchedulerService
 from app.api.schemas import GameCreate, GameFinishRequest, PlayerStat
-from app.db.models import Game, GameStatus, User, Signup, SignupStatus
+from app.db.models import GameStatus, User, Signup, SignupStatus
 
 @pytest.mark.asyncio
 async def test_lifecycle_flow(session):

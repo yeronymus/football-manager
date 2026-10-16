@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.db.models import Game, Signup, User, SignupStatus, Position, Team, GameStatus
+from app.db.models import Game, Signup, User, SignupStatus, Team, GameStatus
 import html
 import time
 
@@ -250,7 +250,7 @@ async def update_game_message(bot, game, session: AsyncSession):
     Updates the live game message in both primary and channel chats.
     Now supports minimal view for primary chat.
     """
-    from app.bot.keyboards import get_game_keyboard, get_channel_game_keyboard
+    from app.bot.keyboards import get_channel_game_keyboard
     from aiogram.exceptions import TelegramBadRequest
     import logging
     

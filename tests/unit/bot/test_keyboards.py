@@ -1,5 +1,4 @@
-import pytest
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from aiogram.types import InlineKeyboardMarkup, WebAppInfo
 from app.bot.handlers.setup_handlers import get_setup_keyboard
 from app.bot.keyboards import get_game_keyboard, get_multiselect_keyboard
 

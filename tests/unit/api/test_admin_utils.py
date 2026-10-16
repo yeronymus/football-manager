@@ -1,5 +1,4 @@
 import datetime
-import pytest
 from app.api.routers.admin import _interpret_prague_tz, _should_publish_game_now
 
 def test_interpret_prague_tz_naive():

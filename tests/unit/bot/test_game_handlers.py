@@ -1,8 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from aiogram import types
 from app.bot.handlers.game_handlers import process_join, process_leave
-from app.core.services.roster import PlayerJoinedEvent, PlayerLeftEvent
 
 @pytest.mark.asyncio
 @patch("app.bot.handlers.game_handlers.UnitOfWork")

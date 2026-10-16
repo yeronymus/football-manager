@@ -1,10 +1,6 @@
 
 from aiogram import Router, types
-from aiogram.filters import Command, CommandObject
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
-from app.db.models import User, GameStats, PlayerProfile
-from app.core.repositories.user_repository import UserRepository
+from aiogram.filters import Command
 
 router = Router()
 

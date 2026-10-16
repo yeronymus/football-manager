@@ -1,4 +1,3 @@
-from typing import List, Tuple
 
 def calculate_expected_score(player_rating: int, opponent_rating: int) -> float:
     return 1 / (1 + 10 ** ((opponent_rating - player_rating) / 400))

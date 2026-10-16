@@ -3,11 +3,11 @@ from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.db.models import User, Game
+from app.db.models import Game
 from app.config import settings
 from app.core.repositories.user_repository import UserRepository
 from app.bot.keyboards import get_game_keyboard
-from app.bot.fsm import Registration, GuestAddition
+from app.bot.fsm import GuestAddition
 import logging
 import re
 import html

@@ -1,7 +1,6 @@
 import asyncio
-import pytest
 from datetime import datetime, timedelta
-from app.core.services.roster import RosterService, JoinResult, SignupStatus
+from app.core.services.roster import RosterService, SignupStatus
 from app.db.models import Game, GameStatus, User, Signup
 
 # Simple Mock Objects

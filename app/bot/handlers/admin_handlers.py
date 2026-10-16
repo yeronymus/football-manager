@@ -1,12 +1,10 @@
 from aiogram import Router, F, types
 from aiogram.filters import Command
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.models import Game, Signup, User, SignupStatus, GameStatus, Team, Chat, Position
+from app.db.models import Signup, User, SignupStatus, Position
 from app.core.uow import UnitOfWork
 from app.config import settings
-from app.bot.utils import format_game_message, update_game_message
-from app.bot.keyboards import get_game_keyboard, get_primary_select_keyboard
+from app.bot.keyboards import get_primary_select_keyboard
 from app.bot.fsm import GuestAddition
 from aiogram.fsm.context import FSMContext
 import time
@@ -173,7 +171,7 @@ async def cmd_add_player(message: types.Message, session: AsyncSession):
             return
 
         # 3. Add to Game via RosterService
-        from app.core.services.roster import RosterService, SignupStatus
+        from app.core.services.roster import RosterService
         
         async with UnitOfWork() as uow:
             service = RosterService(uow)

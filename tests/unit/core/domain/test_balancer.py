@@ -1,4 +1,3 @@
-import pytest
 from app.db.models import User, Position
 from app.core.domain.balancer import (
     Player,

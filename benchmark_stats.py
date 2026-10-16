@@ -1,6 +1,5 @@
 import asyncio
 import time
-from sqlalchemy import select
 from app.db.database import async_session_maker
 from app.db.models import Game, User, Signup, SignupStatus, GameStatus, Team, GameStats
 from app.cli.stats import recalculate_stats_command

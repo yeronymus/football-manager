@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timedelta
-from sqlalchemy import select
 from app.db.models import Game, Signup, SignupStatus, GameStatus, User, Team
 from app.scheduler.tasks import release_gk_slots, send_voting_message
 

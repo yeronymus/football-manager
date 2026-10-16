@@ -1,6 +1,5 @@
 import pytest
 from datetime import datetime, timedelta
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.uow import UnitOfWork
 from app.core.services.roster import RosterService

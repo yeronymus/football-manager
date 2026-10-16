@@ -2,8 +2,7 @@ from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
-from app.db.models import User, Position, Game, Signup, SignupStatus, GameStats, GameStatus, RatingHistory, Team
+from app.db.models import Position
 from app.config import settings
 from app.core.repositories.user_repository import UserRepository
 from app.bot.fsm import EditingProfile
@@ -83,7 +82,7 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
     text += f"➖➖➖➖➖➖➖➖\n"
     
     # Always show rating (User request)
-    # FIX: Check for legacy default rating (1200) and fix to new default (100)
+    # Legacy baseline migration: convert legacy rating (1200) to current baseline (100)
     if player and player.rating == 1200:
         player.rating = 100
         await session.commit()

@@ -1,6 +1,5 @@
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
-from app.db.models import Position
 
 
 def get_multiselect_keyboard(selected: list[str]) -> InlineKeyboardMarkup:
