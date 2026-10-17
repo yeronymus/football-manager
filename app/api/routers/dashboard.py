@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case
 from pydantic import BaseModel
@@ -314,6 +314,7 @@ class GuestCreate(BaseModel):
 async def add_guest(
     game_id: int,
     data: GuestCreate,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session)
 ):
@@ -350,11 +351,15 @@ async def add_guest(
     
     await cache_service.evict(f"game_details:{game_id}")
     
+    from app.core.events import event_bus, GameStateChangedEvent
+    background_tasks.add_task(event_bus.publish, GameStateChangedEvent(game_id))
+    
     return {"status": "added", "user_id": guest_id}
 
 @router.delete("/signups/{signup_id}")
 async def kick_player(
     signup_id: int,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session)
 ):
@@ -365,17 +370,20 @@ async def kick_player(
     game = await session.get(Game, signup.game_id)
     await check_admin_rights(game.chat_id, user_id)
     
-    from app.core.services.roster import RosterService
+    from app.core.services.roster import RosterService, PlayerLeftEvent
     from app.core.uow import UnitOfWork
+    from app.core.events import event_bus
     
     async with UnitOfWork() as uow:
         service = RosterService(uow)
-        success, msg, _ = await service.leave_player(signup.game_id, signup.user_id, is_admin=True)
+        success, msg, promoted = await service.leave_player(signup.game_id, signup.user_id, is_admin=True)
         if success:
             await uow.commit()
         else:
             raise HTTPException(status_code=400, detail=msg)
             
+    background_tasks.add_task(event_bus.publish, PlayerLeftEvent(signup.game_id, signup.user_id, msg, promoted))
+
     return {"status": "deleted"}
 
 class StatusUpdate(BaseModel):
@@ -385,6 +393,7 @@ class StatusUpdate(BaseModel):
 async def update_player_status(
     signup_id: int,
     data: StatusUpdate,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session)
 ):
@@ -406,6 +415,10 @@ async def update_player_status(
         
     signup.status = status_map[data.status.lower()]
     await session.commit()
+
+    from app.core.events import event_bus, GameStateChangedEvent
+    background_tasks.add_task(event_bus.publish, GameStateChangedEvent(signup.game_id))
+
     return {"status": "ok", "new_status": signup.status.value}
 
 class VoteDetailOut(BaseModel):

@@ -4,12 +4,9 @@ from app.db.models import Game, Signup, User, SignupStatus, Team, GameStatus
 import html
 import time
 
-# Simple in-memory cache for game signups to optimize busy chat lookups
-_signups_cache = {}
-
 def evict_game_signups_cache(game_id: int):
-    """Evict the cached signups for a given game ID."""
-    _signups_cache.pop(game_id, None)
+    """No-op kept for backwards compatibility."""
+    pass
 
 def format_positions(user, signup) -> str:
     main_pos = signup.position.value if signup.position else user.player_position.value
@@ -254,23 +251,17 @@ async def update_game_message(bot, game, session: AsyncSession):
     from aiogram.exceptions import TelegramBadRequest
     import logging
     
-    # Pre-fetch signups once for performance, checking in-memory cache first
-    now = time.time()
-    cached = _signups_cache.get(game.id)
-    if cached and now - cached[0] < 300:
-        signups = cached[1]
-    else:
-        result = await session.execute(
-            select(Signup, User)
-            .join(User)
-            .where(Signup.game_id == game.id)
-            .order_by(Signup.created_at)
-        )
-        signups = result.all()
-        _signups_cache[game.id] = (now, signups)
+    # Fetch fresh signups from database
+    result = await session.execute(
+        select(Signup, User)
+        .join(User)
+        .where(Signup.game_id == game.id)
+        .order_by(Signup.created_at)
+    )
+    signups = result.all()
     
-    # 1. Update Channel (Full mode)
-    if game.channel_id and game.channel_message_id:
+    # 1. Update Channel (Full mode) if distinct from primary chat
+    if game.channel_id and game.channel_message_id and (game.channel_id != game.chat_id or game.channel_message_id != game.message_id):
         text_full = await format_game_message(game, session, is_short=False, signups=signups)
         text_full += "\n\n<b>Запись открыта. Переходите в чат.</b>"
         

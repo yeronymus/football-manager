@@ -161,19 +161,6 @@ async def get_editable_games(
 
 
 
-async def handle_player_left_bg(event_bus, event, promoted):
-    if promoted:
-        try:
-            from app.bot.instance import bot
-            await bot.send_message(
-                promoted.user_id,
-                "🎉 <b>Вас перевели в основной состав!</b>\nКто-то выписался из игры.",
-                parse_mode="HTML"
-            )
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning(f"Failed to notify promoted user in API leave: {e}")
-    await event_bus.publish(event)
 
 
 @router.post("/game/{game_id}/join")
@@ -246,7 +233,7 @@ async def leave_game(
                 
             await uow.commit()
             
-        background_tasks.add_task(handle_player_left_bg, event_bus, PlayerLeftEvent(game_id, user_id, msg, promoted), promoted)
+        background_tasks.add_task(event_bus.publish, PlayerLeftEvent(game_id, user_id, msg, promoted))
         return {"success": True, "message": msg}
     except HTTPException:
         raise
