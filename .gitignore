@@ -75,3 +75,4 @@ docker-compose.override.yml
 !scripts/
 *.sh
 !scripts/*.sh
+server_backup/
