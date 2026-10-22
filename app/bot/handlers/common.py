@@ -297,45 +297,33 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     is_member = False
             
             if game and not is_member:
-                # Mandatory group membership check
-                invite_link = None
-                try:
-                    group_chat = await message.bot.get_chat(game.chat_id)
-                    if group_chat.username:
-                        invite_link = f"https://t.me/{group_chat.username}"
-                    elif group_chat.invite_link:
-                        invite_link = group_chat.invite_link
-                    else:
-                        invite_link = await message.bot.export_chat_invite_link(game.chat_id)
-                except Exception:
-                    pass
-                
+                # Private/closed group check: access by invitation only
                 user_lang = getattr(user, 'language', 'en')
                 user_lang = user_lang.value if hasattr(user_lang, 'value') else str(user_lang)
                 is_user_en = (user_lang or 'en').lower() == 'en'
                 
                 if is_user_en:
                     text_denied = (
-                        "⛔ <b>Group Membership Required</b>\n\n"
-                        "To sign up for this game, you must be a member of our Telegram group.\n"
-                        "Please join the group first, then click the link again!"
+                        "⛔ <b>Private Group / Invitation Only</b>\n\n"
+                        "Games are organized exclusively for members of our closed community.\n"
+                        "To request an invitation to the group, please contact the organizer."
                     )
-                    btn_join = "🔗 Join Group"
-                    btn_retry = "🔄 I Have Joined"
+                    btn_contact = "✉️ Contact Organizer (@yeronymus)"
+                    btn_retry = "🔄 I Am in the Group"
                 else:
                     text_denied = (
-                        "⛔ <b>Вход ограничен</b>\n\n"
-                        "Для записи на эту игру необходимо состоять в нашей группе Telegram!\n"
-                        "Пожалуйста, сначала вступите в группу, а затем повторите попытку."
+                        "⛔ <b>Закрытая группа / Доступ по приглашению</b>\n\n"
+                        "Матчи проводятся только для участников нашего закрытого сообщества.\n"
+                        "Чтобы получить приглашение в группу, напишите организатору."
                     )
-                    btn_join = "🔗 Вступить в группу"
-                    btn_retry = "🔄 Я вступил"
+                    btn_contact = "✉️ Написать организатору (@yeronymus)"
+                    btn_retry = "🔄 Я уже в группе"
                 
-                buttons = []
-                if invite_link:
-                    buttons.append([types.InlineKeyboardButton(text=btn_join, url=invite_link)])
                 bot_username = settings.bot_username
-                buttons.append([types.InlineKeyboardButton(text=btn_retry, url=f"https://t.me/{bot_username}?start=game_{game_id}")])
+                buttons = [
+                    [types.InlineKeyboardButton(text=btn_contact, url="https://t.me/yeronymus")],
+                    [types.InlineKeyboardButton(text=btn_retry, url=f"https://t.me/{bot_username}?start=game_{game_id}")]
+                ]
                 
                 await message.answer(text_denied, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
                 return
