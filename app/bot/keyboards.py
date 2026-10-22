@@ -25,24 +25,17 @@ def get_multiselect_keyboard(selected: list[str]) -> InlineKeyboardMarkup:
     buttons.append([create_btn("LW"), create_btn("FWD"), create_btn("RW")])
     
     if selected:
-        buttons.append([InlineKeyboardButton(text="✅ Готово", callback_data="done_alt_pos")])
+        buttons.append([InlineKeyboardButton(text="✅ Готово / Done", callback_data="done_alt_pos")])
     
-    buttons.append([InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_edit_menu")])
+    buttons.append([InlineKeyboardButton(text="🔙 Назад / Back", callback_data="back_to_edit_menu")])
         
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_primary_select_keyboard(available: list[str]) -> InlineKeyboardMarkup:
-    # We want to show available positions, but also keep them organized if possible.
-    # If 'available' is large (e.g. all positions), we group them.
-    # If small (just selected alts), we list them.
-    
     buttons = []
-    
-    # Check if we should use full layout or simple list
     use_layout = len(available) > 5
     
     if use_layout:
-        # Define layout Structure provided available matches
         layout = [
             ["GK"],
             ["LB", "CB", "RB"],
@@ -58,7 +51,6 @@ def get_primary_select_keyboard(available: list[str]) -> InlineKeyboardMarkup:
             if btn_row:
                 buttons.append(btn_row)
     else:
-        # Simple list wrapping
         row = []
         for pos in available:
             row.append(InlineKeyboardButton(text=pos, callback_data=f"primary_{pos}"))
@@ -68,54 +60,64 @@ def get_primary_select_keyboard(available: list[str]) -> InlineKeyboardMarkup:
         if row:
             buttons.append(row)
             
-    # Add Back Button
-    buttons.append([InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_edit_menu")])
+    buttons.append([InlineKeyboardButton(text="🔙 Назад / Back", callback_data="back_to_edit_menu")])
             
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = "") -> InlineKeyboardMarkup:
+def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = "", lang: str = "en") -> InlineKeyboardMarkup:
     from app.config import settings
-    
     import time
+    
     timestamp = int(time.time())
     base_url = webapp_url if webapp_url else settings.webapp_url
-    game_url = f"{base_url.rstrip('/')}/web/game.html?game_id={game_id}&v={timestamp}"
+    lang_param = f"&lang={lang}" if lang else ""
+    game_url = f"{base_url.rstrip('/')}/web/game.html?game_id={game_id}&v={timestamp}{lang_param}"
+    
+    is_en = (lang or "en").lower() == "en"
+    join_btn_text = "⚽ Sign Up for Game" if is_en else "⚽ Записаться на игру"
     
     buttons = [
         [
-            InlineKeyboardButton(text="⚽ Записаться на игру", web_app=types.WebAppInfo(url=game_url))
+            InlineKeyboardButton(text=join_btn_text, web_app=types.WebAppInfo(url=game_url))
         ]
     ]
     
     if is_admin:
-        draft_url = f"{base_url.rstrip('/')}/web/draft.html?game_id={game_id}&v={timestamp}"
+        draft_url = f"{base_url.rstrip('/')}/web/draft.html?game_id={game_id}&v={timestamp}{lang_param}"
+        draft_btn_text = "🛠 Teams (Draft)" if is_en else "🛠 Составы (Draft)"
         buttons.append([
-            InlineKeyboardButton(text="🛠 Составы (Draft)", web_app=types.WebAppInfo(url=draft_url))
+            InlineKeyboardButton(text=draft_btn_text, web_app=types.WebAppInfo(url=draft_url))
         ])
         
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_channel_game_keyboard(game_id: int) -> InlineKeyboardMarkup:
+def get_channel_game_keyboard(game_id: int, lang: str = "en") -> InlineKeyboardMarkup:
     from app.config import settings
     bot_username = settings.bot_username
     deep_link = f"https://t.me/{bot_username}?start=game_{game_id}"
     
+    is_en = (lang or "en").lower() == "en"
+    btn_text = "⚽ Join Game" if is_en else "⚽ Перейти к записи"
+    
     buttons = [
-        [InlineKeyboardButton(text="⚽ Перейти к записи", url=deep_link)]
+        [InlineKeyboardButton(text=btn_text, url=deep_link)]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_main_menu_keyboard(is_admin: bool = False):
+def get_main_menu_keyboard(is_admin: bool = False, lang: str = "en"):
     if not is_admin:
         return types.ReplyKeyboardRemove()
 
     from app.config import settings
     web_app_url = f"{settings.webapp_url.rstrip('/')}/web/index.html?v=7"
     
-    # Admin Panel Only
+    is_en = (lang or "en").lower() == "en"
+    create_text = "➕ Create Game" if is_en else "➕ Создать игру"
+    shuffle_text = "🔀 Shuffle" if is_en else "🔀 Шаффл"
+    
     buttons = [
-        [KeyboardButton(text="➕ Создать игру", web_app=types.WebAppInfo(url=web_app_url))],
-        [KeyboardButton(text="🔀 Шаффл")]
+        [KeyboardButton(text=create_text, web_app=types.WebAppInfo(url=web_app_url))],
+        [KeyboardButton(text=shuffle_text)]
     ]
 
     return ReplyKeyboardMarkup(
@@ -123,55 +125,65 @@ def get_main_menu_keyboard(is_admin: bool = False):
         resize_keyboard=True
     )
 
-def get_main_menu_inline_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
+def get_main_menu_inline_keyboard(is_admin: bool = False, lang: str = "en") -> InlineKeyboardMarkup:
     if not is_admin:
         return None
 
     from app.config import settings
-    # Ensure ?v=5 is present to break cache
     web_app_url = f"{settings.webapp_url.rstrip('/')}/web/index.html?v=7"
+    is_en = (lang or "en").lower() == "en"
+    create_text = "➕ Create Game" if is_en else "➕ Создать игру"
+    shuffle_text = "🔀 Shuffle" if is_en else "🔀 Шаффл"
     
     buttons = [
-        [InlineKeyboardButton(text="➕ Создать игру", web_app=types.WebAppInfo(url=web_app_url))],
-        [InlineKeyboardButton(text="🔀 Шаффл", callback_data="shuffle_teams")]
+        [InlineKeyboardButton(text=create_text, web_app=types.WebAppInfo(url=web_app_url))],
+        [InlineKeyboardButton(text=shuffle_text, callback_data="shuffle_teams")]
     ]
     
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_profile_edit_keyboard() -> InlineKeyboardMarkup:
+def get_profile_edit_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
+    is_en = (lang or "en").lower() == "en"
+    btn_edit = "✏️ Edit Profile" if is_en else "✏️ Изменить профиль"
     buttons = [
-        [InlineKeyboardButton(text="✏️ Изменить профиль", callback_data="edit_profile")]
+        [
+            InlineKeyboardButton(text=btn_edit, callback_data="edit_profile"),
+            InlineKeyboardButton(text="🌐 Language", callback_data="change_user_lang")
+        ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-
-
-def get_edit_choice_keyboard() -> InlineKeyboardMarkup:
+def get_edit_choice_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
+    is_en = (lang or "en").lower() == "en"
     buttons = [
-        [InlineKeyboardButton(text="📝 Изменить имя", callback_data="edit_name")],
-        [InlineKeyboardButton(text="🏃 Изменить позицию", callback_data="edit_position")],
-        [InlineKeyboardButton(text="🔄 Изменить доп. позиции", callback_data="edit_alt_positions")],
-        [InlineKeyboardButton(text="🔙 Отмена", callback_data="edit_cancel")]
+        [InlineKeyboardButton(text="📝 Change Name" if is_en else "📝 Изменить имя", callback_data="edit_name")],
+        [InlineKeyboardButton(text="🏃 Change Position" if is_en else "🏃 Изменить позицию", callback_data="edit_position")],
+        [InlineKeyboardButton(text="🔄 Change Alt Positions" if is_en else "🔄 Изменить доп. позиции", callback_data="edit_alt_positions")],
+        [InlineKeyboardButton(text="🌐 Change Language / Сменить язык", callback_data="change_user_lang")],
+        [InlineKeyboardButton(text="🔙 Back" if is_en else "🔙 Отмена", callback_data="edit_cancel")]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_cancel_keyboard() -> InlineKeyboardMarkup:
-    buttons = [
-        [InlineKeyboardButton(text="🔙 Отмена", callback_data="edit_cancel")]
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+def get_cancel_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
+    is_en = (lang or "en").lower() == "en"
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Back" if is_en else "🔙 Отмена", callback_data="edit_cancel")]
+    ])
 
-def get_channel_voting_keyboard(game_id: int) -> InlineKeyboardMarkup:
+def get_channel_voting_keyboard(game_id: int, lang: str = "en") -> InlineKeyboardMarkup:
     """Returns a channel-safe keyboard with deep-link URL button for voting."""
     from app.config import settings
     bot_username = settings.bot_username.lstrip("@")
     deep_link = f"https://t.me/{bot_username}?start=vote_{game_id}"
+    is_en = (lang or "en").lower() == "en"
+    btn_text = "🏆 Vote for MVP (WebApp)" if is_en else "🏆 Проголосовать за MVP (WebApp)"
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🏆 Проголосовать за MVP (WebApp)", url=deep_link)]
+        [InlineKeyboardButton(text=btn_text, url=deep_link)]
     ])
 
-def get_voting_keyboard(game_id: int, team_a: list, team_b: list, team_c: list = None, unassigned: list = None) -> InlineKeyboardMarkup:
+def get_voting_keyboard(game_id: int, team_a: list, team_b: list, team_c: list = None, unassigned: list = None, lang: str = "en") -> InlineKeyboardMarkup:
     buttons = []
+    is_en = (lang or "en").lower() == "en"
     
     def _add_team_section(title: str, players: list):
         if not players:
@@ -189,12 +201,16 @@ def get_voting_keyboard(game_id: int, team_a: list, team_b: list, team_c: list =
             buttons.append(row)
 
     if team_a:
-        _add_team_section("🟠 --- КОМАНДА А --- 🟠", team_a)
+        title_a = "🟠 --- TEAM A --- 🟠" if is_en else "🟠 --- КОМАНДА А --- 🟠"
+        _add_team_section(title_a, team_a)
     if team_b:
-        _add_team_section("🟢 --- КОМАНДА Б --- 🟢", team_b)
+        title_b = "🟢 --- TEAM B --- 🟢" if is_en else "🟢 --- КОМАНДА Б --- 🟢"
+        _add_team_section(title_b, team_b)
     if team_c:
-        _add_team_section("🔵 --- КОМАНДА С --- 🔵", team_c)
+        title_c = "🔵 --- TEAM C --- 🔵" if is_en else "🔵 --- КОМАНДА С --- 🔵"
+        _add_team_section(title_c, team_c)
     if not team_a and not team_b and not team_c and unassigned:
-        _add_team_section("⚽ --- ИГРОКИ --- ⚽", unassigned)
+        title_p = "⚽ --- PLAYERS --- ⚽" if is_en else "⚽ --- ИГРОКИ --- ⚽"
+        _add_team_section(title_p, unassigned)
         
     return InlineKeyboardMarkup(inline_keyboard=buttons)

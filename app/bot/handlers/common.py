@@ -3,7 +3,7 @@ from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.db.models import Game
+from app.db.models import Game, Language
 from app.config import settings
 from app.core.repositories.user_repository import UserRepository
 from app.bot.keyboards import get_game_keyboard
@@ -157,18 +157,44 @@ async def cmd_refresh_game(message: types.Message, command: CommandObject, sessi
     except Exception as e:
         await message.answer(f"⚠️ <b>Ошибка при обновлении игры #{game_id}:</b> {e}", parse_mode="HTML")
 
+@router.message(Command("rules"))
+@router.message(Command("info"))
+async def cmd_rules(message: types.Message):
+    text = (
+        "📋 <b>Group Rules & Game Info / Правила группы и игр</b>\n\n"
+        "🇬🇧 <b>ENGLISH:</b>\n"
+        "⚽ <b>Sign Up:</b> Click <b>Sign Up for Game</b> button under the match announcement in the group or channel.\n"
+        "🕒 <b>Cancellation:</b> If you cannot attend, unregister at least 24 hours before kickoff so reserve players can take your spot.\n"
+        "🧤 <b>Goalkeepers:</b> Dedicated goalkeepers play free and have priority registration slots.\n"
+        "💳 <b>Payment:</b> Please pay match fees before kickoff or immediately after the match to the account details in the game card.\n"
+        "🤝 <b>Fair Play:</b> Respect fellow players and referees, arrive 15 minutes before match start.\n\n"
+        "🇷🇺 <b>РУССКИЙ:</b>\n"
+        "⚽ <b>Запись:</b> Нажмите кнопку <b>Записаться на игру</b> под постом в группе или канале.\n"
+        "🕒 <b>Отмена:</b> Если не можете прийти — выпишитесь минимум за 24 часа, чтобы игроки из резерва успели собраться.\n"
+        "🧤 <b>Вратари:</b> Постоянные вратари играют бесплатно и имеют бронь слотов.\n"
+        "💳 <b>Оплата:</b> Оплачивайте игру до начала матча или сразу после по реквизитам в карточке игры.\n"
+        "🤝 <b>Честная игра:</b> Уважение к соперникам, прибытие за 15 минут до стартового свистка."
+    )
+    await message.answer(text, parse_mode="HTML")
+
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
-    await message.answer(
-        "🆘 <b>Помощь</b>\n\n"
-        "⚽ <b>Как записаться на игру?</b>\n"
-        "Просто нажмите кнопку <b>Записаться</b> под сообщением об игре в группе.\n\n"
-        "👤 <b>Как посмотреть профиль и статистику?</b>\n"
-        "Перейдите в ЛС с ботом и используйте кнопку меню (Меню -> Мой Профиль).\n\n"
-        "⚙️ <b>Проблемы?</b>\n"
-        "Пишите @yeronymus (Разработчик)",
-        parse_mode="HTML"
+    help_text = (
+        "🆘 <b>Help & FAQ / Помощь</b>\n\n"
+        "🇬🇧 <b>ENGLISH:</b>\n"
+        "• <b>Join game:</b> Click the sign-up button on the game post in the group.\n"
+        "• <b>Profile & Stats:</b> Open bot in private chat -> Menu -> My Profile.\n"
+        "• <b>Change language:</b> Send /language in private chat with the bot.\n"
+        "• <b>Group rules:</b> Send /rules or /info.\n"
+        "• <b>Support:</b> Contact @yeronymus\n\n"
+        "🇷🇺 <b>РУССКИЙ:</b>\n"
+        "• <b>Запись:</b> Кнопка «Записаться» под сообщением об игре в группе.\n"
+        "• <b>Профиль:</b> В ЛС с ботом -> Меню -> Мой Профиль.\n"
+        "• <b>Смена языка:</b> Отправьте /language в ЛС с ботом.\n"
+        "• <b>Правила:</b> Команда /rules или /info.\n"
+        "• <b>Поддержка:</b> Пишите @yeronymus"
     )
+    await message.answer(help_text, parse_mode="HTML")
 
 @router.message(CommandStart())
 async def cmd_start(message: types.Message, command: CommandObject, state: FSMContext, session: AsyncSession):
@@ -331,11 +357,23 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 await message.answer("Игра не найдена. 🤷‍♂️")
                 
         # 2. Send Welcome Message
+        is_en = (getattr(user, 'language', None) == 'en' or getattr(user, 'language', None) == Language.en)
+        if is_en:
+            welcome_text = (
+                "✅ <b>You are already registered!</b>\n\n"
+                "All your statistics and profile settings are available <b>here in private messages</b>.\n"
+                "Use the «Menu» button to open your Profile, Leaderboard, or Match History."
+            )
+        else:
+            welcome_text = (
+                "✅ <b>Вы уже зарегистрированы!</b>\n\n"
+                "Вся статистика и настройки профиля доступны <b>только здесь, в личных сообщениях</b>.\n"
+                "Используйте кнопку «Меню» слева от поля ввода, чтобы открыть свой Профиль, Лидерборд или Историю матчей."
+            )
         await message.answer(
-            "✅ <b>Вы уже зарегистрированы!</b>\n\n"
-            "Вся статистика и настройки профиля доступны <b>только здесь, в личных сообщениях</b>.\n"
-            "Используйте кнопку «Меню» слева от поля ввода, чтобы открыть свой Профиль, Лидерборд или Историю матчей.",
-            reply_markup=types.ReplyKeyboardRemove()
+            welcome_text,
+            reply_markup=types.ReplyKeyboardRemove(),
+            parse_mode="HTML"
         )
         return
 
@@ -354,13 +392,18 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
         reg_url += f"&game_id={game_id}"
 
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="📝 Создать профиль (Mini App)", web_app=types.WebAppInfo(url=reg_url))]
+        [types.InlineKeyboardButton(text="📝 Create Profile / Создать профиль", web_app=types.WebAppInfo(url=reg_url))],
+        [
+            types.InlineKeyboardButton(text="🇬🇧 English", callback_data="userlang_en"),
+            types.InlineKeyboardButton(text="🇷🇺 Русский", callback_data="userlang_ru")
+        ]
     ])
 
     await message.answer(
-        "👋 <b>Добро пожаловать в Football Manager!</b>\n\n"
-        "Чтобы участвовать в играх и отслеживать статистику, нужно создать профиль игрока.\n\n"
-        "Это займет всего 30 секунд в нашем приложении! 👇",
+        "👋 <b>Welcome to Football Manager! / Добро пожаловать!</b>\n\n"
+        "🇬🇧 To join games and track your statistics, please create your player profile.\n"
+        "🇷🇺 Чтобы участвовать в играх и отслеживать статистику, создайте профиль игрока.\n\n"
+        "⚡ It only takes 30 seconds! / Это займет 30 секунд! 👇",
         reply_markup=kb,
         parse_mode="HTML"
     )

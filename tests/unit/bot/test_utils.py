@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from aiogram.exceptions import TelegramBadRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Game, Signup, User, SignupStatus, Position, Team, GameStatus, GameType, Chat
+from app.db.models import Game, Signup, User, SignupStatus, Position, Team, GameStatus, GameType, Chat, Language
 from app.bot.utils import format_game_message, update_game_message, format_positions, get_group_game_number
 
 async def setup_base_entities(session: AsyncSession):
@@ -22,9 +22,10 @@ async def setup_base_entities(session: AsyncSession):
         username="creator",
         full_name="Creator User",
         player_position=Position.MID,
-        alt_positions=["DEF", "FWD"]
+        alt_positions=["DEF", "FWD"],
+        language=Language.ru
     )
-    chat = Chat(chat_id=-1001, title="Test Chat")
+    chat = Chat(chat_id=-1001, title="Test Chat", language=Language.ru)
     session.add(creator)
     session.add(chat)
     await session.commit()
@@ -400,3 +401,40 @@ async def test_get_group_game_number_fallback_safety(session: AsyncSession):
     game_no_chat = Game(id=44, chat_id=None)
     assert await get_group_game_number(session, game_no_chat) == 1
 
+
+
+@pytest.mark.asyncio
+async def test_format_game_message_english(session: AsyncSession):
+    creator = User(
+        user_id=200,
+        username="en_creator",
+        full_name="English Creator",
+        player_position=Position.MID,
+        language=Language.en
+    )
+    chat = Chat(chat_id=-1002, title="English Chat", language=Language.en)
+    session.add(creator)
+    session.add(chat)
+    await session.commit()
+
+    game = Game(
+        id=999,
+        chat_id=chat.chat_id,
+        created_by=creator.user_id,
+        date_time=datetime(2026, 5, 20, 18, 0, tzinfo=timezone.utc),
+        location="Prague Stadium",
+        max_players=14,
+        price=150,
+        payment_info="Test Pay Info",
+        team_count=2,
+        status=GameStatus.OPEN,
+        game_type=GameType.REGULAR,
+        duration=1.5
+    )
+    session.add(game)
+    await session.commit()
+
+    text_en = await format_game_message(game, session, is_short=False, signups=[])
+    assert "🟢 <b>General Match</b>" in text_en
+    assert "Players" in text_en
+    assert "Price" in text_en

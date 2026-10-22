@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, delete
-from app.db.models import User, Position, GameStats, PlayerProfile
+from app.db.models import User, Position, GameStats, PlayerProfile, Language
 
 class UserRepository:
     """
@@ -44,7 +44,7 @@ class UserRepository:
         result = await self.session.execute(stmt)
         return result.all()
 
-    async def create_user(self, user_id: int, full_name: str, username: str | None, position: Position | str, alt_positions: list[str] = None) -> User:
+    async def create_user(self, user_id: int, full_name: str, username: str | None, position: Position | str, alt_positions: list[str] = None, language: Language | str = Language.en) -> User:
         """Create a new user. Does not commit automatically to allow transaction grouping."""
         
         # Ensure position is Enum
@@ -58,9 +58,20 @@ class UserRepository:
             full_name=full_name,
             username=username,
             player_position=position,
-            alt_positions=alt_positions or []
+            alt_positions=alt_positions or [],
+            language=Language(language.lower()) if isinstance(language, str) else (language or Language.en)
         )
         self.session.add(user)
+        return user
+
+    async def update_language(self, user_id: int, language: Language | str) -> User:
+        """Update user language preference."""
+        user = await self.get_user(user_id)
+        if not user:
+            raise ValueError("User not found")
+        if isinstance(language, str):
+            language = Language(language.lower())
+        user.language = language
         return user
 
     async def update_profile(self, user_id: int, full_name: str = None, position: Position = None, alt_positions: list[str] = None) -> User:

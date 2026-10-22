@@ -11,41 +11,49 @@ def test_get_setup_keyboard():
     assert len(buttons) == 3
     
     # Row 1: Languages
-    assert buttons[0][0].text == "🇷🇺 RU"
-    assert buttons[0][0].callback_data == "setlang_ru"
-    assert buttons[0][1].text == "🇬🇧 EN"
-    assert buttons[0][1].callback_data == "setlang_en"
+    assert buttons[0][0].callback_data == "setlang_en"
+    assert buttons[0][1].callback_data == "setlang_ru"
+    assert "EN" in buttons[0][0].text
+    assert "RU" in buttons[0][1].text
     
     # Row 2: Payment
-    assert buttons[1][0].text == "💳 Изменить реквизиты"
     assert buttons[1][0].callback_data == "setup_payment"
     
     # Row 3: Close
-    assert buttons[2][0].text == "❌ Закрыть"
     assert buttons[2][0].callback_data == "setup_close"
 
 def test_get_game_keyboard_regular():
     game_id = 123
+    # Default is English
     kb = get_game_keyboard(game_id, is_admin=False, webapp_url="https://test.com")
     assert isinstance(kb, InlineKeyboardMarkup)
     
     buttons = kb.inline_keyboard
     assert len(buttons) == 1
-    assert buttons[0][0].text == "⚽ Записаться на игру"
+    assert buttons[0][0].text == "⚽ Sign Up for Game"
     assert isinstance(buttons[0][0].web_app, WebAppInfo)
     assert "game_id=123" in buttons[0][0].web_app.url
     assert "https://test.com" in buttons[0][0].web_app.url
 
+    # Russian explicit
+    kb_ru = get_game_keyboard(game_id, is_admin=False, webapp_url="https://test.com", lang="ru")
+    assert kb_ru.inline_keyboard[0][0].text == "⚽ Записаться на игру"
+
 def test_get_game_keyboard_admin():
     game_id = 123
+    # Default is English
     kb = get_game_keyboard(game_id, is_admin=True, webapp_url="https://test.com")
     assert len(kb.inline_keyboard) == 2
     
     # Second button should be draft
     admin_btn = kb.inline_keyboard[1][0]
-    assert admin_btn.text == "🛠 Составы (Draft)"
+    assert admin_btn.text == "🛠 Teams (Draft)"
     assert "draft.html" in admin_btn.web_app.url
     assert "game_id=123" in admin_btn.web_app.url
+
+    # Russian explicit
+    kb_ru = get_game_keyboard(game_id, is_admin=True, webapp_url="https://test.com", lang="ru")
+    assert kb_ru.inline_keyboard[1][0].text == "🛠 Составы (Draft)"
 
 def test_get_multiselect_keyboard_none_selected():
     kb = get_multiselect_keyboard([])
@@ -69,9 +77,9 @@ def test_get_multiselect_keyboard_with_selections():
     assert "✅ FWD" in kb.inline_keyboard[4][1].text
     
     # Done button (appended before Back)
-    assert kb.inline_keyboard[5][0].text == "✅ Готово"
+    assert "Готово" in kb.inline_keyboard[5][0].text
     assert kb.inline_keyboard[5][0].callback_data == "done_alt_pos"
     
     # Back button
-    assert kb.inline_keyboard[6][0].text == "🔙 Назад"
+    assert "Назад" in kb.inline_keyboard[6][0].text
     assert kb.inline_keyboard[6][0].callback_data == "back_to_edit_menu"
