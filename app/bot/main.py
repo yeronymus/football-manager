@@ -111,14 +111,12 @@ async def start_bot():
 
     # Group commands
     group_commands_en = [
-        types.BotCommand(command="rules", description="📋 Group Rules"),
+        types.BotCommand(command="rules", description="📋 How to Play & Rules"),
         types.BotCommand(command="info", description="ℹ️ Game Info"),
-        types.BotCommand(command="setup", description="⚙️ Settings (Admins)"),
     ]
     group_commands_ru = [
-        types.BotCommand(command="rules", description="📋 Правила группы"),
+        types.BotCommand(command="rules", description="📋 Как играть и правила"),
         types.BotCommand(command="info", description="ℹ️ Информация об играх"),
-        types.BotCommand(command="setup", description="⚙️ Настройки (Админ)"),
     ]
 
     # Set Private Chats Scope (Default / English)

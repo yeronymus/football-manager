@@ -161,19 +161,19 @@ async def cmd_refresh_game(message: types.Message, command: CommandObject, sessi
 @router.message(Command("info"))
 async def cmd_rules(message: types.Message):
     text = (
-        "📋 <b>Group Rules & Game Info / Правила группы и игр</b>\n\n"
+        "📋 <b>How to Play & Group Rules / Как играть</b>\n\n"
         "🇬🇧 <b>ENGLISH:</b>\n"
-        "⚽ <b>Sign Up:</b> Click <b>Sign Up for Game</b> button under the match announcement in the group or channel.\n"
-        "🕒 <b>Cancellation:</b> If you cannot attend, unregister at least 24 hours before kickoff so reserve players can take your spot.\n"
-        "🧤 <b>Goalkeepers:</b> Dedicated goalkeepers play free and have priority registration slots.\n"
-        "💳 <b>Payment:</b> Please pay match fees before kickoff or immediately after the match to the account details in the game card.\n"
-        "🤝 <b>Fair Play:</b> Respect fellow players and referees, arrive 15 minutes before match start.\n\n"
+        "1. <b>Be in the group:</b> Matches are organized exclusively in this group via the bot.\n"
+        "2. <b>Profile:</b> Create your player profile once via the bot (takes 30 seconds).\n"
+        "3. <b>Sign Up:</b> Click <b>Sign Up for Game</b> under the match card in the group.\n"
+        "4. <b>Cancellation:</b> If you can't come, unregister at least 24h before kickoff so reserve players can take your spot.\n"
+        "5. <b>Payment:</b> Pay match fee using the organizer's details shown in the game card.\n\n"
         "🇷🇺 <b>РУССКИЙ:</b>\n"
-        "⚽ <b>Запись:</b> Нажмите кнопку <b>Записаться на игру</b> под постом в группе или канале.\n"
-        "🕒 <b>Отмена:</b> Если не можете прийти — выпишитесь минимум за 24 часа, чтобы игроки из резерва успели собраться.\n"
-        "🧤 <b>Вратари:</b> Постоянные вратари играют бесплатно и имеют бронь слотов.\n"
-        "💳 <b>Оплата:</b> Оплачивайте игру до начала матча или сразу после по реквизитам в карточке игры.\n"
-        "🤝 <b>Честная игра:</b> Уважение к соперникам, прибытие за 15 минут до стартового свистка."
+        "1. <b>Быть в группе:</b> Игры проводятся строго в этой группе через бота.\n"
+        "2. <b>Профиль:</b> Создайте профиль игрока один раз в боте (занимает 30 секунд).\n"
+        "3. <b>Запись:</b> Жмите кнопку <b>Записаться на игру</b> под постом матча в группе.\n"
+        "4. <b>Отмена:</b> Если не получается прийти — выпишитесь минимум за 24ч до игры, чтобы освободить место резерву.\n"
+        "5. <b>Оплата:</b> Переводите взнос за игру по реквизитам организатора из карточки матча."
     )
     await message.answer(text, parse_mode="HTML")
 

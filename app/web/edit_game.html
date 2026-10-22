@@ -60,64 +60,68 @@
 </head>
 
 <body>
-    <h1>Редактировать игру</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h1 id="page-title" style="margin: 0; font-size: 1.5rem;">Edit Match</h1>
+        <button id="lang-globe-btn" onclick="toggleLanguage()" style="width: auto; padding: 5px 12px; margin: 0; background: var(--tg-theme-secondary-bg-color, #eee); color: var(--tg-theme-text-color, #000); border: 1px solid var(--tg-theme-hint-color, #ccc); font-size: 13px; border-radius: 20px; font-weight: 600;">🌐 EN</button>
+    </div>
+    <div id="lang-info-banner" style="font-size: 11px; color: var(--tg-theme-hint-color); margin-bottom: 16px; line-height: 1.35; padding: 6px 10px; background: rgba(0,0,0,0.03); border-radius: 6px;">
+        Personal app language. Group match posts use the language set by the admin in group settings.
+    </div>
 
     <div id="loader">Загрузка...</div>
     <div id="form-content" style="display:none;">
         <div class="form-group">
-            <label for="date_time">Дата и Время</label>
-            <input type="text" id="date_time" placeholder="Выберите дату и время" required>
+            <label for="date_time" data-i18n="lbl_datetime">Date and Time</label>
+            <input type="text" id="date_time" placeholder="Select date and time" data-i18n-ph="ph_datetime" required>
         </div>
         <div class="form-group">
-            <label for="location">Локация</label>
+            <label for="location" data-i18n="lbl_location">Location</label>
             <input type="text" id="location" required>
         </div>
         <div class="form-group">
-            <label for="max_players">Мест в основе (+ замены)</label>
+            <label for="max_players" data-i18n="lbl_max_players">Total Playing Spots (with subs)</label>
             <input type="number" id="max_players" min="5" max="999" inputmode="numeric">
-            <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Например: 26</small>
+            <small data-i18n="help_max_players" style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Total players who show up (squads + bench). Beyond this — reserve.</small>
         </div>
 
         <div class="form-group">
-            <label for="main_players_count">Игроков на поле (всего)</label>
+            <label for="main_players_count" data-i18n="lbl_main_players">Pitch Format (players on field)</label>
             <input type="number" id="main_players_count" min="2" max="999" inputmode="numeric">
-            <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Например: 22</small>
+            <small data-i18n="help_main_players" style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Simultaneously on field (e.g. 22 for 11v11, 16 for 8v8).</small>
         </div>
 
         <div class="form-group">
-            <label for="signup_limit">Лимит записи (всё вкл.)</label>
-            <input type="number" id="signup_limit" min="5" max="999" inputmode="numeric">
-            <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Например: 40</small>
+            <label for="signup_limit" data-i18n="lbl_signup_limit">Signup Limit (all-inclusive)</label>
+            <input type="number" id="signup_limit" min="0" max="999" inputmode="numeric">
+            <small data-i18n="help_signup_limit" style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Maximum with reserve. 0 = unlimited.</small>
         </div>
 
         <div class="form-group">
-            <label for="registration_hours">Окно записи (часов)</label>
+            <label for="registration_hours" data-i18n="lbl_reg_hours">Registration Duration (hours)</label>
             <input type="number" id="registration_hours" min="0" max="720" inputmode="numeric">
-            <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - без
-                ограничений</small>
+            <small data-i18n="help_reg_hours" style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 = open continuously until kickoff</small>
         </div>
 
         <div class="form-group">
-            <label for="duration">Длительность (часов)</label>
+            <label for="duration" data-i18n="lbl_duration">Duration (hours)</label>
             <input type="number" id="duration" min="0.5" max="10" step="0.5" inputmode="decimal">
-            <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Например: 2.0</small>
         </div>
 
         <div class="form-group">
-            <label for="price">Взнос (CZK)</label>
+            <label for="price" data-i18n="lbl_price">Match Fee (CZK)</label>
             <input type="number" id="price" min="0" step="10" inputmode="numeric">
         </div>
         <div class="form-group">
-            <label for="payment_info">Номер счета</label>
+            <label for="payment_info" data-i18n="lbl_payment_info">Payment Account</label>
             <input type="text" id="payment_info">
         </div>
         <div class="form-group">
-            <label for="gk_hours">Бронь вратарей (часов)</label>
+            <label for="gk_hours" data-i18n="lbl_gk_hours">Goalkeeper Priority (hours)</label>
             <input type="number" id="gk_hours" min="0" max="168" inputmode="numeric">
-            <small style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 - отключить</small>
+            <small data-i18n="help_gk_hours" style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 = disabled (everyone signs up equally)</small>
         </div>
 
-        <button id="submitBtn" onclick="updateGame()">Сохранить изменения</button>
+        <button id="submitBtn" onclick="updateGame()" data-i18n="btn_submit">Save Changes</button>
     </div>
 
     <script>
@@ -259,6 +263,86 @@
             }
         }
     </script>
+
+    <script>
+        const I18N = {
+            en: {
+                page_title: "Edit Match",
+                lang_banner: "Personal app language. Group match posts use the language set by the admin in group settings.",
+                lbl_datetime: "Date and Time",
+                ph_datetime: "Select date and time",
+                lbl_location: "Location",
+                lbl_max_players: "Total Playing Spots (with subs)",
+                help_max_players: "Total players who show up (squads + bench). Beyond this — reserve.",
+                lbl_main_players: "Pitch Format (players on field)",
+                help_main_players: "Simultaneously on field (e.g. 22 for 11v11, 16 for 8v8).",
+                lbl_signup_limit: "Signup Limit (all-inclusive)",
+                help_signup_limit: "Maximum with reserve. 0 = unlimited.",
+                lbl_reg_hours: "Registration Duration (hours)",
+                help_reg_hours: "0 = open continuously until kickoff",
+                lbl_duration: "Duration (hours)",
+                lbl_price: "Match Fee (CZK)",
+                lbl_payment_info: "Payment Account",
+                lbl_gk_hours: "Goalkeeper Priority (hours)",
+                help_gk_hours: "0 = disabled (everyone signs up equally)",
+                btn_submit: "Save Changes",
+                loading: "Loading..."
+            },
+            ru: {
+                page_title: "Редактировать игру",
+                lang_banner: "Язык личного интерфейса. Язык постов в группе задаётся админом в настройках группы.",
+                lbl_datetime: "Дата и Время",
+                ph_datetime: "Выберите дату и время",
+                lbl_location: "Локация",
+                lbl_max_players: "Всего мест (для замен)",
+                help_max_players: "Сколько человек зовёте (составы + запасные). Сверх этого — в резерв.",
+                lbl_main_players: "Формат (игроков на поле)",
+                help_main_players: "Одновременно на поле (напр. 22 для 11х11, 16 для 8х8).",
+                lbl_signup_limit: "Лимит записи (всё вкл.)",
+                help_signup_limit: "Максимум с резервом. 0 — без ограничений.",
+                lbl_reg_hours: "Длительность записи (часов)",
+                help_reg_hours: "0 — запись открыта вплоть до игры",
+                lbl_duration: "Длительность (часов)",
+                lbl_price: "Взнос (CZK)",
+                lbl_payment_info: "Номер счета",
+                lbl_gk_hours: "Бронь вратарей (часов)",
+                help_gk_hours: "0 — отключено (все записываются на равных)",
+                btn_submit: "Сохранить изменения",
+                loading: "Загрузка..."
+            }
+        };
+
+        let currentLang = localStorage.getItem('webapp_lang') || 'en';
+
+        function setAppLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('webapp_lang', lang);
+            const t = I18N[lang] || I18N.en;
+            
+            const globeBtn = document.getElementById('lang-globe-btn');
+            if (globeBtn) globeBtn.innerText = lang === 'en' ? '🌐 EN' : '🌐 RU';
+            const pt = document.getElementById('page-title');
+            if (pt) pt.innerText = t.page_title;
+            const banner = document.getElementById('lang-info-banner');
+            if (banner) banner.innerText = t.lang_banner;
+            
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const k = el.getAttribute('data-i18n');
+                if (t[k]) el.innerText = t[k];
+            });
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                const k = el.getAttribute('data-i18n-ph');
+                if (t[k]) el.setAttribute('placeholder', t[k]);
+            });
+        }
+
+        function toggleLanguage() {
+            setAppLanguage(currentLang === 'en' ? 'ru' : 'en');
+        }
+
+        setAppLanguage(currentLang);
+    </script>
+
 </body>
 
 </html>

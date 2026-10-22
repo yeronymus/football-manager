@@ -23,6 +23,9 @@ def upgrade() -> None:
     
     # 2. Update default for chats.language to 'en'
     op.execute(sa.text("ALTER TABLE chats ALTER COLUMN language SET DEFAULT 'en'"))
+    op.execute(sa.text("ALTER TABLE chats ALTER COLUMN default_registration_hours SET DEFAULT 0"))
+    op.execute(sa.text("ALTER TABLE chats ALTER COLUMN default_signup_limit SET DEFAULT 0"))
+    op.execute(sa.text("ALTER TABLE chats ALTER COLUMN default_gk_hours SET DEFAULT 0"))
 
 
 def downgrade() -> None:

@@ -1,3 +1,7 @@
+function getAdminText(enText, ruText) {
+    const lang = localStorage.getItem('webapp_lang') || 'en';
+    return lang === 'ru' ? ruText : enText;
+}
 let initData = "";
 let currentGroupId = null;
 
@@ -282,10 +286,10 @@ async function loadGameDetails(gameId) {
                 
                 let notifyBtn = '';
                 if (!p.is_paid) {
-                    notifyBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 6px;" onclick="notifyPayment(${p.user_id}, ${gameId}, this)" title="Уведомить об оплате">🔔</button>`;
+                    notifyBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 6px;" onclick="notifyPayment(${p.user_id}, ${gameId}, this)" title="${getAdminText('Notify payment', 'Уведомить об оплате')}">🔔</button>`;
                 }
                 
-                let removeBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-left: 6px; border-color: rgba(239, 68, 68, 0.3); color: var(--danger);" onclick="kickPlayer(${p.signup_id}, ${gameId}, this)" title="Убрать игрока">❌</button>`;
+                let removeBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-left: 6px; border-color: rgba(239, 68, 68, 0.3); color: var(--danger);" onclick="kickPlayer(${p.signup_id}, ${gameId}, this)" title="${getAdminText('Remove player', 'Убрать игрока')}">❌</button>`;
                 
                 el.innerHTML = `
                     <div class="player-info">
@@ -426,7 +430,7 @@ async function switchRosterTab(tab) {
 }
 
 async function notifyPayment(userId, gameId, btn) {
-    if (!confirm('Отправить напоминание об оплате этому игроку в личные сообщения?')) return;
+    if (!confirm(getAdminText('Send payment reminder to this player via Telegram?', 'Отправить напоминание об оплате этому игроку в личные сообщения?'))) return;
     
     const origText = btn.innerHTML;
     btn.innerHTML = '⏳';
@@ -440,7 +444,7 @@ async function notifyPayment(userId, gameId, btn) {
             btn.disabled = false;
         }, 2000);
     } catch (e) {
-        alert('Ошибка при отправке уведомления. Возможно игрок заблокировал бота.');
+        alert(getAdminText('Failed to send notification. The player may have blocked the bot.', 'Ошибка при отправке уведомления. Возможно игрок заблокировал бота.'));
         btn.innerHTML = origText;
         btn.disabled = false;
     }
@@ -578,7 +582,7 @@ async function togglePayment(signupId, btnEl, gameId) {
 }
 
 async function kickPlayer(signupId, gameId, btn) {
-    if (!confirm("Убрать этого игрока из игры?")) return;
+    if (!confirm(getAdminText('Remove this player from the match?', 'Убрать этого игрока из игры?'))) return;
     
     btn.disabled = true;
     const origText = btn.innerHTML;
@@ -588,7 +592,7 @@ async function kickPlayer(signupId, gameId, btn) {
         await apiCall(`/signups/${signupId}`, { method: 'DELETE' });
         loadGameDetails(gameId);
     } catch (e) {
-        alert("Ошибка при удалении игрока: " + e.message);
+        alert(getAdminText('Failed to remove player: ', 'Ошибка при удалении игрока: ') + e.message);
         btn.disabled = false;
         btn.innerHTML = origText;
     }
@@ -596,7 +600,7 @@ async function kickPlayer(signupId, gameId, btn) {
 
 async function deleteGameClick() {
     if (!currentGameId) return;
-    if (!confirm("⚠️ Вы уверены, что хотите полностью удалить эту игру? Это действие необратимо и удалит всю связанную статистику, голоса и состав!")) return;
+    if (!confirm(getAdminText('⚠️ Are you sure you want to permanently delete this game? This action cannot be undone.', '⚠️ Вы уверены, что хотите полностью удалить эту игру? Это действие необратимо.'))) return;
     
     try {
         await apiCall(`/games/${currentGameId}`, { method: 'DELETE' });
@@ -613,6 +617,6 @@ async function deleteGameClick() {
             showGroupsView();
         }
     } catch (e) {
-        alert("Ошибка при удалении игры: " + e.message);
+        alert(getAdminText('Failed to delete game: ', 'Ошибка при удалении игры: ') + e.message);
     }
 }

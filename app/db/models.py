@@ -107,8 +107,8 @@ class Chat(Base):
     default_main_players_count = Column(Integer, default=22)
     default_duration = Column(Float, default=2.0)
     default_gk_hours = Column(Integer, default=0)
-    default_registration_hours = Column(Integer, default=24)
-    default_signup_limit = Column(Integer, default=40)
+    default_registration_hours = Column(Integer, default=0)
+    default_signup_limit = Column(Integer, default=0)
 
     games = relationship("Game", back_populates="chat")
     players = relationship("PlayerProfile", back_populates="chat", cascade="all, delete-orphan")

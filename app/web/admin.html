@@ -18,11 +18,15 @@
             <section id="view-groups" class="view-section active">
                 <header class="glass-header">
                     <div class="header-content">
-                        <h1>Admin Hub</h1>
+                        <h1 data-i18n="admin_hub">Admin Hub</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button id="admin-lang-btn" class="action-btn outline" onclick="toggleAdminLang()" style="padding: 5px 12px; border-radius: 20px; font-size: 0.85rem;">🌐 <span id="admin-lang-code">EN</span></button>
                     </div>
                 </header>
                 <div class="content-scroll">
-                    <p style="color: var(--text-muted); margin-bottom: 16px; text-align: center;">Выберите группу для управления</p>
+                    <p id="txt-select-group" data-i18n="select_group_hint" style="color: var(--text-muted); margin-bottom: 6px; text-align: center;">Select a group to manage</p>
+                    <div id="admin-lang-banner" data-i18n="admin_lang_banner" style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 16px; text-align: center; max-width: 480px; margin-left: auto; margin-right: auto; line-height: 1.35; padding: 6px 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">Personal app language. Group match posts use the language set by the admin in group settings.</div>
                     <div class="groups-list" id="groups-list">
                         <div class="loading-spinner"></div>
                     </div>
@@ -48,60 +52,66 @@
                     </div>
 
                     <div id="group-settings-container" class="group-settings-card hidden" style="margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 24px;">
-                        <h3>Group Defaults & Settings</h3>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">These values will be pre-filled when creating new games for this group.</p>
+                        <h3 data-i18n="group_settings_title">Group Defaults & Settings</h3>
+                        <p data-i18n="group_settings_desc" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">These values will be pre-filled when creating new games for this group.</p>
                         
                         <div class="settings-grid">
                             <div class="form-group">
-                                <label>Language</label>
+                                <label data-i18n="lbl_group_lang">Group Language</label>
                                 <select id="setting-lang" onchange="updateGroupSetting('language', this.value)">
+                                    <option value="en" selected>English</option>
                                     <option value="ru">Русский</option>
-                                    <option value="en">English</option>
                                     <option value="cz">Čeština</option>
                                 </select>
+                                <small data-i18n="help_group_lang" style="color: var(--text-muted); display: block; margin-top: 4px;">Group match posts will use this language.</small>
                             </div>
                             <div class="form-group">
-                                <label>Default Price (CZK)</label>
+                                <label data-i18n="lbl_def_price">Default Price (CZK)</label>
                                 <input type="number" id="setting-price" onblur="updateGroupSetting('default_price', parseInt(this.value) || 0)">
                             </div>
                             <div class="form-group">
-                                <label>Payment Account</label>
-                                <input type="text" id="setting-payment-info" placeholder="Enter bank account..." onblur="updateGroupSetting('payment_info', this.value)">
+                                <label data-i18n="lbl_pay_account">Payment Account</label>
+                                <input type="text" id="setting-payment-info" placeholder="Enter bank account..." data-i18n-ph="ph_pay_account" onblur="updateGroupSetting('payment_info', this.value)">
                             </div>
                             <div class="form-group">
-                                <label>Default Location</label>
-                                <input type="text" id="setting-location" placeholder="Enter venue name and address..." onblur="updateGroupSetting('default_location', this.value)">
+                                <label data-i18n="lbl_def_location">Default Location</label>
+                                <input type="text" id="setting-location" placeholder="Enter venue name..." data-i18n-ph="ph_def_location" onblur="updateGroupSetting('default_location', this.value)">
                             </div>
                             <div class="form-group">
-                                <label>Max Players (Total)</label>
+                                <label data-i18n="lbl_def_max_players">Total Playing Spots (with subs)</label>
                                 <input type="number" id="setting-max-players" onblur="updateGroupSetting('default_max_players', parseInt(this.value) || 0)" placeholder="26">
+                                <small data-i18n="help_def_max_players" style="color: var(--text-muted); display: block; margin-top: 4px;">Total who show up. Anyone beyond goes to Reserve.</small>
                             </div>
                             <div class="form-group">
-                                <label>Main Squad Size</label>
+                                <label data-i18n="lbl_def_main_players">Pitch Format (players on field)</label>
                                 <input type="number" id="setting-main-players-count" onblur="updateGroupSetting('default_main_players_count', parseInt(this.value) || 0)" placeholder="22">
+                                <small data-i18n="help_def_main_players" style="color: var(--text-muted); display: block; margin-top: 4px;">Simultaneously on field (e.g. 22 for 11v11, 16 for 8v8).</small>
                             </div>
                             <div class="form-group">
-                                <label>Team Count</label>
+                                <label data-i18n="lbl_def_teams">Team Count</label>
                                 <select id="setting-team-count" onchange="updateGroupSetting('default_team_count', parseInt(this.value) || 2)">
                                     <option value="2">2 Teams</option>
                                     <option value="3">3 Teams</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Duration (Hours)</label>
+                                <label data-i18n="lbl_def_duration">Duration (Hours)</label>
                                 <input type="number" id="setting-duration" onblur="updateGroupSetting('default_duration', parseFloat(this.value) || 0)" placeholder="2">
                             </div>
                             <div class="form-group">
-                                <label>GK Reservation (Hours)</label>
+                                <label data-i18n="lbl_def_gk">Goalkeeper Priority (Hours)</label>
                                 <input type="number" id="setting-gk-hours" onblur="updateGroupSetting('default_gk_hours', parseInt(this.value) || 0)" placeholder="0">
+                                <small data-i18n="help_def_gk" style="color: var(--text-muted); display: block; margin-top: 4px;">0 = disabled (everyone signs up equally).</small>
                             </div>
                             <div class="form-group">
-                                <label>Reg. Window (Hours)</label>
-                                <input type="number" id="setting-registration-hours" onblur="updateGroupSetting('default_registration_hours', parseInt(this.value) || 0)" placeholder="24">
+                                <label data-i18n="lbl_def_reg">Registration Duration (Hours)</label>
+                                <input type="number" id="setting-registration-hours" onblur="updateGroupSetting('default_registration_hours', parseInt(this.value) || 0)" placeholder="0">
+                                <small data-i18n="help_def_reg" style="color: var(--text-muted); display: block; margin-top: 4px;">0 = open continuously until kickoff.</small>
                             </div>
                             <div class="form-group">
-                                <label>Total Signup Limit</label>
-                                <input type="number" id="setting-signup-limit" onblur="updateGroupSetting('default_signup_limit', parseInt(this.value) || 0)" placeholder="30">
+                                <label data-i18n="lbl_def_limit">Signup Limit (all-inclusive)</label>
+                                <input type="number" id="setting-signup-limit" onblur="updateGroupSetting('default_signup_limit', parseInt(this.value) || 0)" placeholder="40">
+                                <small data-i18n="help_def_limit" style="color: var(--text-muted); display: block; margin-top: 4px;">Maximum with reserve. 0 = unlimited.</small>
                             </div>
                         </div>
                     </div>
@@ -181,5 +191,89 @@
         document.body.appendChild(script);
     })();
 </script>
+
+<script>
+    const ADMIN_I18N = {
+        en: {
+            admin_hub: "Admin Hub",
+            select_group_hint: "Select a group to manage",
+            admin_lang_banner: "Personal app language. Group match posts use the language set by the admin in group settings.",
+            group_settings_title: "Group Defaults & Settings",
+            group_settings_desc: "These values will be pre-filled when creating new games for this group.",
+            lbl_group_lang: "Group Language",
+            help_group_lang: "Group match posts will use this language.",
+            lbl_def_price: "Default Price (CZK)",
+            lbl_pay_account: "Payment Account",
+            ph_pay_account: "Enter bank account...",
+            lbl_def_location: "Default Location",
+            ph_def_location: "Enter venue name...",
+            lbl_def_max_players: "Total Playing Spots (with subs)",
+            help_def_max_players: "Total who show up. Anyone beyond goes to Reserve.",
+            lbl_def_main_players: "Pitch Format (players on field)",
+            help_def_main_players: "Simultaneously on field (e.g. 22 for 11v11, 16 for 8v8).",
+            lbl_def_teams: "Team Count",
+            lbl_def_duration: "Duration (Hours)",
+            lbl_def_gk: "Goalkeeper Priority (Hours)",
+            help_def_gk: "0 = disabled (everyone signs up equally).",
+            lbl_def_reg: "Registration Duration (Hours)",
+            help_def_reg: "0 = open continuously until kickoff.",
+            lbl_def_limit: "Signup Limit (all-inclusive)",
+            help_def_limit: "Maximum with reserve. 0 = unlimited."
+        },
+        ru: {
+            admin_hub: "Панель управления",
+            select_group_hint: "Выберите группу для управления",
+            admin_lang_banner: "Язык личного интерфейса. Язык постов в группе задаётся админом в настройках группы.",
+            group_settings_title: "Настройки группы по умолчанию",
+            group_settings_desc: "Эти значения будут подставляться автоматически при создании новых игр для этой группы.",
+            lbl_group_lang: "Язык группы",
+            help_group_lang: "Карточки и посты группы в Telegram будут на этом языке.",
+            lbl_def_price: "Цена по умолчанию (CZK)",
+            lbl_pay_account: "Номер счета",
+            ph_pay_account: "Введите номер счета / карты...",
+            lbl_def_location: "Локация по умолчанию",
+            ph_def_location: "Введите адрес площадки...",
+            lbl_def_max_players: "Всего мест (для замен)",
+            help_def_max_players: "Сколько человек зовёте (составы + скамейка). Сверх этого — в резерв.",
+            lbl_def_main_players: "Формат (игроков на поле)",
+            help_def_main_players: "Одновременно на поле (напр. 22 для 11х11, 16 для 8х8).",
+            lbl_def_teams: "Количество команд",
+            lbl_def_duration: "Длительность (часов)",
+            lbl_def_gk: "Бронь вратарей (часов)",
+            help_def_gk: "0 — отключено (все записываются на равных).",
+            lbl_def_reg: "Длительность записи (часов)",
+            help_def_reg: "0 — запись открыта вплоть до игры.",
+            lbl_def_limit: "Лимит записи (всё вкл.)",
+            help_def_limit: "Максимум с резервом. 0 — без ограничений."
+        }
+    };
+
+    let adminCurrentLang = localStorage.getItem('webapp_lang') || 'en';
+
+    function setAdminLang(lang) {
+        adminCurrentLang = lang;
+        localStorage.setItem('webapp_lang', lang);
+        const t = ADMIN_I18N[lang] || ADMIN_I18N.en;
+        
+        const codeEl = document.getElementById('admin-lang-code');
+        if (codeEl) codeEl.innerText = lang.toUpperCase();
+        
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (t[k]) el.innerText = t[k];
+        });
+        document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+            const k = el.getAttribute('data-i18n-ph');
+            if (t[k]) el.setAttribute('placeholder', t[k]);
+        });
+    }
+
+    function toggleAdminLang() {
+        setAdminLang(adminCurrentLang === 'en' ? 'ru' : 'en');
+    }
+
+    setAdminLang(adminCurrentLang);
+</script>
+
 </body>
 </html>
