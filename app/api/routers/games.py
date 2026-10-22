@@ -182,6 +182,29 @@ async def join_game(
             
             service = RosterService(uow)
             is_admin = user_id in settings.admin_ids or user_id == settings.system_owner_id
+            
+            # Check group membership
+            if not is_admin:
+                game = await uow.game_repo.get_by_id(game_id)
+                if game and getattr(game, 'chat_id', None):
+                    from app.bot.instance import bot
+                    try:
+                        cm = await bot.get_chat_member(game.chat_id, user_id)
+                        if cm and hasattr(cm, 'status') and cm.status in ["left", "kicked"]:
+                            raise HTTPException(
+                                status_code=403, 
+                                detail="You must be a member of the group to sign up / Для записи необходимо состоять в группе"
+                            )
+                    except HTTPException:
+                        raise
+                    except Exception as e:
+                        err_str = str(e).lower()
+                        if any(x in err_str for x in ["user not found", "participant", "chat not found"]):
+                            raise HTTPException(
+                                status_code=403, 
+                                detail="You must be a member of the group to sign up / Для записи необходимо состоять в группе"
+                            )
+            
             result = await service.join_player(game_id, user, ignore_limit=is_admin)
             
             if not result.success:

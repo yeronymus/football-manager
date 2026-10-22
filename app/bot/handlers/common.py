@@ -278,18 +278,67 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
             result = await session.execute(select(Game).where(Game.id == game_id))
             game = result.scalar_one_or_none()
             
-            # Determine Admin Status (Dynamic)
+            # Determine Admin and Member Status (Dynamic)
             is_admin = False
+            is_member = False
             
             if message.from_user.id in settings.admin_ids or message.from_user.id == settings.system_owner_id:
                 is_admin = True
+                is_member = True
             elif game:
                 try:
                     chat_member = await message.bot.get_chat_member(game.chat_id, message.from_user.id)
                     if chat_member.status in ["administrator", "creator"]:
                         is_admin = True
+                        is_member = True
+                    elif chat_member.status in ["member", "restricted"]:
+                        is_member = True
+                except Exception:
+                    is_member = False
+            
+            if game and not is_member:
+                # Mandatory group membership check
+                invite_link = None
+                try:
+                    group_chat = await message.bot.get_chat(game.chat_id)
+                    if group_chat.username:
+                        invite_link = f"https://t.me/{group_chat.username}"
+                    elif group_chat.invite_link:
+                        invite_link = group_chat.invite_link
+                    else:
+                        invite_link = await message.bot.export_chat_invite_link(game.chat_id)
                 except Exception:
                     pass
+                
+                user_lang = getattr(user, 'language', 'en')
+                user_lang = user_lang.value if hasattr(user_lang, 'value') else str(user_lang)
+                is_user_en = (user_lang or 'en').lower() == 'en'
+                
+                if is_user_en:
+                    text_denied = (
+                        "⛔ <b>Group Membership Required</b>\n\n"
+                        "To sign up for this game, you must be a member of our Telegram group.\n"
+                        "Please join the group first, then click the link again!"
+                    )
+                    btn_join = "🔗 Join Group"
+                    btn_retry = "🔄 I Have Joined"
+                else:
+                    text_denied = (
+                        "⛔ <b>Вход ограничен</b>\n\n"
+                        "Для записи на эту игру необходимо состоять в нашей группе Telegram!\n"
+                        "Пожалуйста, сначала вступите в группу, а затем повторите попытку."
+                    )
+                    btn_join = "🔗 Вступить в группу"
+                    btn_retry = "🔄 Я вступил"
+                
+                buttons = []
+                if invite_link:
+                    buttons.append([types.InlineKeyboardButton(text=btn_join, url=invite_link)])
+                bot_username = settings.bot_username
+                buttons.append([types.InlineKeyboardButton(text=btn_retry, url=f"https://t.me/{bot_username}?start=game_{game_id}")])
+                
+                await message.answer(text_denied, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+                return
             
             from app.bot.utils import get_group_game_number
             game_num = await get_group_game_number(session, game) if game else game_id
