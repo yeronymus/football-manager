@@ -3,7 +3,7 @@ from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.db.models import Game, Language
+from app.db.models import Game, Language, User, Signup, SignupStatus, Team
 from app.config import settings
 from app.core.repositories.user_repository import UserRepository
 from app.bot.keyboards import get_game_keyboard
@@ -354,11 +354,33 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 return
 
             elif action_type == "vote":
-                web_app_url = f"{settings.webapp_url.rstrip('/')}/web/vote.html?game_id={game_id}"
-                kb = types.InlineKeyboardMarkup(inline_keyboard=[
-                    [types.InlineKeyboardButton(text="🏆 Голосовать (WebApp)", web_app=types.WebAppInfo(url=web_app_url))]
-                ])
-                await message.answer(f"🏆 <b>Голосование за MVP (Игра #{game_num})</b>\nНажмите кнопку ниже, чтобы выбрать игроков.", reply_markup=kb)
+                result = await session.execute(
+                    select(User, Signup.team)
+                    .join(Signup)
+                    .where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
+                )
+                players_data = result.all()
+                if not players_data:
+                    await message.answer("⚠️ В этом матче нет игроков для голосования." if user_lang == "ru" else "⚠️ No players found for this match.")
+                    return
+
+                team_a = []
+                team_b = []
+                team_c = []
+                unassigned = []
+                for u, t in players_data:
+                    if t == Team.A: team_a.append(u)
+                    elif t == Team.B: team_b.append(u)
+                    elif t == Team.C: team_c.append(u)
+                    else: unassigned.append(u)
+
+                from app.bot.keyboards import get_voting_keyboard
+                kb = get_voting_keyboard(game_id, team_a, team_b, team_c=team_c, unassigned=unassigned, lang=user_lang)
+                if user_lang == "ru":
+                    v_text = f"🏆 <b>Голосование за MVP (Матч #{game_num})</b>\n\nВыберите лучших игроков, нажав на кнопки ниже:"
+                else:
+                    v_text = f"🏆 <b>Voting for MVP (Match #{game_num})</b>\n\nVote for the best players using the buttons below:"
+                await message.answer(v_text, reply_markup=kb)
                 return
 
             elif action_type == "addguest":

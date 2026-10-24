@@ -6,10 +6,6 @@ from app.db.models import Vote, Signup, SignupStatus, Team
 
 router = Router()
 
-@router.callback_query(F.data == "puskas_info")
-async def process_puskas_info(callback: types.CallbackQuery):
-    await callback.answer("🚀 Премия Пушкаша — за самый красивый гол матча! 💥", show_alert=True)
-
 @router.callback_query(F.data.startswith("vote_"))
 async def process_vote(callback: types.CallbackQuery, session: AsyncSession):
     _, game_id, target_id = callback.data.split("_")

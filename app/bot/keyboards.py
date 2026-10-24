@@ -176,7 +176,7 @@ def get_channel_voting_keyboard(game_id: int, lang: str = "en") -> InlineKeyboar
     bot_username = settings.bot_username.lstrip("@")
     deep_link = f"https://t.me/{bot_username}?start=vote_{game_id}"
     is_en = (lang or "en").lower() == "en"
-    btn_text = "🏆 Vote for MVP (WebApp)" if is_en else "🏆 Проголосовать за MVP (WebApp)"
+    btn_text = "🏆 Vote for MVP" if is_en else "🏆 Проголосовать за MVP"
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=btn_text, url=deep_link)]
     ])
@@ -213,7 +213,6 @@ def get_voting_keyboard(game_id: int, team_a: list, team_b: list, team_c: list =
         title_p = "⚽ --- PLAYERS --- ⚽" if is_en else "⚽ --- ИГРОКИ --- ⚽"
         _add_team_section(title_p, unassigned)
         
-    puskas_label = "🎯 Премия Пушкаша ⚽" if not is_en else "🎯 Puskás Award ⚽"
-    buttons.append([InlineKeyboardButton(text=puskas_label, callback_data="puskas_info")])
+
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)

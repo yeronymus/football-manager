@@ -32,7 +32,7 @@
     "btn_leave_game": "❌ Leave Game",
     "btn_draft_teams": "🛠 Teams (Draft)",
     "btn_channel_join": "⚽ Join Game",
-    "btn_vote_mvp": "🏆 Vote for MVP (WebApp)",
+    "btn_vote_mvp": "🏆 Vote for MVP",
 
     "vote_cannot_self": "You cannot vote for yourself! 🤔",
     "vote_only_participants": "Only match participants can vote!",

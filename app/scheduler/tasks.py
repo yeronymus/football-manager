@@ -75,15 +75,13 @@ async def send_voting_message(game_id: int):
             text = (
                 f"Матч <b>#{game_num}</b> завершен.\n\n"
                 f"🏆 <b>Голосование за MVP открыто!</b>\n"
-                f"Выберите лучших игроков, нажав на кнопки ниже.\n\n"
-                f"🚀 <i>Премия Пушкаша: за самый красивый гол!</i>"
+                f"Выберите лучших игроков, нажав на кнопки ниже."
             )
         else:
             text = (
                 f"Match <b>#{game_num}</b> is finished.\n\n"
                 f"🏆 <b>Voting for MVP is open!</b>\n"
-                f"Vote for the best players using the buttons below.\n\n"
-                f"🚀 <i>Puskás Award: for the best goal!</i>"
+                f"Vote for the best players using the buttons below."
             )
 
         msg = None
