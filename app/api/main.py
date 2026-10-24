@@ -44,9 +44,13 @@ async def on_startup():
             from app.db.database import init_models
             await init_models()
         
+        from app.scheduler.main import start_scheduler
         if settings.run_scheduler:
-            from app.scheduler.main import start_scheduler
-            await start_scheduler()
+            await start_scheduler(paused=False)
+        else:
+            # Start scheduler in paused mode so jobstores (Redis) are active
+            # and add_job() persists to Redis, but this process won't execute jobs.
+            await start_scheduler(paused=True)
         
         if settings.run_consumer:
             # Start persistent messaging consumer for volatile event safety

@@ -36,7 +36,7 @@ class SchedulerService:
     def schedule_voting(self, game_id: int, date_time: datetime, duration: float = 2.0):
         """Schedules voting task based on match duration."""
         match_hours = float(duration) if duration and duration > 0 else 2.0
-        run_date = date_time + timedelta(hours=match_hours)
+        run_date = date_time + timedelta(hours=match_hours, minutes=15)
         now_tz = datetime.now(date_time.tzinfo) if date_time.tzinfo else datetime.now()
         
         if run_date > now_tz:

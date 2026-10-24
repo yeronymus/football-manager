@@ -13,8 +13,10 @@ jobstores = {
 
 scheduler = AsyncIOScheduler(jobstores=jobstores, timezone="Europe/Prague")
 
-async def start_scheduler():
-    scheduler.start()
+async def start_scheduler(paused: bool = False):
+    if scheduler.state == 0:
+        scheduler.start(paused=paused)
 
 async def stop_scheduler():
-    scheduler.shutdown()
+    if scheduler.running:
+        scheduler.shutdown()

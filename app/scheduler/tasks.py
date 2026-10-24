@@ -50,9 +50,17 @@ async def send_voting_message(game_id: int):
             else:
                 unassigned.append(user)
 
+        # Determine chat language
+        from app.db.models import Chat
+        chat_lang = "en"
+        chat_row = await session.get(Chat, game.chat_id)
+        if chat_row and chat_row.language:
+            chat_lang = chat_row.language.value if hasattr(chat_row.language, "value") else str(chat_row.language)
+        chat_lang = (chat_lang or "en").lower()
+
         # Create inline keyboard with players
         from app.bot.keyboards import get_voting_keyboard, get_channel_voting_keyboard
-        keyboard = get_voting_keyboard(game_id, team_a, team_b, team_c=team_c, unassigned=unassigned)
+        keyboard = get_voting_keyboard(game_id, team_a, team_b, team_c=team_c, unassigned=unassigned, lang=chat_lang)
         
         # Delete old voting message if it exists
         if game.voting_message_id:
@@ -63,7 +71,20 @@ async def send_voting_message(game_id: int):
         
         from app.bot.utils import get_group_game_number
         game_num = await get_group_game_number(session, game)
-        text = f"Матч <b>#{game_num}</b> завершен.\n\n<b>Голосование за MVP открыто!</b>\nВыберите лучших игроков, нажав на кнопки ниже."
+        if chat_lang == "ru":
+            text = (
+                f"Матч <b>#{game_num}</b> завершен.\n\n"
+                f"🏆 <b>Голосование за MVP открыто!</b>\n"
+                f"Выберите лучших игроков, нажав на кнопки ниже.\n\n"
+                f"🚀 <i>Премия Пушкаша: за самый красивый гол!</i>"
+            )
+        else:
+            text = (
+                f"Match <b>#{game_num}</b> is finished.\n\n"
+                f"🏆 <b>Voting for MVP is open!</b>\n"
+                f"Vote for the best players using the buttons below.\n\n"
+                f"🚀 <i>Puskás Award: for the best goal!</i>"
+            )
 
         msg = None
         try:
@@ -76,7 +97,7 @@ async def send_voting_message(game_id: int):
         except Exception as e:
             logger.warning(f"Failed to send standard voting keyboard (e.g. channel or markup limits): {e}, falling back to channel-safe deep link keyboard")
             try:
-                channel_kb = get_channel_voting_keyboard(game_id)
+                channel_kb = get_channel_voting_keyboard(game_id, lang=chat_lang)
                 msg = await bot.send_message(
                     chat_id=game.chat_id,
                     text=text,

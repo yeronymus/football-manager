@@ -620,3 +620,21 @@ async function deleteGameClick() {
         alert(getAdminText('Failed to delete game: ', 'Ошибка при удалении игры: ') + e.message);
     }
 }
+
+async function triggerVotingClick() {
+    if (!currentGameId) return;
+    
+    const confirmMsg = getAdminText(
+        '🏆 Are you sure you want to open MVP voting for this match in the Telegram group?',
+        '🏆 Вы уверены, что хотите открыть голосование за MVP этого матча в группе Telegram?'
+    );
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+        await apiCall(`/games/${currentGameId}/trigger_voting`, { method: 'POST' });
+        alert(getAdminText('✅ MVP voting opened in the group!', '✅ Голосование за MVP успешно открыто в группе!'));
+        loadGameDetails(currentGameId);
+    } catch (e) {
+        alert(getAdminText('Failed to open voting: ', 'Не удалось открыть голосование: ') + (e.message || e));
+    }
+}

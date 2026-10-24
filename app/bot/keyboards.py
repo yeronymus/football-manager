@@ -213,4 +213,7 @@ def get_voting_keyboard(game_id: int, team_a: list, team_b: list, team_c: list =
         title_p = "⚽ --- PLAYERS --- ⚽" if is_en else "⚽ --- ИГРОКИ --- ⚽"
         _add_team_section(title_p, unassigned)
         
+    puskas_label = "🎯 Премия Пушкаша ⚽" if not is_en else "🎯 Puskás Award ⚽"
+    buttons.append([InlineKeyboardButton(text=puskas_label, callback_data="puskas_info")])
+
     return InlineKeyboardMarkup(inline_keyboard=buttons)

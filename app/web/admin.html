@@ -146,6 +146,9 @@
                     <button class="action-tile primary" onclick="openApp('draft')">
                         <span class="icon">🛡</span> Manage Draft
                     </button>
+                    <button class="action-tile" id="btn-trigger-voting" onclick="triggerVotingClick()">
+                        <span class="icon">🏆</span> <span id="label-start-voting" data-i18n="btn_start_voting">Open MVP Voting</span>
+                    </button>
                     <button class="action-tile danger" onclick="deleteGameClick()" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: var(--danger);">
                         <span class="icon">🗑</span> Delete Game
                     </button>
@@ -218,7 +221,8 @@
             lbl_def_reg: "Registration Duration (Hours)",
             help_def_reg: "0 = open continuously until kickoff.",
             lbl_def_limit: "Signup Limit (all-inclusive)",
-            help_def_limit: "Maximum with reserve. 0 = unlimited."
+            help_def_limit: "Maximum with reserve. 0 = unlimited.",
+            btn_start_voting: "Open MVP Voting"
         },
         ru: {
             admin_hub: "Панель управления",
@@ -244,7 +248,8 @@
             lbl_def_reg: "Длительность записи (часов)",
             help_def_reg: "0 — запись открыта вплоть до игры.",
             lbl_def_limit: "Лимит записи (всё вкл.)",
-            help_def_limit: "Максимум с резервом. 0 — без ограничений."
+            help_def_limit: "Максимум с резервом. 0 — без ограничений.",
+            btn_start_voting: "Открыть MVP голосование"
         }
     };
 

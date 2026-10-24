@@ -570,3 +570,24 @@ async def delete_game(
     await session.commit()
     
     return {"status": "ok", "message": "Game deleted successfully"}
+
+@router.post("/games/{game_id}/trigger_voting")
+async def trigger_voting_dashboard(
+    game_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    result = await session.execute(select(Game).where(Game.id == game_id))
+    game = result.scalar_one_or_none()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, user_id, session=session)
+    
+    try:
+        from app.scheduler.tasks import send_voting_message
+        await send_voting_message(game_id)
+        return {"status": "triggered", "game_id": game_id}
+    except Exception as e:
+        logger.error(f"Trigger voting dashboard failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

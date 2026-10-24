@@ -16,6 +16,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger("worker")
 
+async def _scheduler_tick(sched):
+    """Periodically wakes up scheduler to sync newly added jobs from Redis across processes."""
+    while True:
+        try:
+            await asyncio.sleep(30)
+            if sched.running:
+                sched.wakeup()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.warning(f"Scheduler tick error: {e}")
+
 async def main():
     logger.info("Starting background worker...")
     
@@ -28,7 +40,9 @@ async def main():
         
     # 2. Start scheduler
     logger.info("Starting scheduler...")
-    await start_scheduler()
+    await start_scheduler(paused=False)
+    from app.scheduler.main import scheduler
+    sched_tick_task = asyncio.create_task(_scheduler_tick(scheduler))
     
     # 3. Start messaging consumer
     logger.info("Starting messaging consumer...")
@@ -61,6 +75,9 @@ async def main():
             from app.bot.main import dp
             await dp.stop_polling()
             polling_task.cancel()
+
+        if sched_tick_task and not sched_tick_task.done():
+            sched_tick_task.cancel()
 
         logger.info("Stopping scheduler...")
         await stop_scheduler()

@@ -233,7 +233,27 @@
                         gameId = g.id;
                         selector.style.display = 'none';
                         app.style.display = 'block';
-                        fetchGameDetails();
+                        
+        async function triggerVotingNow() {
+            if (!confirm("🏆 Открыть голосование за MVP в группе сейчас?")) return;
+            try {
+                const res = await fetch(`/api/dashboard/games/${gameId}/trigger_voting`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `tma ${initData}` }
+                });
+                if (res.ok) {
+                    alert("✅ Голосование за MVP успешно открыто в группе!");
+                    fetchVotes();
+                } else {
+                    const err = await res.json();
+                    alert("Ошибка: " + (err.detail || "Не удалось открыть"));
+                }
+            } catch (e) {
+                alert("Ошибка: " + e.message);
+            }
+        }
+
+        fetchGameDetails();
                     };
                     list.appendChild(btn);
                 });
@@ -457,7 +477,7 @@
                     const votes = await response.json();
                     const preview = document.getElementById('voting-preview');
                     if (votes.length === 0) {
-                        preview.innerText = "Голосов пока нет.";
+                        preview.innerHTML = `Голосов пока нет. <button type="button" style="display:inline-block; margin-top: 6px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--tg-theme-button-color, #3390ec); background: transparent; color: var(--tg-theme-button-color, #3390ec); cursor: pointer; font-size: 0.85rem;" onclick="triggerVotingNow()">📢 Открыть голосование в группе</button>`;
                         return;
                     }
                     let voteHtml = '<ul style="margin:0; padding-left:20px;">';
@@ -469,6 +489,26 @@
                 }
             } catch (e) {
                 console.error("Failed to fetch votes", e);
+            }
+        }
+
+        
+        async function triggerVotingNow() {
+            if (!confirm("🏆 Открыть голосование за MVP в группе сейчас?")) return;
+            try {
+                const res = await fetch(`/api/dashboard/games/${gameId}/trigger_voting`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `tma ${initData}` }
+                });
+                if (res.ok) {
+                    alert("✅ Голосование за MVP успешно открыто в группе!");
+                    fetchVotes();
+                } else {
+                    const err = await res.json();
+                    alert("Ошибка: " + (err.detail || "Не удалось открыть"));
+                }
+            } catch (e) {
+                alert("Ошибка: " + e.message);
             }
         }
 

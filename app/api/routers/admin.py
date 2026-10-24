@@ -482,16 +482,22 @@ async def admin_add_guest(data: AddGuestRequest, background_tasks: BackgroundTas
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @router.post("/trigger_voting/{game_id}")
-async def debug_trigger_voting(game_id: int, initData: str = "", session: AsyncSession = Depends(get_session)):
+async def trigger_voting(game_id: int, initData: str = "", session: AsyncSession = Depends(get_session)):
     if not validate_init_data(initData, settings.bot_token):
         raise HTTPException(status_code=403, detail="Invalid initData")
     user_id = get_user_from_init_data(initData)
-    if user_id not in settings.admin_ids and user_id != settings.system_owner_id:
-        raise HTTPException(status_code=403, detail="Admins only")
+    
+    result = await session.execute(select(Game).where(Game.id == game_id))
+    game = result.scalar_one_or_none()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, user_id, session=session)
+    
     try:
         from app.scheduler.tasks import send_voting_message
         await send_voting_message(game_id)
         return {"status": "triggered", "game_id": game_id}
     except Exception as e:
-        logger.error(f"Debug trigger failed: {e}")
+        logger.error(f"Trigger voting failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
