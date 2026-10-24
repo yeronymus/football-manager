@@ -159,7 +159,7 @@ flowchart TD
     CheckActiveCount -- No --> PutReserve[Place in RESERVE list]
     CheckActiveCount -- Yes --> CheckGKWindow{In GK Priority Window?}
     CheckGKWindow -- No --> PutActive[Place in ACTIVE main roster]
-    CheckGKWindow -- Yes --> CalcNeededGK[Calculate remaining needed GKs:<br/>needed_gks = max(0, 2 - active_gk_count)]
+    CheckGKWindow -- Yes --> CalcNeededGK["Calculate remaining needed GKs:<br/>needed_gks = max(0, 2 - active_gk_count)"]
     CalcNeededGK --> CheckSlotsLeft{slots_left <= needed_gks?}
     CheckSlotsLeft -- No --> PutActive
     CheckSlotsLeft -- Yes --> IsPlayerGK{Is Player a GK?}
