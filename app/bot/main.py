@@ -104,11 +104,9 @@ async def start_bot():
     
     # Admin-only commands (appended to user commands)
     admin_commands_en = user_commands_en + [
-        types.BotCommand(command="create", description="➕ Create Match"),
         types.BotCommand(command="dashboard", description="🛠 Dashboard"),
     ]
     admin_commands_ru = user_commands_ru + [
-        types.BotCommand(command="create", description="➕ Создать игру"),
         types.BotCommand(command="dashboard", description="🛠 Панель управления"),
     ]
 

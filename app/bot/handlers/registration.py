@@ -2,7 +2,7 @@ from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.db.models import Game
+from app.db.models import Game, User
 from app.core.repositories.user_repository import UserRepository
 from app.bot.fsm import Registration
 from app.bot.keyboards import get_multiselect_keyboard, get_primary_select_keyboard, get_game_keyboard
@@ -88,8 +88,12 @@ async def process_position(callback: types.CallbackQuery, state: FSMContext, ses
         game = result.scalar_one_or_none()
         if game:
             from app.bot.utils import format_game_message
-            text = await format_game_message(game, session)
-            await callback.message.answer(text, reply_markup=get_game_keyboard(pending_game_id))
+            user_lang = "ru"
+            user_obj = await session.get(User, callback.from_user.id)
+            if user_obj and getattr(user_obj, "language", None):
+                user_lang = user_obj.language.value if hasattr(user_obj.language, "value") else str(user_obj.language)
+            text = await format_game_message(game, session, lang=user_lang)
+            await callback.message.answer(text, reply_markup=get_game_keyboard(pending_game_id, lang=user_lang))
             
             # TRIGGER DASHBOARD UPDATE
             try:

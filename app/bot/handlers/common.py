@@ -3,7 +3,7 @@ from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.db.models import Game, Language, User, Signup, SignupStatus, Team
+from app.db.models import Game, Language, User, Signup, SignupStatus, Team, Chat
 from app.config import settings
 from app.core.repositories.user_repository import UserRepository
 from app.bot.keyboards import get_game_keyboard
@@ -81,9 +81,15 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
                 if message.from_user.id in settings.admin_ids or message.from_user.id == settings.system_owner_id:
                     is_admin = True
                 
+                chat_lang = "ru"
+                chat_obj = await session.get(Chat, message.chat.id)
+                if chat_obj and chat_obj.language:
+                    chat_lang = chat_obj.language.value if hasattr(chat_obj.language, 'value') else str(chat_obj.language)
+                chat_lang = (chat_lang or "ru").lower()
+                
                 # Format and send the new message with buttons
-                text_short = await format_game_message(game, session, is_short=True)
-                kb = get_game_keyboard(game_id, is_admin=is_admin, webapp_url=settings.webapp_url)
+                text_short = await format_game_message(game, session, is_short=True, lang=chat_lang)
+                kb = get_game_keyboard(game_id, is_admin=is_admin, webapp_url=settings.webapp_url, lang=chat_lang)
                 
                 sent_msg = await message.bot.send_message(
                     chat_id=message.chat.id,
@@ -228,6 +234,12 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
     # 1. Check User Existence
     user_repo = UserRepository(session)
     user = await user_repo.get_user(message.from_user.id)
+    user_lang = "ru"
+    if user and getattr(user, "language", None):
+        user_lang = user.language.value if hasattr(user.language, "value") else str(user.language)
+    elif message.from_user.language_code and not message.from_user.language_code.startswith("ru"):
+        user_lang = "en"
+    user_lang = (user_lang or "ru").lower()
 
     # 2. Logic for Deep Link "reg" (if used explicitly)
     if args == "reg":
@@ -399,10 +411,10 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 if game:
                     # 1. Generate full game message text
                     from app.bot.utils import format_game_message
-                    text = await format_game_message(game, session)
+                    text = await format_game_message(game, session, lang=user_lang)
                     
                     # 2. Keyboard (includes Draft button for admins)
-                    kb = get_game_keyboard(game_id, is_admin=is_admin)
+                    kb = get_game_keyboard(game_id, is_admin=is_admin, lang=user_lang)
                     await message.answer(text, reply_markup=kb)
 
                     return
