@@ -96,7 +96,7 @@
                             </div>
                             <div class="form-group">
                                 <label data-i18n="lbl_def_duration">Duration (Hours)</label>
-                                <input type="number" id="setting-duration" onblur="updateGroupSetting('default_duration', parseFloat(this.value) || 0)" placeholder="2">
+                                <input type="number" id="setting-duration" step="0.5" min="0.5" max="24" inputmode="decimal" onblur="updateGroupSetting('default_duration', parseFloat(this.value) || 0)" placeholder="2">
                             </div>
                             <div class="form-group">
                                 <label data-i18n="lbl_def_gk">Goalkeeper Priority (Hours)</label>

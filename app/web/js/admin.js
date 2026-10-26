@@ -151,7 +151,7 @@ async function loadGroupGames(group) {
     // Setup Settings
     document.getElementById('group-settings-container').classList.remove('hidden');
     document.getElementById('setting-lang').value = group.language || 'ru';
-    document.getElementById('setting-price').value = group.default_price || 155;
+    document.getElementById('setting-price').value = (group.default_price !== undefined && group.default_price !== null) ? group.default_price : 155;
     document.getElementById('setting-payment-info').value = group.payment_info || '';
     document.getElementById('setting-location').value = group.default_location || '';
     document.getElementById('setting-max-players').value = group.default_max_players || 26;
@@ -517,7 +517,7 @@ async function updateGroupSetting(key, value) {
     if (!currentGroupId) return;
     
     // Find the input element to show feedback
-    const inputId = `setting-${key.replace('default_', '').replaceAll('_', '-')}`;
+    const inputId = key === 'language' ? 'setting-lang' : `setting-${key.replace('default_', '').replaceAll('_', '-')}`;
     const input = document.getElementById(inputId);
     let originalBorder = "";
     if (input) {

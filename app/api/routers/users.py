@@ -73,7 +73,18 @@ async def get_chats(
             "id": c.chat_id, 
             "title": c.title,
             "type": getattr(c, 'chat_type', 'supergroup'),
-            "is_active": c.is_active
+            "is_active": c.is_active,
+            "language": c.language.value if hasattr(c.language, 'value') else c.language,
+            "payment_info": c.payment_info,
+            "default_location": c.default_location,
+            "default_price": c.default_price,
+            "default_team_count": c.default_team_count,
+            "default_max_players": c.default_max_players,
+            "default_main_players_count": c.default_main_players_count,
+            "default_duration": c.default_duration,
+            "default_gk_hours": c.default_gk_hours,
+            "default_registration_hours": c.default_registration_hours,
+            "default_signup_limit": c.default_signup_limit,
         }
         for c in chats
     ]

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from app.api.routers.users import get_leaderboard
-from app.db.models import PlayerProfile, User
+from app.api.routers.users import get_leaderboard, get_chats
+from app.db.models import PlayerProfile, User, Chat, Language
 
 @pytest.mark.asyncio
 async def test_get_leaderboard_success():
@@ -43,3 +43,42 @@ async def test_get_leaderboard_empty():
     
     result = await get_leaderboard(chat_id=123, user_id=1, session=session)
     assert result == []
+
+@pytest.mark.asyncio
+async def test_get_chats_includes_group_defaults():
+    session = AsyncMock()
+    mock_chat = MagicMock(spec=Chat)
+    mock_chat.chat_id = -100123456789
+    mock_chat.title = "Test Group"
+    mock_chat.is_active = True
+    mock_chat.language = Language.ru
+    mock_chat.payment_info = "123456/0800"
+    mock_chat.default_location = "Field 1"
+    mock_chat.default_price = 100
+    mock_chat.default_team_count = 2
+    mock_chat.default_max_players = 20
+    mock_chat.default_main_players_count = 18
+    mock_chat.default_duration = 1.5
+    mock_chat.default_gk_hours = 0
+    mock_chat.default_registration_hours = 96
+    mock_chat.default_signup_limit = 50
+
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = [mock_chat]
+    session.execute.return_value = mock_result
+
+    chats = await get_chats(user_id=1, session=session)
+    assert len(chats) == 1
+    c = chats[0]
+    assert c["id"] == -100123456789
+    assert c["title"] == "Test Group"
+    assert c["default_price"] == 100
+    assert c["default_duration"] == 1.5
+    assert c["default_location"] == "Field 1"
+    assert c["payment_info"] == "123456/0800"
+    assert c["default_max_players"] == 20
+    assert c["default_main_players_count"] == 18
+    assert c["default_team_count"] == 2
+    assert c["default_gk_hours"] == 0
+    assert c["default_registration_hours"] == 96
+    assert c["default_signup_limit"] == 50
