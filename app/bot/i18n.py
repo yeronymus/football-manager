@@ -26,10 +26,10 @@ class SimpleI18n:
                     self.translations[lang] = json.load(f)
         logger.info(f"Loaded translations for: {list(self.translations.keys())}")
 
-    def get_text(self, lang: Optional[str], key: str, **kwargs) -> str:
-        lang_str = str(lang or "en").lower()
-        if hasattr(lang, "value"):
-            lang_str = str(lang.value).lower()
+    def get_text(self, locale: Optional[str], key: str, /, **kwargs) -> str:
+        lang_str = str(locale or "en").lower()
+        if hasattr(locale, "value"):
+            lang_str = str(locale.value).lower()
 
         # Match en or ru, default to en
         if lang_str not in self.translations:
@@ -55,9 +55,9 @@ class SimpleI18n:
 _locales_path = os.path.join(os.path.dirname(__file__), "locales")
 i18n_instance = SimpleI18n(_locales_path)
 
-def t(key: str, lang: str = "en", **kwargs) -> str:
+def t(key: str, locale: str = "en", /, **kwargs) -> str:
     """Helper for translating strings anywhere outside middlewares."""
-    return i18n_instance.get_text(lang, key, **kwargs)
+    return i18n_instance.get_text(locale, key, **kwargs)
 
 class I18nMiddleware(BaseMiddleware):
     def __init__(self, i18n: SimpleI18n):

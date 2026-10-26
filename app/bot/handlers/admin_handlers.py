@@ -40,7 +40,7 @@ async def cmd_create(message: types.Message):
 
 
 @router.message(Command("dashboard"))
-async def cmd_dashboard(message: types.Message, session: AsyncSession):
+async def cmd_dashboard(message: types.Message, session: AsyncSession, _):
     # System admins only for the command itself (or let the webapp handle auth, but hiding the button is better)
     if message.from_user.id not in settings.admin_ids and message.from_user.id != settings.system_owner_id:
         # Check if they are ChatAdmin in DB
@@ -59,10 +59,10 @@ async def cmd_dashboard(message: types.Message, session: AsyncSession):
     try:
         webapp_url = f"{settings.webapp_url.rstrip('/')}/web/admin.html?v={int(time.time())}"
         kb = types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(text="🛠 Открыть Dashboard", web_app=types.WebAppInfo(url=webapp_url))]
+            [types.InlineKeyboardButton(text=_("btn_open_dashboard"), web_app=types.WebAppInfo(url=webapp_url))]
         ])
         
-        await message.answer("Добро пожаловать в Admin Dashboard!\nНажмите кнопку ниже для управления вашими группами и играми.", reply_markup=kb)
+        await message.answer(_("dashboard_welcome"), reply_markup=kb)
     except Exception as e:
         logger.error(f"Dashboard Command Error: {e}")
         await message.answer(f"Ошибка вызова Dashboard: {e}")

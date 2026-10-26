@@ -59,6 +59,8 @@
     "btn_create_profile": "📝 Создать профиль (Mini App)",
     "btn_open_profile": "👤 Открыть Профиль",
     "btn_open_history": "📜 Открыть архив игр",
+    "dashboard_welcome": "Добро пожаловать в Admin Dashboard!\nНажмите кнопку ниже для управления вашими группами и играми.",
+    "btn_open_dashboard": "🛠 Открыть Dashboard",
 
     "setup_title": "⚙️ <b>Настройки группы</b>\n\n🗣 <b>Язык:</b> {lang}\n💳 <b>Реквизиты:</b> {payment}\n\nВыберите, что хотите изменить:",
     "setup_only_admins": "Только администраторы могут настраивать группу!",

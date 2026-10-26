@@ -59,6 +59,8 @@
     "btn_create_profile": "📝 Create Profile (Mini App)",
     "btn_open_profile": "👤 Open Profile",
     "btn_open_history": "📜 Open Match History",
+    "dashboard_welcome": "Welcome to Admin Dashboard!\nClick below to manage your groups and games.",
+    "btn_open_dashboard": "🛠 Open Dashboard",
 
     "setup_title": "⚙️ <b>Group Settings</b>\n\n🗣 <b>Language:</b> {lang}\n💳 <b>Payment details:</b> {payment}\n\nSelect what you want to change:",
     "setup_only_admins": "Only group administrators can change settings!",

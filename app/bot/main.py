@@ -18,7 +18,10 @@ from app.bot.listeners import setup_listeners
 from app.bot.instance import bot
 
 # Initialize Storage (Redis)
-storage = RedisStorage.from_url(settings.REDIS_URL)
+storage = RedisStorage.from_url(
+    settings.REDIS_URL,
+    connection_kwargs={"health_check_interval": 30, "retry_on_timeout": True}
+)
 
 # Initialize Dispatcher
 dp = Dispatcher(storage=storage)
