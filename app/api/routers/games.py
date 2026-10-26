@@ -185,7 +185,7 @@ async def join_game(
             
             # Check group membership
             if not is_admin:
-                game = await uow.game_repo.get_by_id(game_id)
+                game = await uow.game_repo.get_game(game_id)
                 if game and getattr(game, 'chat_id', None):
                     from app.bot.instance import bot
                     try:

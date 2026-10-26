@@ -16,6 +16,9 @@ class BaseRepository(Generic[ModelType]):
     async def get(self, id: int) -> Optional[ModelType]:
         return await self.session.get(self.model, id)
 
+    async def get_by_id(self, id: int) -> Optional[ModelType]:
+        return await self.get(id)
+
     async def get_with_lock(self, id: int) -> Optional[ModelType]:
         """Fetch with SELECT FOR UPDATE to prevent race conditions."""
         result = await self.session.execute(
