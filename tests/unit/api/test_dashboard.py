@@ -1,8 +1,8 @@
 import pytest
 from fastapi import HTTPException
 from unittest.mock import AsyncMock, MagicMock, patch
-from app.api.routers.dashboard import notify_player_payment, delete_game
-from app.db.models import Game
+from app.api.routers.dashboard import notify_player_payment, notify_group_unpaid, delete_game
+from app.db.models import Game, User
 
 @pytest.mark.asyncio
 async def test_notify_player_payment_missing_user_id():
@@ -11,6 +11,95 @@ async def test_notify_player_payment_missing_user_id():
         await notify_player_payment(game_id=1, data={}, admin_id=123, session=session)
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "Missing user_id"
+
+@pytest.mark.asyncio
+@patch("app.api.routers.dashboard.check_admin_rights", new_callable=AsyncMock)
+@patch("app.api.routers.dashboard.cache_service")
+@patch("app.bot.instance.bot")
+async def test_notify_player_payment_success(mock_bot, mock_cache, mock_check_admin):
+    import datetime
+    session = AsyncMock()
+    game = Game(id=1, chat_id=-1001, location="Arena", date_time=datetime.datetime.now(), price=150, payment_info="123456")
+    user = User(user_id=777, full_name="Player One", language="en")
+    
+    async def mock_get(model, pk):
+        if model == Game: return game
+        if model == User: return user
+        return None
+    session.get.side_effect = mock_get
+    mock_cache.set = AsyncMock()
+    mock_bot.send_message = AsyncMock()
+    
+    res = await notify_player_payment(game_id=1, data={"user_id": 777}, admin_id=123, session=session)
+    assert res["status"] == "ok"
+    assert res["delivery"] == "delivered"
+    mock_bot.send_message.assert_awaited_once()
+
+@pytest.mark.asyncio
+@patch("app.api.routers.dashboard.check_admin_rights", new_callable=AsyncMock)
+@patch("app.api.routers.dashboard.cache_service")
+async def test_notify_player_payment_guest(mock_cache, mock_check_admin):
+    session = AsyncMock()
+    game = Game(id=1, chat_id=-1001)
+    session.get.return_value = game
+    mock_cache.set = AsyncMock()
+    
+    res = await notify_player_payment(game_id=1, data={"user_id": -999}, admin_id=123, session=session)
+    assert res["status"] == "ok"
+    assert res["delivery"] == "guest"
+
+@pytest.mark.asyncio
+@patch("app.api.routers.dashboard.check_admin_rights", new_callable=AsyncMock)
+@patch("app.api.routers.dashboard.cache_service")
+@patch("app.bot.instance.bot")
+async def test_notify_player_payment_blocked(mock_bot, mock_cache, mock_check_admin):
+    import datetime
+    session = AsyncMock()
+    game = Game(id=1, chat_id=-1001, location="Arena", date_time=datetime.datetime.now(), price=150)
+    user = User(user_id=888, full_name="Blocked User")
+    
+    async def mock_get(model, pk):
+        if model == Game: return game
+        if model == User: return user
+        return None
+    session.get.side_effect = mock_get
+    mock_cache.set = AsyncMock()
+    mock_bot.send_message.side_effect = Exception("Forbidden: bot was blocked by the user")
+    
+    res = await notify_player_payment(game_id=1, data={"user_id": 888}, admin_id=123, session=session)
+    assert res["status"] == "ok"
+    assert res["delivery"] == "blocked"
+
+@pytest.mark.asyncio
+@patch("app.api.routers.dashboard.check_admin_rights", new_callable=AsyncMock)
+@patch("app.api.routers.dashboard.cache_service")
+@patch("app.bot.instance.bot")
+async def test_notify_group_unpaid(mock_bot, mock_cache, mock_check_admin):
+    import datetime
+    from app.db.models import Signup, SignupStatus, Chat
+    session = AsyncMock()
+    game = Game(id=1, chat_id=-1001, location="Arena", date_time=datetime.datetime.now(), price=150)
+    chat = Chat(chat_id=-1001, language="en")
+    
+    async def mock_get(model, pk):
+        if model == Game: return game
+        if model == Chat: return chat
+        return None
+    session.get.side_effect = mock_get
+    
+    signup1 = Signup(game_id=1, user_id=111, is_paid=False, status=SignupStatus.ACTIVE)
+    user1 = User(user_id=111, full_name="User One", username="user1")
+    
+    mock_res = MagicMock()
+    mock_res.all.return_value = [(signup1, user1)]
+    session.execute.return_value = mock_res
+    mock_cache.set = AsyncMock()
+    mock_bot.send_message = AsyncMock()
+    
+    res = await notify_group_unpaid(game_id=1, admin_id=123, session=session)
+    assert res["status"] == "ok"
+    assert res["unpaid_count"] == 1
+    mock_bot.send_message.assert_awaited_once()
 
 @pytest.mark.asyncio
 @patch("app.api.routers.dashboard.check_admin_rights", new_callable=AsyncMock)

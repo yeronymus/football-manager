@@ -79,7 +79,7 @@
     
     <div class="form-group">
         <label for="location" data-i18n="lbl_location">Location</label>
-        <input type="text" id="location" value="Plamínkové 1539, Praha 4-Nusle" placeholder="e.g. Pankrac" data-i18n-ph="ph_location" required>
+        <input type="text" id="location" value="" placeholder="e.g. Pankrac" data-i18n-ph="ph_location" required>
     </div>
 
     <div class="form-group">
@@ -113,12 +113,12 @@
 
     <div class="form-group">
         <label for="price" data-i18n="lbl_price">Match Fee (CZK)</label>
-        <input type="number" id="price" value="155" min="0" step="1" inputmode="numeric">
+        <input type="number" id="price" value="100" min="0" step="1" inputmode="numeric">
     </div>
 
     <div class="form-group">
         <label for="payment_info" data-i18n="lbl_payment_info">Payment Account</label>
-        <input type="text" id="payment_info" value="2924402033/0800" placeholder="Bank account / card" data-i18n-ph="ph_payment_info">
+        <input type="text" id="payment_info" value="" placeholder="Bank account / card" data-i18n-ph="ph_payment_info">
     </div>
 
     <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0; opacity: 0.1;">
@@ -248,16 +248,16 @@
                     const chat = chatData[chatId];
                     if (!chat) return;
                     
-                    if (chat.default_location !== undefined && chat.default_location !== null) document.getElementById('location').value = chat.default_location;
-                    if (chat.default_price !== undefined && chat.default_price !== null) document.getElementById('price').value = chat.default_price;
-                    if (chat.payment_info !== undefined && chat.payment_info !== null) document.getElementById('payment_info').value = chat.payment_info;
-                    if (chat.default_max_players !== undefined && chat.default_max_players !== null) document.getElementById('max_players').value = chat.default_max_players;
-                    if (chat.default_main_players_count !== undefined && chat.default_main_players_count !== null) document.getElementById('main_players_count').value = chat.default_main_players_count;
-                    if (chat.default_signup_limit !== undefined && chat.default_signup_limit !== null) document.getElementById('signup_limit').value = chat.default_signup_limit;
-                    if (chat.default_team_count !== undefined && chat.default_team_count !== null) document.getElementById('team_count').value = chat.default_team_count;
-                    if (chat.default_duration !== undefined && chat.default_duration !== null) document.getElementById('duration').value = chat.default_duration;
-                    if (chat.default_gk_hours !== undefined && chat.default_gk_hours !== null) document.getElementById('gk_hours').value = chat.default_gk_hours;
-                    if (chat.default_registration_hours !== undefined && chat.default_registration_hours !== null) document.getElementById('registration_hours').value = chat.default_registration_hours;
+                    document.getElementById('location').value = chat.default_location || '';
+                    document.getElementById('payment_info').value = chat.payment_info || '';
+                    document.getElementById('price').value = (chat.default_price !== undefined && chat.default_price !== null) ? chat.default_price : 100;
+                    document.getElementById('max_players').value = chat.default_max_players || 26;
+                    document.getElementById('main_players_count').value = chat.default_main_players_count || 22;
+                    document.getElementById('signup_limit').value = (chat.default_signup_limit !== undefined && chat.default_signup_limit !== null) ? chat.default_signup_limit : 40;
+                    document.getElementById('team_count').value = chat.default_team_count || 2;
+                    document.getElementById('duration').value = chat.default_duration || 2;
+                    document.getElementById('gk_hours').value = (chat.default_gk_hours !== undefined && chat.default_gk_hours !== null) ? chat.default_gk_hours : 0;
+                    document.getElementById('registration_hours').value = (chat.default_registration_hours !== undefined && chat.default_registration_hours !== null) ? chat.default_registration_hours : 0;
                 };
 
                 // If targetChatId is provided, ensure it exists in options and is selected
@@ -553,7 +553,8 @@
             }
         };
 
-        let currentLang = localStorage.getItem('webapp_lang') || 'en';
+        const paramLang = (new URLSearchParams(window.location.search)).get('lang');
+        let currentLang = (paramLang === 'en' || paramLang === 'ru') ? paramLang : (localStorage.getItem('webapp_lang') || 'en');
 
         function setAppLanguage(lang) {
             currentLang = lang;

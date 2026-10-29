@@ -161,8 +161,11 @@
                                 <button class="tab-btn active" id="tab-roster" onclick="switchRosterTab('roster')">Roster</button>
                                 <button class="tab-btn" id="tab-mvp" onclick="switchRosterTab('mvp')">MVP Votes</button>
                             </div>
-                            <div class="actions">
+                            <div class="actions" style="display: flex; align-items: center; gap: 8px;">
                                 <span id="roster-paid-info" style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">Paid: 0/0</span>
+                                <button id="btn-notify-group" class="action-btn outline" onclick="notifyGroupDebtClick()" style="font-size: 0.78rem; padding: 4px 8px; border-color: rgba(245, 158, 11, 0.4); color: var(--warning, #fbbf24); display: none; align-items: center; gap: 4px;" title="Опубликовать список должников в группу">
+                                    📢 <span data-i18n="btn_notify_group">Tag Debtors</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -205,7 +208,7 @@
             group_settings_desc: "These values will be pre-filled when creating new games for this group.",
             lbl_group_lang: "Group Language",
             help_group_lang: "Group match posts will use this language.",
-            lbl_def_price: "Default Price (CZK)",
+            lbl_def_price: "Default Match Fee (CZK)",
             lbl_pay_account: "Payment Account",
             ph_pay_account: "Enter bank account...",
             lbl_def_location: "Default Location",
@@ -222,7 +225,8 @@
             help_def_reg: "0 = open continuously until kickoff.",
             lbl_def_limit: "Signup Limit (all-inclusive)",
             help_def_limit: "Maximum with reserve. 0 = unlimited.",
-            btn_start_voting: "Open MVP Voting"
+            btn_start_voting: "Open MVP Voting",
+            btn_notify_group: "Tag Debtors in Group"
         },
         ru: {
             admin_hub: "Панель управления",
@@ -232,7 +236,7 @@
             group_settings_desc: "Эти значения будут подставляться автоматически при создании новых игр для этой группы.",
             lbl_group_lang: "Язык группы",
             help_group_lang: "Карточки и посты группы в Telegram будут на этом языке.",
-            lbl_def_price: "Цена по умолчанию (CZK)",
+            lbl_def_price: "Взнос по умолчанию (крон)",
             lbl_pay_account: "Номер счета",
             ph_pay_account: "Введите номер счета / карты...",
             lbl_def_location: "Локация по умолчанию",
@@ -249,11 +253,13 @@
             help_def_reg: "0 — запись открыта вплоть до игры.",
             lbl_def_limit: "Лимит записи (всё вкл.)",
             help_def_limit: "Максимум с резервом. 0 — без ограничений.",
-            btn_start_voting: "Открыть MVP голосование"
+            btn_start_voting: "Открыть MVP голосование",
+            btn_notify_group: "Должники в группу"
         }
     };
 
-    let adminCurrentLang = localStorage.getItem('webapp_lang') || 'en';
+    const paramLang = (new URLSearchParams(window.location.search)).get('lang');
+    let adminCurrentLang = (paramLang === 'en' || paramLang === 'ru') ? paramLang : (localStorage.getItem('webapp_lang') || 'en');
 
     function setAdminLang(lang) {
         adminCurrentLang = lang;

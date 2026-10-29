@@ -6,6 +6,8 @@ from typing import List, Optional
 import datetime
 import logging
 import re
+import json
+import html
 
 from app.db.database import get_session
 from app.db.models import Chat, ChatAdmin, User, Game, Signup, SignupStatus, Language
@@ -199,6 +201,8 @@ class PlayerDetailOut(BaseModel):
     goals: int = 0
     mvp_votes: int = 0
     is_mvp: bool = False
+    notify_status: Optional[str] = None
+    notified_at: Optional[str] = None
 
 class GameDetailOut(BaseModel):
     id: int
@@ -223,11 +227,14 @@ async def _get_game_votes_map(session: AsyncSession, game_id: int) -> dict[int, 
     )
     return {v[0]: v[1] for v in votes_res.all()}
 
-def _format_game_players(rows, votes_map) -> List[PlayerDetailOut]:
+def _format_game_players(rows, votes_map, notify_logs=None) -> List[PlayerDetailOut]:
     """Helper to format the players list from joined query rows."""
+    if notify_logs is None:
+        notify_logs = {}
     players = []
     for signup, user, u_stats in rows:
         v_count = votes_map.get(user.user_id, 0)
+        n_log = notify_logs.get(user.user_id, {})
         players.append(PlayerDetailOut(
             signup_id=signup.id,
             user_id=user.user_id,
@@ -238,7 +245,9 @@ def _format_game_players(rows, votes_map) -> List[PlayerDetailOut]:
             team=signup.team.value if signup.team else None,
             goals=u_stats.goals if u_stats else 0,
             mvp_votes=v_count,
-            is_mvp=u_stats.is_mvp if u_stats else False
+            is_mvp=u_stats.is_mvp if u_stats else False,
+            notify_status=n_log.get("status"),
+            notified_at=n_log.get("time")
         ))
     return players
 
@@ -271,7 +280,21 @@ async def get_game_details(
         game.location = cleaned_loc
         await session.commit()
 
-    players = _format_game_players(res.all(), votes_map)
+    res_rows = res.all()
+    notify_logs = {}
+    try:
+        redis_client = cache_service._get_client()
+        keys = [f"notify_log:{game_id}:{row[1].user_id}" for row in res_rows]
+        if keys:
+            vals = await redis_client.mget(keys)
+            for k, val in zip(keys, vals):
+                if val:
+                    uid = int(k.split(":")[-1])
+                    notify_logs[uid] = json.loads(val) if isinstance(val, str) else val
+    except Exception as e:
+        logger.warning(f"Failed to fetch notify logs from Redis for game {game_id}: {e}")
+
+    players = _format_game_players(res_rows, votes_map, notify_logs)
     from app.bot.utils import get_group_game_number
     g_num = await get_group_game_number(session, game)
         
@@ -413,8 +436,41 @@ async def update_player_status(
     if data.status.lower() not in status_map:
         raise HTTPException(status_code=400, detail="Invalid status")
         
-    signup.status = status_map[data.status.lower()]
+    prev_status = signup.status
+    new_status = status_map[data.status.lower()]
+    signup.status = new_status
     await session.commit()
+
+    # If promoted from reserve to active, notify player in DM
+    if prev_status == SignupStatus.RESERVE and new_status == SignupStatus.ACTIVE and signup.user_id >= 0:
+        target_uid = signup.user_id
+        target_gid = signup.game_id
+        async def _notify_promoted():
+            try:
+                from app.db.database import async_session_maker
+                from app.bot.instance import bot
+                from app.bot.utils import get_group_game_number
+                async with async_session_maker() as s_bg:
+                    g = await s_bg.get(Game, target_gid)
+                    u = await s_bg.get(User, target_uid)
+                    if not g or not u:
+                        return
+                    p_lang = getattr(u, 'language', 'en')
+                    p_lang = p_lang.value if hasattr(p_lang, 'value') else str(p_lang)
+                    game_num = await get_group_game_number(s_bg, g)
+                    date_str = g.date_time.strftime("%d.%m.%Y %H:%M") if g.date_time else ""
+                    from app.bot.i18n import t
+                    text = t(
+                        "promoted_by_admin",
+                        locale=p_lang,
+                        game_num=game_num,
+                        location=html.escape(g.location),
+                        date=date_str
+                    )
+                    await bot.send_message(target_uid, text, parse_mode="HTML")
+            except Exception as e:
+                logger.warning(f"Failed to notify manually promoted player {target_uid}: {e}")
+        background_tasks.add_task(_notify_promoted)
 
     from app.core.events import event_bus, GameStateChangedEvent
     background_tasks.add_task(event_bus.publish, GameStateChangedEvent(signup.game_id))
@@ -502,7 +558,7 @@ async def notify_player_payment(
     session: AsyncSession = Depends(get_session)
 ):
     target_user_id = data.get("user_id")
-    if not target_user_id:
+    if target_user_id is None:
         raise HTTPException(status_code=400, detail="Missing user_id")
         
     game = await session.get(Game, game_id)
@@ -511,24 +567,135 @@ async def notify_player_payment(
         
     await check_admin_rights(game.chat_id, admin_id)
     
-    # Send message using bot
-    # We must import the bot instance carefully to avoid circular imports
-    # If bot is not globally accessible, we can use dependency injection or absolute import
+    now_str = datetime.datetime.now().strftime("%H:%M")
+
+    # If guest
+    if target_user_id < 0:
+        log_entry = {"status": "guest", "time": now_str, "detail": "Гость (нет Telegram)"}
+        await cache_service.set(f"notify_log:{game_id}:{target_user_id}", log_entry, ttl=86400 * 30)
+        return {"status": "ok", "delivery": "guest", "time": now_str, "detail": "Игрок является гостем."}
+
+    user = await session.get(User, target_user_id)
+    user_lang = "en"
+    if user and getattr(user, "language", None):
+        user_lang = user.language.value if hasattr(user.language, "value") else str(user.language)
+    user_lang = (user_lang or "en").lower()
+
+    from app.bot.instance import bot
+    from app.bot.utils import get_group_game_number
+    game_num = await get_group_game_number(session, game)
+    date_str = game.date_time.strftime("%d.%m.%Y %H:%M") if game.date_time else ""
+    pay_info = game.payment_info or ""
+
+    from app.bot.i18n import t
+    fallback_pay = t("pm_payment_reminder_no_details", locale=user_lang)
+    pay_display = html.escape(pay_info) if pay_info else fallback_pay
+    msg = t(
+        "pm_payment_reminder",
+        locale=user_lang,
+        game_num=game_num,
+        location=html.escape(game.location),
+        date=date_str,
+        price=game.price,
+        payment=pay_display
+    )
+
     try:
-        from app.bot.main import bot
-        
-        date_str = game.date_time.strftime("%d.%m.%Y %H:%M")
-        msg = (
-            f"🔔 <b>Напоминание об оплате</b>\n\n"
-            f"Пожалуйста, не забудьте оплатить взнос за игру:\n"
-            f"📍 <b>{game.location}</b> ({date_str})\n"
-            f"💰 Сумма: <b>{game.price} CZK</b>\n"
-            f"💳 Реквизиты: <code>{game.payment_info}</code>"
-        )
         await bot.send_message(target_user_id, msg, parse_mode="HTML")
-        return {"status": "ok"}
+        log_entry = {"status": "delivered", "time": now_str, "detail": "Доставлено в ЛС"}
+        await cache_service.set(f"notify_log:{game_id}:{target_user_id}", log_entry, ttl=86400 * 30)
+        return {"status": "ok", "delivery": "delivered", "time": now_str}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        err_str = str(e)
+        logger.warning(f"Failed to send payment reminder to {target_user_id}: {err_str}")
+        is_blocked = any(x in err_str.lower() for x in ["blocked", "forbidden", "can't initiate", "chat not found"])
+        deliv_status = "blocked" if is_blocked else "error"
+        log_entry = {"status": deliv_status, "time": now_str, "detail": err_str[:60]}
+        await cache_service.set(f"notify_log:{game_id}:{target_user_id}", log_entry, ttl=86400 * 30)
+        return {"status": "ok", "delivery": deliv_status, "time": now_str, "detail": err_str}
+
+@router.post("/games/{game_id}/notify_group")
+async def notify_group_unpaid(
+    game_id: int,
+    admin_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    game = await session.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, admin_id)
+    
+    # Fetch unpaid active players
+    stmt = (
+        select(Signup, User)
+        .join(User, User.user_id == Signup.user_id)
+        .where(
+            Signup.game_id == game_id,
+            Signup.status == SignupStatus.ACTIVE,
+            Signup.is_paid == False
+        )
+        .order_by(Signup.created_at)
+    )
+    res = await session.execute(stmt)
+    unpaid_rows = res.all()
+    
+    if not unpaid_rows:
+        return {"status": "ok", "unpaid_count": 0, "message": "all_paid"}
+
+    # Determine chat language
+    chat_lang = "en"
+    chat_row = await session.get(Chat, game.chat_id)
+    if chat_row and getattr(chat_row, "language", None):
+        chat_lang = chat_row.language.value if hasattr(chat_row.language, "value") else str(chat_row.language)
+    chat_lang = (chat_lang or "en").lower()
+
+    from app.bot.utils import get_group_game_number
+    from app.bot.instance import bot
+    game_num = await get_group_game_number(session, game)
+    date_str = game.date_time.strftime("%d.%m.%Y %H:%M") if game.date_time else ""
+    pay_info = game.payment_info or ""
+
+    from app.bot.i18n import t
+    guest_label = t("debtor_guest_label", locale=chat_lang)
+    debtors_list = []
+    for idx, (s, u) in enumerate(unpaid_rows, start=1):
+        if u.user_id < 0:
+            name_display = f"{html.escape(u.full_name)} ({guest_label})"
+        elif u.username:
+            name_display = f"@{u.username}"
+        else:
+            name_display = f'<a href="tg://user?id={u.user_id}">{html.escape(u.full_name)}</a>'
+        debtors_list.append(f"{idx}. {name_display}")
+    debtors_text = "\n".join(debtors_list)
+
+    fallback_pay = t("group_payment_reminder_no_details", locale=chat_lang)
+    pay_display = html.escape(pay_info) if pay_info else fallback_pay
+    text = t(
+        "group_payment_reminder",
+        locale=chat_lang,
+        game_num=game_num,
+        location=html.escape(game.location),
+        date=date_str,
+        price=game.price,
+        payment=pay_display,
+        count=len(unpaid_rows),
+        debtors=debtors_text
+    )
+
+    try:
+        await bot.send_message(chat_id=game.chat_id, text=text, parse_mode="HTML")
+    except Exception as e:
+        logger.error(f"Failed to send group payment reminder for game {game_id}: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to post to group: {str(e)}")
+
+    now_str = datetime.datetime.now().strftime("%H:%M")
+    await cache_service.set(
+        f"notify_group_log:{game_id}",
+        {"time": now_str, "unpaid_count": len(unpaid_rows)},
+        ttl=86400 * 30
+    )
+    return {"status": "ok", "unpaid_count": len(unpaid_rows), "time": now_str}
 
 @router.delete("/games/{game_id}")
 async def delete_game(

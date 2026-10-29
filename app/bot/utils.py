@@ -208,9 +208,10 @@ def _format_price_section(game, lang: str = "en") -> str:
     is_en = (lang or "en").lower() == "en"
     text = ""
     if game.price > 0:
-        price_word = "Price" if is_en else "Цена"
+        price_word = "Match fee" if is_en else "Взнос"
+        currency = "CZK" if is_en else "крон"
         text += f"——————————————————\n"
-        text += f"💰 <b>{price_word}:</b> {game.price} CZK\n"
+        text += f"💰 <b>{price_word}:</b> {game.price} {currency}\n"
         if game.payment_info:
             text += f"💳 <code>{html.escape(game.payment_info)}</code>\n"
     return text

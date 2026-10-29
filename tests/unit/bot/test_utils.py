@@ -78,8 +78,8 @@ async def test_format_game_message_empty(session: AsyncSession):
     assert "Игроки" in text_full
     assert "0/" in text_full
     assert "Пока никого... 🦗" in text_full
-    assert "Цена" in text_full
-    assert "150 CZK" in text_full
+    assert "Взнос" in text_full
+    assert "150 крон" in text_full
     assert "Test Pay Info" in text_full
 
 @pytest.mark.asyncio
@@ -134,7 +134,7 @@ async def test_format_game_message_massive_rosters(session: AsyncSession):
     assert "2" in text
     assert "Player 11" in text
     assert "Player 12" in text
-    assert "Цена" not in text # Because price is 0
+    assert "Взнос" not in text # Because price is 0
 
 @pytest.mark.asyncio
 async def test_format_game_message_special_characters(session: AsyncSession):
@@ -437,4 +437,5 @@ async def test_format_game_message_english(session: AsyncSession):
     text_en = await format_game_message(game, session, is_short=False, signups=[])
     assert "🟢 <b>General Match</b>" in text_en
     assert "Players" in text_en
-    assert "Price" in text_en
+    assert "Match fee" in text_en
+    assert "150 CZK" in text_en

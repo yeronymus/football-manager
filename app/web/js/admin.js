@@ -35,6 +35,7 @@ if (document.readyState === 'loading') {
 }
 
 let currentGameId = null;
+let currentGameData = null;
 
 // View Navigation
 function switchView(viewId) {
@@ -151,7 +152,7 @@ async function loadGroupGames(group) {
     // Setup Settings
     document.getElementById('group-settings-container').classList.remove('hidden');
     document.getElementById('setting-lang').value = group.language || 'ru';
-    document.getElementById('setting-price').value = (group.default_price !== undefined && group.default_price !== null) ? group.default_price : 155;
+    document.getElementById('setting-price').value = (group.default_price !== undefined && group.default_price !== null) ? group.default_price : 100;
     document.getElementById('setting-payment-info').value = group.payment_info || '';
     document.getElementById('setting-location').value = group.default_location || '';
     document.getElementById('setting-max-players').value = group.default_max_players || 26;
@@ -234,8 +235,16 @@ async function loadGameDetails(gameId) {
             scoreContainer.innerHTML = '';
         }
         
+        currentGameData = game;
+
         const paidCount = game.players.filter(p => p.is_paid).length;
         document.getElementById('roster-paid-info').textContent = `Paid: ${paidCount}/${game.players.length}`;
+        
+        const activeUnpaidCount = game.players.filter(p => p.status === 'active' && !p.is_paid).length;
+        const groupNotifyBtn = document.getElementById('btn-notify-group');
+        if (groupNotifyBtn) {
+            groupNotifyBtn.style.display = activeUnpaidCount > 0 ? 'inline-flex' : 'none';
+        }
         
         const listEl = document.getElementById('players-list');
         listEl.innerHTML = '';
@@ -283,10 +292,23 @@ async function loadGameDetails(gameId) {
                 if (p.is_mvp) {
                     statsHtml += `<span title="MVP" style="color: #fbbf24; font-weight: bold; font-size: 0.95rem; margin-left: 6px; padding: 2px 6px; background: rgba(245, 158, 11, 0.15); border-radius: 6px;">MVP 🌟</span>`;
                 }
+
+                // Delivery badge (feedback / backlog)
+                let notifyBadgeHtml = '';
+                if (p.notify_status === 'delivered') {
+                    notifyBadgeHtml = `<span class="notify-badge delivered" title="Delivered in Telegram DM">✅ ${getAdminText('DM Sent', 'В ЛС')} ${p.notified_at || ''}</span>`;
+                } else if (p.notify_status === 'blocked') {
+                    notifyBadgeHtml = `<span class="notify-badge blocked" title="Bot blocked by user">⚠️ ${getAdminText('Bot blocked', 'Бот заблокирован')} ${p.notified_at || ''}</span>`;
+                } else if (p.notify_status === 'guest') {
+                    notifyBadgeHtml = `<span class="notify-badge guest" title="Guest player without Telegram account">👤 ${getAdminText('Guest (no DM)', 'Гость (нет ЛС)')}</span>`;
+                } else if (p.notify_status === 'error') {
+                    notifyBadgeHtml = `<span class="notify-badge error" title="Delivery failed">❌ ${getAdminText('Failed', 'Ошибка')} ${p.notified_at || ''}</span>`;
+                }
                 
                 let notifyBtn = '';
                 if (!p.is_paid) {
-                    notifyBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 6px;" onclick="notifyPayment(${p.user_id}, ${gameId}, this)" title="${getAdminText('Notify payment', 'Уведомить об оплате')}">🔔</button>`;
+                    const safeName = (p.full_name || '').replace(/'/g, "\\'");
+                    notifyBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 6px;" onclick="notifyPayment(${p.user_id}, ${gameId}, this, '${safeName}')" title="${getAdminText('Notify payment in DM', 'Напомнить об оплате в ЛС')}">🔔</button>`;
                 }
                 
                 let removeBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-left: 6px; border-color: rgba(239, 68, 68, 0.3); color: var(--danger);" onclick="kickPlayer(${p.signup_id}, ${gameId}, this)" title="${getAdminText('Remove player', 'Убрать игрока')}">❌</button>`;
@@ -294,6 +316,7 @@ async function loadGameDetails(gameId) {
                 el.innerHTML = `
                     <div class="player-info">
                         <span class="player-name">${p.full_name} <div style="font-size:0.8rem; margin-left: 6px;">${statsHtml}</div></span>
+                        <div class="player-meta" id="notify-meta-${p.user_id}">${notifyBadgeHtml}</div>
                     </div>
                     <div class="player-actions" style="display: flex; align-items: center;">
                         ${notifyBtn}
@@ -429,24 +452,100 @@ async function switchRosterTab(tab) {
     }
 }
 
-async function notifyPayment(userId, gameId, btn) {
-    if (!confirm(getAdminText('Send payment reminder to this player via Telegram?', 'Отправить напоминание об оплате этому игроку в личные сообщения?'))) return;
+async function notifyPayment(userId, gameId, btn, playerName) {
+    const confirmMsg = getAdminText(
+        `🔔 Send payment reminder to ${playerName || 'player'} in Telegram DM?`,
+        `🔔 Отправить напоминание об оплате игроку ${playerName || ''} в личные сообщения Telegram?`
+    );
+    if (!confirm(confirmMsg)) return;
     
     const origText = btn.innerHTML;
     btn.innerHTML = '⏳';
     btn.disabled = true;
     
     try {
-        await apiCall(`/games/${gameId}/notify`, 'POST', { user_id: userId });
-        btn.innerHTML = '✅';
+        const res = await apiCall(`/games/${gameId}/notify`, {
+            method: 'POST',
+            body: JSON.stringify({ user_id: userId })
+        });
+
+        const metaEl = document.getElementById(`notify-meta-${userId}`);
+        const timeStr = res.time || '';
+        
+        if (res.delivery === 'delivered') {
+            btn.innerHTML = '✅';
+            if (metaEl) {
+                metaEl.innerHTML = `<span class="notify-badge delivered">✅ ${getAdminText('DM Sent', 'В ЛС')} ${timeStr}</span>`;
+            }
+        } else if (res.delivery === 'blocked') {
+            btn.innerHTML = '⚠️';
+            if (metaEl) {
+                metaEl.innerHTML = `<span class="notify-badge blocked">⚠️ ${getAdminText('Bot blocked', 'Бот заблокирован')} ${timeStr}</span>`;
+            }
+            alert(getAdminText('The player has blocked the bot or has not started a chat with it.', 'Игрок заблокировал бота или ни разу не запускал его в ЛС.'));
+        } else if (res.delivery === 'guest') {
+            btn.innerHTML = '👤';
+            if (metaEl) {
+                metaEl.innerHTML = `<span class="notify-badge guest">👤 ${getAdminText('Guest (no DM)', 'Гость (нет ЛС)')}</span>`;
+            }
+            alert(getAdminText('This player is a guest without a Telegram account.', 'Этот игрок — гость и не имеет Telegram-аккаунта.'));
+        } else {
+            btn.innerHTML = '❌';
+            if (metaEl) {
+                metaEl.innerHTML = `<span class="notify-badge error">❌ ${getAdminText('Failed', 'Ошибка')} ${timeStr}</span>`;
+            }
+            alert(res.detail || 'Failed to send notification.');
+        }
+
         setTimeout(() => {
             btn.innerHTML = origText;
             btn.disabled = false;
         }, 2000);
     } catch (e) {
-        alert(getAdminText('Failed to send notification. The player may have blocked the bot.', 'Ошибка при отправке уведомления. Возможно игрок заблокировал бота.'));
+        alert(getAdminText('Failed to send notification: ' + e.message, 'Ошибка при отправке: ' + e.message));
         btn.innerHTML = origText;
         btn.disabled = false;
+    }
+}
+
+async function notifyGroupDebtClick() {
+    if (!currentGameData) return;
+    
+    const unpaidPlayers = (currentGameData.players || []).filter(p => p.status === 'active' && !p.is_paid);
+    if (unpaidPlayers.length === 0) {
+        alert(getAdminText('All active players have already paid! 🎉', 'Все активные игроки уже оплатили! 🎉'));
+        return;
+    }
+    
+    const confirmMsg = getAdminText(
+        `📢 Post list of ${unpaidPlayers.length} unpaid player(s) to the group chat?\n\nThe bot will tag them with payment details.`,
+        `📢 Опубликовать список ${unpaidPlayers.length} неоплативших игроков в группе?\n\nБот отметит их и прикрепит реквизиты для оплаты.`
+    );
+    if (!confirm(confirmMsg)) return;
+    
+    const btn = document.getElementById('btn-notify-group');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.innerHTML = '⏳ ' + getAdminText('Sending...', 'Отправка...');
+        btn.disabled = true;
+    }
+    
+    try {
+        const res = await apiCall(`/games/${currentGameId}/notify_group`, {
+            method: 'POST'
+        });
+        
+        alert(getAdminText(
+            `✅ Successfully posted payment reminder for ${res.unpaid_count} player(s) to the group chat!`,
+            `✅ Список ${res.unpaid_count} должников успешно опубликован в группе!`
+        ));
+    } catch (e) {
+        alert(getAdminText('Failed to post to group: ' + e.message, 'Ошибка при отправке в группу: ' + e.message));
+    } finally {
+        if (btn) {
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
+        }
     }
 }
 
@@ -570,9 +669,8 @@ async function togglePayment(signupId, btnEl, gameId) {
             btnEl.textContent = 'Unpaid';
         }
         
-        // Update total counter logic implicitly by reloading details or just string manipulation
-        // For premium feel, we just let the button change, and optionally refresh game details
-        // loadGameDetails(gameId); // Uncomment if we want full refresh
+        // Refresh details so Paid count and Tag Debtors button update seamlessly
+        await loadGameDetails(gameId);
     } catch (e) {
         btnEl.textContent = originalText;
         alert("Failed to toggle payment");

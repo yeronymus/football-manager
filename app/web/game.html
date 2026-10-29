@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Запись на игру</title>
+    <title data-i18n="app_title">Football Manager</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/web/js/i18n.js?v=1.3.1"></script>
     <link rel="stylesheet" href="/web/css/style.css?v=1.3.0">
     <style>
         .game-header-card {
@@ -197,30 +198,38 @@
         <div class="spinner"></div>
     </div>
 
+    <!-- Top Language Switch Bar -->
+    <div class="flex-between" style="padding: 12px 16px 0; align-items: center;">
+        <span style="font-size: 13px; font-weight: 700; color: var(--hint-color);" data-i18n="app_title">Football Manager</span>
+        <button id="lang-toggle-btn" onclick="i18n.toggleLanguage()" class="lang-switch-btn" style="background: rgba(255,255,255,0.06); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 700; cursor: pointer;">
+            🌐 EN
+        </button>
+    </div>
+
     <!-- Sponsor Banner Top -->
     <div id="ad-banner-top" style="display:none; margin: 12px 16px 0;"></div>
 
     <!-- Game Card -->
     <div class="card game-header-card" style="margin-top: 16px; margin-bottom: 12px;">
         <div class="flex-between">
-            <span style="font-size: 10px; font-weight: 800; color:var(--accent-color); text-transform: uppercase; letter-spacing: 1px;" id="game-label">Матч #--</span>
-            <span id="game-status-badge" class="player-pos-badge" style="background:rgba(56, 189, 248, 0.15); color:var(--accent-color)">ОТКРЫТ</span>
+            <span style="font-size: 10px; font-weight: 800; color:var(--accent-color); text-transform: uppercase; letter-spacing: 1px;" id="game-label">Match #--</span>
+            <span id="game-status-badge" class="player-pos-badge" style="background:rgba(56, 189, 248, 0.15); color:var(--accent-color)" data-i18n="status_open">OPEN</span>
         </div>
-        <h2 style="padding: 12px 0 4px; font-size: 24px; line-height: 1.2;" id="game-location">📍 Загрузка...</h2>
+        <h2 style="padding: 12px 0 4px; font-size: 24px; line-height: 1.2;" id="game-location">📍 Loading...</h2>
         <div class="subtitle" id="game-date" style="font-size: 14px; font-weight: 500;">📅 --.--.---- --:--</div>
 
         <div class="meta-grid">
             <div class="meta-item">
-                <span class="meta-label">Формат</span>
+                <span class="meta-label" data-i18n="lbl_format">Format</span>
                 <span class="meta-val" id="game-format">--х--</span>
             </div>
             <div class="meta-item">
-                <span class="meta-label">Взнос</span>
+                <span class="meta-label" data-i18n="lbl_price">Match fee</span>
                 <span class="meta-val" id="game-price">-- CZK</span>
             </div>
             <div class="meta-item" style="grid-column: span 2;">
-                <span class="meta-label">Реквизиты</span>
-                <span class="meta-val" id="game-payment" style="font-size: 12px;">Загрузка...</span>
+                <span class="meta-label" data-i18n="lbl_payment">Payment info</span>
+                <span class="meta-val" id="game-payment" style="font-size: 12px;" data-i18n="loading">Loading...</span>
             </div>
         </div>
     </div>
@@ -230,7 +239,7 @@
         <div class="flex-row" style="gap:10px;">
             <span style="font-size: 20px;">🛡️</span>
             <div>
-                <div style="font-weight:700; font-size:13px; color:var(--accent-color);" id="status-info-title">Статус бронирования</div>
+                <div style="font-weight:700; font-size:13px; color:var(--accent-color);" id="status-info-title" data-i18n="booking_status">Booking Status</div>
                 <div style="font-size:12px; color:var(--hint-color); margin-top:2px;" id="status-info-desc"></div>
             </div>
         </div>
@@ -238,49 +247,49 @@
 
     <!-- Achievements Section -->
     <div class="section-title">
-        <span>Личные Достижения</span>
+        <span data-i18n="sec_achievements">Personal Achievements</span>
     </div>
     <div class="achievement-grid">
         <div class="achievement-card" id="ach-veteran">
             <div class="achievement-icon" id="ach-veteran-icon">⚔️</div>
             <div>
-                <div class="achievement-title" id="ach-veteran-title">Ветеран</div>
-                <div class="achievement-desc" id="ach-veteran-desc">0 игр сыграно</div>
+                <div class="achievement-title" id="ach-veteran-title" data-i18n="ach_veteran_title">Veteran</div>
+                <div class="achievement-desc" id="ach-veteran-desc" data-i18n="ach_veteran_desc_0">Play 1st match</div>
             </div>
         </div>
         <div class="achievement-card" id="ach-goleador">
             <div class="achievement-icon" id="ach-goleador-icon">🥅</div>
             <div>
-                <div class="achievement-title" id="ach-goleador-title">Бомбардир</div>
-                <div class="achievement-desc" id="ach-goleador-desc">0 голов забито</div>
+                <div class="achievement-title" id="ach-goleador-title" data-i18n="ach_striker_title">Striker</div>
+                <div class="achievement-desc" id="ach-goleador-desc" data-i18n="ach_striker_desc_0">Score 1st goal</div>
             </div>
         </div>
         <div class="achievement-card" id="ach-mvp">
             <div class="achievement-icon" id="ach-mvp-icon">🌟</div>
             <div>
-                <div class="achievement-title" id="ach-mvp-title">MVP Матча</div>
-                <div class="achievement-desc" id="ach-mvp-desc">0 званий MVP</div>
+                <div class="achievement-title" id="ach-mvp-title" data-i18n="ach_mvp_title">Match MVP</div>
+                <div class="achievement-desc" id="ach-mvp-desc" data-i18n="ach_mvp_desc_0">Become Match MVP</div>
             </div>
         </div>
         <div class="achievement-card" id="ach-rating">
             <div class="achievement-icon" id="ach-rating-icon">👑</div>
             <div>
-                <div class="achievement-title" id="ach-rating-title">Ранг MMR</div>
-                <div class="achievement-desc" id="ach-rating-desc">Набирай силу</div>
+                <div class="achievement-title" id="ach-rating-title" data-i18n="ach_rating_title">MMR Rank</div>
+                <div class="achievement-desc" id="ach-rating-desc" data-i18n="ach_rating_desc_default">Gain strength</div>
             </div>
         </div>
     </div>
 
     <!-- Main Roster -->
     <div class="section-title">
-        <span>Основной Состав</span>
+        <span data-i18n="sec_main_roster">Main Squad</span>
         <span class="section-count" id="active-count">0 / --</span>
     </div>
     <div id="roster-active" style="padding: 0 16px;"></div>
 
     <!-- Reserve Roster -->
     <div class="section-title" id="reserve-header" style="display:none;">
-        <span>Лист Резерва</span>
+        <span data-i18n="sec_reserve_roster">Reserve List</span>
         <span class="section-count" id="reserve-count">0</span>
     </div>
     <div id="roster-reserve" style="padding: 0 16px; margin-bottom: 24px;"></div>
@@ -291,16 +300,16 @@
     <!-- Sticky action footer -->
     <div class="action-container">
         <button class="btn-join" id="action-btn">
-            <span>⚽ Записаться на игру</span>
+            <span data-i18n="btn_join_game">⚽ Sign Up for Game</span>
         </button>
         <button class="btn-leave" id="leave-btn" style="display:none;">
-            <span>❌ Выписаться с игры</span>
+            <span data-i18n="btn_leave_game">❌ Leave Match</span>
         </button>
-        <button onclick="window.Telegram.WebApp.close()" class="pos-btn" style="width:100%; margin-top:10px; background:transparent; border:none; color:var(--hint-color); font-weight:600; font-size:12px;">
-            🔙 Назад в чат группы
+        <button onclick="window.Telegram.WebApp.close()" class="pos-btn" style="width:100%; margin-top:10px; background:transparent; border:none; color:var(--hint-color); font-weight:600; font-size:12px;" data-i18n="btn_back_to_chat">
+            🔙 Back to Group Chat
         </button>
     </div>
 
-    <script src="/web/js/game.js?v=1.3.0"></script>
+    <script src="/web/js/game.js?v=1.3.1"></script>
 </body>
 </html>

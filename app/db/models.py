@@ -101,7 +101,7 @@ class Chat(Base):
 
     # Defaults for Game Creation
     default_location = Column(String, nullable=True)
-    default_price = Column(Integer, default=155)
+    default_price = Column(Integer, default=100)
     default_team_count = Column(Integer, default=2)
     default_max_players = Column(Integer, default=26)
     default_main_players_count = Column(Integer, default=22)
@@ -186,7 +186,7 @@ class Game(Base):
     location = Column(String, nullable=False)
     max_players = Column(Integer, default=18)
     price = Column(Integer, default=100)
-    payment_info = Column(String, default="2924402033/0800")
+    payment_info = Column(String, nullable=True, default=None)
     team_count = Column(Integer, default=2)
     gk_hours = Column(Integer, default=0)
     duration = Column(Float, default=2.0) # Match duration in hours

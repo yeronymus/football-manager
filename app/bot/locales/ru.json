@@ -17,7 +17,7 @@
     "players_header": "👥 <b>Игроки</b> ({count}/{limit}):",
     "reserve_header": "🕒 <b>Резерв</b> ({count}):",
     "empty_roster": "Пока никого... 🦗",
-    "price_label": "💰 <b>Цена:</b> {price} CZK",
+    "price_label": "💰 <b>Взнос:</b> {price} крон",
     "payment_label": "💳 <code>{payment}</code>",
     "unassigned_header": "⚪ <b>Нераспределенные</b> ({count}):",
     "pos_gk": "Вратари",
@@ -67,5 +67,17 @@
     "setup_group_only": "Эта команда работает только в группах.",
     "setup_lang_changed": "✅ Язык группы успешно изменен на <b>{lang}</b>.\nВсе сообщения касаемо этой группы будут на {lang_name}.",
     "setup_btn_payment": "💳 Изменить реквизиты",
-    "setup_btn_close": "❌ Закрыть"
+    "setup_btn_close": "❌ Закрыть",
+
+    "pm_payment_reminder": "🔔 <b>Напоминание об оплате</b>\n\nПожалуйста, отправьте свою часть за матч <b>#{game_num}</b>:\n📍 <b>{location}</b> ({date})\n💰 Взнос: <b>{price} крон</b>\n💳 Реквизиты: <code>{payment}</code>",
+    "pm_payment_reminder_no_details": "Уточняйте у организатора",
+    "group_payment_reminder": "📢 <b>Матч #{game_num} — Сбор взносов</b>\n\n📍 <b>{location}</b> ({date})\n💰 Взнос: <b>{price} крон</b>\n💳 Реквизиты: <code>{payment}</code>\n\n⏳ <b>Ожидаем оплату ({count} чел.):</b>\n{debtors}\n\n<i>Парни, отправьте свою часть как можно раньше. Спасибо!</i>",
+    "group_payment_reminder_no_details": "Уточняйте у организатора",
+    "promoted_to_active_detailed": "🚀 <b>Вы переведены в основной состав!</b>\n\nМатч <b>#{game_num}</b>\n📍 <b>{location}</b>\n📅 <b>{date}</b>\n\nГотовьтесь к игре!",
+    "voting_closed_title": "Матч <b>#{game_num}</b> завершен.\n\n<b>Голосование за MVP закрыто!</b>\nРезультаты опубликованы ниже.",
+    "promoted_by_admin": "🎉 <b>Вас перевели в основной состав!</b>\n\nМатч: <b>#{game_num}</b>\n📍 Локация: <b>{location}</b>\n⏰ Время: <b>{date}</b>\n\nАдминистратор перевел вас в основу. Ждем вас на поле! ⚽",
+    "promoted_auto": "🎉 <b>Вас перевели в основной состав!</b>\n\nМатч: <b>#{game_num}</b>\n📍 Локация: <b>{location}</b>\n⏰ Время: <b>{date}</b>\n\nКто-то выписался из игры, освободилось место. Ждем вас на поле! ⚽",
+    "cmd_start_voting_title": "🏆 <b>Голосование за MVP (Матч #{game_num})</b>\n\nВыберите лучших игроков, нажав на кнопки ниже:",
+    "tap_to_signup": "👇 <b>Нажмите, чтобы записаться:</b>",
+    "debtor_guest_label": "Гость"
 }

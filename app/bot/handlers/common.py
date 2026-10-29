@@ -122,11 +122,12 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
                  return
 
             # Fallback: Send a compact message with buttons
-            short_text = "👇 <b>Нажмите, чтобы записаться:</b>"
+            from app.bot.i18n import t
+            short_text = t("tap_to_signup", locale=chat_lang)
             try:
                 sent_msg = await message.reply(
                     short_text,
-                    reply_markup=get_game_keyboard(game_id),
+                    reply_markup=get_game_keyboard(game_id, lang=chat_lang),
                     parse_mode="HTML"
                 )
                 
@@ -387,11 +388,9 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     else: unassigned.append(u)
 
                 from app.bot.keyboards import get_voting_keyboard
+                from app.bot.i18n import t
                 kb = get_voting_keyboard(game_id, team_a, team_b, team_c=team_c, unassigned=unassigned, lang=user_lang)
-                if user_lang == "ru":
-                    v_text = f"🏆 <b>Голосование за MVP (Матч #{game_num})</b>\n\nВыберите лучших игроков, нажав на кнопки ниже:"
-                else:
-                    v_text = f"🏆 <b>Voting for MVP (Match #{game_num})</b>\n\nVote for the best players using the buttons below:"
+                v_text = t("cmd_start_voting_title", locale=user_lang, game_num=game_num)
                 await message.answer(v_text, reply_markup=kb)
                 return
 

@@ -17,7 +17,7 @@
     "players_header": "👥 <b>Players</b> ({count}/{limit}):",
     "reserve_header": "🕒 <b>Reserve</b> ({count}):",
     "empty_roster": "Nobody yet... 🦗",
-    "price_label": "💰 <b>Price:</b> {price} CZK",
+    "price_label": "💰 <b>Match fee:</b> {price} CZK",
     "payment_label": "💳 Payment: <code>{payment}</code>",
     "unassigned_header": "⚪ <b>Unassigned</b> ({count}):",
     "pos_gk": "Goalkeepers",
@@ -67,5 +67,17 @@
     "setup_group_only": "This command only works in groups.",
     "setup_lang_changed": "✅ Group language changed to <b>{lang}</b>.\nAll messages regarding this group will now be in {lang_name}.",
     "setup_btn_payment": "💳 Change Payment Details",
-    "setup_btn_close": "❌ Close"
+    "setup_btn_close": "❌ Close",
+
+    "pm_payment_reminder": "🔔 <b>Payment Reminder</b>\n\nPlease send your share for match <b>#{game_num}</b>:\n📍 <b>{location}</b> ({date})\n💰 Match fee: <b>{price} CZK</b>\n💳 Details: <code>{payment}</code>",
+    "pm_payment_reminder_no_details": "Contact organizer",
+    "group_payment_reminder": "📢 <b>Match #{game_num} — Payment Reminder</b>\n\n📍 <b>{location}</b> ({date})\n💰 Match fee: <b>{price} CZK</b>\n💳 Payment info: <code>{payment}</code>\n\n⏳ <b>Awaiting payment from ({count} players):</b>\n{debtors}\n\n<i>Guys, please send your share as soon as possible. Thank you!</i>",
+    "group_payment_reminder_no_details": "Contact organizer",
+    "promoted_to_active_detailed": "🚀 <b>You have been moved to the active lineup!</b>\n\nMatch <b>#{game_num}</b>\n📍 <b>{location}</b>\n📅 <b>{date}</b>\n\nGet ready for the game!",
+    "voting_closed_title": "Match <b>#{game_num}</b> is finished.\n\n<b>Voting for MVP is closed!</b>\nResults published below.",
+    "promoted_by_admin": "🎉 <b>You have been moved to the main squad!</b>\n\nMatch: <b>#{game_num}</b>\n📍 Location: <b>{location}</b>\n⏰ Time: <b>{date}</b>\n\nThe organizer has promoted you to the active lineup. See you on the pitch! ⚽",
+    "promoted_auto": "🎉 <b>You have been moved to the main squad!</b>\n\nMatch: <b>#{game_num}</b>\n📍 Location: <b>{location}</b>\n⏰ Time: <b>{date}</b>\n\nSomeone left the game, vacant slot opened. See you on the pitch! ⚽",
+    "cmd_start_voting_title": "🏆 <b>Voting for MVP (Match #{game_num})</b>\n\nVote for the best players using the buttons below:",
+    "tap_to_signup": "👇 <b>Tap below to sign up:</b>",
+    "debtor_guest_label": "Guest"
 }

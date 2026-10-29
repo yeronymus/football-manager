@@ -8,7 +8,7 @@ def test_get_setup_keyboard():
     
     # Check buttons
     buttons = kb.inline_keyboard
-    assert len(buttons) == 3
+    assert len(buttons) == 4
     
     # Row 1: Languages
     assert buttons[0][0].callback_data == "setlang_en"
@@ -16,11 +16,15 @@ def test_get_setup_keyboard():
     assert "EN" in buttons[0][0].text
     assert "RU" in buttons[0][1].text
     
-    # Row 2: Payment
-    assert buttons[1][0].callback_data == "setup_payment"
+    # Row 2: Location and Fee
+    assert buttons[1][0].callback_data == "setup_location"
+    assert buttons[1][1].callback_data == "setup_price"
     
-    # Row 3: Close
-    assert buttons[2][0].callback_data == "setup_close"
+    # Row 3: Payment
+    assert buttons[2][0].callback_data == "setup_payment"
+    
+    # Row 4: Close
+    assert buttons[3][0].callback_data == "setup_close"
 
 def test_get_game_keyboard_regular():
     game_id = 123

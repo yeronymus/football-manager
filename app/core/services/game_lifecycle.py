@@ -37,16 +37,24 @@ class GameLifecycleService:
             self.session.add(chat)
             await self.session.flush()
 
-        # 2. Create Game
+        # 2. Resolve location, price, and payment_info with fallback to Chat defaults
+        resolved_location = (data.location or "").strip() or (chat.default_location or "").strip()
+        if not resolved_location:
+            raise ValueError("Match location is required. Please set a location or configure group default.")
+
+        resolved_payment = (data.payment_info or "").strip() or (chat.payment_info or None)
+        resolved_price = data.price if (data.price is not None and data.price >= 0) else (chat.default_price if chat.default_price is not None else 100)
+
+        # 3. Create Game
         game = Game(
             chat_id=data.chat_id,
             channel_id=chat.channel_id,
             created_by=creator_id,
             date_time=data.date_time,
-            location=data.location,
+            location=resolved_location,
             max_players=data.max_players,
-            price=data.price,
-            payment_info=data.payment_info,
+            price=resolved_price,
+            payment_info=resolved_payment,
             team_count=data.team_count,
             gk_hours=data.gk_hours,
             registration_hours=data.registration_hours,

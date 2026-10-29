@@ -20,8 +20,8 @@ class CreateGameDTO:
     date_time: datetime
     location: str
     max_players: int = 18
-    price: int = 100
-    payment_info: str = "2924402033/0800"
+    price: Optional[int] = 100
+    payment_info: Optional[str] = None
     team_count: int = 2
     gk_hours: int = 0
     duration: float = 2.0
