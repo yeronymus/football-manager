@@ -2,6 +2,24 @@ function getAdminText(enText, ruText) {
     const lang = localStorage.getItem('webapp_lang') || 'en';
     return lang === 'ru' ? ruText : enText;
 }
+
+function promptConfirm(message) {
+    return new Promise((resolve) => {
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showConfirm) {
+            window.Telegram.WebApp.showConfirm(message, (ok) => resolve(!!ok));
+        } else {
+            resolve(window.confirm(message));
+        }
+    });
+}
+
+function promptAlert(message) {
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showAlert) {
+        window.Telegram.WebApp.showAlert(message);
+    } else {
+        alert(message);
+    }
+}
 let initData = "";
 let currentGroupId = null;
 
@@ -144,13 +162,12 @@ async function loadGroups() {
 
 async function loadGroupGames(group) {
     currentGroupId = group.chat_id;
-    currentGroupId = group.chat_id;
     switchView('view-group');
     
     document.getElementById('group-title').textContent = group.title;
+    switchGroupTab('games');
     
     // Setup Settings
-    document.getElementById('group-settings-container').classList.remove('hidden');
     document.getElementById('setting-lang').value = group.language || 'ru';
     document.getElementById('setting-price').value = (group.default_price !== undefined && group.default_price !== null) ? group.default_price : 100;
     document.getElementById('setting-payment-info').value = group.payment_info || '';
@@ -241,6 +258,10 @@ async function loadGameDetails(gameId) {
         document.getElementById('roster-paid-info').textContent = `Paid: ${paidCount}/${game.players.length}`;
         
         const activeUnpaidCount = game.players.filter(p => p.status === 'active' && !p.is_paid).length;
+        const allPmNotifyBtn = document.getElementById('btn-notify-all-pm');
+        if (allPmNotifyBtn) {
+            allPmNotifyBtn.style.display = activeUnpaidCount > 0 ? 'inline-flex' : 'none';
+        }
         const groupNotifyBtn = document.getElementById('btn-notify-group');
         if (groupNotifyBtn) {
             groupNotifyBtn.style.display = activeUnpaidCount > 0 ? 'inline-flex' : 'none';
@@ -508,12 +529,74 @@ async function notifyPayment(userId, gameId, btn, playerName) {
     }
 }
 
+async function notifyAllDmClick() {
+    if (!currentGameData) return;
+    
+    const unpaidPlayers = (currentGameData.players || []).filter(p => p.status === 'active' && !p.is_paid);
+    if (unpaidPlayers.length === 0) {
+        promptAlert(getAdminText('All active players have already paid! 🎉', 'Все активные игроки уже оплатили! 🎉'));
+        return;
+    }
+    
+    const confirmMsg = getAdminText(
+        `✉️ Send personal payment reminder in DM to all ${unpaidPlayers.length} unpaid player(s)?\n\nThe bot will contact each player directly in private chat.`,
+        `✉️ Отправить напоминание об оплате в ЛС всем неоплатившим игрокам (${unpaidPlayers.length} чел.)?\n\nБот напишет каждому игроку в личные сообщения.`
+    );
+    const confirmed = await promptConfirm(confirmMsg);
+    if (!confirmed) return;
+    
+    const btn = document.getElementById('btn-notify-all-pm');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.innerHTML = '⏳ ' + getAdminText('Sending...', 'Отправка...');
+        btn.disabled = true;
+    }
+    
+    try {
+        const res = await apiCall(`/games/${currentGameId}/notify_all_pm`, {
+            method: 'POST'
+        });
+        
+        // Update badges for each player on screen
+        if (res.results) {
+            Object.keys(res.results).forEach(uid => {
+                const info = res.results[uid];
+                const metaEl = document.getElementById(`notify-meta-${uid}`);
+                if (metaEl) {
+                    const timeStr = info.time || '';
+                    if (info.status === 'delivered') {
+                        metaEl.innerHTML = `<span class="notify-badge delivered">✅ ${getAdminText('DM Sent', 'В ЛС')} ${timeStr}</span>`;
+                    } else if (info.status === 'blocked') {
+                        metaEl.innerHTML = `<span class="notify-badge blocked">⚠️ ${getAdminText('Bot blocked', 'Бот заблокирован')} ${timeStr}</span>`;
+                    } else if (info.status === 'guest') {
+                        metaEl.innerHTML = `<span class="notify-badge guest">👤 ${getAdminText('Guest (no DM)', 'Гость (нет ЛС)')}</span>`;
+                    } else {
+                        metaEl.innerHTML = `<span class="notify-badge error">❌ ${getAdminText('Failed', 'Ошибка')} ${timeStr}</span>`;
+                    }
+                }
+            });
+        }
+        
+        promptAlert(getAdminText(
+            `✅ Reminders sent:\n• Delivered in DM: ${res.delivered}\n• Bot blocked: ${res.blocked}\n• Guests: ${res.guests}`,
+            `✅ Напоминания отправлены:\n• Доставлено в ЛС: ${res.delivered}\n• Бот заблокирован: ${res.blocked}\n• Гостей: ${res.guests}`
+        ));
+    } catch (e) {
+        promptAlert(getAdminText('Failed to send reminders: ' + e.message, 'Ошибка при отправке напоминаний: ' + e.message));
+    } finally {
+        if (btn) {
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
+        }
+    }
+}
+
 async function notifyGroupDebtClick() {
     if (!currentGameData) return;
     
     const unpaidPlayers = (currentGameData.players || []).filter(p => p.status === 'active' && !p.is_paid);
     if (unpaidPlayers.length === 0) {
-        alert(getAdminText('All active players have already paid! 🎉', 'Все активные игроки уже оплатили! 🎉'));
+        promptAlert(getAdminText('All active players have already paid! 🎉', 'Все активные игроки уже оплатили! 🎉'));
         return;
     }
     
@@ -521,7 +604,8 @@ async function notifyGroupDebtClick() {
         `📢 Post list of ${unpaidPlayers.length} unpaid player(s) to the group chat?\n\nThe bot will tag them with payment details.`,
         `📢 Опубликовать список ${unpaidPlayers.length} неоплативших игроков в группе?\n\nБот отметит их и прикрепит реквизиты для оплаты.`
     );
-    if (!confirm(confirmMsg)) return;
+    const confirmed = await promptConfirm(confirmMsg);
+    if (!confirmed) return;
     
     const btn = document.getElementById('btn-notify-group');
     const origHtml = btn ? btn.innerHTML : '';
@@ -535,12 +619,12 @@ async function notifyGroupDebtClick() {
             method: 'POST'
         });
         
-        alert(getAdminText(
+        promptAlert(getAdminText(
             `✅ Successfully posted payment reminder for ${res.unpaid_count} player(s) to the group chat!`,
             `✅ Список ${res.unpaid_count} должников успешно опубликован в группе!`
         ));
     } catch (e) {
-        alert(getAdminText('Failed to post to group: ' + e.message, 'Ошибка при отправке в группу: ' + e.message));
+        promptAlert(getAdminText('Failed to post to group: ' + e.message, 'Ошибка при отправке в группу: ' + e.message));
     } finally {
         if (btn) {
             btn.innerHTML = origHtml;
@@ -726,13 +810,247 @@ async function triggerVotingClick() {
         '🏆 Are you sure you want to open MVP voting for this match in the Telegram group?',
         '🏆 Вы уверены, что хотите открыть голосование за MVP этого матча в группе Telegram?'
     );
-    if (!confirm(confirmMsg)) return;
+    const confirmed = await promptConfirm(confirmMsg);
+    if (!confirmed) return;
     
     try {
         await apiCall(`/games/${currentGameId}/trigger_voting`, { method: 'POST' });
-        alert(getAdminText('✅ MVP voting opened in the group!', '✅ Голосование за MVP успешно открыто в группе!'));
+        promptAlert(getAdminText('✅ MVP voting opened in the group!', '✅ Голосование за MVP успешно открыто в группе!'));
         loadGameDetails(currentGameId);
     } catch (e) {
-        alert(getAdminText('Failed to open voting: ', 'Не удалось открыть голосование: ') + (e.message || e));
+        promptAlert(getAdminText('Failed to open voting: ', 'Не удалось открыть голосование: ') + (e.message || e));
+    }
+}
+
+// --- Group View Navigation Tabs & Community Analytics ---
+let currentGroupViewTab = 'games';
+let communityData = null;
+let currentCommunityFilter = 'all';
+
+function switchGroupTab(tab) {
+    currentGroupViewTab = tab;
+    
+    // Update tab buttons
+    document.querySelectorAll('.group-tab-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById(`tab-group-${tab}`);
+    if (btn) btn.classList.add('active');
+    
+    // Hide all containers
+    const gamesEl = document.getElementById('games-list');
+    const commEl = document.getElementById('group-community-container');
+    const settEl = document.getElementById('group-settings-container');
+    
+    if (gamesEl) gamesEl.classList.toggle('hidden', tab !== 'games');
+    if (commEl) commEl.classList.toggle('hidden', tab !== 'community');
+    if (settEl) settEl.classList.toggle('hidden', tab !== 'settings');
+    
+    if (tab === 'community' && currentGroupId) {
+        loadGroupCommunity(currentGroupId);
+    }
+}
+
+async function loadGroupCommunity(chatId) {
+    const listEl = document.getElementById('community-players-list');
+    if (listEl) listEl.innerHTML = '<div class="loading-spinner"></div>';
+    
+    try {
+        const data = await apiCall(`/groups/${chatId}/analytics`);
+        communityData = data;
+        
+        // Update KPI values
+        const totalVal = document.getElementById('kpi-total-val');
+        const coreVal = document.getElementById('kpi-core-val');
+        const dormantVal = document.getElementById('kpi-dormant-val');
+        
+        if (totalVal) totalVal.textContent = data.total_players || 0;
+        if (coreVal) coreVal.textContent = data.core_count || 0;
+        if (dormantVal) dormantVal.textContent = data.dormant_count || 0;
+        
+        renderCommunityPlayers();
+    } catch (e) {
+        if (listEl) {
+            listEl.innerHTML = `<p style="text-align:center;color:var(--danger);padding:30px">${getAdminText('Failed to load community analytics: ', 'Ошибка загрузки аналитики состава: ') + e.message}</p>`;
+        }
+    }
+}
+
+function filterCommunity(filterType) {
+    currentCommunityFilter = filterType;
+    
+    // Update KPI card selection
+    document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('active'));
+    const kpiEl = document.getElementById(`kpi-card-${filterType}`);
+    if (kpiEl) kpiEl.classList.add('active');
+    
+    // Update chips selection
+    document.querySelectorAll('.community-chip').forEach(c => c.classList.remove('active'));
+    const chipEl = document.getElementById(`chip-${filterType}`);
+    if (chipEl) chipEl.classList.add('active');
+    
+    renderCommunityPlayers();
+}
+
+function onCommunitySearchInput() {
+    renderCommunityPlayers();
+}
+
+function renderCommunityPlayers() {
+    if (!communityData || !communityData.players) return;
+    
+    const listEl = document.getElementById('community-players-list');
+    if (!listEl) return;
+    
+    const searchInput = document.getElementById('community-search-input');
+    const query = searchInput ? (searchInput.value || '').trim().toLowerCase() : '';
+    
+    let filtered = communityData.players;
+    
+    // Category filter
+    if (currentCommunityFilter === 'core') {
+        filtered = filtered.filter(p => p.is_core);
+    } else if (currentCommunityFilter === 'dormant') {
+        filtered = filtered.filter(p => p.is_dormant);
+    }
+    
+    // Search filter
+    if (query) {
+        filtered = filtered.filter(p => {
+            const name = (p.full_name || '').toLowerCase();
+            const uname = (p.username || '').toLowerCase();
+            return name.includes(query) || uname.includes(query);
+        });
+    }
+    
+    if (filtered.length === 0) {
+        listEl.innerHTML = `<p style="text-align:center;color:var(--text-muted);padding:30px">${getAdminText('No players found.', 'Игроки не найдены.')}</p>`;
+        return;
+    }
+    
+    let html = '';
+    filtered.forEach(p => {
+        const pos = p.position || 'CM';
+        let posClass = '';
+        if (pos === 'GK') posClass = 'gk';
+        else if (['CB', 'LB', 'RB', 'LWB', 'RWB', 'DEF'].includes(pos)) posClass = 'def';
+        else if (['ST', 'CF', 'LW', 'RW', 'ATT'].includes(pos)) posClass = 'att';
+        
+        let tagHtml = '';
+        if (p.is_core) {
+            tagHtml = `<span class="community-tag-core">⭐ ${getAdminText('Core', 'Костяк')} • ${p.games_last_4_weeks} ${getAdminText('in 4w', 'за месяц')}</span>`;
+        } else if (p.is_dormant) {
+            const daysText = p.days_since_last_game !== null ? `${p.days_since_last_game} ${getAdminText('days ago', 'дн. назад')}` : getAdminText('Never played', 'Не играл');
+            tagHtml = `<span class="community-tag-dormant">⏳ ${daysText}</span>`;
+        }
+        
+        const usernameDisplay = p.username ? `<span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 400;">@${p.username}</span>` : '';
+        const gamesLabel = getAdminText('Games', 'Игр');
+        const goalsLabel = getAdminText('Goals', 'Голы');
+        const profileBtnText = getAdminText('Profile ›', 'Профиль ›');
+        
+        html += `
+            <div class="community-player-card">
+                <div class="community-player-left">
+                    <span class="community-pos-badge ${posClass}">${pos}</span>
+                    <div style="min-width: 0;">
+                        <div class="community-player-name">
+                            <span>${p.full_name}</span>
+                            ${usernameDisplay}
+                            ${tagHtml}
+                        </div>
+                        <div class="community-player-stats">
+                            <span>${gamesLabel}: <b>${p.total_games}</b></span>
+                            <span>•</span>
+                            <span>${goalsLabel}: <b>${p.total_goals}</b></span>
+                            <span>•</span>
+                            <span>MVP: <b>${p.total_mvps}</b></span>
+                            <span>•</span>
+                            <span style="color: #60a5fa;">ELO: <b>${p.rating}</b></span>
+                        </div>
+                    </div>
+                </div>
+                <button class="community-profile-btn" onclick="openPlayerModal(${p.user_id})">
+                    ${profileBtnText}
+                </button>
+            </div>
+        `;
+    });
+    
+    listEl.innerHTML = html;
+}
+
+async function openPlayerModal(userId) {
+    if (!currentGroupId) return;
+    
+    const modal = document.getElementById('player-profile-modal');
+    if (!modal) return;
+    
+    modal.classList.remove('hidden');
+    
+    document.getElementById('modal-player-name').textContent = getAdminText('Loading...', 'Загрузка...');
+    document.getElementById('modal-player-meta').textContent = '';
+    document.getElementById('modal-stat-rating').textContent = '...';
+    document.getElementById('modal-stat-games').textContent = '...';
+    document.getElementById('modal-stat-goals').textContent = '...';
+    document.getElementById('modal-stat-mvp').textContent = '...';
+    document.getElementById('modal-matches-list').innerHTML = '<div class="loading-spinner"></div>';
+    
+    try {
+        const data = await apiCall(`/groups/${currentGroupId}/players/${userId}`);
+        
+        document.getElementById('modal-player-name').textContent = data.full_name;
+        document.getElementById('modal-player-meta').textContent = `${data.username ? '@' + data.username + ' • ' : ''}${data.position || 'CM'}`;
+        document.getElementById('modal-stat-rating').textContent = data.rating;
+        document.getElementById('modal-stat-games').textContent = data.total_games;
+        document.getElementById('modal-stat-goals').textContent = data.total_goals;
+        document.getElementById('modal-stat-mvp').textContent = data.total_mvps;
+        
+        const tgLink = document.getElementById('modal-tg-link');
+        if (tgLink) {
+            if (data.username) {
+                tgLink.href = `https://t.me/${data.username}`;
+                tgLink.style.display = 'inline-flex';
+            } else {
+                tgLink.href = `tg://user?id=${data.user_id}`;
+                tgLink.style.display = 'inline-flex';
+            }
+        }
+        
+        const matchesEl = document.getElementById('modal-matches-list');
+        if (!data.recent_matches || data.recent_matches.length === 0) {
+            matchesEl.innerHTML = `<p style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 12px;">${getAdminText('No match history in this group.', 'Нет сыгранных матчей в этой группе.')}</p>`;
+        } else {
+            let mHtml = '';
+            data.recent_matches.forEach(m => {
+                const mvpBadge = m.is_mvp ? '<span style="color:#fbbf24; font-size:0.75rem;">⭐ MVP</span>' : '';
+                const goalsBadge = m.goals > 0 ? `<span style="font-size:0.75rem;">⚽ ${m.goals}</span>` : '';
+                mHtml += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:8px 10px; border-radius:8px; border:1px solid var(--border-color); font-size:0.8rem;">
+                        <div>
+                            <span style="font-weight:600; color:var(--text-main);">#${m.game_number || m.game_id}</span>
+                            <span style="color:var(--text-muted); margin-left:6px;">${m.date}</span>
+                            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">${m.location}</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            ${goalsBadge}
+                            ${mvpBadge}
+                        </div>
+                    </div>
+                `;
+            });
+            matchesEl.innerHTML = mHtml;
+        }
+    } catch (e) {
+        document.getElementById('modal-matches-list').innerHTML = `<p style="color:var(--danger); padding:10px;">${e.message}</p>`;
+    }
+}
+
+function closePlayerModalDirect() {
+    const modal = document.getElementById('player-profile-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function closePlayerModal(e) {
+    if (e.target && e.target.id === 'player-profile-modal') {
+        closePlayerModalDirect();
     }
 }

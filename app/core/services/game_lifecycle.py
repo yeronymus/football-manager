@@ -125,8 +125,9 @@ class GameLifecycleService:
              
         if data.date_time:
              if game.date_time != data.date_time:
-                 old_str = game.date_time.strftime('%d.%m %H:%M')
-                 new_str = data.date_time.strftime('%d.%m %H:%M')
+                 from app.core.timezone import format_prague_dt
+                 old_str = format_prague_dt(game.date_time, '%d.%m %H:%M')
+                 new_str = format_prague_dt(data.date_time, '%d.%m %H:%M')
                  if old_str != new_str:
                      changes.append(f"📅 Дата: {old_str} -> {new_str}")
                  

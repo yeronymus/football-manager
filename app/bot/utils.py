@@ -16,14 +16,10 @@ def format_positions(user, signup) -> str:
 
 
 def _format_date(game_date_time, lang: str = "en") -> str:
-    try:
-        import zoneinfo
-        tz = zoneinfo.ZoneInfo("Europe/Prague")
-    except ImportError:
-        from datetime import timezone, timedelta
-        tz = timezone(timedelta(hours=2))
-    
-    local_dt = game_date_time.astimezone(tz)
+    from app.core.timezone import to_prague_dt
+    local_dt = to_prague_dt(game_date_time)
+    if not local_dt:
+        return ""
     
     if (lang or "en").lower() == "ru":
         days_map = {

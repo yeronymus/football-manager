@@ -47,8 +47,66 @@
                     </div>
                 </header>
                 <div class="content-scroll" id="group-view-content">
+                    <div class="group-nav-tabs">
+                        <button class="group-tab-btn active" id="tab-group-games" onclick="switchGroupTab('games')">
+                            ⚽ <span data-i18n="tab_group_games">Matches</span>
+                        </button>
+                        <button class="group-tab-btn" id="tab-group-community" onclick="switchGroupTab('community')">
+                            👥 <span data-i18n="tab_group_community">Squad & Activity</span>
+                        </button>
+                        <button class="group-tab-btn" id="tab-group-settings" onclick="switchGroupTab('settings')">
+                            ⚙️ <span data-i18n="tab_group_settings">Settings</span>
+                        </button>
+                    </div>
+
                     <div id="games-list">
                         <!-- Games populated here -->
+                    </div>
+
+                    <!-- Community & Player Activity View -->
+                    <div id="group-community-container" class="hidden">
+                        <!-- KPI Cards -->
+                        <div class="kpi-grid">
+                            <div class="kpi-card active" id="kpi-card-all" onclick="filterCommunity('all')">
+                                <div class="kpi-value" id="kpi-total-val">0</div>
+                                <div class="kpi-label" data-i18n="kpi_total_label">Total Squad</div>
+                                <div class="kpi-sub" data-i18n="kpi_total_sub">in group squad</div>
+                            </div>
+                            <div class="kpi-card" id="kpi-card-core" onclick="filterCommunity('core')">
+                                <div class="kpi-value" id="kpi-core-val" style="color: #34d399;">0</div>
+                                <div class="kpi-label" data-i18n="kpi_core_label">Core</div>
+                                <div class="kpi-sub" data-i18n="kpi_core_sub">≥2 in 4 weeks</div>
+                            </div>
+                            <div class="kpi-card" id="kpi-card-dormant" onclick="filterCommunity('dormant')">
+                                <div class="kpi-value" id="kpi-dormant-val" style="color: #f87171;">0</div>
+                                <div class="kpi-label" data-i18n="kpi_dormant_label">Inactive</div>
+                                <div class="kpi-sub" data-i18n="kpi_dormant_sub">>30 days pause</div>
+                            </div>
+                        </div>
+
+                        <!-- Search & Chips Filter -->
+                        <div class="community-filter-bar">
+                            <div class="community-search-box">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input type="text" id="community-search-input" placeholder="Search player by name or @username..." data-i18n-ph="ph_search_player" oninput="onCommunitySearchInput()">
+                            </div>
+                            <div class="community-chips">
+                                <button class="community-chip active" id="chip-all" onclick="filterCommunity('all')">
+                                    <span data-i18n="chip_all">All Players</span>
+                                </button>
+                                <button class="community-chip" id="chip-core" onclick="filterCommunity('core')">
+                                    ⭐ <span data-i18n="chip_core">Core Squad</span>
+                                </button>
+                                <button class="community-chip" id="chip-dormant" onclick="filterCommunity('dormant')">
+                                    ⏳ <span data-i18n="chip_dormant">Inactive (30d+)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Player List -->
+                        <div id="community-players-list">
+                            <div class="loading-spinner"></div>
+                        </div>
                     </div>
 
                     <div id="group-settings-container" class="group-settings-card hidden" style="margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 24px;">
@@ -161,10 +219,13 @@
                                 <button class="tab-btn active" id="tab-roster" onclick="switchRosterTab('roster')">Roster</button>
                                 <button class="tab-btn" id="tab-mvp" onclick="switchRosterTab('mvp')">MVP Votes</button>
                             </div>
-                            <div class="actions" style="display: flex; align-items: center; gap: 8px;">
+                            <div class="actions" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                 <span id="roster-paid-info" style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">Paid: 0/0</span>
-                                <button id="btn-notify-group" class="action-btn outline" onclick="notifyGroupDebtClick()" style="font-size: 0.78rem; padding: 4px 8px; border-color: rgba(245, 158, 11, 0.4); color: var(--warning, #fbbf24); display: none; align-items: center; gap: 4px;" title="Опубликовать список должников в группу">
-                                    📢 <span data-i18n="btn_notify_group">Tag Debtors</span>
+                                <button id="btn-notify-all-pm" class="action-btn outline" onclick="notifyAllDmClick()" style="font-size: 0.78rem; padding: 4px 8px; border-color: rgba(59, 130, 246, 0.4); color: #60a5fa; display: none; align-items: center; gap: 4px;" title="Send DM reminder to all unpaid players">
+                                    ✉️ <span data-i18n="btn_notify_all_pm">Remind all in DM</span>
+                                </button>
+                                <button id="btn-notify-group" class="action-btn outline" onclick="notifyGroupDebtClick()" style="font-size: 0.78rem; padding: 4px 8px; border-color: rgba(245, 158, 11, 0.4); color: var(--warning, #fbbf24); display: none; align-items: center; gap: 4px;" title="Tag unpaid players in group chat">
+                                    📢 <span data-i18n="btn_notify_group">Tag in Group</span>
                                 </button>
                             </div>
                         </div>
@@ -188,6 +249,52 @@
         <button class="close-iframe-btn" onclick="closeApp()">✕ Close</button>
     </div>
     <iframe id="app-iframe"></iframe>
+</div>
+
+<!-- Player Profile Modal -->
+<div id="player-profile-modal" class="player-modal-backdrop hidden" onclick="closePlayerModal(event)">
+    <div class="player-modal-content" onclick="event.stopPropagation()">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+            <div>
+                <h3 id="modal-player-name" style="margin: 0; font-size: 1.2rem;">Player Name</h3>
+                <div id="modal-player-meta" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">@username • CM</div>
+            </div>
+            <button class="action-btn outline" onclick="closePlayerModalDirect()" style="padding: 4px 8px; font-size: 0.9rem; line-height: 1;">✕</button>
+        </div>
+
+        <!-- Stats Grid -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 18px; text-align: center;">
+            <div style="background: rgba(255,255,255,0.03); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div id="modal-stat-rating" style="font-size: 1.1rem; font-weight: 700; color: #60a5fa;">100</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Rating</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div id="modal-stat-games" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">0</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Games</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div id="modal-stat-goals" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">0</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Goals</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div id="modal-stat-mvp" style="font-size: 1.1rem; font-weight: 700; color: #fbbf24;">0</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">MVP</div>
+            </div>
+        </div>
+
+        <!-- Recent Matches -->
+        <h4 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px;">Recent Games in Group</h4>
+        <div id="modal-matches-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; max-height: 220px; overflow-y: auto;">
+            <!-- Recent matches loaded here -->
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+            <a id="modal-tg-link" href="#" target="_blank" class="action-btn outline" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; padding: 8px 14px;">
+                ✉️ <span data-i18n="btn_message_tg">Message in Telegram</span>
+            </a>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -226,7 +333,23 @@
             lbl_def_limit: "Signup Limit (all-inclusive)",
             help_def_limit: "Maximum with reserve. 0 = unlimited.",
             btn_start_voting: "Open MVP Voting",
-            btn_notify_group: "Tag Debtors in Group"
+            btn_notify_all_pm: "Remind all in DM",
+            btn_notify_group: "Tag in Group",
+            tab_group_games: "Matches",
+            tab_group_community: "Squad & Activity",
+            tab_group_settings: "Settings",
+            kpi_total_label: "Total Squad",
+            kpi_total_sub: "in group squad",
+            kpi_core_label: "Core",
+            kpi_core_sub: "≥2 in 4 weeks",
+            kpi_dormant_label: "Inactive",
+            kpi_dormant_sub: ">30 days pause",
+            ph_search_player: "Search player by name or @username...",
+            chip_all: "All Players",
+            chip_core: "Core Squad",
+            chip_dormant: "Inactive (30d+)",
+            btn_message_tg: "Message in Telegram",
+            btn_view_profile: "Profile ›"
         },
         ru: {
             admin_hub: "Панель управления",
@@ -254,7 +377,23 @@
             lbl_def_limit: "Лимит записи (всё вкл.)",
             help_def_limit: "Максимум с резервом. 0 — без ограничений.",
             btn_start_voting: "Открыть MVP голосование",
-            btn_notify_group: "Должники в группу"
+            btn_notify_all_pm: "Напомнить всем в ЛС",
+            btn_notify_group: "Тегнуть в группе",
+            tab_group_games: "Матчи",
+            tab_group_community: "Состав и активность",
+            tab_group_settings: "Настройки",
+            kpi_total_label: "Всего игроков",
+            kpi_total_sub: "в базе группы",
+            kpi_core_label: "Костяк",
+            kpi_core_sub: "≥2 за 4 недели",
+            kpi_dormant_label: "Давно не играли",
+            kpi_dormant_sub: ">30 дней пауза",
+            ph_search_player: "Поиск по имени или @username...",
+            chip_all: "Все игроки",
+            chip_core: "Костяк",
+            chip_dormant: "Давно не играли (30д+)",
+            btn_message_tg: "Написать в Telegram",
+            btn_view_profile: "Профиль ›"
         }
     };
 

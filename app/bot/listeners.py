@@ -109,32 +109,49 @@ async def on_game_finished(event: GameFinishedEvent):
         except Exception as e:
             logger.warning(f"Failed to send finish message for game {event.game_id}: {e}")
 
-    # Clean up and close the MVP voting message if it exists
+    # Clean up and close the MVP voting message if it exists, and unpin announcement
     async with async_session_maker() as session:
         game = await session.get(Game, event.game_id)
-        if game and game.voting_message_id:
-            try:
-                from app.bot.utils import get_group_game_number
-                game_num = await get_group_game_number(session, game)
-                from app.db.models import Chat
-                chat_lang = "en"
-                chat_row = await session.get(Chat, game.chat_id)
-                if chat_row and chat_row.language:
-                    chat_lang = chat_row.language.value if hasattr(chat_row.language, "value") else str(chat_row.language)
-                chat_lang = (chat_lang or "en").lower()
+        if game:
+            # Automatically unpin game announcement from group chat
+            if game.chat_id and game.message_id:
+                try:
+                    await bot.unpin_chat_message(chat_id=game.chat_id, message_id=game.message_id)
+                    logger.info(f"Unpinned game #{event.game_id} announcement ({game.message_id}) in chat {game.chat_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to unpin message for game {event.game_id} in chat {game.chat_id}: {e}")
 
-                from app.bot.i18n import t
-                v_text = t("voting_closed_title", locale=chat_lang, game_num=game_num)
+            # Automatically unpin from channel if it was pinned there
+            if game.channel_id and game.channel_message_id:
+                try:
+                    await bot.unpin_chat_message(chat_id=game.channel_id, message_id=game.channel_message_id)
+                    logger.info(f"Unpinned game #{event.game_id} announcement ({game.channel_message_id}) in channel {game.channel_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to unpin channel message for game {event.game_id} in channel {game.channel_id}: {e}")
 
-                await bot.edit_message_text(
-                    chat_id=game.chat_id,
-                    message_id=game.voting_message_id,
-                    text=v_text,
-                    reply_markup=None,
-                    parse_mode="HTML"
-                )
-            except Exception as e:
-                logger.warning(f"Failed to close voting message on game finish for game {event.game_id}: {e}")
+            if game.voting_message_id:
+                try:
+                    from app.bot.utils import get_group_game_number
+                    game_num = await get_group_game_number(session, game)
+                    from app.db.models import Chat
+                    chat_lang = "en"
+                    chat_row = await session.get(Chat, game.chat_id)
+                    if chat_row and chat_row.language:
+                        chat_lang = chat_row.language.value if hasattr(chat_row.language, "value") else str(chat_row.language)
+                    chat_lang = (chat_lang or "en").lower()
+
+                    from app.bot.i18n import t
+                    v_text = t("voting_closed_title", locale=chat_lang, game_num=game_num)
+
+                    await bot.edit_message_text(
+                        chat_id=game.chat_id,
+                        message_id=game.voting_message_id,
+                        text=v_text,
+                        reply_markup=None,
+                        parse_mode="HTML"
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to close voting message on game finish for game {event.game_id}: {e}")
 
     await _refresh_full(event.game_id)
 
@@ -272,8 +289,9 @@ async def on_player_left(event: PlayerLeftEvent):
                 loc_str = ""
                 if game:
                     from app.bot.utils import get_group_game_number
+                    from app.core.timezone import format_prague_dt
                     game_num = await get_group_game_number(session, game)
-                    date_str = game.date_time.strftime("%d.%m.%Y %H:%M") if game.date_time else ""
+                    date_str = format_prague_dt(game.date_time)
                     loc_str = game.location or ""
                 
                 p_lang = getattr(event.promoted_user, 'language', 'en')

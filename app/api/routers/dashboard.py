@@ -190,6 +190,258 @@ async def get_group_games(
         await session.commit()
     return out
 
+class PlayerActivityOut(BaseModel):
+    user_id: int
+    full_name: str
+    username: Optional[str] = None
+    position: Optional[str] = None
+    rating: int = 100
+    total_games: int = 0
+    total_goals: int = 0
+    total_mvps: int = 0
+    games_last_4_weeks: int = 0
+    last_game_date: Optional[str] = None
+    days_since_last_game: Optional[int] = None
+    is_core: bool = False
+    is_dormant: bool = False
+
+class GroupAnalyticsOut(BaseModel):
+    chat_id: int
+    total_players: int
+    core_count: int
+    dormant_count: int
+    players: List[PlayerActivityOut]
+
+class PlayerHistoryGameOut(BaseModel):
+    game_id: int
+    game_number: Optional[int] = None
+    date: str
+    location: str
+    status: str
+    goals: int = 0
+    is_mvp: bool = False
+
+class PlayerProfileDetailOut(BaseModel):
+    user_id: int
+    full_name: str
+    username: Optional[str] = None
+    position: Optional[str] = None
+    rating: int = 100
+    total_games: int = 0
+    total_goals: int = 0
+    total_mvps: int = 0
+    recent_matches: List[PlayerHistoryGameOut]
+
+@router.get("/groups/{chat_id}/analytics", response_model=GroupAnalyticsOut)
+async def get_group_analytics(
+    chat_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    await check_admin_rights(chat_id, user_id, session=session)
+
+    from sqlalchemy import or_
+    from app.core.timezone import to_prague_dt, format_prague_dt
+    from app.db.models import PlayerProfile, GameStats
+
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    four_weeks_ago = now_utc - datetime.timedelta(days=28)
+
+    # Subquery: Last played game per user in this chat
+    last_game_subq = (
+        select(
+            Signup.user_id,
+            func.max(Game.date_time).label("last_game_date")
+        )
+        .join(Game, Game.id == Signup.game_id)
+        .where(
+            Game.chat_id == chat_id,
+            Signup.status == SignupStatus.ACTIVE
+        )
+        .group_by(Signup.user_id)
+        .subquery()
+    )
+
+    # Subquery: Games played in last 4 weeks in this chat
+    recent_games_subq = (
+        select(
+            Signup.user_id,
+            func.count(Signup.id).label("games_last_4w")
+        )
+        .join(Game, Game.id == Signup.game_id)
+        .where(
+            Game.chat_id == chat_id,
+            Signup.status == SignupStatus.ACTIVE,
+            Game.date_time >= four_weeks_ago
+        )
+        .group_by(Signup.user_id)
+        .subquery()
+    )
+
+    # Subquery: Total goals in this chat
+    goals_subq = (
+        select(
+            GameStats.user_id,
+            func.coalesce(func.sum(GameStats.goals), 0).label("group_goals")
+        )
+        .join(Game, Game.id == GameStats.game_id)
+        .where(Game.chat_id == chat_id)
+        .group_by(GameStats.user_id)
+        .subquery()
+    )
+
+    # Main query
+    stmt = (
+        select(
+            User.user_id,
+            User.full_name,
+            User.username,
+            User.player_position,
+            func.coalesce(PlayerProfile.rating, User.rating, 100).label("rating"),
+            func.coalesce(PlayerProfile.games_played, 0).label("games_played"),
+            func.coalesce(PlayerProfile.stats_mvp, 0).label("stats_mvp"),
+            func.coalesce(goals_subq.c.group_goals, 0).label("goals"),
+            last_game_subq.c.last_game_date,
+            func.coalesce(recent_games_subq.c.games_last_4w, 0).label("games_last_4w"),
+            User.created_at
+        )
+        .outerjoin(PlayerProfile, (PlayerProfile.user_id == User.user_id) & (PlayerProfile.chat_id == chat_id))
+        .outerjoin(last_game_subq, last_game_subq.c.user_id == User.user_id)
+        .outerjoin(recent_games_subq, recent_games_subq.c.user_id == User.user_id)
+        .outerjoin(goals_subq, goals_subq.c.user_id == User.user_id)
+        .where(
+            User.user_id > 0,  # Exclude guest pseudo-IDs
+            or_(
+                PlayerProfile.chat_id == chat_id,
+                last_game_subq.c.last_game_date.isnot(None)
+            )
+        )
+        .order_by(
+            recent_games_subq.c.games_last_4w.desc().nullslast(),
+            PlayerProfile.rating.desc().nullslast()
+        )
+    )
+    res = await session.execute(stmt)
+    rows = res.all()
+
+    now_prague = to_prague_dt(now_utc)
+    players_out = []
+    core_count = 0
+    dormant_count = 0
+
+    for r in rows:
+        uid = r.user_id
+        last_dt = r.last_game_date
+        days_ago = None
+        if last_dt:
+            last_dt_prague = to_prague_dt(last_dt)
+            days_ago = (now_prague.date() - last_dt_prague.date()).days
+        elif r.created_at:
+            created_prague = to_prague_dt(r.created_at)
+            days_ago = (now_prague.date() - created_prague.date()).days
+
+        recent_4w = int(r.games_last_4w or 0)
+        total_g = int(r.games_played or 0)
+        is_core = (recent_4w >= 2)
+        is_dormant = (days_ago is not None and days_ago >= 30) or (days_ago is None and total_g == 0)
+
+        if is_core:
+            core_count += 1
+        if is_dormant:
+            dormant_count += 1
+
+        pos_str = r.player_position.value if hasattr(r.player_position, "value") else str(r.player_position or "")
+        players_out.append(
+            PlayerActivityOut(
+                user_id=uid,
+                full_name=r.full_name,
+                username=r.username,
+                position=pos_str if pos_str else None,
+                rating=int(r.rating or 100),
+                total_games=total_g,
+                total_goals=int(r.goals or 0),
+                total_mvps=int(r.stats_mvp or 0),
+                games_last_4_weeks=recent_4w,
+                last_game_date=format_prague_dt(last_dt, "%d.%m.%Y") if last_dt else None,
+                days_since_last_game=days_ago,
+                is_core=is_core,
+                is_dormant=is_dormant
+            )
+        )
+
+    return GroupAnalyticsOut(
+        chat_id=chat_id,
+        total_players=len(players_out),
+        core_count=core_count,
+        dormant_count=dormant_count,
+        players=players_out
+    )
+
+@router.get("/groups/{chat_id}/players/{target_user_id}", response_model=PlayerProfileDetailOut)
+async def get_group_player_detail(
+    chat_id: int,
+    target_user_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    await check_admin_rights(chat_id, user_id, session=session)
+    user = await session.get(User, target_user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    from app.db.models import PlayerProfile, GameStats
+    from app.core.timezone import format_prague_dt
+    from app.bot.utils import get_group_game_number
+
+    prof = await session.scalar(
+        select(PlayerProfile).where(PlayerProfile.user_id == target_user_id, PlayerProfile.chat_id == chat_id)
+    )
+    goals_res = await session.scalar(
+        select(func.coalesce(func.sum(GameStats.goals), 0))
+        .join(Game, Game.id == GameStats.game_id)
+        .where(Game.chat_id == chat_id, GameStats.user_id == target_user_id)
+    )
+
+    # Fetch last 10 games
+    stmt = (
+        select(Game, GameStats)
+        .join(Signup, (Signup.game_id == Game.id) & (Signup.user_id == target_user_id))
+        .outerjoin(GameStats, (GameStats.game_id == Game.id) & (GameStats.user_id == target_user_id))
+        .where(Game.chat_id == chat_id, Signup.status == SignupStatus.ACTIVE)
+        .order_by(Game.date_time.desc())
+        .limit(10)
+    )
+    res = await session.execute(stmt)
+    history_rows = res.all()
+
+    recent_matches = []
+    for g, gs in history_rows:
+        g_num = await get_group_game_number(session, g)
+        recent_matches.append(
+            PlayerHistoryGameOut(
+                game_id=g.id,
+                game_number=g_num,
+                date=format_prague_dt(g.date_time, "%d.%m.%Y"),
+                location=clean_location(g.location),
+                status=g.status.value,
+                goals=gs.goals if gs else 0,
+                is_mvp=gs.is_mvp if gs else False
+            )
+        )
+
+    pos_str = user.player_position.value if hasattr(user.player_position, "value") else str(user.player_position or "")
+    return PlayerProfileDetailOut(
+        user_id=user.user_id,
+        full_name=user.full_name,
+        username=user.username,
+        position=pos_str if pos_str else None,
+        rating=prof.rating if prof else (user.rating or 100),
+        total_games=prof.games_played if prof else 0,
+        total_goals=int(goals_res or 0),
+        total_mvps=prof.stats_mvp if prof else 0,
+        recent_matches=recent_matches
+    )
+
 class PlayerDetailOut(BaseModel):
     signup_id: int
     user_id: int
@@ -457,8 +709,9 @@ async def update_player_status(
                         return
                     p_lang = getattr(u, 'language', 'en')
                     p_lang = p_lang.value if hasattr(p_lang, 'value') else str(p_lang)
+                    from app.core.timezone import format_prague_dt
                     game_num = await get_group_game_number(s_bg, g)
-                    date_str = g.date_time.strftime("%d.%m.%Y %H:%M") if g.date_time else ""
+                    date_str = format_prague_dt(g.date_time)
                     from app.bot.i18n import t
                     text = t(
                         "promoted_by_admin",
@@ -583,8 +836,9 @@ async def notify_player_payment(
 
     from app.bot.instance import bot
     from app.bot.utils import get_group_game_number
+    from app.core.timezone import format_prague_dt
     game_num = await get_group_game_number(session, game)
-    date_str = game.date_time.strftime("%d.%m.%Y %H:%M") if game.date_time else ""
+    date_str = format_prague_dt(game.date_time)
     pay_info = game.payment_info or ""
 
     from app.bot.i18n import t
@@ -613,6 +867,112 @@ async def notify_player_payment(
         log_entry = {"status": deliv_status, "time": now_str, "detail": err_str[:60]}
         await cache_service.set(f"notify_log:{game_id}:{target_user_id}", log_entry, ttl=86400 * 30)
         return {"status": "ok", "delivery": deliv_status, "time": now_str, "detail": err_str}
+
+@router.post("/games/{game_id}/notify_all_pm")
+async def notify_all_unpaid_pm(
+    game_id: int,
+    admin_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Sends individual payment reminder DM to every active unpaid player.
+    Updates the notify_log status cache for each player so feedback is recorded.
+    """
+    game = await session.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+        
+    await check_admin_rights(game.chat_id, admin_id)
+    
+    # Fetch unpaid active players
+    stmt = (
+        select(Signup, User)
+        .join(User, User.user_id == Signup.user_id)
+        .where(
+            Signup.game_id == game_id,
+            Signup.status == SignupStatus.ACTIVE,
+            Signup.is_paid == False
+        )
+        .order_by(Signup.created_at)
+    )
+    res = await session.execute(stmt)
+    unpaid_rows = res.all()
+    
+    if not unpaid_rows:
+        return {
+            "status": "ok",
+            "total": 0,
+            "delivered": 0,
+            "blocked": 0,
+            "guests": 0,
+            "error": 0,
+            "results": {}
+        }
+        
+    from app.bot.instance import bot
+    from app.bot.utils import get_group_game_number
+    from app.bot.i18n import t
+    from app.core.timezone import format_prague_dt
+    
+    game_num = await get_group_game_number(session, game)
+    date_str = format_prague_dt(game.date_time)
+    pay_info = game.payment_info or ""
+    now_str = datetime.datetime.now().strftime("%H:%M")
+    
+    results = {}
+    counts = {"delivered": 0, "blocked": 0, "guests": 0, "error": 0}
+    
+    for signup, user in unpaid_rows:
+        target_uid = user.user_id
+        if target_uid < 0:
+            log_entry = {"status": "guest", "time": now_str, "detail": "Гость (нет Telegram)"}
+            await cache_service.set(f"notify_log:{game_id}:{target_uid}", log_entry, ttl=86400 * 30)
+            results[str(target_uid)] = log_entry
+            counts["guests"] += 1
+            continue
+            
+        user_lang = "en"
+        if getattr(user, "language", None):
+            user_lang = user.language.value if hasattr(user.language, "value") else str(user.language)
+        user_lang = (user_lang or "en").lower()
+        
+        fallback_pay = t("pm_payment_reminder_no_details", locale=user_lang)
+        pay_display = html.escape(pay_info) if pay_info else fallback_pay
+        msg = t(
+            "pm_payment_reminder",
+            locale=user_lang,
+            game_num=game_num,
+            location=html.escape(game.location),
+            date=date_str,
+            price=game.price,
+            payment=pay_display
+        )
+        
+        try:
+            await bot.send_message(target_uid, msg, parse_mode="HTML")
+            log_entry = {"status": "delivered", "time": now_str, "detail": "Доставлено в ЛС"}
+            await cache_service.set(f"notify_log:{game_id}:{target_uid}", log_entry, ttl=86400 * 30)
+            results[str(target_uid)] = log_entry
+            counts["delivered"] += 1
+        except Exception as e:
+            err_str = str(e)
+            logger.warning(f"Batch PM reminder to {target_uid} failed: {err_str}")
+            is_blocked = any(x in err_str.lower() for x in ["blocked", "forbidden", "can't initiate", "chat not found"])
+            deliv_status = "blocked" if is_blocked else "error"
+            log_entry = {"status": deliv_status, "time": now_str, "detail": err_str[:60]}
+            await cache_service.set(f"notify_log:{game_id}:{target_uid}", log_entry, ttl=86400 * 30)
+            results[str(target_uid)] = log_entry
+            counts[deliv_status] += 1
+            
+    return {
+        "status": "ok",
+        "total": len(unpaid_rows),
+        "delivered": counts["delivered"],
+        "blocked": counts["blocked"],
+        "guests": counts["guests"],
+        "error": counts["error"],
+        "results": results
+    }
 
 @router.post("/games/{game_id}/notify_group")
 async def notify_group_unpaid(
@@ -652,8 +1012,9 @@ async def notify_group_unpaid(
 
     from app.bot.utils import get_group_game_number
     from app.bot.instance import bot
+    from app.core.timezone import format_prague_dt
     game_num = await get_group_game_number(session, game)
-    date_str = game.date_time.strftime("%d.%m.%Y %H:%M") if game.date_time else ""
+    date_str = format_prague_dt(game.date_time)
     pay_info = game.payment_info or ""
 
     from app.bot.i18n import t

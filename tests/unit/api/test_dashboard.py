@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 from unittest.mock import AsyncMock, MagicMock, patch
-from app.api.routers.dashboard import notify_player_payment, notify_group_unpaid, delete_game
+from app.api.routers.dashboard import notify_player_payment, notify_all_unpaid_pm, notify_group_unpaid, delete_game
 from app.db.models import Game, User
 
 @pytest.mark.asyncio
@@ -100,6 +100,36 @@ async def test_notify_group_unpaid(mock_bot, mock_cache, mock_check_admin):
     assert res["status"] == "ok"
     assert res["unpaid_count"] == 1
     mock_bot.send_message.assert_awaited_once()
+
+@pytest.mark.asyncio
+@patch("app.api.routers.dashboard.check_admin_rights", new_callable=AsyncMock)
+@patch("app.api.routers.dashboard.cache_service")
+@patch("app.bot.instance.bot")
+async def test_notify_all_unpaid_pm(mock_bot, mock_cache, mock_check_admin):
+    import datetime
+    from app.db.models import Signup, SignupStatus
+    session = AsyncMock()
+    game = Game(id=1, chat_id=-1001, location="Arena", date_time=datetime.datetime.now(), price=150, payment_info="123456")
+    session.get.return_value = game
+
+    signup1 = Signup(game_id=1, user_id=111, is_paid=False, status=SignupStatus.ACTIVE)
+    user1 = User(user_id=111, full_name="User One", username="user1", language="en")
+    signup2 = Signup(game_id=1, user_id=-999, is_paid=False, status=SignupStatus.ACTIVE)
+    user2 = User(user_id=-999, full_name="Guest User", language="en")
+
+    mock_res = MagicMock()
+    mock_res.all.return_value = [(signup1, user1), (signup2, user2)]
+    session.execute.return_value = mock_res
+    mock_cache.set = AsyncMock()
+    mock_bot.send_message = AsyncMock()
+
+    res = await notify_all_unpaid_pm(game_id=1, admin_id=123, session=session)
+    assert res["status"] == "ok"
+    assert res["total"] == 2
+    assert res["delivered"] == 1
+    assert res["guests"] == 1
+    mock_bot.send_message.assert_awaited_once()
+
 
 @pytest.mark.asyncio
 @patch("app.api.routers.dashboard.check_admin_rights", new_callable=AsyncMock)
@@ -261,5 +291,41 @@ async def test_toggle_payment_success(mock_check_admin):
     assert res["is_paid"] is True
     assert signup.is_paid is True
     session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@patch("app.api.routers.dashboard.check_admin_rights", new_callable=AsyncMock)
+async def test_get_group_analytics(mock_check_admin):
+    import datetime
+    from app.api.routers.dashboard import get_group_analytics
+    from app.db.models import Position
+    session = AsyncMock()
+
+    row = MagicMock()
+    row.user_id = 101
+    row.full_name = "Player Core"
+    row.username = "playercore"
+    row.player_position = Position.CM
+    row.rating = 110
+    row.games_played = 5
+    row.stats_mvp = 2
+    row.goals = 3
+    row.last_game_date = datetime.datetime.now(datetime.timezone.utc)
+    row.games_last_4w = 3
+    row.created_at = datetime.datetime.now(datetime.timezone.utc)
+
+    mock_res = MagicMock()
+    mock_res.all.return_value = [row]
+    session.execute.return_value = mock_res
+
+    res = await get_group_analytics(chat_id=-1001, user_id=123, session=session)
+    assert res.chat_id == -1001
+    assert res.total_players == 1
+    assert res.core_count == 1
+    assert res.dormant_count == 0
+    assert len(res.players) == 1
+    assert res.players[0].full_name == "Player Core"
+    assert res.players[0].is_core is True
+
 
 
