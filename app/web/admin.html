@@ -266,24 +266,24 @@
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 18px; text-align: center;">
             <div style="background: rgba(255,255,255,0.03); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color);">
                 <div id="modal-stat-rating" style="font-size: 1.1rem; font-weight: 700; color: #60a5fa;">100</div>
-                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Rating</div>
+                <div data-i18n="modal_stat_rating" style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Rating</div>
             </div>
             <div style="background: rgba(255,255,255,0.03); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color);">
                 <div id="modal-stat-games" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">0</div>
-                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Games</div>
+                <div data-i18n="modal_stat_games" style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Games</div>
             </div>
             <div style="background: rgba(255,255,255,0.03); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color);">
                 <div id="modal-stat-goals" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">0</div>
-                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Goals</div>
+                <div data-i18n="modal_stat_goals" style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Goals</div>
             </div>
             <div style="background: rgba(255,255,255,0.03); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color);">
                 <div id="modal-stat-mvp" style="font-size: 1.1rem; font-weight: 700; color: #fbbf24;">0</div>
-                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">MVP</div>
+                <div data-i18n="modal_stat_mvp" style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">MVP</div>
             </div>
         </div>
 
         <!-- Recent Matches -->
-        <h4 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px;">Recent Games in Group</h4>
+        <h4 data-i18n="modal_recent_matches" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px;">Recent Games in Group</h4>
         <div id="modal-matches-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; max-height: 220px; overflow-y: auto;">
             <!-- Recent matches loaded here -->
         </div>
@@ -352,7 +352,13 @@
             chip_core: "Core Squad",
             chip_dormant: "Inactive (30d+)",
             btn_message_tg: "Message in Telegram",
-            btn_view_profile: "Profile ›"
+            btn_view_profile: "Profile ›",
+            modal_stat_rating: "Rating",
+            modal_stat_games: "Games",
+            modal_stat_goals: "Goals",
+            modal_stat_mvp: "MVP",
+            modal_recent_matches: "Recent Games in Group",
+            discipline_title: "Discipline & Sanctions"
         },
         ru: {
             admin_hub: "Панель управления",
@@ -396,7 +402,13 @@
             chip_core: "Костяк",
             chip_dormant: "Давно не играли (30д+)",
             btn_message_tg: "Написать в Telegram",
-            btn_view_profile: "Профиль ›"
+            btn_view_profile: "Профиль ›",
+            modal_stat_rating: "Рейтинг",
+            modal_stat_games: "Игр",
+            modal_stat_goals: "Голов",
+            modal_stat_mvp: "MVP",
+            modal_recent_matches: "Последние игры в группе",
+            discipline_title: "Дисциплина"
         }
     };
 

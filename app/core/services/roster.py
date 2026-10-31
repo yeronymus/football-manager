@@ -61,8 +61,13 @@ class RosterService:
             if active_card and getattr(active_card, 'card_type', None) == "RED":
                 exp_dt = active_card.expires_at
                 exp_str = exp_dt.strftime("%d.%m.%Y") if hasattr(exp_dt, "strftime") else str(exp_dt)[:10]
-                reason_str = f" Причина: {active_card.reason}" if getattr(active_card, 'reason', None) else ""
-                return JoinResult(False, None, f"⛔ Запись закрыта: у вас активная красная карточка до {exp_str}.{reason_str}", False)
+                is_en = bool(getattr(user, "language", None) and str(getattr(user.language, "value", user.language)).lower() == "en")
+                if is_en:
+                    reason_str = f" Reason: {active_card.reason}" if getattr(active_card, 'reason', None) else ""
+                    return JoinResult(False, None, f"⛔ Registration closed: you have an active red card until {exp_str}.{reason_str}", False)
+                else:
+                    reason_str = f" Причина: {active_card.reason}" if getattr(active_card, 'reason', None) else ""
+                    return JoinResult(False, None, f"⛔ Запись закрыта: у вас активная красная карточка до {exp_str}.{reason_str}", False)
 
         # 3. Time and Limit validations
         limit_error = await self._validate_registration_limits(game, game_id, ignore_limit)

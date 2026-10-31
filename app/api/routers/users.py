@@ -208,6 +208,10 @@ async def get_my_profile(
             "days_left": days_left
         }
 
+    user_lang = "ru"
+    if getattr(user, "language", None):
+        user_lang = user.language.value if hasattr(user.language, "value") else str(user.language)
+
     return {
         "user_id": user.user_id,
         "name": user.full_name,
@@ -218,6 +222,7 @@ async def get_my_profile(
         "games_played": games_played,
         "mvp_count": mvps,
         "total_goals": total_goals,
+        "language": user_lang,
         "active_card": active_card_data
     }
 

@@ -1,4 +1,4 @@
-"""Add player_cards table and rename dil2331 to adok0625
+"""Add player_cards table
 
 Revision ID: 8b9c0d1e2f3a
 Revises: 7a8b9c0d1e2f
@@ -41,9 +41,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_player_cards_chat_id'), 'player_cards', ['chat_id'], unique=False)
     op.create_index(op.f('ix_player_cards_is_active'), 'player_cards', ['is_active'], unique=False)
     op.create_index('ix_player_cards_lookup', 'player_cards', ['user_id', 'chat_id', 'is_active'], unique=False)
-
-    # 2. Update username dil2331 -> adok0625
-    op.execute(sa.text("UPDATE users SET username = 'adok0625' WHERE LOWER(username) IN ('dil2331', '@dil2331')"))
 
 
 def downgrade() -> None:

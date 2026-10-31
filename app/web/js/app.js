@@ -137,15 +137,35 @@ window.switchTab = async function(tab) {
 async function renderProfile() {
     const data = await fetchAPI(`/users/me/profile?chat_id=${currentChatId}`);
     
-    const userName = data.name || 'Игрок';
+    // Determine language: data.language, or tg user language_code, or localStorage, or query param
+    const urlLang = (new URLSearchParams(window.location.search)).get('lang');
+    const appLang = (urlLang || data.language || tg?.initDataUnsafe?.user?.language_code || localStorage.getItem('webapp_lang') || 'ru').toLowerCase();
+    const isEn = appLang.startsWith('en');
+    const isCz = appLang.startsWith('cz') || appLang.startsWith('cs');
+
+    const userName = data.name || (isEn ? 'Player' : (isCz ? 'Hráč' : 'Игрок'));
     const activeCard = data.active_card;
     let cardBadgeHtml = '';
     if (activeCard) {
         const isRed = (activeCard.card_type === 'RED');
-        const cardTitle = isRed ? 'Красная карточка' : 'Жёлтая карточка';
-        const cardEmoji = isRed ? '🟥' : '🟨';
+        let cardTitle, rawTooltip, badgeDays;
         const expDate = activeCard.expires_at ? new Date(activeCard.expires_at).toLocaleDateString() : '';
-        const rawTooltip = `${cardTitle}: на ${activeCard.weeks} нед. (до ${expDate}, осталось ${activeCard.days_left} дн.)${activeCard.reason ? '. Причина: ' + activeCard.reason : ''}${isRed ? '. Запись на игры закрыта.' : ''}`;
+
+        if (isEn) {
+            cardTitle = isRed ? 'Red Card' : 'Yellow Card';
+            rawTooltip = `${cardTitle}: for ${activeCard.weeks} week(s) (until ${expDate}, ${activeCard.days_left} day(s) left)${activeCard.reason ? '. Reason: ' + activeCard.reason : ''}${isRed ? '. Match registration is suspended.' : ''}`;
+            badgeDays = `${activeCard.days_left} d. left`;
+        } else if (isCz) {
+            cardTitle = isRed ? 'Červená karta' : 'Žlutá karta';
+            rawTooltip = `${cardTitle}: na ${activeCard.weeks} týd. (do ${expDate}, zbývá ${activeCard.days_left} dní)${activeCard.reason ? '. Důvod: ' + activeCard.reason : ''}${isRed ? '. Zápis na zápasy je pozastaven.' : ''}`;
+            badgeDays = `${activeCard.days_left} d.`;
+        } else {
+            cardTitle = isRed ? 'Красная карточка' : 'Жёлтая карточка';
+            rawTooltip = `${cardTitle}: на ${activeCard.weeks} нед. (до ${expDate}, осталось ${activeCard.days_left} дн.)${activeCard.reason ? '. Причина: ' + activeCard.reason : ''}${isRed ? '. Запись на игры закрыта.' : ''}`;
+            badgeDays = `${activeCard.days_left} дн.`;
+        }
+
+        const cardEmoji = isRed ? '🟥' : '🟨';
         const tooltip = escapeHTML(rawTooltip);
         const borderCol = isRed ? 'rgba(239, 68, 68, 0.4)' : 'rgba(234, 179, 8, 0.4)';
         const bgCol = isRed ? 'rgba(239, 68, 68, 0.12)' : 'rgba(234, 179, 8, 0.12)';
@@ -154,10 +174,18 @@ async function renderProfile() {
         cardBadgeHtml = `
             <div title="${tooltip}" onclick="alert('${tooltip.replace(/'/g, "\\'")}')" style="display:inline-flex; align-items:center; gap:6px; background:${bgCol}; border:1px solid ${borderCol}; padding:4px 10px; border-radius:16px; margin-top:6px; cursor:pointer; max-width:fit-content;">
                 <span>${cardEmoji}</span>
-                <span style="font-size:12px; font-weight:600; color:${textCol};">${cardTitle} (${activeCard.days_left} дн.)</span>
+                <span style="font-size:12px; font-weight:600; color:${textCol};">${cardTitle} (${badgeDays})</span>
             </div>
         `;
     }
+
+    const lblPrimary = isEn ? 'Primary' : (isCz ? 'Hlavní' : 'Основная');
+    const lblGames = isEn ? 'Matches' : (isCz ? 'Zápasy' : 'Игр');
+    const lblGoals = isEn ? 'Total Goals' : (isCz ? 'Góly celkem' : 'Всего голов');
+    const lblPrimaryPos = isEn ? 'Primary Position' : (isCz ? 'Hlavní pozice' : 'Основная позиция');
+    const lblAltPos = isEn ? 'Alt Positions' : (isCz ? 'Alternativní pozice' : 'Доп. позиции');
+    const lblEdit = isEn ? 'Edit' : (isCz ? 'Upravit' : 'Изменить');
+    const lblNotSet = isEn ? 'Not specified' : (isCz ? 'Nespecifikováno' : 'Не указаны');
 
     const html = `
         <div class="card flex-row" style="margin-top: 16px; padding: 24px;">
@@ -165,7 +193,7 @@ async function renderProfile() {
             <div style="flex:1">
                 <h3 style="font-size: 20px;">${userName}</h3>
                 <div class="subtitle" style="margin-top:4px;">
-                    Основная: <b style="color:var(--text-color)">${data.position}</b>
+                    ${lblPrimary}: <b style="color:var(--text-color)">${data.position}</b>
                 </div>
                 ${cardBadgeHtml}
             </div>
@@ -178,7 +206,7 @@ async function renderProfile() {
             </div>
             <div class="card stat-badge" style="margin: 0; cursor:pointer;" onclick="switchTab('history')">
                 <span class="stat-value">${data.games_played}</span>
-                <span class="subtitle" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Игр</span>
+                <span class="subtitle" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">${lblGames}</span>
             </div>
             <div class="card stat-badge" style="margin: 0;">
                 <span class="stat-value">${data.mvp_count}</span>
@@ -188,23 +216,23 @@ async function renderProfile() {
         
         <div class="card" style="margin-top: 16px;">
             <div style="margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
-                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px; margin-bottom:8px; color:var(--accent-color)">Основная позиция</h4>
+                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px; margin-bottom:8px; color:var(--accent-color)">${lblPrimaryPos}</h4>
                 <div class="flex-between">
                     <span style="font-weight:600; font-size:17px;">${data.position}</span>
-                    <button onclick="editPrimaryPosition()" style="background:var(--accent-color); color:white; border:none; padding:6px 16px; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">Изменить</button>
+                    <button onclick="editPrimaryPosition()" style="background:var(--accent-color); color:white; border:none; padding:6px 16px; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">${lblEdit}</button>
                 </div>
             </div>
             
             <div style="margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
-                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px; margin-bottom:8px; color:var(--accent-color)">Доп. позиции</h4>
+                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px; margin-bottom:8px; color:var(--accent-color)">${lblAltPos}</h4>
                 <div class="flex-between">
-                    <span style="font-weight:600; font-size:15px;">${data.alt_positions && data.alt_positions.length ? data.alt_positions.join(', ') : 'Не указаны'}</span>
-                    <button onclick="editAltPositions()" style="background:rgba(255,255,255,0.05); color:var(--text-color); border:1px solid var(--border-color); padding:6px 16px; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">Изменить</button>
+                    <span style="font-weight:600; font-size:15px;">${data.alt_positions && data.alt_positions.length ? data.alt_positions.join(', ') : lblNotSet}</span>
+                    <button onclick="editAltPositions()" style="background:rgba(255,255,255,0.05); color:var(--text-color); border:1px solid var(--border-color); padding:6px 16px; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">${lblEdit}</button>
                 </div>
             </div>
 
             <div class="flex-between">
-                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px;">Всего голов</h4>
+                <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px;">${lblGoals}</h4>
                 <span style="font-weight:700; font-size:18px; color:var(--accent-color)">${data.total_goals || 0} ⚽</span>
             </div>
         </div>

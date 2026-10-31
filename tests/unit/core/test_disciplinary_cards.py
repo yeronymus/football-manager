@@ -106,6 +106,13 @@ async def test_roster_blocks_player_with_active_red_card():
     res_forced = await service_blocked.join_player(game_id=1, user=user, ignore_limit=True)
     assert res_forced.success is True
 
+    # 4. English user gets English blocking notice
+    user_en = User(user_id=43, full_name="English Player", player_position=Position.FWD, language="en")
+    res_en = await service_blocked.join_player(game_id=1, user=user_en)
+    assert res_en.success is False
+    assert "red card" in res_en.message.lower()
+    assert "Registration closed" in res_en.message
+
 
 @pytest.mark.asyncio
 @patch("app.api.routers.dashboard.check_admin_rights", new_callable=AsyncMock)
@@ -209,7 +216,7 @@ async def test_get_my_profile_returns_active_card(session):
 
 @pytest.mark.asyncio
 async def test_auto_sync_username_on_bot_interaction(session):
-    user = User(user_id=400, username="dil2331", full_name="Adok Old", player_position=Position.ST)
+    user = User(user_id=400, username="old_handle", full_name="Adok Old", player_position=Position.ST)
     session.add(user)
     await session.commit()
 
