@@ -5,8 +5,10 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from app.core.uow import UnitOfWork
 
-from app.db.models import User, Signup, SignupStatus, GameStatus, Position, Team, Game
+from app.bot.i18n import t
 from app.core.events import Event
+from app.db.models import User, Signup, SignupStatus, GameStatus, Position, Team, Game
+
 
 @dataclass
 class PlayerJoinedEvent(Event):
@@ -16,12 +18,14 @@ class PlayerJoinedEvent(Event):
     is_reserve: bool
     message: str
 
+
 @dataclass
 class PlayerLeftEvent(Event):
     game_id: int
     user_id: int
     message: str
     promoted_user: User | None
+
 
 @dataclass
 class JoinResult:
@@ -30,11 +34,24 @@ class JoinResult:
     message: str
     is_reserve: bool
 
+
+def _resolve_user_lang(user: Optional[User]) -> str:
+    if not user:
+        return "ru"
+    lang_attr = getattr(user, "language", None)
+    if hasattr(lang_attr, "value") and isinstance(lang_attr.value, str):
+        return lang_attr.value
+    if isinstance(lang_attr, str):
+        return lang_attr
+    return "ru"
+
+
 class RosterService:
     """
     Service responsible for managing player registration (roster) logic.
     Handles joining, leaving, and balancing rosters.
     """
+
     def __init__(self, uow: "UnitOfWork"):
         self.uow = uow
 
@@ -43,140 +60,181 @@ class RosterService:
         Registers a player to a game.
         Handles game availability, idempotency, registration windows, limits, and goalie priority.
         """
+        user_lang = _resolve_user_lang(user)
+
         # 1. Concurrency Safety: Lock game row (SELECT ... FOR UPDATE)
         game = await self.uow.game_repo.get_with_lock(game_id)
-        
-        status_error = self._validate_game_status(game)
+
+        status_error = self._validate_game_status(game, user_lang)
         if status_error:
             return status_error
-        
+
         # 2. Idempotency: Check if player is already signed up
         existing = await self.uow.game_repo.get_signup(game_id, user.user_id)
         if existing:
-            return JoinResult(False, existing, "Вы уже записаны!", existing.status == SignupStatus.RESERVE)
+            return JoinResult(
+                False,
+                existing,
+                t("already_signed_up", locale=user_lang),
+                existing.status == SignupStatus.RESERVE,
+            )
 
         # Disciplinary Enforcement: Check for active RED card in this chat
-        if not ignore_limit and hasattr(self.uow, 'user_repo') and hasattr(self.uow.user_repo, 'get_active_card'):
+        if (
+            not ignore_limit
+            and hasattr(self.uow, "user_repo")
+            and hasattr(self.uow.user_repo, "get_active_card")
+        ):
             active_card = await self.uow.user_repo.get_active_card(user.user_id, game.chat_id)
-            if active_card and getattr(active_card, 'card_type', None) == "RED":
+            if active_card and getattr(active_card, "card_type", None) == "RED":
                 exp_dt = active_card.expires_at
                 exp_str = exp_dt.strftime("%d.%m.%Y") if hasattr(exp_dt, "strftime") else str(exp_dt)[:10]
-                from app.bot.i18n import t
-                user_lang = getattr(user, "language", "ru") or "ru"
-                if hasattr(user_lang, "value"):
-                    user_lang = user_lang.value
-                reason_line = f" {t('card_reason_prefix', locale=user_lang)}: {active_card.reason}" if getattr(active_card, 'reason', None) else ""
-                msg = t("error_red_card_blocked", locale=user_lang, exp_date=exp_str, reason_line=reason_line)
+                reason_line = (
+                    f" {t('card_reason_prefix', locale=user_lang)}: {active_card.reason}"
+                    if getattr(active_card, "reason", None)
+                    else ""
+                )
+                msg = t(
+                    "error_red_card_blocked",
+                    locale=user_lang,
+                    exp_date=exp_str,
+                    reason_line=reason_line,
+                )
                 return JoinResult(False, None, msg, False)
 
         # 3. Time and Limit validations
-        limit_error = await self._validate_registration_limits(game, game_id, ignore_limit)
+        limit_error = await self._validate_registration_limits(game, game_id, ignore_limit, user_lang)
         if limit_error:
             return limit_error
 
         # 4. Slot allocation logic (Main vs Reserve)
         active_count = await self.uow.game_repo.get_active_signups_count(game_id)
         active_gk_count = 0
-        if hasattr(self.uow.game_repo, 'get_active_gk_count'):
+        if hasattr(self.uow.game_repo, "get_active_gk_count"):
             active_gk_count = await self.uow.game_repo.get_active_gk_count(game_id)
-            
+
         status = SignupStatus.ACTIVE
-        alert_msg = "Вы записаны!"
+        alert_msg = t("alert_joined_active", locale=user_lang)
         is_reserve = False
-        
+
         # Goalkeeper priority slots check
         if self._check_gk_priority(game, active_count, user, ignore_limit, active_gk_count=active_gk_count):
             status = SignupStatus.RESERVE
-            alert_msg = "🧤 Места только для вратарей! Вы в РЕЗЕРВЕ."
+            alert_msg = t("alert_gk_priority_reserve", locale=user_lang)
             is_reserve = True
         elif active_count >= game.max_players:
             status = SignupStatus.RESERVE
-            alert_msg = "Резерв (мест нет)"
+            alert_msg = t("alert_roster_full_reserve", locale=user_lang)
             is_reserve = True
-            
+
         # 5. Create signup record
         signup = self.uow.game_repo.create_signup(game_id, user.user_id, status)
-        
+
         # Invalidate Cache
         from app.core.services.cache import cache_service
+
         await cache_service.evict(f"game_details:{game_id}")
         from app.bot.utils import evict_game_signups_cache
+
         evict_game_signups_cache(game_id)
-        
+
         return JoinResult(True, signup, alert_msg, is_reserve)
 
-    def _validate_game_status(self, game: Optional[Game]) -> Optional[JoinResult]:
+    def _validate_game_status(
+        self, game: Optional[Game], user_lang: str = "ru"
+    ) -> Optional[JoinResult]:
         """Validates if the game exists and is in an open/active state."""
         if not game:
-            return JoinResult(False, None, "Игра не найдена", False)
-        
+            return JoinResult(False, None, t("err_game_not_found", locale=user_lang), False)
+
         if game.status not in [GameStatus.OPEN, GameStatus.ACTIVE]:
-             return JoinResult(False, None, "Запись закрыта!", False)
+            return JoinResult(False, None, t("err_signup_closed", locale=user_lang), False)
         return None
 
-    async def _validate_registration_limits(self, game: Game, game_id: int, ignore_limit: bool) -> Optional[JoinResult]:
+    async def _validate_registration_limits(
+        self, game: Game, game_id: int, ignore_limit: bool, user_lang: str = "ru"
+    ) -> Optional[JoinResult]:
         """Validates registration deadlines, windows, and total signup limits."""
         # 3. Validate game date limits
         if game.date_time:
-             now = datetime.now().replace(tzinfo=None)
-             game_dt = game.date_time.replace(tzinfo=None)
-             if game_dt < now:
-                 return JoinResult(False, None, "Игра уже прошла!", False)
+            now = datetime.now().replace(tzinfo=None)
+            game_dt = game.date_time.replace(tzinfo=None)
+            if game_dt < now:
+                return JoinResult(False, None, t("err_game_past", locale=user_lang), False)
 
         # Configurable Registration Window
         if game.created_at and game.registration_hours and game.registration_hours > 0 and not ignore_limit:
-             now_ts = datetime.now().replace(tzinfo=None)
-             created_at = game.created_at.replace(tzinfo=None)
-             diff = (now_ts - created_at).total_seconds() / 3600
-             if diff > float(game.registration_hours):
-                  return JoinResult(False, None, f"⏳ Запись закрыта (прошло {game.registration_hours} ч.)", False)
+            now_ts = datetime.now().replace(tzinfo=None)
+            created_at = game.created_at.replace(tzinfo=None)
+            diff = (now_ts - created_at).total_seconds() / 3600
+            if diff > float(game.registration_hours):
+                return JoinResult(
+                    False,
+                    None,
+                    t("err_window_expired", locale=user_lang, hours=game.registration_hours),
+                    False,
+                )
 
         # Total Signup Limit
-        if getattr(game, 'signup_limit', None) and game.signup_limit > 0 and not ignore_limit:
-             total_count = await self.uow.game_repo.get_total_signups_count(game_id)
-             if total_count >= game.signup_limit:
-                  return JoinResult(False, None, f"❌ Мест нет! (Лимит {game.signup_limit})", False)
+        if getattr(game, "signup_limit", None) and game.signup_limit > 0 and not ignore_limit:
+            total_count = await self.uow.game_repo.get_total_signups_count(game_id)
+            if total_count >= game.signup_limit:
+                return JoinResult(
+                    False,
+                    None,
+                    t("err_limit_reached", locale=user_lang, limit=game.signup_limit),
+                    False,
+                )
         return None
 
-    def _check_gk_priority(self, game: Game, active_count: int, user: User, ignore_limit: bool, active_gk_count: int = 0) -> bool:
+    def _check_gk_priority(
+        self,
+        game: Game,
+        active_count: int,
+        user: User,
+        ignore_limit: bool,
+        active_gk_count: int = 0,
+    ) -> bool:
         """Checks if the remaining slots should be reserved exclusively for Goalies."""
-        if not ignore_limit and game.created_at and getattr(game, 'gk_hours', 0) and game.gk_hours > 0:
-             now_ts = datetime.now().replace(tzinfo=None)
-             created_at = game.created_at.replace(tzinfo=None)
-             age_hours = (now_ts - created_at).total_seconds() / 3600
-             if age_hours < game.gk_hours and user.player_position != Position.GK:
-                  needed_gks = min(2, getattr(game, 'team_count', 2) or 2)
-                  remaining_gk_needed = max(0, needed_gks - active_gk_count)
-                  if remaining_gk_needed > 0:
-                      slots_left = game.max_players - active_count
-                      if slots_left <= remaining_gk_needed:
-                          return True
+        if not ignore_limit and game.created_at and getattr(game, "gk_hours", 0) and game.gk_hours > 0:
+            now_ts = datetime.now().replace(tzinfo=None)
+            created_at = game.created_at.replace(tzinfo=None)
+            age_hours = (now_ts - created_at).total_seconds() / 3600
+            if age_hours < game.gk_hours and user.player_position != Position.GK:
+                needed_gks = min(2, getattr(game, "team_count", 2) or 2)
+                remaining_gk_needed = max(0, needed_gks - active_gk_count)
+                if remaining_gk_needed > 0:
+                    slots_left = game.max_players - active_count
+                    if slots_left <= remaining_gk_needed:
+                        return True
         return False
 
-    async def leave_player(self, game_id: int, user_id: int, is_admin: bool = False) -> tuple[bool, str, User | None]:
+    async def leave_player(
+        self, game_id: int, user_id: int, is_admin: bool = False, locale: str = "ru"
+    ) -> tuple[bool, str, User | None]:
         """
         Removes a player from the game signup list.
         Promotes first reserve player to active list if applicable.
         """
         game = await self.uow.game_repo.get_with_lock(game_id)
         if not game:
-            return False, "Игра не найдена.", None
-            
+            return False, t("err_game_not_found", locale=locale), None
+
         signup = await self.uow.game_repo.get_signup(game_id, user_id)
         if not signup:
-            return False, "Вы не записаны.", None
+            return False, t("leave_not_signed_up", locale=locale), None
 
         if game.date_time and not is_admin:
-             now = datetime.now().replace(tzinfo=None)
-             game_dt = game.date_time.replace(tzinfo=None)
-             time_to_game = game_dt - now
-             if time_to_game.total_seconds() < 36 * 3600:
-                 return False, "Слишком поздно! Пишите админу.", None
-        
-        was_active = (signup.status == SignupStatus.ACTIVE)
-        
+            now = datetime.now().replace(tzinfo=None)
+            game_dt = game.date_time.replace(tzinfo=None)
+            time_to_game = game_dt - now
+            if time_to_game.total_seconds() < 36 * 3600:
+                return False, t("leave_too_late", locale=locale), None
+
+        was_active = signup.status == SignupStatus.ACTIVE
+
         await self.uow.game_repo.delete_signup(signup)
-        
+
         promoted_user = None
         if was_active:
             reserve_row = await self.uow.game_repo.get_first_reserve(game_id)
@@ -184,45 +242,50 @@ class RosterService:
                 res_signup, res_user = reserve_row
                 res_signup.status = SignupStatus.ACTIVE
                 promoted_user = res_user
-        
+
         # Invalidate Cache
         from app.core.services.cache import cache_service
+
         await cache_service.evict(f"game_details:{game_id}")
         from app.bot.utils import evict_game_signups_cache
+
         evict_game_signups_cache(game_id)
 
-        return True, "Вы выписались.", promoted_user
+        return True, t("leave_success", locale=locale), promoted_user
 
     async def recalculate_roster(self, game_id: int) -> bool:
         game = await self.uow.game_repo.get_with_lock(game_id)
-        if not game: return False
-        
+        if not game:
+            return False
+
         signups_with_user = await self.uow.game_repo.get_all_signups_sorted(game_id)
-        
+
         active_count = 0
         active_gk_count = 0
-        needed_gks = min(2, getattr(game, 'team_count', 2) or 2)
-        
+        needed_gks = min(2, getattr(game, "team_count", 2) or 2)
+
         is_gk_window = False
-        if game.created_at and getattr(game, 'gk_hours', 0) and game.gk_hours > 0:
-             now_ts = datetime.now().replace(tzinfo=None)
-             created_at = game.created_at.replace(tzinfo=None)
-             age_hours = (now_ts - created_at).total_seconds() / 3600
-             if age_hours < game.gk_hours:
-                 is_gk_window = True
+        if game.created_at and getattr(game, "gk_hours", 0) and game.gk_hours > 0:
+            now_ts = datetime.now().replace(tzinfo=None)
+            created_at = game.created_at.replace(tzinfo=None)
+            age_hours = (now_ts - created_at).total_seconds() / 3600
+            if age_hours < game.gk_hours:
+                is_gk_window = True
 
         for signup, user in signups_with_user:
-            is_gk = (user.player_position == Position.GK)
-            is_guest = (user.user_id < 0)
-            
+            is_gk = user.player_position == Position.GK
+            is_guest = user.user_id < 0
+
             if is_guest:
                 if signup.status != SignupStatus.RESERVE:
                     signup.status = SignupStatus.RESERVE
                 continue
 
             remaining_gk_needed = max(0, needed_gks - active_gk_count) if is_gk_window else 0
-            effective_max = game.max_players - remaining_gk_needed if not is_gk else game.max_players
-            
+            effective_max = (
+                game.max_players - remaining_gk_needed if not is_gk else game.max_players
+            )
+
             if active_count < effective_max:
                 if signup.status != SignupStatus.ACTIVE:
                     signup.status = SignupStatus.ACTIVE
@@ -232,64 +295,81 @@ class RosterService:
             else:
                 if signup.status != SignupStatus.RESERVE:
                     signup.status = SignupStatus.RESERVE
-        
+
         # Invalidate Cache
         from app.core.services.cache import cache_service
+
         await cache_service.evict(f"game_details:{game_id}")
         from app.bot.utils import evict_game_signups_cache
+
         evict_game_signups_cache(game_id)
 
         return True
 
     async def balance_teams(self, game_id: int) -> list[tuple[User, Team]]:
         from app.core.domain.balancer import balance_teams, Player as DomainPlayer
-        
+
         game = await self.uow.game_repo.get_game(game_id)
-        if not game: return []
+        if not game:
+            return []
 
         active_rows = await self.uow.game_repo.get_active_players(game_id)
-        if not active_rows: return []
-            
+        if not active_rows:
+            return []
+
         from app.db.models import PlayerProfile
         from sqlalchemy import select
+
         profiles_res = await self.uow.session.execute(
             select(PlayerProfile).where(PlayerProfile.chat_id == game.chat_id)
         )
         profile_map = {p.user_id: p.rating for p in profiles_res.scalars().all()}
-        
+
         players = []
         for user, _ in active_rows:
             user.rating = profile_map.get(user.user_id, 100)
             players.append(DomainPlayer(user))
-        
+
         team_count = game.team_count if game.team_count else 2
         teams = balance_teams(players, team_count=team_count)
 
         user_team_map = {}
         for i, team_list in enumerate(teams):
             team_enum = Team.A
-            if i == 1: team_enum = Team.B
-            elif i == 2: team_enum = Team.C
+            if i == 1:
+                team_enum = Team.B
+            elif i == 2:
+                team_enum = Team.C
             for p in team_list:
                 user_team_map[p.id] = team_enum
-        
+
         for user, signup in active_rows:
             if user.user_id in user_team_map:
                 signup.team = user_team_map[user.user_id]
             else:
                 signup.team = None
-        
+
         return []
 
-    async def update_teams(self, game_id: int, team_a: list[int], team_b: list[int], team_c: list[int], unassigned: list[int], reserve: list[int], positions: dict) -> list[int]:
+    async def update_teams(
+        self,
+        game_id: int,
+        team_a: list[int],
+        team_b: list[int],
+        team_c: list[int],
+        unassigned: list[int],
+        reserve: list[int],
+        positions: dict,
+    ) -> list[int]:
         game = await self.uow.game_repo.get_game(game_id)
-        if not game: return []
-            
+        if not game:
+            return []
+
         signups = await self.uow.game_repo.get_all_active_and_reserve(game_id)
         signup_map = {s.user_id: s for s in signups}
-        
+
         promoted_ids = []
-        
+
         def update_signup(uid, team_enum):
             if uid in signup_map:
                 s = signup_map[uid]
@@ -297,18 +377,25 @@ class RosterService:
                     s.status = SignupStatus.ACTIVE
                     promoted_ids.append(uid)
                 s.team = team_enum
-                
-                if str(uid) in positions:
-                    try: s.position = Position(positions[str(uid)])
-                    except: pass
-                elif uid in positions:
-                     try: s.position = Position(positions[uid])
-                     except: pass
 
-        for uid in team_a: update_signup(uid, Team.A)
-        for uid in team_b: update_signup(uid, Team.B)
-        for uid in team_c or []: update_signup(uid, Team.C)
-        
+                if str(uid) in positions:
+                    try:
+                        s.position = Position(positions[str(uid)])
+                    except Exception:
+                        pass
+                elif uid in positions:
+                    try:
+                        s.position = Position(positions[uid])
+                    except Exception:
+                        pass
+
+        for uid in team_a:
+            update_signup(uid, Team.A)
+        for uid in team_b:
+            update_signup(uid, Team.B)
+        for uid in team_c or []:
+            update_signup(uid, Team.C)
+
         for uid in unassigned:
             if uid in signup_map:
                 s = signup_map[uid]
@@ -322,7 +409,7 @@ class RosterService:
                 s = signup_map[uid]
                 s.team = None
                 s.status = SignupStatus.RESERVE
-        
+
         picked_ids = set(team_a) | set(team_b) | set(team_c or []) | set(unassigned) | set(reserve)
         for uid, s in signup_map.items():
             if uid not in picked_ids:

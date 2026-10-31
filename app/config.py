@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     # Infrastructure Options
     use_polling: bool = False
     webapp_url: str = "https://your-domain.com"
+    webapp_version: str = "2.2.0"
     run_migrations: bool = True
     run_scheduler: bool = True
     run_consumer: bool = True

@@ -128,7 +128,7 @@ async def test_process_join_registration_required(mock_event_bus, mock_roster_se
 
     # Assertions
     callback.bot.get_me.assert_called_once()
-    callback.answer.assert_called_once_with("Нужна регистрация!", url="https://t.me/my_bot?start=reg")
+    callback.answer.assert_called_once_with("translated_need_registration_alert", url="https://t.me/my_bot?start=reg")
     mock_event_bus.publish.assert_not_called()
 
 
@@ -190,7 +190,7 @@ async def test_process_join_system_exception(mock_uow_class):
 
     await process_join(callback, _)
 
-    callback.answer.assert_called_once_with("Ошибка системы. Мы уже чиним.", show_alert=True)
+    callback.answer.assert_called_once_with("translated_system_error_alert", show_alert=True)
 
 
 @pytest.mark.asyncio

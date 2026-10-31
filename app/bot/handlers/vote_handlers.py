@@ -1,13 +1,18 @@
-
+from typing import Callable
 from aiogram import Router, F, types
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.bot.i18n import t
 from app.db.models import Vote, Signup, SignupStatus, Team
 
 router = Router()
 
 @router.callback_query(F.data.startswith("vote_"))
-async def process_vote(callback: types.CallbackQuery, session: AsyncSession):
+async def process_vote(
+    callback: types.CallbackQuery,
+    session: AsyncSession,
+    _: Callable[..., str] = t,
+):
     _, game_id, target_id = callback.data.split("_")
     game_id = int(game_id)
     target_id = int(target_id)
@@ -15,7 +20,7 @@ async def process_vote(callback: types.CallbackQuery, session: AsyncSession):
     
     # 0. Check for self-voting
     if voter_id == target_id:
-        await callback.answer("Вы не можете голосовать за себя! 🤔", show_alert=True)
+        await callback.answer(_("vote_cannot_self"), show_alert=True)
         return
     
     # 1. Check if voter played in the game
@@ -27,7 +32,7 @@ async def process_vote(callback: types.CallbackQuery, session: AsyncSession):
         )
     )
     if not result.scalar_one_or_none():
-        await callback.answer("Голосовать могут только участники матча!", show_alert=True)
+        await callback.answer(_("vote_only_participants"), show_alert=True)
         return
 
     # Get Target's Team
@@ -37,7 +42,7 @@ async def process_vote(callback: types.CallbackQuery, session: AsyncSession):
     target_signup = result.scalar_one_or_none()
     
     if not target_signup:
-        await callback.answer("Ошибка: Игрок не найден.", show_alert=True)
+        await callback.answer(_("vote_player_not_found"), show_alert=True)
         return
 
     target_team = target_signup.team
@@ -54,9 +59,9 @@ async def process_vote(callback: types.CallbackQuery, session: AsyncSession):
     )
     if result.scalar_one_or_none():
         if is_general_vote:
-            await callback.answer("Вы уже проголосовали за MVP этого матча!", show_alert=True)
+            await callback.answer(_("vote_already_voted_general"), show_alert=True)
         else:
-            await callback.answer(f"Вы уже выбрали MVP команды {target_team.value}!", show_alert=True)
+            await callback.answer(_("vote_already_voted_team", team=target_team.value), show_alert=True)
         return
 
     # Record vote
@@ -70,7 +75,7 @@ async def process_vote(callback: types.CallbackQuery, session: AsyncSession):
     await session.commit()
 
     if is_general_vote:
-        await callback.answer("✅ Ваш голос за MVP матча принят! Спасибо!")
+        await callback.answer(_("vote_general_done"))
         return
 
     # Check how many teams the voter has now voted for
@@ -86,8 +91,8 @@ async def process_vote(callback: types.CallbackQuery, session: AsyncSession):
     remaining = all_teams - voted_teams
 
     if not remaining:
-        await callback.answer("✅ Вы проголосовали за обе команды! Спасибо!")
+        await callback.answer(_("vote_both_done"))
     else:
         remaining_team = next(iter(remaining))
-        team_label = "Команду А 🟠" if remaining_team == Team.A else "Команду Б 🟢"
-        await callback.answer(f"Голос за команду {target_team.value} принят! Осталось выбрать MVP {team_label}.")
+        team_label = _("team_a_name") if remaining_team == Team.A else _("team_b_name")
+        await callback.answer(_("vote_one_done", team=target_team.value, remaining=team_label))
