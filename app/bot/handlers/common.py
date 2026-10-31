@@ -81,11 +81,8 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
                 if message.from_user.id in settings.admin_ids or message.from_user.id == settings.system_owner_id:
                     is_admin = True
                 
-                chat_lang = "ru"
-                chat_obj = await session.get(Chat, message.chat.id)
-                if chat_obj and chat_obj.language:
-                    chat_lang = chat_obj.language.value if hasattr(chat_obj.language, 'value') else str(chat_obj.language)
-                chat_lang = (chat_lang or "ru").lower()
+                from app.bot.utils import resolve_chat_language
+                chat_lang = await resolve_chat_language(session, message.chat.id)
                 
                 # Format and send the new message with buttons
                 text_short = await format_game_message(game, session, is_short=True, lang=chat_lang)
@@ -409,11 +406,12 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 game = result.scalar_one_or_none()
                 if game:
                     # 1. Generate full game message text
-                    from app.bot.utils import format_game_message
-                    text = await format_game_message(game, session, lang=user_lang)
+                    from app.bot.utils import format_game_message, resolve_chat_language
+                    match_lang = await resolve_chat_language(session, game.chat_id)
+                    text = await format_game_message(game, session, lang=match_lang)
                     
                     # 2. Keyboard (includes Draft button for admins)
-                    kb = get_game_keyboard(game_id, is_admin=is_admin, lang=user_lang)
+                    kb = get_game_keyboard(game_id, is_admin=is_admin, lang=match_lang)
                     await message.answer(text, reply_markup=kb)
 
                     return

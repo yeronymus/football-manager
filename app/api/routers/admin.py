@@ -317,10 +317,13 @@ async def _get_voting_results(session: AsyncSession, game_id: int):
 
 async def _build_finish_announcement(session: AsyncSession, game, voting_results, data) -> str:
     """Helper to build HTML announcement message text for a finished game."""
-    from app.bot.utils import get_group_game_number
+    from app.bot.utils import get_group_game_number, resolve_chat_language
+    from app.bot.i18n import t
+
+    chat_lang = await resolve_chat_language(session, game.chat_id)
     game_num = await get_group_game_number(session, game)
-    text = f"🏁 <b>Матч #{game_num} завершен!</b>\n\n"
-    text += f"Команда оранжевые 🟠 {game.score_a}:{game.score_b} 🟢 Команда зеленые\n"
+    text = t("finish_match_title", locale=chat_lang, game_num=game_num)
+    text += t("finish_teams_score", locale=chat_lang, score_a=game.score_a, score_b=game.score_b)
     
     async def get_names(uids):
         if not uids: return []
@@ -334,19 +337,20 @@ async def _build_finish_announcement(session: AsyncSession, game, voting_results
     if mvp_ids:
         mvp_names = await get_names(mvp_ids)
         if mvp_names:
-            text += "🌟 <b>MVP:</b> " + ", ".join(mvp_names) + "\n"
+            text += t("finish_mvp_label", locale=chat_lang, names=", ".join(mvp_names))
     
     if voting_results:
-        text += "\n⭐ <b>Голоса за MVP:</b>\n"
+        text += t("finish_mvp_votes_header", locale=chat_lang)
         text += "\n".join([f"- {name}: {count}" for name, count in voting_results]) + "\n"
 
     scorers = [p for p in data.player_stats if p.goals > 0]
     if scorers:
-        text += "\n⚽ <b>Голы:</b>\n"
+        text += t("finish_goals_header", locale=chat_lang)
         scorer_ids = [s.user_id for s in scorers]
         res = await session.execute(select(User.user_id, User.full_name).where(User.user_id.in_(scorer_ids)))
         users_map = {uid: name for uid, name in res.all()}
-        text += "\n".join([f"- {users_map.get(s.user_id, 'Неизвестный')}: {s.goals}" for s in scorers]) + "\n"
+        fallback_name = t("finish_unknown_player", locale=chat_lang)
+        text += "\n".join([f"- {users_map.get(s.user_id, fallback_name)}: {s.goals}" for s in scorers]) + "\n"
     return text
 
 @router.post("/finish_game")

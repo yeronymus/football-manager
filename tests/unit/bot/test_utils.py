@@ -439,3 +439,112 @@ async def test_format_game_message_english(session: AsyncSession):
     assert "Players" in text_en
     assert "Match fee" in text_en
     assert "150 CZK" in text_en
+
+@pytest.mark.asyncio
+async def test_resolve_chat_language_scenarios(session: AsyncSession):
+    from app.bot.utils import resolve_chat_language
+    
+    # 1. Missing or None chat_id defaults to 'ru'
+    assert await resolve_chat_language(session, None) == "ru"
+    assert await resolve_chat_language(session, 0) == "ru"
+    
+    # 2. Non-existent chat defaults to 'ru'
+    assert await resolve_chat_language(session, -999999999) == "ru"
+    
+    # 3. Direct match with Russian chat
+    chat_ru = Chat(chat_id=-1005555, title="RU Group", language=Language.ru, channel_id=-1007777)
+    session.add(chat_ru)
+    await session.commit()
+    assert await resolve_chat_language(session, -1005555) == "ru"
+    
+    # 4. Supergroup vs regular group prefix tolerance (-1005555 vs -5555)
+    assert await resolve_chat_language(session, -5555) == "ru"
+    
+    # 5. Linked channel resolution (-1007777 -> chat_ru)
+    assert await resolve_chat_language(session, -1007777) == "ru"
+    assert await resolve_chat_language(session, -7777) == "ru"
+    
+    # 6. English chat
+    chat_en = Chat(chat_id=-1006666, title="EN Group", language=Language.en)
+    session.add(chat_en)
+    await session.commit()
+    assert await resolve_chat_language(session, -1006666) == "en"
+    assert await resolve_chat_language(session, -6666) == "en"
+
+
+@pytest.mark.asyncio
+async def test_finish_announcement_localization(session: AsyncSession):
+    from app.api.routers.admin import _build_finish_announcement
+    from app.core.domain.dto import PlayerStatDTO
+    
+    # Setup users
+    u1 = User(user_id=501, full_name="Yeronym", player_position=Position.MID)
+    u2 = User(user_id=502, full_name="Alex", player_position=Position.FWD)
+    session.add_all([u1, u2])
+    
+    # 1. Russian Chat
+    chat_ru = Chat(chat_id=-1008881, title="RU League", language=Language.ru)
+    session.add(chat_ru)
+    await session.commit()
+    
+    game_ru = Game(
+        id=701,
+        chat_id=chat_ru.chat_id,
+        created_by=501,
+        date_time=datetime(2026, 5, 20, 18, 0, tzinfo=timezone.utc),
+        location="Field 1",
+        score_a=3,
+        score_b=2,
+        status=GameStatus.FINISHED
+    )
+    session.add(game_ru)
+    await session.commit()
+    
+    class MockFinishData:
+        mvp_team_a = 501
+        mvp_team_b = None
+        player_stats = [PlayerStatDTO(user_id=502, goals=2)]
+        
+    text_ru = await _build_finish_announcement(
+        session=session,
+        game=game_ru,
+        voting_results=[("Yeronym", 5)],
+        data=MockFinishData()
+    )
+    assert "Матч #1 завершен!" in text_ru
+    assert "Команда оранжевые 🟠 3:2 🟢 Команда зеленые" in text_ru
+    assert "MVP:</b> Yeronym" in text_ru
+    assert "Голоса за MVP:" in text_ru
+    assert "Голы:" in text_ru
+    assert "Alex: 2" in text_ru
+    
+    # 2. English Chat
+    chat_en = Chat(chat_id=-1008882, title="EN League", language=Language.en)
+    session.add(chat_en)
+    await session.commit()
+    
+    game_en = Game(
+        id=702,
+        chat_id=chat_en.chat_id,
+        created_by=501,
+        date_time=datetime(2026, 5, 20, 18, 0, tzinfo=timezone.utc),
+        location="Field 2",
+        score_a=4,
+        score_b=1,
+        status=GameStatus.FINISHED
+    )
+    session.add(game_en)
+    await session.commit()
+    
+    text_en = await _build_finish_announcement(
+        session=session,
+        game=game_en,
+        voting_results=[("Yeronym", 7)],
+        data=MockFinishData()
+    )
+    assert "Match #1 finished!" in text_en
+    assert "Team Orange 🟠 4:1 🟢 Team Green" in text_en
+    assert "MVP:</b> Yeronym" in text_en
+    assert "MVP Votes:" in text_en
+    assert "Goals:" in text_en
+    assert "Alex: 2" in text_en

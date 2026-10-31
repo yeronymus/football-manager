@@ -66,12 +66,15 @@ async def process_position(callback: types.CallbackQuery, state: FSMContext, ses
     
     # Save to DB via Repository
     user_repo = UserRepository(session)
+    from app.db.models import Language
+    init_lang = Language.ru if (not callback.from_user.language_code or callback.from_user.language_code.startswith("ru")) else Language.en
     new_user = await user_repo.create_user(
         user_id=callback.from_user.id,
         username=callback.from_user.username,
         full_name=full_name,
         position=position_value,
-        alt_positions=alt_positions
+        alt_positions=alt_positions,
+        language=init_lang
     )
     await session.commit()
     
@@ -87,13 +90,10 @@ async def process_position(callback: types.CallbackQuery, state: FSMContext, ses
         result = await session.execute(select(Game).where(Game.id == pending_game_id))
         game = result.scalar_one_or_none()
         if game:
-            from app.bot.utils import format_game_message
-            user_lang = "ru"
-            user_obj = await session.get(User, callback.from_user.id)
-            if user_obj and getattr(user_obj, "language", None):
-                user_lang = user_obj.language.value if hasattr(user_obj.language, "value") else str(user_obj.language)
-            text = await format_game_message(game, session, lang=user_lang)
-            await callback.message.answer(text, reply_markup=get_game_keyboard(pending_game_id, lang=user_lang))
+            from app.bot.utils import format_game_message, resolve_chat_language
+            match_lang = await resolve_chat_language(session, game.chat_id)
+            text = await format_game_message(game, session, lang=match_lang)
+            await callback.message.answer(text, reply_markup=get_game_keyboard(pending_game_id, lang=match_lang))
             
             # TRIGGER DASHBOARD UPDATE
             try:

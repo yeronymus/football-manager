@@ -79,5 +79,11 @@
     "promoted_auto": "🎉 <b>Вас перевели в основной состав!</b>\n\nМатч: <b>#{game_num}</b>\n📍 Локация: <b>{location}</b>\n⏰ Время: <b>{date}</b>\n\nКто-то выписался из игры, освободилось место. Ждем вас на поле! ⚽",
     "cmd_start_voting_title": "🏆 <b>Голосование за MVP (Матч #{game_num})</b>\n\nВыберите лучших игроков, нажав на кнопки ниже:",
     "tap_to_signup": "👇 <b>Нажмите, чтобы записаться:</b>",
-    "debtor_guest_label": "Гость"
+    "debtor_guest_label": "Гость",
+    "finish_match_title": "🏁 <b>Матч #{game_num} завершен!</b>\n\n",
+    "finish_teams_score": "Команда оранжевые 🟠 {score_a}:{score_b} 🟢 Команда зеленые\n",
+    "finish_mvp_label": "🌟 <b>MVP:</b> {names}\n",
+    "finish_mvp_votes_header": "\n⭐ <b>Голоса за MVP:</b>\n",
+    "finish_goals_header": "\n⚽ <b>Голы:</b>\n",
+    "finish_unknown_player": "Неизвестный"
 }

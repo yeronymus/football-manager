@@ -61,12 +61,8 @@ async def on_game_created(event: GameCreatedEvent):
             except Exception as e:
                 logger.warning(f"Failed to check chat type: {e}")
 
-            from app.db.models import Chat
-            chat_lang = "en"
-            chat_row = await session.get(Chat, game.chat_id)
-            if chat_row and chat_row.language:
-                chat_lang = chat_row.language.value if hasattr(chat_row.language, "value") else str(chat_row.language)
-            chat_lang = (chat_lang or "en").lower()
+            from app.bot.utils import resolve_chat_language
+            chat_lang = await resolve_chat_language(session, game.chat_id)
 
             text = await format_game_message(game, session, is_short=False, lang=chat_lang)
             
@@ -133,12 +129,8 @@ async def on_game_finished(event: GameFinishedEvent):
                 try:
                     from app.bot.utils import get_group_game_number
                     game_num = await get_group_game_number(session, game)
-                    from app.db.models import Chat
-                    chat_lang = "en"
-                    chat_row = await session.get(Chat, game.chat_id)
-                    if chat_row and chat_row.language:
-                        chat_lang = chat_row.language.value if hasattr(chat_row.language, "value") else str(chat_row.language)
-                    chat_lang = (chat_lang or "en").lower()
+                    from app.bot.utils import resolve_chat_language
+                    chat_lang = await resolve_chat_language(session, game.chat_id)
 
                     from app.bot.i18n import t
                     v_text = t("voting_closed_title", locale=chat_lang, game_num=game_num)
@@ -173,12 +165,8 @@ async def on_teams_published(event: TeamsPublishedEvent):
         try:
             from app.bot.utils import format_game_message
 
-            from app.db.models import Chat
-            chat_lang = "en"
-            chat_row = await session.get(Chat, game.chat_id)
-            if chat_row and chat_row.language:
-                chat_lang = chat_row.language.value if hasattr(chat_row.language, "value") else str(chat_row.language)
-            chat_lang = (chat_lang or "en").lower()
+            from app.bot.utils import resolve_chat_language
+            chat_lang = await resolve_chat_language(session, game.chat_id)
 
             public_text = await format_game_message(game, session, lang=chat_lang)
             
@@ -294,8 +282,8 @@ async def on_player_left(event: PlayerLeftEvent):
                     date_str = format_prague_dt(game.date_time)
                     loc_str = game.location or ""
                 
-                p_lang = getattr(event.promoted_user, 'language', 'en')
-                p_lang = p_lang.value if hasattr(p_lang, 'value') else str(p_lang)
+                from app.bot.utils import resolve_chat_language
+                p_lang = await resolve_chat_language(session, game.chat_id if game else None)
                 import html
                 from app.bot.i18n import t
                 p_text = t(

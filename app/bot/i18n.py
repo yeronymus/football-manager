@@ -55,9 +55,10 @@ class SimpleI18n:
 _locales_path = os.path.join(os.path.dirname(__file__), "locales")
 i18n_instance = SimpleI18n(_locales_path)
 
-def t(key: str, locale: str = "en", /, **kwargs) -> str:
+def t(key: str, locale: Optional[str] = None, /, **kwargs) -> str:
     """Helper for translating strings anywhere outside middlewares."""
-    return i18n_instance.get_text(locale, key, **kwargs)
+    loc = kwargs.pop("locale", None) or locale or "ru"
+    return i18n_instance.get_text(loc, key, **kwargs)
 
 class I18nMiddleware(BaseMiddleware):
     def __init__(self, i18n: SimpleI18n):
@@ -86,7 +87,7 @@ class I18nMiddleware(BaseMiddleware):
 
         # Determine language:
         # Default language is English ("en") per user requirement: "вообще изначальный язык пусть будет английский"
-        lang = "en"
+        lang = "ru"
 
         if tg_chat and tg_chat.type == "private":
             # 1. Private chat: prioritize User.language setting
@@ -95,18 +96,22 @@ class I18nMiddleware(BaseMiddleware):
                     user_obj = await session.get(User, tg_user.id)
                     if user_obj and getattr(user_obj, "language", None):
                         lang = user_obj.language.value if hasattr(user_obj.language, "value") else str(user_obj.language)
-                    elif tg_user.language_code and tg_user.language_code.startswith("ru"):
+                    elif tg_user.language_code and not tg_user.language_code.startswith("ru"):
+                        lang = "en"
+                    else:
                         lang = "ru"
                 except Exception as e:
                     logger.debug(f"Could not load user language in middleware: {e}")
-            elif tg_user and tg_user.language_code and tg_user.language_code.startswith("ru"):
+            elif tg_user and tg_user.language_code and not tg_user.language_code.startswith("ru"):
+                lang = "en"
+            else:
                 lang = "ru"
         else:
             # 2. Group / Supergroup / Channel: prioritize Chat.language setting
             if tenant and getattr(tenant, "language", None):
                 lang = tenant.language.value if hasattr(tenant.language, "value") else str(tenant.language)
             else:
-                lang = "en"
+                lang = "ru" 
 
         def _(key: str, **kwargs):
             return self.i18n.get_text(lang, key, **kwargs)

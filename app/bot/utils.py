@@ -213,22 +213,52 @@ def _format_price_section(game, lang: str = "en") -> str:
     return text
 
 
+async def resolve_chat_language(session: AsyncSession, chat_id: int | None) -> str:
+    """
+    Robustly resolves the language for a chat or game.
+    Handles supergroup vs regular group ID prefixes (-100... vs -...),
+    channel IDs mapped to groups, and defaults gracefully to 'ru' if not set.
+    """
+    if not chat_id:
+        return "ru"
+    try:
+        # 1. Fast direct lookup
+        chat = await session.get(Chat, chat_id)
+        if chat and chat.language:
+            lang_val = chat.language.value if hasattr(chat.language, "value") else str(chat.language)
+            return (lang_val or "ru").lower()
+
+        # 2. Tolerant lookup for prefix discrepancy or linked channel
+        from sqlalchemy import or_
+        chat_id_str = str(chat_id)
+        alt_chat_id = int(chat_id_str.replace("-100", "-")) if "-100" in chat_id_str else int("-100" + chat_id_str.replace("-", ""))
+        candidate_ids = {chat_id, alt_chat_id, abs(chat_id), abs(alt_chat_id)}
+
+        stmt = select(Chat).where(
+            or_(
+                Chat.chat_id.in_(candidate_ids),
+                Chat.channel_id.in_(candidate_ids)
+            )
+        )
+        res = await session.execute(stmt)
+        chat = res.scalars().first()
+        if chat and chat.language:
+            lang_val = chat.language.value if hasattr(chat.language, "value") else str(chat.language)
+            return (lang_val or "ru").lower()
+        return "ru"
+    except Exception:
+        return "ru"
+
+
 async def format_game_message(game: Game, session: AsyncSession, is_short: bool = False, signups: list = None, lang: str = None) -> str:
     """
     Generates the text for the Live Message.
     If is_short=True, returns a minimal version for group chats.
-    Uses Chat.language or provided lang parameter (default 'en').
+    Uses Chat.language or provided lang parameter (default 'ru').
     """
     if lang is None:
-        try:
-            chat = await session.get(Chat, game.chat_id)
-            if chat and chat.language:
-                lang = chat.language.value if hasattr(chat.language, 'value') else str(chat.language)
-            else:
-                lang = "en"
-        except Exception:
-            lang = "en"
-    lang = (lang or "en").lower()
+        lang = await resolve_chat_language(session, game.chat_id)
+    lang = (lang or "ru").lower()
 
     if signups is None:
         # Fetch signups with user data if not provided
@@ -293,14 +323,7 @@ async def update_game_message(bot, game, session: AsyncSession):
     import logging
 
     # Resolve Chat language
-    lang = "en"
-    try:
-        chat = await session.get(Chat, game.chat_id)
-        if chat and chat.language:
-            lang = chat.language.value if hasattr(chat.language, 'value') else str(chat.language)
-    except Exception:
-        lang = "en"
-    lang = (lang or "en").lower()
+    lang = await resolve_chat_language(session, game.chat_id)
     
     # Fetch fresh signups from database
     result = await session.execute(

@@ -44,7 +44,7 @@ class UserRepository:
         result = await self.session.execute(stmt)
         return result.all()
 
-    async def create_user(self, user_id: int, full_name: str, username: str | None, position: Position | str, alt_positions: list[str] = None, language: Language | str = Language.en) -> User:
+    async def create_user(self, user_id: int, full_name: str, username: str | None, position: Position | str, alt_positions: list[str] = None, language: Language | str = Language.ru) -> User:
         """Create a new user. Does not commit automatically to allow transaction grouping."""
         
         # Ensure position is Enum
@@ -59,7 +59,7 @@ class UserRepository:
             username=username,
             player_position=position,
             alt_positions=alt_positions or [],
-            language=Language(language.lower()) if isinstance(language, str) else (language or Language.en)
+            language=Language(language.lower()) if isinstance(language, str) else (language or Language.ru)
         )
         self.session.add(user)
         return user

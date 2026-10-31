@@ -79,5 +79,11 @@
     "promoted_auto": "🎉 <b>You have been moved to the main squad!</b>\n\nMatch: <b>#{game_num}</b>\n📍 Location: <b>{location}</b>\n⏰ Time: <b>{date}</b>\n\nSomeone left the game, vacant slot opened. See you on the pitch! ⚽",
     "cmd_start_voting_title": "🏆 <b>Voting for MVP (Match #{game_num})</b>\n\nVote for the best players using the buttons below:",
     "tap_to_signup": "👇 <b>Tap below to sign up:</b>",
-    "debtor_guest_label": "Guest"
+    "debtor_guest_label": "Guest",
+    "finish_match_title": "🏁 <b>Match #{game_num} finished!</b>\n\n",
+    "finish_teams_score": "Team Orange 🟠 {score_a}:{score_b} 🟢 Team Green\n",
+    "finish_mvp_label": "🌟 <b>MVP:</b> {names}\n",
+    "finish_mvp_votes_header": "\n⭐ <b>MVP Votes:</b>\n",
+    "finish_goals_header": "\n⚽ <b>Goals:</b>\n",
+    "finish_unknown_player": "Unknown"
 }

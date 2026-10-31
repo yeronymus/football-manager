@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from app.scheduler.tasks import send_voting_message
-from app.db.models import Game, User, Team
+from app.db.models import Game, User, Team, Chat, Language
 
 @pytest.mark.asyncio
 @patch("app.scheduler.tasks.async_session_maker")
@@ -32,6 +32,8 @@ async def test_send_voting_message_success(mock_get_keyboard, mock_bot, mock_ses
     game = Game(id=1, chat_id=-1001, voting_message_id=123)
     mock_game_res = MagicMock()
     mock_game_res.scalar_one_or_none.return_value = game
+    chat = Chat(chat_id=-1001, title="Test Chat", language=Language.en)
+    session.get.return_value = chat
     
     # Mock players
     user_a = User(user_id=10, full_name="Player A")
@@ -66,3 +68,47 @@ async def test_send_voting_message_success(mock_get_keyboard, mock_bot, mock_ses
     )
     assert game.voting_message_id == 999
     session.commit.assert_called_once()
+
+@pytest.mark.asyncio
+@patch("app.scheduler.tasks.async_session_maker")
+@patch("app.scheduler.tasks.bot", new_callable=AsyncMock)
+@patch("app.bot.keyboards.get_voting_keyboard")
+async def test_send_voting_message_russian(mock_get_keyboard, mock_bot, mock_session_maker):
+    session = AsyncMock()
+    game = Game(id=2, chat_id=-1002, voting_message_id=None)
+    mock_game_res = MagicMock()
+    mock_game_res.scalar_one_or_none.return_value = game
+    chat = Chat(chat_id=-1002, title="Russian Chat", language=Language.ru)
+    session.get.return_value = chat
+    
+    user_a = User(user_id=10, full_name="Игрок А")
+    user_b = User(user_id=20, full_name="Игрок Б")
+    mock_players_res = MagicMock()
+    mock_players_res.all.return_value = [(user_a, Team.A), (user_b, Team.B)]
+    session.execute.side_effect = [mock_game_res, mock_players_res]
+    
+    mock_session = AsyncMock()
+    mock_session.__aenter__.return_value = session
+    mock_session_maker.return_value = mock_session
+    
+    mock_keyboard = MagicMock()
+    mock_get_keyboard.return_value = mock_keyboard
+    
+    sent_msg = AsyncMock()
+    sent_msg.message_id = 888
+    mock_bot.send_message.return_value = sent_msg
+
+    await send_voting_message(game_id=2)
+    
+    expected_text = (
+        "Матч <b>#1</b> завершен.\n\n"
+        "🏆 <b>Голосование за MVP открыто!</b>\n"
+        "Выберите лучших игроков, нажав на кнопки ниже."
+    )
+    mock_bot.send_message.assert_called_once_with(
+        chat_id=-1002,
+        text=expected_text,
+        reply_markup=mock_keyboard,
+        parse_mode="HTML"
+    )
+    assert game.voting_message_id == 888

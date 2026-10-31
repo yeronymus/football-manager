@@ -51,12 +51,8 @@ async def send_voting_message(game_id: int):
                 unassigned.append(user)
 
         # Determine chat language
-        from app.db.models import Chat
-        chat_lang = "en"
-        chat_row = await session.get(Chat, game.chat_id)
-        if chat_row and chat_row.language:
-            chat_lang = chat_row.language.value if hasattr(chat_row.language, "value") else str(chat_row.language)
-        chat_lang = (chat_lang or "en").lower()
+        from app.bot.utils import resolve_chat_language
+        chat_lang = await resolve_chat_language(session, game.chat_id)
 
         # Create inline keyboard with players
         from app.bot.keyboards import get_voting_keyboard, get_channel_voting_keyboard
@@ -235,13 +231,13 @@ async def release_gk_slots(game_id: int):
                 await session.commit()
                 
                 # Update Message
-                from app.bot.utils import format_game_message
-                
-                text = await format_game_message(game, session)
+                from app.bot.utils import format_game_message, resolve_chat_language
+                chat_lang = await resolve_chat_language(session, game.chat_id)
+                text = await format_game_message(game, session, lang=chat_lang)
                 
                 if game.message_id and game.chat_id:
                     from app.bot.keyboards import get_channel_game_keyboard
-                    kb = get_channel_game_keyboard(game.id)
+                    kb = get_channel_game_keyboard(game.id, lang=chat_lang)
                     try:
                         await bot.edit_message_text(
                             chat_id=game.chat_id,
@@ -268,12 +264,13 @@ async def publish_game_task(game_id: int):
         if not game:
             return
 
-        from app.bot.utils import format_game_message
+        from app.bot.utils import format_game_message, resolve_chat_language
         from app.bot.keyboards import get_channel_game_keyboard
+        chat_lang = await resolve_chat_language(session, game.chat_id)
         
         # 1. Publish to Channel (Full)
         if game.channel_id:
-            text_full = await format_game_message(game, session, is_short=False)
+            text_full = await format_game_message(game, session, is_short=False, lang=chat_lang)
             
             # Add hidden deep link so Telegram channel discussion forward carries the start link
             from app.config import settings
@@ -285,15 +282,15 @@ async def publish_game_task(game_id: int):
                 sent_full = await bot.send_message(
                     chat_id=game.channel_id,
                     text=text_full,
-                    reply_markup=get_channel_game_keyboard(game.id)
+                    reply_markup=get_channel_game_keyboard(game.id, lang=chat_lang)
                 )
                 game.channel_message_id = sent_full.message_id
             except Exception as e:
                 print(f"Failed to publish to channel {game.channel_id}: {e}")
 
         # 2. Publish to Group (Full mode per user request)
-        text_short = await format_game_message(game, session, is_short=False)
-        kb = get_channel_game_keyboard(game.id)
+        text_short = await format_game_message(game, session, is_short=False, lang=chat_lang)
+        kb = get_channel_game_keyboard(game.id, lang=chat_lang)
         try:
             sent_message = await bot.send_message(
                 chat_id=game.chat_id,

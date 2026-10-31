@@ -829,24 +829,23 @@ async def notify_player_payment(
         return {"status": "ok", "delivery": "guest", "time": now_str, "detail": "Игрок является гостем."}
 
     user = await session.get(User, target_user_id)
-    user_lang = "en"
-    if user and getattr(user, "language", None):
-        user_lang = user.language.value if hasattr(user.language, "value") else str(user.language)
-    user_lang = (user_lang or "en").lower()
-
     from app.bot.instance import bot
-    from app.bot.utils import get_group_game_number
+    from app.bot.utils import get_group_game_number, resolve_chat_language
     from app.core.timezone import format_prague_dt
+    from app.bot.i18n import t
+
+    chat_lang = await resolve_chat_language(session, game.chat_id)
+    notif_lang = chat_lang or "ru"
+
     game_num = await get_group_game_number(session, game)
     date_str = format_prague_dt(game.date_time)
     pay_info = game.payment_info or ""
 
-    from app.bot.i18n import t
-    fallback_pay = t("pm_payment_reminder_no_details", locale=user_lang)
+    fallback_pay = t("pm_payment_reminder_no_details", locale=notif_lang)
     pay_display = html.escape(pay_info) if pay_info else fallback_pay
     msg = t(
         "pm_payment_reminder",
-        locale=user_lang,
+        locale=notif_lang,
         game_num=game_num,
         location=html.escape(game.location),
         date=date_str,
@@ -910,10 +909,13 @@ async def notify_all_unpaid_pm(
         }
         
     from app.bot.instance import bot
-    from app.bot.utils import get_group_game_number
+    from app.bot.utils import get_group_game_number, resolve_chat_language
     from app.bot.i18n import t
     from app.core.timezone import format_prague_dt
     
+    chat_lang = await resolve_chat_language(session, game.chat_id)
+    notif_lang = chat_lang or "ru"
+
     game_num = await get_group_game_number(session, game)
     date_str = format_prague_dt(game.date_time)
     pay_info = game.payment_info or ""
@@ -931,16 +933,11 @@ async def notify_all_unpaid_pm(
             counts["guests"] += 1
             continue
             
-        user_lang = "en"
-        if getattr(user, "language", None):
-            user_lang = user.language.value if hasattr(user.language, "value") else str(user.language)
-        user_lang = (user_lang or "en").lower()
-        
-        fallback_pay = t("pm_payment_reminder_no_details", locale=user_lang)
+        fallback_pay = t("pm_payment_reminder_no_details", locale=notif_lang)
         pay_display = html.escape(pay_info) if pay_info else fallback_pay
         msg = t(
             "pm_payment_reminder",
-            locale=user_lang,
+            locale=notif_lang,
             game_num=game_num,
             location=html.escape(game.location),
             date=date_str,
@@ -1004,11 +1001,8 @@ async def notify_group_unpaid(
         return {"status": "ok", "unpaid_count": 0, "message": "all_paid"}
 
     # Determine chat language
-    chat_lang = "en"
-    chat_row = await session.get(Chat, game.chat_id)
-    if chat_row and getattr(chat_row, "language", None):
-        chat_lang = chat_row.language.value if hasattr(chat_row.language, "value") else str(chat_row.language)
-    chat_lang = (chat_lang or "en").lower()
+    from app.bot.utils import resolve_chat_language
+    chat_lang = await resolve_chat_language(session, game.chat_id)
 
     from app.bot.utils import get_group_game_number
     from app.bot.instance import bot
