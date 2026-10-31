@@ -1,3 +1,4 @@
+from app.bot.i18n import t
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.models import Game, Signup, User, SignupStatus, Team, GameStatus, Chat
@@ -72,7 +73,6 @@ async def get_group_game_number(session: AsyncSession, game: Game) -> int:
 
 
 def _format_header_section(game, date_str: str, game_number: int = None, lang: str = "en") -> str:
-    is_en = (lang or "en").lower() == "en"
     game_type_val = (game.game_type.value if hasattr(game.game_type, 'value') else str(game.game_type or "")).lower()
     is_draft = game_type_val == "draft"
     
@@ -81,25 +81,16 @@ def _format_header_section(game, date_str: str, game_number: int = None, lang: s
     mpc = getattr(game, 'main_players_count', 22) or 22
     team_format = f"{mpc // 2}x{mpc // 2}"
 
-    if is_en:
-        type_label = "🎯 <b>Draft Match</b>" if is_draft else "🟢 <b>General Match</b>"
-        duration_str = f" 🕒 {duration_val} hours" if duration_val else ""
-        text = f"{type_label} <b>{num_str}</b>\n"
-        text += f"⚽ <b>Format: {team_format}</b> ({game.max_players} players needed)\n"
-        text += f"📅 <b>{date_str}{duration_str}</b>\n"
-        text += f"📍 <b>{html.escape(game.location)}</b>\n"
-    else:
-        type_label = "🎯 <b>Драфт</b>" if is_draft else "🟢 <b>Общая игра</b>"
-        duration_str = f" 🕒 {duration_val} часа" if duration_val else ""
-        text = f"{type_label} <b>{num_str}</b>\n"
-        text += f"⚽ <b>Формат: {team_format}</b> (нужно {game.max_players} человек)\n"
-        text += f"📅 <b>{date_str}{duration_str}</b>\n"
-        text += f"📍 <b>{html.escape(game.location)}</b>\n"
+    type_label = t("game_type_draft" if is_draft else "game_type_regular", locale=lang)
+    duration_str = f" 🕒 {t('duration_hours', locale=lang, duration=duration_val)}" if duration_val else ""
+    text = f"{type_label} <b>{num_str}</b>\n"
+    text += f"{t('format_label', locale=lang, format=team_format, needed=game.max_players)}\n"
+    text += f"📅 <b>{date_str}{duration_str}</b>\n"
+    text += f"📍 <b>{html.escape(game.location)}</b>\n"
     return text
 
 
 def _format_single_team(game, signups, team_enum, team_name, needed_gk, lang: str = "en") -> str:
-    is_en = (lang or "en").lower() == "en"
     text = ""
     t_players = [
         (s, u) for (s, u) in signups 
@@ -117,14 +108,14 @@ def _format_single_team(game, signups, team_enum, team_name, needed_gk, lang: st
         elif pos_str in ["ST", "CF", "FWD", "LW", "RW"]: groups["FWD"].append((s, u))
         else: groups["DEF"].append((s, u))
     
-    if is_en:
-        headers = {"GK": "<b>Goalkeepers</b>", "DEF": "<b>Defenders</b>", "MID": "<b>Midfielders</b>", "FWD": "<b>Forwards</b>"}
-        sub_marker = "   --- substitute ---\n"
-        gk_field_marker = "<i>🧤 Goalkeeper decided on field</i>\n"
-    else:
-        headers = {"GK": "<b>Вратари</b>", "DEF": "<b>Защита</b>", "MID": "<b>Полузащита</b>", "FWD": "<b>Нападение</b>"}
-        sub_marker = "   --- замена ---\n"
-        gk_field_marker = "<i>🧤 Вратарь решается на поле</i>\n"
+    headers = {
+        "GK": f"<b>{t('pos_gk', locale=lang)}</b>",
+        "DEF": f"<b>{t('pos_def', locale=lang)}</b>",
+        "MID": f"<b>{t('pos_mid', locale=lang)}</b>",
+        "FWD": f"<b>{t('pos_fwd', locale=lang)}</b>"
+    }
+    sub_marker = f"{t('sub_separator', locale=lang)}\n"
+    gk_field_marker = f"<i>{t('gk_on_field', locale=lang)}</i>\n"
 
     team_counter = 1
     has_gk = False
@@ -147,15 +138,9 @@ def _format_single_team(game, signups, team_enum, team_name, needed_gk, lang: st
 
 
 def _format_teams_section(game, signups, lang: str = "en") -> str:
-    is_en = (lang or "en").lower() == "en"
     text = ""
     team_map = {0: Team.A, 1: Team.B, 2: Team.C}
-    if is_en:
-        team_names = ["🟠 Team A", "🟢 Team B", "🔵 Team C"]
-        unassigned_title = "⚪ <b>Unassigned</b>"
-    else:
-        team_names = ["🟠 Команда А", "🟢 Команда Б", "🔵 Команда С"]
-        unassigned_title = "⚪ <b>Нераспределенные</b>"
+    team_names = [t("team_a_name", locale=lang), t("team_b_name", locale=lang), t("team_c_name", locale=lang)]
 
     team_gk_flags = [game.has_active_gk_a, game.has_active_gk_b, getattr(game, 'has_active_gk_c', True)] 
     count = game.team_count if game.team_count else 2
@@ -163,37 +148,35 @@ def _format_teams_section(game, signups, lang: str = "en") -> str:
     for i in range(count):
         team_enum = team_map.get(i)
         if not team_enum: continue
-        t_name = team_names[i] if i < len(team_names) else (f"Team {i+1}" if is_en else f"Команда {i+1}")
+        t_name = team_names[i] if i < len(team_names) else f"Team {i+1}"
         needed_gk = team_gk_flags[i] if i < len(team_gk_flags) else True
         text += _format_single_team(game, signups, team_enum, t_name, needed_gk, lang=lang)
     
     unassigned = [s for s in signups if s[0].status == SignupStatus.ACTIVE and s[0].team is None]
     if unassigned:
-        text += f"{unassigned_title} ({len(unassigned)}):\n"
+        text += f"{t('unassigned_header', locale=lang, count=len(unassigned))}\n"
         for i, (signup, user) in enumerate(unassigned, 1):
             text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
     return text
 
 
 def _format_players_section(game, active_players, lang: str = "en") -> str:
-    is_en = (lang or "en").lower() == "en"
     limit = getattr(game, 'signup_limit', game.max_players) or game.max_players
-    header = f"👥 <b>Players</b> ({len(active_players)}/{limit}):\n" if is_en else f"👥 <b>Игроки</b> ({len(active_players)}/{limit}):\n"
+    header = f"{t('players_header', locale=lang, count=len(active_players), limit=limit)}\n"
     text = header
 
     if active_players:
         for i, (signup, user) in enumerate(active_players, 1):
              text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
     else:
-        text += "\nNobody yet... 🦗\n" if is_en else "\nПока никого... 🦗\n"
+        text += f"\n{t('empty_roster', locale=lang)}\n"
     return text
 
 
 def _format_reserve_section(reserve_players, lang: str = "en") -> str:
-    is_en = (lang or "en").lower() == "en"
     text = ""
     if reserve_players:
-        header = f"\n🕒 <b>Reserve</b> ({len(reserve_players)}):\n" if is_en else f"\n🕒 <b>Резерв</b> ({len(reserve_players)}):\n"
+        header = f"\n{t('reserve_header', locale=lang, count=len(reserve_players))}\n"
         text += header
         for i, (signup, user) in enumerate(reserve_players, 1):
             text += f"{i}. <a href=\"tg://user?id={user.user_id}\">{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
@@ -201,15 +184,12 @@ def _format_reserve_section(reserve_players, lang: str = "en") -> str:
 
 
 def _format_price_section(game, lang: str = "en") -> str:
-    is_en = (lang or "en").lower() == "en"
     text = ""
     if game.price > 0:
-        price_word = "Match fee" if is_en else "Взнос"
-        currency = "CZK" if is_en else "крон"
         text += f"——————————————————\n"
-        text += f"💰 <b>{price_word}:</b> {game.price} {currency}\n"
+        text += f"{t('price_label', locale=lang, price=game.price)}\n"
         if game.payment_info:
-            text += f"💳 <code>{html.escape(game.payment_info)}</code>\n"
+            text += f"{t('payment_label', locale=lang, payment=html.escape(game.payment_info))}\n"
     return text
 
 
@@ -277,19 +257,17 @@ async def format_game_message(game: Game, session: AsyncSession, is_short: bool 
     date_str = _format_date(game.date_time, lang=lang)
     text = _format_header_section(game, date_str, game_number=game_number, lang=lang)
     
-    is_en = (lang == "en")
-
     if is_short:
         text += f"——————————————————\n"
-        players_lbl = "Players" if is_en else "Игроков"
+        players_lbl = t("players_short_label", locale=lang)
         text += f"👥 <b>{players_lbl}:</b> {len(active_players)}/{game.max_players}\n"
         if reserve_players:
-            res_lbl = "Reserve" if is_en else "В резерве"
+            res_lbl = t("reserve_short_label", locale=lang)
             text += f"🕒 <b>{res_lbl}:</b> {len(reserve_players)}\n"
         
         # Add deep link to channel message if exists
         if game.channel_id and game.channel_message_id:
-            hint = "Full roster in the channel" if is_en else "Полный список игроков в канале"
+            hint = t("channel_roster_hint", locale=lang)
             text += f"\n👉 <i>{hint}</i>\n"
         
         return text
@@ -337,7 +315,7 @@ async def update_game_message(bot, game, session: AsyncSession):
     # 1. Update Channel (Full mode) if distinct from primary chat
     if game.channel_id and game.channel_message_id and (game.channel_id != game.chat_id or game.channel_message_id != game.message_id):
         text_full = await format_game_message(game, session, is_short=False, signups=signups, lang=lang)
-        cta = "\n\n<b>Registration is open. Join in the chat!</b>" if lang == "en" else "\n\n<b>Запись открыта. Переходите в чат.</b>"
+        cta = f"\n\n{t('channel_cta', locale=lang)}"
         text_full += cta
         
         # Add hidden deep link so Telegram channel discussion forward carries the start link

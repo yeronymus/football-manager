@@ -1,4 +1,6 @@
 
+const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
+
 let currentChatId = null;
 let historyMode = 'mine'; // 'mine' or 'all'
 let currentTab = 'profile';
@@ -81,11 +83,11 @@ async function init() {
         loader.style.display = 'none';
         
         // Improve error message for debugging
-        let errorTitle = "Ошибка загрузки";
+        let errorTitle = t('error_loading_title');
         let errorDetail = e.message;
         
         if (e.message === 'Failed to fetch' || e.message === 'Load failed') {
-            errorDetail = "Нет связи с сервером. Проверьте интернет или VPN.";
+            errorDetail = t('error_no_connection');
         }
 
         const escapeHTML = str => str ? String(str).replace(/[&<>'"]/g, 
@@ -139,31 +141,32 @@ async function renderProfile() {
     
     // Determine language: data.language, or tg user language_code, or localStorage, or query param
     const urlLang = (new URLSearchParams(window.location.search)).get('lang');
-    const appLang = (urlLang || data.language || tg?.initDataUnsafe?.user?.language_code || localStorage.getItem('webapp_lang') || 'ru').toLowerCase();
-    const isEn = appLang.startsWith('en');
-    const isCz = appLang.startsWith('cz') || appLang.startsWith('cs');
+    if (data.language && window.i18n && !localStorage.getItem('webapp_lang')) { window.i18n.setLanguage(data.language.toLowerCase()); }
 
-    const userName = data.name || (isEn ? 'Player' : (isCz ? 'Hráč' : 'Игрок'));
+
+
+    const userName = data.name || t('profile_default_name');
     const activeCard = data.active_card;
     let cardBadgeHtml = '';
     if (activeCard) {
         const isRed = (activeCard.card_type === 'RED');
-        let cardTitle, rawTooltip, badgeDays;
         const expDate = activeCard.expires_at ? new Date(activeCard.expires_at).toLocaleDateString() : '';
 
-        if (isEn) {
-            cardTitle = isRed ? 'Red Card' : 'Yellow Card';
-            rawTooltip = `${cardTitle}: for ${activeCard.weeks} week(s) (until ${expDate}, ${activeCard.days_left} day(s) left)${activeCard.reason ? '. Reason: ' + activeCard.reason : ''}${isRed ? '. Match registration is suspended.' : ''}`;
-            badgeDays = `${activeCard.days_left} d. left`;
-        } else if (isCz) {
-            cardTitle = isRed ? 'Červená karta' : 'Žlutá karta';
-            rawTooltip = `${cardTitle}: na ${activeCard.weeks} týd. (do ${expDate}, zbývá ${activeCard.days_left} dní)${activeCard.reason ? '. Důvod: ' + activeCard.reason : ''}${isRed ? '. Zápis na zápasy je pozastaven.' : ''}`;
-            badgeDays = `${activeCard.days_left} d.`;
-        } else {
-            cardTitle = isRed ? 'Красная карточка' : 'Жёлтая карточка';
-            rawTooltip = `${cardTitle}: на ${activeCard.weeks} нед. (до ${expDate}, осталось ${activeCard.days_left} дн.)${activeCard.reason ? '. Причина: ' + activeCard.reason : ''}${isRed ? '. Запись на игры закрыта.' : ''}`;
-            badgeDays = `${activeCard.days_left} дн.`;
-        }
+        const cardTitle = isRed ? t('card_red') : t('card_yellow');
+        const reasonPart = activeCard.reason ? `. ${t('card_reason_prefix')}${activeCard.reason}` : '';
+        const suspendedPart = isRed ? ` ${t('card_suspended_warning')}` : '';
+        const rawTooltip = t('card_tooltip', {
+            title: cardTitle,
+            weeks: activeCard.weeks,
+            date: expDate,
+            days: activeCard.days_left,
+            reason: reasonPart,
+            suspended: suspendedPart
+        });
+        const badgeDays = t('card_days_left', { days: activeCard.days_left });
+
+
+        
 
         const cardEmoji = isRed ? '🟥' : '🟨';
         const tooltip = escapeHTML(rawTooltip);
@@ -179,13 +182,13 @@ async function renderProfile() {
         `;
     }
 
-    const lblPrimary = isEn ? 'Primary' : (isCz ? 'Hlavní' : 'Основная');
-    const lblGames = isEn ? 'Matches' : (isCz ? 'Zápasy' : 'Игр');
-    const lblGoals = isEn ? 'Total Goals' : (isCz ? 'Góly celkem' : 'Всего голов');
-    const lblPrimaryPos = isEn ? 'Primary Position' : (isCz ? 'Hlavní pozice' : 'Основная позиция');
-    const lblAltPos = isEn ? 'Alt Positions' : (isCz ? 'Alternativní pozice' : 'Доп. позиции');
-    const lblEdit = isEn ? 'Edit' : (isCz ? 'Upravit' : 'Изменить');
-    const lblNotSet = isEn ? 'Not specified' : (isCz ? 'Nespecifikováno' : 'Не указаны');
+    const lblPrimary = t('profile_primary_role');
+    const lblGames = t('profile_matches');
+    const lblGoals = t('profile_goals');
+    const lblPrimaryPos = t('profile_primary_pos');
+    const lblAltPos = t('profile_alt_pos');
+    const lblEdit = t('profile_edit');
+    const lblNotSet = t('profile_not_set');
 
     const html = `
         <div class="card flex-row" style="margin-top: 16px; padding: 24px;">
@@ -245,12 +248,12 @@ window.editPrimaryPosition = function() {
     const html = `
         <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
             <div class="card" style="width:90%; max-width:400px; padding:24px; max-height:85vh; overflow-y:auto; border:1px solid rgba(255,255,255,0.1)">
-                <h3 style="margin-bottom:8px; text-align:center;">Основная позиция</h3>
-                <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">Выберите вашу главную роль на поле</p>
+                <h3 style="margin-bottom:8px; text-align:center;">${t('pos_primary_title')}</h3>
+                <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">${t('pos_primary_desc')}</p>
                 <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
                     ${positions.map(p => `<button onclick="savePrimary('${p}')" class="pos-btn">${p}</button>`).join('')}
                 </div>
-                <button onclick="closeModal()" style="margin-top:24px; width:100%; color:var(--hint-color); background:none; border:none; cursor:pointer; font-weight:600;">Отмена</button>
+                <button onclick="closeModal()" style="margin-top:24px; width:100%; color:var(--hint-color); background:none; border:none; cursor:pointer; font-weight:600;">${t('btn_cancel')}</button>
             </div>
         </div>
     `;
@@ -268,14 +271,14 @@ window.editAltPositions = async function() {
     const html = `
         <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
             <div class="card" style="width:90%; max-width:400px; padding:24px; max-height:85vh; overflow-y:auto; border:1px solid rgba(255,255,255,0.1)">
-                <h3 style="margin-bottom:8px; text-align:center;">Доп. позиции</h3>
-                <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">Выберите позиции, на которых также играете</p>
+                <h3 style="margin-bottom:8px; text-align:center;">${t('pos_alt_title')}</h3>
+                <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">${t('pos_alt_desc')}</p>
                 <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
                     ${positions.map(p => `<button onclick="toggleAlt('${p}')" id="alt-${p}" class="pos-btn ${currentAlts.includes(p) ? 'active' : ''}">${p}</button>`).join('')}
                 </div>
                 <div style="display:flex; gap:12px; margin-top:32px;">
-                    <button onclick="closeModal()" class="group-btn" style="flex:1; justify-content:center; background:rgba(255,255,255,0.05); color:var(--hint-color); border:1px solid var(--border-color)">Отмена</button>
-                    <button onclick="saveAlts()" class="group-btn" style="flex:1; justify-content:center; background:var(--accent-color); color:white">Сохранить</button>
+                    <button onclick="closeModal()" class="group-btn" style="flex:1; justify-content:center; background:rgba(255,255,255,0.05); color:var(--hint-color); border:1px solid var(--border-color)">${t('btn_cancel')}</button>
+                    <button onclick="saveAlts()" class="group-btn" style="flex:1; justify-content:center; background:var(--accent-color); color:white">${t('btn_save')}</button>
                 </div>
             </div>
         </div>
@@ -358,10 +361,10 @@ window.showGroupSelector = async function() {
         const modalHtml = `
             <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
                 <div class="card" style="width:90%; max-width:400px; padding:24px; max-height:85vh; overflow-y:auto; border:1px solid rgba(255,255,255,0.1)">
-                    <h3 style="margin-bottom:8px; text-align:center;">Выберите группу</h3>
-                    <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">Выберите лигу для просмотра статистики</p>
+                    <h3 style="margin-bottom:8px; text-align:center;">${t('title_select_group')}</h3>
+                    <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">${t('select_group_desc')}</p>
                     <div>${listHtml}</div>
-                    <button onclick="closeModal()" style="margin-top:20px; width:100%; color:var(--hint-color); background:none; border:none; cursor:pointer; font-weight:600;">Отмена</button>
+                    <button onclick="closeModal()" style="margin-top:20px; width:100%; color:var(--hint-color); background:none; border:none; cursor:pointer; font-weight:600;">${t('btn_cancel')}</button>
                 </div>
             </div>
         `;
@@ -390,14 +393,14 @@ async function renderLeaderboard() {
                 <div style="font-weight:bold; color:var(--hint-color); width:20px; font-size:14px;">${idx+1}</div>
                 <div>
                     <div style="font-weight:bold; font-size:16px;">${p.name}</div>
-                    <div class="subtitle" style="font-size:12px;">${p.games} игр • ${p.goals} голов</div>
+                    <div class="subtitle" style="font-size:12px;">${t('leaderboard_games_goals', { games: p.games, goals: p.goals })}</div>
                 </div>
             </div>
             <div style="font-weight:bold; color:var(--accent-color); font-size:18px;">${p.rating}</div>
         </div>
     `).join('');
     
-    if(pages.leaderboard) pages.leaderboard.innerHTML = `<h2>Лидерборд группы</h2>` + listHtml;
+    if(pages.leaderboard) pages.leaderboard.innerHTML = `<h2>${t('leaderboard_title')}</h2>` + listHtml;
 }
 
 window.renderHistory = async function(mode = null) {
@@ -412,10 +415,10 @@ window.renderHistory = async function(mode = null) {
     if (data.length === 0) {
         if(pages.history) pages.history.innerHTML = `
             <div class="history-filter">
-                <button class="${historyMode === 'mine' ? 'active' : ''}" onclick="renderHistory('mine')">Мои игры</button>
-                <button class="${historyMode === 'all' ? 'active' : ''}" onclick="renderHistory('all')">Все игры группы</button>
+                <button class="${historyMode === 'mine' ? 'active' : ''}" onclick="renderHistory('mine')">${t('history_my_games')}</button>
+                <button class="${historyMode === 'all' ? 'active' : ''}" onclick="renderHistory('all')">${t('history_all_games')}</button>
             </div>
-            <div class="card" style="text-align:center">Игр пока нет.</div>
+            <div class="card" style="text-align:center">${t('history_no_games')}</div>
         `;
         return;
     }
@@ -432,19 +435,19 @@ window.renderHistory = async function(mode = null) {
         let sign = ratingChange > 0 ? '+' : '';
         
         const teamColors = { 'A': '#4caf50', 'B': '#ff9800', 'C': '#3b82f6', 'D': '#ffffff' };
-        const teamLabels = { 'A': 'Зеленые', 'B': 'Оранжевые', 'C': 'Синие', 'D': 'Белые' };
+        const teamLabels = { 'A': t('team_green'), 'B': t('team_orange'), 'C': t('team_blue'), 'D': t('team_white') };
         
-        let statusText = 'Ничья';
+        let statusText = t('history_draw');
         let statusColor = 'var(--hint-color)';
         if (g.winner_team) {
             if (g.my_team && g.my_team === g.winner_team) {
-                statusText = 'Победа';
+                statusText = t('history_win');
                 statusColor = '#4caf50';
             } else if (g.my_team) {
-                statusText = 'Поражение';
+                statusText = t('history_defeat');
                 statusColor = '#f44336';
             } else {
-                statusText = g.winner_team === 'A' ? 'Победа Зеленых' : (g.winner_team === 'B' ? 'Победа Оранжевых' : 'Победа Синих');
+                const wt = teamLabels[g.winner_team] || g.winner_team; statusText = t('history_win_team', { team: wt });
                 statusColor = teamColors[g.winner_team] || 'var(--hint-color)';
             }
         }
@@ -469,7 +472,7 @@ window.renderHistory = async function(mode = null) {
         <div class="card" onclick="showGameDetails(${g.game_id})" style="cursor:pointer; border-left: 4px solid ${historyMode === 'mine' ? resColor : 'transparent'};">
             <div class="flex-between" style="margin-bottom: 8px;">
                 <div style="display:flex; flex-direction:column">
-                    <span style="font-size: 10px; font-weight: 800; color:var(--accent-color); margin-bottom: 2px;">ИГРА #${g.game_number || g.game_id}</span>
+                    <span style="font-size: 10px; font-weight: 800; color:var(--accent-color); margin-bottom: 2px;">${t('history_game_prefix', { num: g.game_number || g.game_id })}</span>
                     <span style="font-size: 20px; font-weight: 800; letter-spacing: 1px;">
                         ${scoreHtml}
                     </span>
@@ -488,7 +491,7 @@ window.renderHistory = async function(mode = null) {
             <div class="flex-between">
                 <div class="flex-row" style="gap: 8px;">
                     <div style="width:10px; height:10px; border-radius:50%; background:${teamColors[g.my_team] || 'var(--hint-color)'}"></div>
-                    <span class="subtitle" style="font-weight:600">${teamLabels[g.my_team] || 'Неизвестно'}</span>
+                    <span class="subtitle" style="font-weight:600">${teamLabels[g.my_team] || t('team_unknown')}</span>
                 </div>
                 <span style="color:${resColor}; font-weight: 800; font-size: 16px;">${sign}${ratingChange} MMR</span>
             </div>` : ''}
@@ -525,7 +528,7 @@ window.showGameDetails = async function(gameId) {
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
                 <div style="background: rgba(76, 175, 80, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(76, 175, 80, 0.1);">
-                    <h4 style="color:#4caf50; margin-bottom:12px; border-bottom:1px solid rgba(76,175,80,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">Зеленые (A)</h4>
+                    <h4 style="color:#4caf50; margin-bottom:12px; border-bottom:1px solid rgba(76,175,80,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">${t('team_green')} (A)</h4>
                     ${game.team_a.map(p => `
                         <div style="font-size:15px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center">
                             <span style="font-weight:500">${p.name}</span>
@@ -537,7 +540,7 @@ window.showGameDetails = async function(gameId) {
                     `).join('')}
                 </div>
                 <div style="background: rgba(255, 152, 0, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(255, 152, 0, 0.1);">
-                    <h4 style="color:#ff9800; margin-bottom:12px; border-bottom:1px solid rgba(255,152,0,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">Оранжевые (B)</h4>
+                    <h4 style="color:#ff9800; margin-bottom:12px; border-bottom:1px solid rgba(255,152,0,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">${t('team_orange')} (B)</h4>
                     ${game.team_b.map(p => `
                         <div style="font-size:15px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center">
                             <span style="font-weight:500">${p.name}</span>
@@ -552,7 +555,7 @@ window.showGameDetails = async function(gameId) {
             
             ${game.team_c && game.team_c.length ? `
             <div style="margin-top:24px; background: rgba(59, 130, 246, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(59, 130, 246, 0.1);">
-                <h4 style="color:#3b82f6; margin-bottom:12px; border-bottom:1px solid rgba(59,130,246,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">Синие (C)</h4>
+                <h4 style="color:#3b82f6; margin-bottom:12px; border-bottom:1px solid rgba(59,130,246,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">${t('team_blue')} (C)</h4>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                     ${game.team_c.map(p => `
                         <div style="font-size:14px; display:flex; justify-content:space-between">
@@ -563,7 +566,7 @@ window.showGameDetails = async function(gameId) {
                 </div>
             </div>` : ''}
             
-            <button onclick="closePopup()" class="group-btn" style="margin-top:40px; height:56px; font-size:18px; justify-content:center; background:var(--accent-color); color:white;">Закрыть</button>
+            <button onclick="closePopup()" class="group-btn" style="margin-top:40px; height:56px; font-size:18px; justify-content:center; background:var(--accent-color); color:white;">${t('btn_close_popup')}</button>
         `;
         
         const overlay = document.createElement('div');
@@ -609,7 +612,7 @@ async function loadAd() {
             adContainer.innerHTML = `
                 ${ad.image_url ? `<img src="${ad.image_url}" style="width:40px;height:40px;border-radius:8px">` : '📢'}
                 <div style="flex:1">
-                    <div style="font-size:10px; color:var(--hint-color)">Реклама</div>
+                    <div style="font-size:10px; color:var(--hint-color)">${t('lbl_ad')}</div>
                     <div style="font-weight:bold; font-size:14px">${ad.text}</div>
                 </div>
             `;

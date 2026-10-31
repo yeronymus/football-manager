@@ -6,6 +6,7 @@ from app.db.models import Position, User
 from app.config import settings
 from app.core.repositories.user_repository import UserRepository
 from app.bot.fsm import EditingProfile
+from app.bot.i18n import t
 from app.bot.keyboards import (
     get_profile_edit_keyboard, 
     get_edit_choice_keyboard, 
@@ -110,44 +111,38 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
             .limit(1)
         )
 
-    card_notice_en = ""
-    card_notice_ru = ""
+    card_notice = ""
     if card:
+        from app.bot.i18n import t
         is_red = (card.card_type == "RED")
         card_icon = "🟥" if is_red else "🟨"
         exp_date = card.expires_at.strftime("%d.%m.%Y") if hasattr(card.expires_at, "strftime") else str(card.expires_at)[:10]
         reason_txt = f" ({card.reason})" if card.reason else ""
-        card_name_en = "Red Card (Suspended)" if is_red else "Yellow Card"
-        card_name_ru = "Красная карточка (дисквалификация)" if is_red else "Жёлтая карточка"
-        card_notice_en = f"\n\n⚠️ <b>Discipline:</b> {card_icon} {card_name_en} (until {exp_date}){reason_txt}"
-        card_notice_ru = f"\n\n⚠️ <b>Дисциплина:</b> {card_icon} {card_name_ru} (до {exp_date}){reason_txt}"
+        card_title = t("card_red_title" if is_red else "card_yellow_title", locale=lang)
+        card_notice = t("card_profile_line", locale=lang, card_icon=card_icon, card_title=card_title, exp_date=exp_date, reason_line=reason_txt)
 
-    if is_en:
-        text = f"👤 <b>Player Profile</b>\n\n"
-        text += f"<b>{user.full_name}</b> (@{user.username or 'none'})\n"
-        text += f"📍 Position: <b>{user.player_position.value}</b>\n"
-        if user.alt_positions:
-            text += f"🔄 Alt positions: {', '.join(user.alt_positions)}\n"
-        text += f"➖➖➖➖➖➖➖➖\n"
-        rating_val = player.rating if player else "(See in group chat)"
-        text += f"📊 Rating: <b>{rating_val}</b>\n"
-        text += f"🎮 Matches: <b>{player.games_played if player else '-'}</b>\n"
-        text += f"⭐️ MVP: <b>{player.stats_mvp if player else '-'}</b>\n"
-        text += f"⚽ Goals: <b>{total_goals}</b>"
-        text += card_notice_en
-    else:
-        text = f"👤 <b>Профиль игрока</b>\n\n"
-        text += f"<b>{user.full_name}</b> (@{user.username or 'нет'})\n"
-        text += f"📍 Позиция: <b>{user.player_position.value}</b>\n"
-        if user.alt_positions:
-            text += f"🔄 Доп. позиции: {', '.join(user.alt_positions)}\n"
-        text += f"➖➖➖➖➖➖➖➖\n"
-        rating_val = player.rating if player else "(Смотрите в группе)"
-        text += f"📊 Рейтинг: <b>{rating_val}</b>\n"
-        text += f"🎮 Матчей: <b>{player.games_played if player else '-'}</b>\n"
-        text += f"⭐️ MVP: <b>{player.stats_mvp if player else '-'}</b>\n"
-        text += f"⚽ Голов: <b>{total_goals}</b>"
-        text += card_notice_ru
+    rating_val = player.rating if player else t("profile_see_in_group", locale=lang)
+    rating_line = t("profile_rating", locale=lang, rating=rating_val)
+    matches_line = t("profile_matches", locale=lang, matches=player.games_played if player else "-")
+    mvp_line = t("profile_mvp", locale=lang, mvp=player.stats_mvp if player else "-")
+    goals_line = t("profile_goals", locale=lang, goals=total_goals)
+    pos_line = t("profile_position", locale=lang, pos=user.player_position.value)
+    alt_pos_line = f"\n{t('profile_alt_positions', locale=lang, positions=', '.join(user.alt_positions))}" if user.alt_positions else ""
+    none_username = t("profile_no_username", locale=lang)
+    uname = f"@{user.username}" if user.username else f"({none_username})"
+
+    text = (
+        f"{t('profile_title', locale=lang)}\n\n"
+        f"<b>{user.full_name}</b> {uname}\n"
+        f"{pos_line}"
+        f"{alt_pos_line}\n"
+        f"➖➖➖➖➖➖➖➖\n"
+        f"{rating_line}\n"
+        f"{matches_line}\n"
+        f"{mvp_line}\n"
+        f"{goals_line}"
+        f"{card_notice}"
+    )
 
     kb = get_profile_edit_keyboard(lang=lang)
     try:
@@ -179,8 +174,7 @@ async def cmd_my_history(message: types.Message, _):
         )]
     ])
     
-    is_en = (_("btn_open_history") == "📜 Open Match History")
-    prompt = "Click below to view your match history:" if is_en else "Нажмите кнопку ниже, чтобы посмотреть архив игр:"
+    prompt = _("prompt_view_history")
     await message.answer(prompt, reply_markup=kb)
 
 # --- Profile Editing Handlers ---
@@ -205,9 +199,7 @@ async def cb_back_to_edit_menu(callback: types.CallbackQuery, state: FSMContext,
     user_repo = UserRepository(session)
     user = await user_repo.get_user(callback.from_user.id)
     lang = user.language.value if (user and user.language) else "en"
-    is_en = (lang == "en")
-    
-    prompt = "Select what you want to change:" if is_en else "Выберите, что хотите изменить:"
+    prompt = t("prompt_edit_profile", locale=lang)
     await callback.message.edit_text(prompt, reply_markup=get_edit_choice_keyboard(lang=lang))
     await state.set_state(EditingProfile.waiting_for_choice)
     await callback.answer()
@@ -217,9 +209,7 @@ async def cb_edit_name(callback: types.CallbackQuery, state: FSMContext, session
     user_repo = UserRepository(session)
     user = await user_repo.get_user(callback.from_user.id)
     lang = user.language.value if (user and user.language) else "en"
-    is_en = (lang == "en")
-    
-    prompt = "Enter your new First and Last name (Latin letters only):" if is_en else "Введите ваше новое Имя и Фамилию (только латиница):"
+    prompt = t("prompt_edit_name", locale=lang)
     await callback.message.edit_text(prompt, reply_markup=get_cancel_keyboard(lang=lang))
     await state.set_state(EditingProfile.waiting_for_name)
     await callback.answer()
@@ -233,7 +223,7 @@ async def process_edit_name_input(message: types.Message, state: FSMContext, ses
 
     # Validation
     if not re.match(r"^[a-zA-Z\s]+$", message.text):
-        err = "Please use Latin letters only.\nTry again:" if is_en else "Пожалуйста, используйте только латинские буквы.\nПопробуйте еще раз:"
+        err = t("error_name_latin", locale=lang)
         await message.answer(err)
         return
         
@@ -243,7 +233,7 @@ async def process_edit_name_input(message: types.Message, state: FSMContext, ses
     user = await user_repo.update_profile(message.from_user.id, full_name=message.text)
     await session.commit()
     
-    success = f"✅ Name updated to: {user.full_name}" if is_en else f"✅ Имя обновлено на: {user.full_name}"
+    success = t("name_updated_toast", locale=lang, name=user.full_name)
     await message.answer(success)
     
     await state.clear()
@@ -254,10 +244,8 @@ async def cb_edit_position(callback: types.CallbackQuery, state: FSMContext, ses
     user_repo = UserRepository(session)
     user = await user_repo.get_user(callback.from_user.id)
     lang = user.language.value if (user and user.language) else "en"
-    is_en = (lang == "en")
-
     all_positions = [p.value for p in Position]
-    prompt = "Select your new primary position:" if is_en else "Выберите новую позицию:"
+    prompt = t("prompt_edit_pos", locale=lang)
     await callback.message.edit_text(prompt, reply_markup=get_primary_select_keyboard(all_positions))
     await state.set_state(EditingProfile.waiting_for_position)
     await callback.answer()
@@ -274,8 +262,8 @@ async def process_edit_position_choice(callback: types.CallbackQuery, state: FSM
     if user.alt_positions:
         full_pos += f" ({', '.join(user.alt_positions)})"
         
-    is_en = (str(user.language or "en").lower() == "en")
-    toast = f"✅ Position updated to: {full_pos}" if is_en else f"✅ Позиция обновлена на: {full_pos}"
+    lang = user.language.value if (user and user.language) else "en"
+    toast = t("pos_updated_toast", locale=lang, pos=full_pos)
     await callback.answer(toast, show_alert=False)
     
     await state.clear()
@@ -291,8 +279,8 @@ async def cb_edit_alt_positions(callback: types.CallbackQuery, state: FSMContext
     current_alts = user.alt_positions or []
     current_alts = [str(p) for p in current_alts]
     
-    is_en = (str(user.language or "en").lower() == "en")
-    prompt = "Select your alternative positions (Toggle):" if is_en else "Выберите ваши дополнительные позиции (Toggle):"
+    lang = user.language.value if (user and user.language) else "en"
+    prompt = t("prompt_edit_alts", locale=lang)
 
     await state.update_data(alt_positions=current_alts)
     await callback.message.edit_text(
@@ -324,17 +312,17 @@ async def process_edit_alt_done(callback: types.CallbackQuery, state: FSMContext
     
     user_repo = UserRepository(session)
     user = await user_repo.get_user(callback.from_user.id)
-    is_en = (str(user.language or "en").lower() == "en") if user else True
+    lang = user.language.value if (user and user.language) else "en"
 
     if not selected:
-        warn = "Select at least one position or click Back." if is_en else "Выберите хотя бы одну или нажмите Отмена в меню, если передумали."
+        warn = t("warn_select_alt", locale=lang)
         await callback.answer(warn, show_alert=True)
         return
 
     user = await user_repo.update_profile(callback.from_user.id, alt_positions=selected)
     await session.commit()
     
-    toast = f"✅ Alt positions updated: {', '.join(selected)}" if is_en else f"✅ Доп. позиции обновлены: {', '.join(selected)}"
+    toast = t("alts_updated_toast", locale=lang, positions=', '.join(selected))
     await callback.answer(toast, show_alert=False)
     await state.clear()
     await render_profile(callback.message, callback.from_user.id, session)

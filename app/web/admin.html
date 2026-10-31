@@ -301,14 +301,6 @@
 </div>
 
 <script>
-    (function() {
-        var script = document.createElement('script');
-        script.src = 'js/admin.js?v=' + Date.now();
-        document.body.appendChild(script);
-    })();
-</script>
-
-<script>
     const ADMIN_I18N = {
         en: {
             admin_hub: "Admin Hub",
@@ -358,7 +350,37 @@
             modal_stat_goals: "Goals",
             modal_stat_mvp: "MVP",
             modal_recent_matches: "Recent Games in Group",
-            discipline_title: "Discipline & Sanctions"
+            discipline_title: "Discipline & Sanctions",
+            card_yellow_title: "Yellow Card",
+            card_red_title: "Red Card (Suspended)",
+            card_yellow_short: "Yellow",
+            card_red_short: "Red (Ban)",
+            btn_issue_card: "Issue Card",
+            btn_revoke_card: "Revoke",
+            lbl_duration: "Duration:",
+            lbl_reason: "Reason:",
+            lbl_until: "until",
+            lbl_weeks: "weeks",
+            lbl_days_left: "days left",
+            msg_red_blocked: "Match signups are blocked for this player in this group.",
+            ph_card_reason: "Reason (e.g. no-show, unsportsmanlike behavior)...",
+            hint_yellow_warning: "Yellow is an official warning.",
+            hint_red_block: "Red blocks match signups!",
+            btn_confirm_issue_dm: "Confirm & Send DM",
+            confirm_issue_prompt: "Issue {type} to {name} for {weeks} week(s)? The bot will notify them in private messages.",
+            confirm_revoke_prompt: "Revoke active card for {name}? The player will be notified in DM.",
+            toast_card_issued: "Card issued successfully!",
+            toast_card_revoked: "Card revoked successfully!",
+            opt_1_week: "1 week",
+            opt_2_weeks: "2 weeks",
+            opt_4_weeks: "4 weeks (1 mo.)",
+            opt_8_weeks: "8 weeks (2 mo.)",
+            opt_12_weeks: "12 weeks (3 mo.)",
+            modal_no_matches: "No match history in this group.",
+            loading_dots: "Loading...",
+            stat_in_4w: "in 4w",
+            stat_days_ago: "{days} days ago",
+            stat_never_played: "Never played"
         },
         ru: {
             admin_hub: "Панель управления",
@@ -408,9 +430,40 @@
             modal_stat_goals: "Голов",
             modal_stat_mvp: "MVP",
             modal_recent_matches: "Последние игры в группе",
-            discipline_title: "Дисциплина"
+            discipline_title: "Дисциплина",
+            card_yellow_title: "Жёлтая карточка",
+            card_red_title: "Красная карточка (дисквалификация)",
+            card_yellow_short: "Жёлтая",
+            card_red_short: "Красная (Бан)",
+            btn_issue_card: "Выдать карточку",
+            btn_revoke_card: "Снять",
+            lbl_duration: "Срок:",
+            lbl_reason: "Причина:",
+            lbl_until: "до",
+            lbl_weeks: "нед.",
+            lbl_days_left: "дн. осталось",
+            msg_red_blocked: "Запись на игры в этой группе заблокирована.",
+            ph_card_reason: "Причина (например, неявка, грубость)...",
+            hint_yellow_warning: "Жёлтая - предупреждение.",
+            hint_red_block: "Красная блокирует запись на игры!",
+            btn_confirm_issue_dm: "Выдать и уведомить",
+            confirm_issue_prompt: "Выдать {type} игроку {name} на {weeks} нед.? Бот отправит уведомление в ЛС.",
+            confirm_revoke_prompt: "Снять активную карточку с {name}? Игрок получит уведомление в ЛС.",
+            toast_card_issued: "Карточка успешно выдана!",
+            toast_card_revoked: "Карточка снята!",
+            opt_1_week: "1 неделя",
+            opt_2_weeks: "2 недели",
+            opt_4_weeks: "4 недели (1 мес.)",
+            opt_8_weeks: "8 недель (2 мес.)",
+            opt_12_weeks: "12 недель (3 мес.)",
+            modal_no_matches: "Нет сыгранных матчей в этой группе.",
+            loading_dots: "Загрузка...",
+            stat_in_4w: "за 4нед",
+            stat_days_ago: "{days} дн. назад",
+            stat_never_played: "Не играл"
         }
     };
+    window.ADMIN_I18N = ADMIN_I18N;
 
     const paramLang = (new URLSearchParams(window.location.search)).get('lang');
     let adminCurrentLang = (paramLang === 'en' || paramLang === 'ru') ? paramLang : (localStorage.getItem('webapp_lang') || 'en');
@@ -440,5 +493,6 @@
     setAdminLang(adminCurrentLang);
 </script>
 
+<script src="js/admin.js?v=2.2.0"></script>
 </body>
 </html>

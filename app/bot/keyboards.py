@@ -1,3 +1,4 @@
+from app.bot.i18n import t
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
@@ -73,8 +74,7 @@ def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = ""
     lang_param = f"&lang={lang}" if lang else ""
     game_url = f"{base_url.rstrip('/')}/web/game.html?game_id={game_id}&v={timestamp}{lang_param}"
     
-    is_en = (lang or "en").lower() == "en"
-    join_btn_text = "⚽ Sign Up for Game" if is_en else "⚽ Записаться на игру"
+    join_btn_text = t("btn_join_game", locale=lang)
     
     buttons = [
         [
@@ -84,7 +84,7 @@ def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = ""
     
     if is_admin:
         draft_url = f"{base_url.rstrip('/')}/web/draft.html?game_id={game_id}&v={timestamp}{lang_param}"
-        draft_btn_text = "🛠 Teams (Draft)" if is_en else "🛠 Составы (Draft)"
+        draft_btn_text = t("btn_draft_teams", locale=lang)
         buttons.append([
             InlineKeyboardButton(text=draft_btn_text, web_app=types.WebAppInfo(url=draft_url))
         ])
@@ -96,8 +96,7 @@ def get_channel_game_keyboard(game_id: int, lang: str = "en") -> InlineKeyboardM
     bot_username = settings.bot_username
     deep_link = f"https://t.me/{bot_username}?start=game_{game_id}"
     
-    is_en = (lang or "en").lower() == "en"
-    btn_text = "⚽ Join Game" if is_en else "⚽ Перейти к записи"
+    btn_text = t("btn_channel_join", locale=lang)
     
     buttons = [
         [InlineKeyboardButton(text=btn_text, url=deep_link)]
@@ -111,9 +110,8 @@ def get_main_menu_keyboard(is_admin: bool = False, lang: str = "en"):
     from app.config import settings
     web_app_url = f"{settings.webapp_url.rstrip('/')}/web/index.html?v=7"
     
-    is_en = (lang or "en").lower() == "en"
-    create_text = "➕ Create Game" if is_en else "➕ Создать игру"
-    shuffle_text = "🔀 Shuffle" if is_en else "🔀 Шаффл"
+    create_text = t("btn_create_game", locale=lang)
+    shuffle_text = t("btn_shuffle_teams", locale=lang)
     
     buttons = [
         [KeyboardButton(text=create_text, web_app=types.WebAppInfo(url=web_app_url))],
@@ -131,9 +129,8 @@ def get_main_menu_inline_keyboard(is_admin: bool = False, lang: str = "en") -> I
 
     from app.config import settings
     web_app_url = f"{settings.webapp_url.rstrip('/')}/web/index.html?v=7"
-    is_en = (lang or "en").lower() == "en"
-    create_text = "➕ Create Game" if is_en else "➕ Создать игру"
-    shuffle_text = "🔀 Shuffle" if is_en else "🔀 Шаффл"
+    create_text = t("btn_create_game", locale=lang)
+    shuffle_text = t("btn_shuffle_teams", locale=lang)
     
     buttons = [
         [InlineKeyboardButton(text=create_text, web_app=types.WebAppInfo(url=web_app_url))],
@@ -143,8 +140,7 @@ def get_main_menu_inline_keyboard(is_admin: bool = False, lang: str = "en") -> I
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_profile_edit_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
-    is_en = (lang or "en").lower() == "en"
-    btn_edit = "✏️ Edit Profile" if is_en else "✏️ Изменить профиль"
+    btn_edit = t("btn_edit_profile", locale=lang)
     buttons = [
         [
             InlineKeyboardButton(text=btn_edit, callback_data="edit_profile"),
@@ -154,20 +150,18 @@ def get_profile_edit_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_edit_choice_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
-    is_en = (lang or "en").lower() == "en"
     buttons = [
-        [InlineKeyboardButton(text="📝 Change Name" if is_en else "📝 Изменить имя", callback_data="edit_name")],
-        [InlineKeyboardButton(text="🏃 Change Position" if is_en else "🏃 Изменить позицию", callback_data="edit_position")],
-        [InlineKeyboardButton(text="🔄 Change Alt Positions" if is_en else "🔄 Изменить доп. позиции", callback_data="edit_alt_positions")],
+        [InlineKeyboardButton(text=t("btn_change_name", locale=lang), callback_data="edit_name")],
+        [InlineKeyboardButton(text=t("btn_change_position", locale=lang), callback_data="edit_position")],
+        [InlineKeyboardButton(text=t("btn_change_alt_positions", locale=lang), callback_data="edit_alt_positions")],
         [InlineKeyboardButton(text="🌐 Change Language / Сменить язык", callback_data="change_user_lang")],
-        [InlineKeyboardButton(text="🔙 Back" if is_en else "🔙 Отмена", callback_data="edit_cancel")]
+        [InlineKeyboardButton(text=t("btn_cancel", locale=lang), callback_data="edit_cancel")]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_cancel_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
-    is_en = (lang or "en").lower() == "en"
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 Back" if is_en else "🔙 Отмена", callback_data="edit_cancel")]
+        [InlineKeyboardButton(text=t("btn_cancel", locale=lang), callback_data="edit_cancel")]
     ])
 
 def get_channel_voting_keyboard(game_id: int, lang: str = "en") -> InlineKeyboardMarkup:
@@ -175,15 +169,14 @@ def get_channel_voting_keyboard(game_id: int, lang: str = "en") -> InlineKeyboar
     from app.config import settings
     bot_username = settings.bot_username.lstrip("@")
     deep_link = f"https://t.me/{bot_username}?start=vote_{game_id}"
-    is_en = (lang or "en").lower() == "en"
-    btn_text = "🏆 Vote for MVP" if is_en else "🏆 Проголосовать за MVP"
+    btn_text = t("btn_vote_mvp", locale=lang)
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=btn_text, url=deep_link)]
     ])
 
 def get_voting_keyboard(game_id: int, team_a: list, team_b: list, team_c: list = None, unassigned: list = None, lang: str = "en") -> InlineKeyboardMarkup:
     buttons = []
-    is_en = (lang or "en").lower() == "en"
+    
     
     def _add_team_section(title: str, players: list):
         if not players:
@@ -201,16 +194,16 @@ def get_voting_keyboard(game_id: int, team_a: list, team_b: list, team_c: list =
             buttons.append(row)
 
     if team_a:
-        title_a = "🟠 --- TEAM A --- 🟠" if is_en else "🟠 --- КОМАНДА А --- 🟠"
+        title_a = t("team_a_header", locale=lang)
         _add_team_section(title_a, team_a)
     if team_b:
-        title_b = "🟢 --- TEAM B --- 🟢" if is_en else "🟢 --- КОМАНДА Б --- 🟢"
+        title_b = t("team_b_header", locale=lang)
         _add_team_section(title_b, team_b)
     if team_c:
-        title_c = "🔵 --- TEAM C --- 🔵" if is_en else "🔵 --- КОМАНДА С --- 🔵"
+        title_c = t("team_c_header", locale=lang)
         _add_team_section(title_c, team_c)
     if not team_a and not team_b and not team_c and unassigned:
-        title_p = "⚽ --- PLAYERS --- ⚽" if is_en else "⚽ --- ИГРОКИ --- ⚽"
+        title_p = t("players_voting_header", locale=lang)
         _add_team_section(title_p, unassigned)
         
 

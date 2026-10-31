@@ -570,28 +570,23 @@ async def issue_player_card(
         if getattr(target_user, "language", None):
             target_lang = target_user.language.value if hasattr(target_user.language, "value") else str(target_user.language)
 
-        reason_str = html.escape(card.reason) if card.reason else None
+        from app.bot.i18n import t
 
-        if target_lang == "en":
-            card_title = "🟥 Red Card (Suspended)" if is_red else "🟨 Yellow Card"
-            effect_txt = "\n🚫 <b>Registration for matches in this group is suspended</b> until expiration." if is_red else "\nℹ️ This is a disciplinary warning. Please respect the community fair play rules."
-            reason_line = f"\n📝 Reason: {reason_str}" if reason_str else ""
-            msg = (
-                f"⚠️ <b>Disciplinary Notice</b>\n\n"
-                f"You have been issued a <b>{card_title}</b> in group <b>{html.escape(group_title)}</b>.\n"
-                f"⏱ Duration: <b>{data.weeks} week(s)</b> (until {exp_prague}){reason_line}\n"
-                f"{effect_txt}"
-            )
-        else:
-            card_title = "🟥 Красная карточка" if is_red else "🟨 Жёлтая карточка"
-            effect_txt = "\n🚫 <b>Запись на матчи в этой группе приостановлена</b> на время действия дисквалификации." if is_red else "\nℹ️ Это дисциплинарное предупреждение. Пожалуйста, соблюдайте правила fair play."
-            reason_line = f"\n📝 Причина: {reason_str}" if reason_str else ""
-            msg = (
-                f"⚠️ <b>Дисциплинарное решение</b>\n\n"
-                f"Вам выдана <b>{card_title}</b> в группе <b>{html.escape(group_title)}</b>.\n"
-                f"⏱ Срок действия: <b>{data.weeks} нед.</b> (до {exp_prague}){reason_line}\n"
-                f"{effect_txt}"
-            )
+        reason_str = html.escape(card.reason) if card.reason else None
+        reason_line = t("card_reason_line", locale=target_lang, reason=reason_str) if reason_str else ""
+        card_title = t("card_red_title" if is_red else "card_yellow_title", locale=target_lang)
+        effect_txt = t("card_notice_red_effect" if is_red else "card_notice_yellow_effect", locale=target_lang)
+
+        msg = t(
+            "card_dm_issued",
+            locale=target_lang,
+            card_title=card_title,
+            group_title=html.escape(group_title),
+            weeks=data.weeks,
+            exp_date=exp_prague,
+            reason_line=reason_line,
+            effect_text=effect_txt
+        )
 
         await bot.send_message(target_user_id, msg, parse_mode="HTML")
     except Exception as e:
@@ -648,11 +643,9 @@ async def revoke_player_card(
             target_lang = "ru"
             if target_user and getattr(target_user, "language", None):
                 target_lang = target_user.language.value if hasattr(target_user.language, "value") else str(target_user.language)
+            from app.bot.i18n import t
             group_title = chat.title or "Football Group"
-            if target_lang == "en":
-                msg = f"✅ Your disciplinary card in group <b>{html.escape(group_title)}</b> has been lifted by the admin."
-            else:
-                msg = f"✅ Дисциплинарная санкция в группе <b>{html.escape(group_title)}</b> была досрочно снята администратором."
+            msg = t("card_dm_revoked", locale=target_lang, group_title=html.escape(group_title))
             await bot.send_message(target_user_id, msg, parse_mode="HTML")
         except Exception as e:
             logger.warning(f"Failed to DM card lift notice to {target_user_id}: {e}")
