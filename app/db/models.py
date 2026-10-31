@@ -82,6 +82,7 @@ class User(Base):
     votes_received = relationship("Vote", foreign_keys="[Vote.target_id]", back_populates="target")
     profiles = relationship("PlayerProfile", back_populates="user", cascade="all, delete-orphan")
     admin_in_chats = relationship("ChatAdmin", back_populates="user", cascade="all, delete-orphan")
+    cards = relationship("PlayerCard", foreign_keys="[PlayerCard.user_id]", back_populates="user", cascade="all, delete-orphan")
 
 class Chat(Base):
     """
@@ -113,6 +114,7 @@ class Chat(Base):
     games = relationship("Game", back_populates="chat")
     players = relationship("PlayerProfile", back_populates="chat", cascade="all, delete-orphan")
     admins = relationship("ChatAdmin", back_populates="chat", cascade="all, delete-orphan")
+    player_cards = relationship("PlayerCard", back_populates="chat", cascade="all, delete-orphan")
 
 class PlayerProfile(Base):
     """
@@ -295,3 +297,27 @@ class GameStats(Base):
     
     game = relationship("Game", back_populates="stats")
     user = relationship("User", backref="match_stats")
+
+
+class PlayerCard(Base):
+    """
+    Database model representing a disciplinary card (Yellow or Red) issued to a player in a specific group.
+    Red card blocks registration for matches in that group until expiration.
+    Yellow card acts as an official warning.
+    """
+    __tablename__ = "player_cards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(BigInteger, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id", ondelete="CASCADE"), nullable=False, index=True)
+    card_type = Column(String(10), nullable=False)  # "YELLOW" | "RED"
+    weeks = Column(Integer, nullable=False, default=4)
+    reason = Column(String, nullable=True)
+    issued_by = Column(BigInteger, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    issued_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+
+    user = relationship("User", foreign_keys=[user_id], back_populates="cards")
+    issuer = relationship("User", foreign_keys=[issued_by])
+    chat = relationship("Chat", back_populates="player_cards")

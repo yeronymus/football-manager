@@ -138,6 +138,27 @@ async function renderProfile() {
     const data = await fetchAPI(`/users/me/profile?chat_id=${currentChatId}`);
     
     const userName = data.name || 'Игрок';
+    const activeCard = data.active_card;
+    let cardBadgeHtml = '';
+    if (activeCard) {
+        const isRed = (activeCard.card_type === 'RED');
+        const cardTitle = isRed ? 'Красная карточка' : 'Жёлтая карточка';
+        const cardEmoji = isRed ? '🟥' : '🟨';
+        const expDate = activeCard.expires_at ? new Date(activeCard.expires_at).toLocaleDateString() : '';
+        const rawTooltip = `${cardTitle}: на ${activeCard.weeks} нед. (до ${expDate}, осталось ${activeCard.days_left} дн.)${activeCard.reason ? '. Причина: ' + activeCard.reason : ''}${isRed ? '. Запись на игры закрыта.' : ''}`;
+        const tooltip = escapeHTML(rawTooltip);
+        const borderCol = isRed ? 'rgba(239, 68, 68, 0.4)' : 'rgba(234, 179, 8, 0.4)';
+        const bgCol = isRed ? 'rgba(239, 68, 68, 0.12)' : 'rgba(234, 179, 8, 0.12)';
+        const textCol = isRed ? '#f87171' : '#facc15';
+
+        cardBadgeHtml = `
+            <div title="${tooltip}" onclick="alert('${tooltip.replace(/'/g, "\\'")}')" style="display:inline-flex; align-items:center; gap:6px; background:${bgCol}; border:1px solid ${borderCol}; padding:4px 10px; border-radius:16px; margin-top:6px; cursor:pointer; max-width:fit-content;">
+                <span>${cardEmoji}</span>
+                <span style="font-size:12px; font-weight:600; color:${textCol};">${cardTitle} (${activeCard.days_left} дн.)</span>
+            </div>
+        `;
+    }
+
     const html = `
         <div class="card flex-row" style="margin-top: 16px; padding: 24px;">
             <div class="avatar">${userName.charAt(0)}</div>
@@ -146,6 +167,7 @@ async function renderProfile() {
                 <div class="subtitle" style="margin-top:4px;">
                     Основная: <b style="color:var(--text-color)">${data.position}</b>
                 </div>
+                ${cardBadgeHtml}
             </div>
         </div>
         

@@ -92,6 +92,36 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
         user.rating = 100
         await session.commit()
 
+    # Check active disciplinary card
+    card = None
+    if player and getattr(player, "chat_id", None):
+        card = await user_repo.get_active_card(user_id, player.chat_id)
+    else:
+        from app.db.models import PlayerCard
+        from sqlalchemy import select, func
+        card = await session.scalar(
+            select(PlayerCard)
+            .where(
+                PlayerCard.user_id == user_id,
+                PlayerCard.is_active == True,
+                PlayerCard.expires_at > func.now()
+            )
+            .order_by(PlayerCard.id.desc())
+            .limit(1)
+        )
+
+    card_notice_en = ""
+    card_notice_ru = ""
+    if card:
+        is_red = (card.card_type == "RED")
+        card_icon = "🟥" if is_red else "🟨"
+        exp_date = card.expires_at.strftime("%d.%m.%Y") if hasattr(card.expires_at, "strftime") else str(card.expires_at)[:10]
+        reason_txt = f" ({card.reason})" if card.reason else ""
+        card_name_en = "Red Card (Suspended)" if is_red else "Yellow Card"
+        card_name_ru = "Красная карточка (дисквалификация)" if is_red else "Жёлтая карточка"
+        card_notice_en = f"\n\n⚠️ <b>Discipline:</b> {card_icon} {card_name_en} (until {exp_date}){reason_txt}"
+        card_notice_ru = f"\n\n⚠️ <b>Дисциплина:</b> {card_icon} {card_name_ru} (до {exp_date}){reason_txt}"
+
     if is_en:
         text = f"👤 <b>Player Profile</b>\n\n"
         text += f"<b>{user.full_name}</b> (@{user.username or 'none'})\n"
@@ -104,6 +134,7 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
         text += f"🎮 Matches: <b>{player.games_played if player else '-'}</b>\n"
         text += f"⭐️ MVP: <b>{player.stats_mvp if player else '-'}</b>\n"
         text += f"⚽ Goals: <b>{total_goals}</b>"
+        text += card_notice_en
     else:
         text = f"👤 <b>Профиль игрока</b>\n\n"
         text += f"<b>{user.full_name}</b> (@{user.username or 'нет'})\n"
@@ -116,6 +147,7 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
         text += f"🎮 Матчей: <b>{player.games_played if player else '-'}</b>\n"
         text += f"⭐️ MVP: <b>{player.stats_mvp if player else '-'}</b>\n"
         text += f"⚽ Голов: <b>{total_goals}</b>"
+        text += card_notice_ru
 
     kb = get_profile_edit_keyboard(lang=lang)
     try:

@@ -55,6 +55,15 @@ class RosterService:
         if existing:
             return JoinResult(False, existing, "Вы уже записаны!", existing.status == SignupStatus.RESERVE)
 
+        # Disciplinary Enforcement: Check for active RED card in this chat
+        if not ignore_limit and hasattr(self.uow, 'user_repo') and hasattr(self.uow.user_repo, 'get_active_card'):
+            active_card = await self.uow.user_repo.get_active_card(user.user_id, game.chat_id)
+            if active_card and getattr(active_card, 'card_type', None) == "RED":
+                exp_dt = active_card.expires_at
+                exp_str = exp_dt.strftime("%d.%m.%Y") if hasattr(exp_dt, "strftime") else str(exp_dt)[:10]
+                reason_str = f" Причина: {active_card.reason}" if getattr(active_card, 'reason', None) else ""
+                return JoinResult(False, None, f"⛔ Запись закрыта: у вас активная красная карточка до {exp_str}.{reason_str}", False)
+
         # 3. Time and Limit validations
         limit_error = await self._validate_registration_limits(game, game_id, ignore_limit)
         if limit_error:

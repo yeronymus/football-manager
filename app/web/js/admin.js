@@ -947,6 +947,13 @@ function renderCommunityPlayers() {
         const goalsLabel = getAdminText('Goals', 'Голы');
         const profileBtnText = getAdminText('Profile ›', 'Профиль ›');
         
+        let cardBadge = '';
+        if (p.active_card_type === 'RED') {
+            cardBadge = `<span title="${getAdminText('Red Card (Suspended)', 'Красная карточка (дисквалификация)')}" style="cursor:help; font-size:0.9rem; margin-left:4px;">🟥</span>`;
+        } else if (p.active_card_type === 'YELLOW') {
+            cardBadge = `<span title="${getAdminText('Yellow Card', 'Жёлтая карточка')}" style="cursor:help; font-size:0.9rem; margin-left:4px;">🟨</span>`;
+        }
+        
         html += `
             <div class="community-player-card">
                 <div class="community-player-left">
@@ -954,6 +961,7 @@ function renderCommunityPlayers() {
                     <div style="min-width: 0;">
                         <div class="community-player-name">
                             <span>${p.full_name}</span>
+                            ${cardBadge}
                             ${usernameDisplay}
                             ${tagHtml}
                         </div>
@@ -1039,8 +1047,159 @@ async function openPlayerModal(userId) {
             });
             matchesEl.innerHTML = mHtml;
         }
+        
+        renderModalDiscipline(data.active_card, userId);
     } catch (e) {
         document.getElementById('modal-matches-list').innerHTML = `<p style="color:var(--danger); padding:10px;">${e.message}</p>`;
+    }
+}
+
+let selectedCardType = 'YELLOW';
+
+function toggleCardForm() {
+    const f = document.getElementById('card-issue-form');
+    if (!f) return;
+    f.classList.toggle('hidden');
+}
+
+function selectCardType(type) {
+    selectedCardType = type;
+    const yBtn = document.getElementById('btn-card-yellow');
+    const rBtn = document.getElementById('btn-card-red');
+    const hint = document.getElementById('card-type-hint');
+    if (type === 'YELLOW') {
+        if (yBtn) { yBtn.style.background = 'rgba(234,179,8,0.2)'; yBtn.style.borderColor = '#facc15'; yBtn.style.color = '#facc15'; }
+        if (rBtn) { rBtn.style.background = 'transparent'; rBtn.style.borderColor = 'var(--border-color)'; rBtn.style.color = 'var(--text-muted)'; }
+        if (hint) { hint.textContent = getAdminText('Yellow is an official warning.', 'Жёлтая — предупреждение.'); hint.style.color = 'var(--text-muted)'; }
+    } else {
+        if (rBtn) { rBtn.style.background = 'rgba(239,68,68,0.2)'; rBtn.style.borderColor = '#f87171'; rBtn.style.color = '#f87171'; }
+        if (yBtn) { yBtn.style.background = 'transparent'; yBtn.style.borderColor = 'var(--border-color)'; yBtn.style.color = 'var(--text-muted)'; }
+        if (hint) { hint.textContent = getAdminText('⛔ Red blocks match signups!', '⛔ Красная блокирует запись на игры!'); hint.style.color = '#f87171'; }
+    }
+}
+
+function renderModalDiscipline(card, targetUserId) {
+    const section = document.getElementById('modal-discipline-section');
+    if (!section) return;
+
+    if (card) {
+        const isRed = (card.card_type === 'RED');
+        const cardTitle = isRed ? getAdminText('Red Card (Suspended)', 'Красная карточка (дисквалификация)') : getAdminText('Yellow Card', 'Жёлтая карточка');
+        const cardEmoji = isRed ? '🟥' : '🟨';
+        const expDate = card.expires_at ? new Date(card.expires_at).toLocaleDateString() : '';
+        const bg = isRed ? 'rgba(239, 68, 68, 0.12)' : 'rgba(234, 179, 8, 0.12)';
+        const border = isRed ? 'rgba(239, 68, 68, 0.35)' : 'rgba(234, 179, 8, 0.35)';
+        const titleColor = isRed ? '#f87171' : '#facc15';
+
+        section.innerHTML = `
+            <div style="background:${bg}; border:1px solid ${border}; border-radius:10px; padding:12px; margin-top:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div>
+                        <div style="font-weight:700; font-size:0.95rem; color:${titleColor}; display:flex; align-items:center; gap:6px;">
+                            <span>${cardEmoji}</span> <span>${cardTitle}</span>
+                        </div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:3px;">
+                            ${getAdminText('Duration:', 'Срок:')} <b>${card.weeks} ${getAdminText('weeks', 'нед.')}</b> (${getAdminText('until', 'до')} ${expDate}, <b>${card.days_left} ${getAdminText('days left', 'дн. осталось')}</b>)
+                        </div>
+                        ${card.reason ? `<div style="font-size:0.8rem; color:var(--text-main); margin-top:4px;"><b>${getAdminText('Reason:', 'Причина:')}</b> ${escapeHtml(card.reason)}</div>` : ''}
+                        ${isRed ? `<div style="font-size:0.75rem; color:#f87171; margin-top:4px;">⛔ ${getAdminText('Match signups are blocked for this player in this group.', 'Запись на игры в этой группе заблокирована.')}</div>` : ''}
+                    </div>
+                    <button class="action-btn outline" onclick="revokePlayerCard(${targetUserId})" style="padding:4px 10px; font-size:0.75rem; border-color:${border}; color:var(--text-main);">
+                        ${getAdminText('Revoke', 'Снять')}
+                    </button>
+                </div>
+            </div>
+        `;
+    } else {
+        selectedCardType = 'YELLOW';
+        section.innerHTML = `
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:10px; padding:12px; margin-top:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.82rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">
+                        ${getAdminText('Discipline & Sanctions', 'Дисциплина')}
+                    </span>
+                    <button id="btn-toggle-card-form" class="action-btn outline" onclick="toggleCardForm()" style="padding:4px 8px; font-size:0.75rem;">
+                        + ${getAdminText('Issue Card', 'Выдать карточку')}
+                    </button>
+                </div>
+                <div id="card-issue-form" class="hidden" style="margin-top:10px; border-top:1px dashed var(--border-color); padding-top:10px;">
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <button type="button" id="btn-card-yellow" class="action-btn" onclick="selectCardType('YELLOW')" style="flex:1; font-size:0.82rem; padding:7px; background:rgba(234,179,8,0.2); border:1px solid #facc15; color:#facc15;">
+                            🟨 ${getAdminText('Yellow', 'Жёлтая')}
+                        </button>
+                        <button type="button" id="btn-card-red" class="action-btn outline" onclick="selectCardType('RED')" style="flex:1; font-size:0.82rem; padding:7px; border:1px solid var(--border-color); color:var(--text-muted);">
+                            🟥 ${getAdminText('Red (Ban)', 'Красная')}
+                        </button>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+                        <span style="font-size:0.8rem; color:var(--text-muted);">${getAdminText('Duration:', 'Срок:')}</span>
+                        <select id="card-weeks-select" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; padding:6px 8px; font-size:0.82rem;">
+                            <option value="1">1 ${getAdminText('week', 'неделя')}</option>
+                            <option value="2">2 ${getAdminText('weeks', 'недели')}</option>
+                            <option value="4" selected>4 ${getAdminText('weeks', 'недели (1 мес.)')}</option>
+                            <option value="8">8 ${getAdminText('weeks', 'недель (2 мес.)')}</option>
+                            <option value="12">12 ${getAdminText('weeks', 'недель (3 мес.)')}</option>
+                        </select>
+                    </div>
+                    <input type="text" id="card-reason-input" placeholder="${getAdminText('Reason (e.g. no-show, unsportsmanlike behavior)...', 'Причина (например, неявка, грубость)...')}" style="width:100%; box-sizing:border-box; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; padding:6px 10px; font-size:0.82rem; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span id="card-type-hint" style="font-size:0.72rem; color:var(--text-muted);">
+                            ${getAdminText('Yellow is an official warning.', 'Жёлтая — предупреждение.')}
+                        </span>
+                        <button type="button" class="action-btn" onclick="submitIssueCard(${targetUserId})" style="padding:6px 14px; font-size:0.82rem;">
+                            ${getAdminText('Confirm & Send DM', 'Выдать и уведомить')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+async function submitIssueCard(userId) {
+    if (!currentGroupId) return;
+    const weeks = parseInt(document.getElementById('card-weeks-select').value, 10) || 4;
+    const reason = (document.getElementById('card-reason-input').value || '').trim();
+    
+    const confirmMsg = getAdminText(
+        `Issue ${selectedCardType === 'RED' ? 'RED' : 'YELLOW'} card for ${weeks} week(s)? The player will receive a Telegram DM notice.`,
+        `Выдать ${selectedCardType === 'RED' ? 'КРАСНУЮ' : 'ЖЁЛТУЮ'} карточку на ${weeks} нед.? Игроку придёт уведомление в ЛС.`
+    );
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        await apiCall(`/groups/${currentGroupId}/players/${userId}/card`, 'POST', {
+            card_type: selectedCardType,
+            weeks: weeks,
+            reason: reason || null
+        });
+        showAdminToast(getAdminText('Card issued successfully!', 'Карточка успешно выдана!'));
+        await openPlayerModal(userId);
+        if (currentGroupAnalytics) {
+            loadGroupAnalytics(currentGroupId);
+        }
+    } catch (e) {
+        alert(e.message || 'Error issuing card');
+    }
+}
+
+async function revokePlayerCard(userId) {
+    if (!currentGroupId) return;
+    const confirmMsg = getAdminText(
+        'Revoke disciplinary card? The sanction will be lifted immediately.',
+        'Досрочно снять карточку? Санкция будет отменена сразу же.'
+    );
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        await apiCall(`/groups/${currentGroupId}/players/${userId}/card`, 'DELETE');
+        showAdminToast(getAdminText('Card revoked successfully!', 'Карточка снята!'));
+        await openPlayerModal(userId);
+        if (currentGroupAnalytics) {
+            loadGroupAnalytics(currentGroupId);
+        }
+    } catch (e) {
+        alert(e.message || 'Error revoking card');
     }
 }
 

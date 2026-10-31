@@ -18,6 +18,25 @@ class DbSessionMiddleware(BaseMiddleware):
     ) -> Any:
         async with self.session_pool() as session:
             data["session"] = session
+            # Auto-sync user's username and full_name if user exists in DB
+            tg_user = getattr(event, "from_user", None)
+            if tg_user and not getattr(tg_user, "is_bot", False):
+                try:
+                    db_user = await session.get(User, tg_user.id)
+                    if db_user:
+                        changed = False
+                        current_username = tg_user.username
+                        current_full_name = tg_user.full_name
+                        if current_username is not None and db_user.username != current_username:
+                            db_user.username = current_username
+                            changed = True
+                        if current_full_name and db_user.full_name != current_full_name:
+                            db_user.full_name = current_full_name
+                            changed = True
+                        if changed:
+                            await session.commit()
+                except Exception:
+                    pass
             return await handler(event, data)
 
 

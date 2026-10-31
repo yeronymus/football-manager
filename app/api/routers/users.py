@@ -1,5 +1,6 @@
+import inspect
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, or_, func
 from app.db.database import get_session
@@ -151,6 +152,7 @@ async def _fetch_profile_summary(session: AsyncSession, user_id: int, chat_ids: 
 async def get_my_profile(
     chat_id: int, 
     user_id: int = Depends(get_user_from_header), 
+    authorization: str | None = Header(None),
     session: AsyncSession = Depends(get_session)
 ):
     chat_ids = _resolve_chat_ids(chat_id)
@@ -158,18 +160,65 @@ async def get_my_profile(
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Auto-sync username from WebApp initData if changed
+    try:
+        if authorization and authorization.startswith("tma "):
+            import urllib.parse
+            import json
+            raw_init = authorization.split(" ", 1)[1]
+            params = dict(urllib.parse.parse_qsl(raw_init))
+            if "user" in params:
+                tg_u = json.loads(params["user"])
+                cur_un = tg_u.get("username")
+                if cur_un and user.username != cur_un:
+                    user.username = cur_un
+                    await session.commit()
+    except Exception:
+        pass
         
     rating, games_played, mvps, total_goals = await _fetch_profile_summary(session, user_id, chat_ids)
+
+    # Fetch active disciplinary card in this group
+    from app.db.models import PlayerCard
+    import datetime
+    card_res = await session.execute(
+        select(PlayerCard)
+        .where(
+            PlayerCard.user_id == user_id,
+            PlayerCard.chat_id.in_(chat_ids),
+            PlayerCard.is_active == True,
+            PlayerCard.expires_at > func.now(),
+        )
+        .order_by(PlayerCard.id.desc())
+        .limit(1)
+    )
+    active_card_obj = card_res.scalar_one_or_none()
+    if inspect.iscoroutine(active_card_obj):
+        active_card_obj = await active_card_obj
+    active_card_data = None
+    if active_card_obj and isinstance(active_card_obj, PlayerCard) and hasattr(getattr(active_card_obj, "expires_at", None), "date"):
+        days_left = max(0, (active_card_obj.expires_at.date() - datetime.date.today()).days)
+        active_card_data = {
+            "id": active_card_obj.id,
+            "card_type": active_card_obj.card_type,
+            "weeks": active_card_obj.weeks,
+            "reason": active_card_obj.reason,
+            "expires_at": active_card_obj.expires_at.isoformat(),
+            "days_left": days_left
+        }
 
     return {
         "user_id": user.user_id,
         "name": user.full_name,
+        "username": user.username,
         "position": user.player_position.value if user.player_position else "DEF",
         "alt_positions": user.alt_positions or [],
         "rating": rating,
         "games_played": games_played,
         "mvp_count": mvps,
-        "total_goals": total_goals
+        "total_goals": total_goals,
+        "active_card": active_card_data
     }
 
 @router.get("/chats/{chat_id}/leaderboard")

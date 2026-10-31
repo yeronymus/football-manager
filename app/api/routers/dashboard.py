@@ -204,6 +204,7 @@ class PlayerActivityOut(BaseModel):
     days_since_last_game: Optional[int] = None
     is_core: bool = False
     is_dormant: bool = False
+    active_card_type: Optional[str] = None
 
 class GroupAnalyticsOut(BaseModel):
     chat_id: int
@@ -221,6 +222,21 @@ class PlayerHistoryGameOut(BaseModel):
     goals: int = 0
     is_mvp: bool = False
 
+class PlayerCardOut(BaseModel):
+    id: int
+    card_type: str
+    weeks: int
+    reason: Optional[str] = None
+    issued_at: datetime.datetime
+    expires_at: datetime.datetime
+    days_left: int
+    issued_by_name: Optional[str] = None
+
+class IssueCardIn(BaseModel):
+    card_type: str
+    weeks: int = 4
+    reason: Optional[str] = None
+
 class PlayerProfileDetailOut(BaseModel):
     user_id: int
     full_name: str
@@ -230,6 +246,7 @@ class PlayerProfileDetailOut(BaseModel):
     total_games: int = 0
     total_goals: int = 0
     total_mvps: int = 0
+    active_card: Optional[PlayerCardOut] = None
     recent_matches: List[PlayerHistoryGameOut]
 
 @router.get("/groups/{chat_id}/analytics", response_model=GroupAnalyticsOut)
@@ -329,6 +346,17 @@ async def get_group_analytics(
     core_count = 0
     dormant_count = 0
 
+    from app.db.models import PlayerCard
+    active_cards_res = await session.execute(
+        select(PlayerCard.user_id, PlayerCard.card_type)
+        .where(
+            PlayerCard.chat_id == chat_id,
+            PlayerCard.is_active == True,
+            PlayerCard.expires_at > func.now(),
+        )
+    )
+    cards_map = {row[0]: row[1] for row in active_cards_res.all()}
+
     for r in rows:
         uid = r.user_id
         last_dt = r.last_game_date
@@ -365,7 +393,8 @@ async def get_group_analytics(
                 last_game_date=format_prague_dt(last_dt, "%d.%m.%Y") if last_dt else None,
                 days_since_last_game=days_ago,
                 is_core=is_core,
-                is_dormant=is_dormant
+                is_dormant=is_dormant,
+                active_card_type=cards_map.get(uid)
             )
         )
 
@@ -429,6 +458,35 @@ async def get_group_player_detail(
             )
         )
 
+    # Fetch active disciplinary card
+    from app.db.models import PlayerCard
+    from sqlalchemy import update
+    active_card_obj = await session.scalar(
+        select(PlayerCard)
+        .where(
+            PlayerCard.user_id == target_user_id,
+            PlayerCard.chat_id == chat_id,
+            PlayerCard.is_active == True,
+            PlayerCard.expires_at > func.now()
+        )
+        .order_by(PlayerCard.id.desc())
+        .limit(1)
+    )
+    active_card_out = None
+    if active_card_obj and isinstance(active_card_obj, PlayerCard) and hasattr(getattr(active_card_obj, "expires_at", None), "date"):
+        issued_by_user = await session.get(User, active_card_obj.issued_by) if active_card_obj.issued_by else None
+        days_left = max(0, (active_card_obj.expires_at.date() - datetime.date.today()).days)
+        active_card_out = PlayerCardOut(
+            id=active_card_obj.id,
+            card_type=active_card_obj.card_type,
+            weeks=active_card_obj.weeks,
+            reason=active_card_obj.reason,
+            issued_at=active_card_obj.issued_at,
+            expires_at=active_card_obj.expires_at,
+            days_left=days_left,
+            issued_by_name=issued_by_user.full_name if issued_by_user else None
+        )
+
     pos_str = user.player_position.value if hasattr(user.player_position, "value") else str(user.player_position or "")
     return PlayerProfileDetailOut(
         user_id=user.user_id,
@@ -439,8 +497,167 @@ async def get_group_player_detail(
         total_games=prof.games_played if prof else 0,
         total_goals=int(goals_res or 0),
         total_mvps=prof.stats_mvp if prof else 0,
+        active_card=active_card_out,
         recent_matches=recent_matches
     )
+
+@router.post("/groups/{chat_id}/players/{target_user_id}/card")
+async def issue_player_card(
+    chat_id: int,
+    target_user_id: int,
+    data: IssueCardIn,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    await check_admin_rights(chat_id, user_id, session=session)
+    chat = await session.get(Chat, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Group not found")
+        
+    target_user = await session.get(User, target_user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    card_type = data.card_type.upper()
+    if card_type not in ["YELLOW", "RED"]:
+        raise HTTPException(status_code=400, detail="Invalid card_type. Must be YELLOW or RED.")
+
+    if data.weeks < 1:
+        raise HTTPException(status_code=400, detail="Duration must be at least 1 week.")
+
+    from app.db.models import PlayerCard
+    from sqlalchemy import update
+
+    # Deactivate existing active cards
+    await session.execute(
+        update(PlayerCard)
+        .where(
+            PlayerCard.user_id == target_user_id,
+            PlayerCard.chat_id == chat_id,
+            PlayerCard.is_active == True
+        )
+        .values(is_active=False)
+    )
+
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    expires_at = now_utc + datetime.timedelta(weeks=data.weeks)
+
+    card = PlayerCard(
+        user_id=target_user_id,
+        chat_id=chat_id,
+        card_type=card_type,
+        weeks=data.weeks,
+        reason=data.reason.strip() if data.reason else None,
+        issued_by=user_id,
+        issued_at=now_utc,
+        expires_at=expires_at,
+        is_active=True
+    )
+    session.add(card)
+    await session.commit()
+    await session.refresh(card)
+
+    # Send Telegram DM to player
+    dm_status = "delivered"
+    try:
+        from app.bot.instance import bot
+        from app.core.timezone import format_prague_dt
+        exp_prague = format_prague_dt(expires_at, "%d.%m.%Y")
+        group_title = chat.title or "Football Group"
+        is_red = (card_type == "RED")
+        
+        target_lang = "ru"
+        if getattr(target_user, "language", None):
+            target_lang = target_user.language.value if hasattr(target_user.language, "value") else str(target_user.language)
+
+        reason_str = html.escape(card.reason) if card.reason else None
+
+        if target_lang == "en":
+            card_title = "🟥 Red Card (Suspended)" if is_red else "🟨 Yellow Card"
+            effect_txt = "\n🚫 <b>Registration for matches in this group is suspended</b> until expiration." if is_red else "\nℹ️ This is a disciplinary warning. Please respect the community fair play rules."
+            reason_line = f"\n📝 Reason: {reason_str}" if reason_str else ""
+            msg = (
+                f"⚠️ <b>Disciplinary Notice</b>\n\n"
+                f"You have been issued a <b>{card_title}</b> in group <b>{html.escape(group_title)}</b>.\n"
+                f"⏱ Duration: <b>{data.weeks} week(s)</b> (until {exp_prague}){reason_line}\n"
+                f"{effect_txt}"
+            )
+        else:
+            card_title = "🟥 Красная карточка" if is_red else "🟨 Жёлтая карточка"
+            effect_txt = "\n🚫 <b>Запись на матчи в этой группе приостановлена</b> на время действия дисквалификации." if is_red else "\nℹ️ Это дисциплинарное предупреждение. Пожалуйста, соблюдайте правила fair play."
+            reason_line = f"\n📝 Причина: {reason_str}" if reason_str else ""
+            msg = (
+                f"⚠️ <b>Дисциплинарное решение</b>\n\n"
+                f"Вам выдана <b>{card_title}</b> в группе <b>{html.escape(group_title)}</b>.\n"
+                f"⏱ Срок действия: <b>{data.weeks} нед.</b> (до {exp_prague}){reason_line}\n"
+                f"{effect_txt}"
+            )
+
+        await bot.send_message(target_user_id, msg, parse_mode="HTML")
+    except Exception as e:
+        logger.warning(f"Failed to DM card notice to {target_user_id}: {e}")
+        dm_status = "failed"
+
+    days_left = max(0, (expires_at.date() - datetime.date.today()).days)
+    admin_user = await session.get(User, user_id)
+    return {
+        "status": "ok",
+        "card": {
+            "id": card.id,
+            "card_type": card.card_type,
+            "weeks": card.weeks,
+            "reason": card.reason,
+            "issued_at": card.issued_at.isoformat(),
+            "expires_at": card.expires_at.isoformat(),
+            "days_left": days_left,
+            "issued_by_name": admin_user.full_name if admin_user else None
+        },
+        "dm_status": dm_status
+    }
+
+@router.delete("/groups/{chat_id}/players/{target_user_id}/card")
+async def revoke_player_card(
+    chat_id: int,
+    target_user_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    await check_admin_rights(chat_id, user_id, session=session)
+    chat = await session.get(Chat, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    from app.db.models import PlayerCard
+    from sqlalchemy import update
+
+    res = await session.execute(
+        update(PlayerCard)
+        .where(
+            PlayerCard.user_id == target_user_id,
+            PlayerCard.chat_id == chat_id,
+            PlayerCard.is_active == True
+        )
+        .values(is_active=False)
+    )
+    await session.commit()
+
+    if (res.rowcount or 0) > 0:
+        try:
+            from app.bot.instance import bot
+            target_user = await session.get(User, target_user_id)
+            target_lang = "ru"
+            if target_user and getattr(target_user, "language", None):
+                target_lang = target_user.language.value if hasattr(target_user.language, "value") else str(target_user.language)
+            group_title = chat.title or "Football Group"
+            if target_lang == "en":
+                msg = f"✅ Your disciplinary card in group <b>{html.escape(group_title)}</b> has been lifted by the admin."
+            else:
+                msg = f"✅ Дисциплинарная санкция в группе <b>{html.escape(group_title)}</b> была досрочно снята администратором."
+            await bot.send_message(target_user_id, msg, parse_mode="HTML")
+        except Exception as e:
+            logger.warning(f"Failed to DM card lift notice to {target_user_id}: {e}")
+
+    return {"status": "ok", "message": "Card revoked successfully"}
 
 class PlayerDetailOut(BaseModel):
     signup_id: int

@@ -174,3 +174,74 @@ class UserRepository:
         await self.session.execute(delete(User).where(User.user_id == old_user_id))
         
         return True
+
+    async def get_active_card(self, user_id: int, chat_id: int):
+        """Fetch active disciplinary card for a user in a specific group."""
+        from app.db.models import PlayerCard
+        stmt = (
+            select(PlayerCard)
+            .where(
+                PlayerCard.user_id == user_id,
+                PlayerCard.chat_id == chat_id,
+                PlayerCard.is_active == True,
+                PlayerCard.expires_at > func.now(),
+            )
+            .order_by(PlayerCard.id.desc())
+            .limit(1)
+        )
+        return await self.session.scalar(stmt)
+
+    async def issue_card(
+        self,
+        user_id: int,
+        chat_id: int,
+        card_type: str,
+        weeks: int = 4,
+        reason: str | None = None,
+        issued_by: int | None = None,
+    ):
+        """Issues a yellow or red card, deactivating any prior active cards for the player in this chat."""
+        from app.db.models import PlayerCard
+        from datetime import datetime, timezone, timedelta
+
+        # Deactivate existing active cards
+        await self.session.execute(
+            update(PlayerCard)
+            .where(
+                PlayerCard.user_id == user_id,
+                PlayerCard.chat_id == chat_id,
+                PlayerCard.is_active == True,
+            )
+            .values(is_active=False)
+        )
+
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(weeks=weeks)
+
+        card = PlayerCard(
+            user_id=user_id,
+            chat_id=chat_id,
+            card_type=card_type.upper(),
+            weeks=weeks,
+            reason=reason,
+            issued_by=issued_by,
+            issued_at=now,
+            expires_at=expires_at,
+            is_active=True,
+        )
+        self.session.add(card)
+        return card
+
+    async def revoke_card(self, user_id: int, chat_id: int) -> bool:
+        """Revokes all active cards for a player in a specific group."""
+        from app.db.models import PlayerCard
+        result = await self.session.execute(
+            update(PlayerCard)
+            .where(
+                PlayerCard.user_id == user_id,
+                PlayerCard.chat_id == chat_id,
+                PlayerCard.is_active == True,
+            )
+            .values(is_active=False)
+        )
+        return (result.rowcount or 0) > 0
