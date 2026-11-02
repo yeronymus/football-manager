@@ -30,8 +30,7 @@ async def cmd_history(message: types.Message, _):
         )]
     ])
     
-    is_en = (_("btn_open_history") == "📜 Open Match History")
-    prompt = "Click below to view group match history:" if is_en else "Нажмите кнопку ниже, чтобы посмотреть архив игр текущей группы:"
+    prompt = _("prompt_open_history")
     await message.answer(prompt, reply_markup=kb)
 
 @router.message(F.text.in_(["👤 Мой профиль", "👤 My Profile"]))
@@ -56,8 +55,7 @@ async def cmd_my_profile(message: types.Message, _):
         )]
     ])
     
-    is_en = (_("btn_open_profile") == "👤 Open Profile")
-    prompt = "Click below to open your profile:" if is_en else "Нажмите кнопку ниже, чтобы открыть ваш профиль:"
+    prompt = _("prompt_open_profile")
     await message.answer(prompt, reply_markup=kb)
 
 async def render_profile(messageable: types.Message, user_id: int, session: AsyncSession, player=None):
@@ -73,7 +71,7 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
     is_en = (lang == "en")
 
     if not user:
-        not_reg = "You are not registered yet. Press /start to begin!" if is_en else "Вы еще не зарегистрированы. Нажмите /start"
+        not_reg = t("not_registered_yet", locale=lang)
         if isinstance(messageable, types.Message):
             await messageable.answer(not_reg)
         elif isinstance(messageable, types.CallbackQuery):
@@ -113,7 +111,6 @@ async def render_profile(messageable: types.Message, user_id: int, session: Asyn
 
     card_notice = ""
     if card:
-        from app.bot.i18n import t
         is_red = (card.card_type == "RED")
         card_icon = "🟥" if is_red else "🟨"
         exp_date = card.expires_at.strftime("%d.%m.%Y") if hasattr(card.expires_at, "strftime") else str(card.expires_at)[:10]

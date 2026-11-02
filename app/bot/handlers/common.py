@@ -417,7 +417,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     return
             except Exception as e:
                 logger.error(f"Error in cmd_start game logic: {e}", exc_info=True)
-                await message.answer(f"⚠️ Ошибка при загрузке игры: {html.escape(str(e))}")
+                await message.answer(t("err_game_load_failed", locale=user_lang, error=html.escape(str(e))))
                 return
 
         # Send Welcome Message

@@ -116,7 +116,7 @@ class GameLifecycleService:
         
         # Update Fields
         if data.location and data.location != game.location:
-             changes.append(f"📍 Локация: {game.location} -> {data.location}")
+             changes.append(f"📍 Location: {game.location} -> {data.location}")
              game.location = data.location
              
         if data.date_time:
@@ -125,7 +125,7 @@ class GameLifecycleService:
                  old_str = format_prague_dt(game.date_time, '%d.%m %H:%M')
                  new_str = format_prague_dt(data.date_time, '%d.%m %H:%M')
                  if old_str != new_str:
-                     changes.append(f"📅 Дата: {old_str} -> {new_str}")
+                     changes.append(f"📅 Date: {old_str} -> {new_str}")
                  
                  game.date_time = data.date_time
                  
@@ -135,11 +135,11 @@ class GameLifecycleService:
                      self.scheduler.schedule_voting(game.id, game.date_time, duration=game.duration)
         
         if data.max_players and data.max_players != game.max_players:
-             changes.append(f"👥 Мест: {game.max_players} -> {data.max_players}")
+             changes.append(f"👥 Slots: {game.max_players} -> {data.max_players}")
              game.max_players = data.max_players
              
         if data.price is not None and data.price != game.price:
-             changes.append(f"💰 Цена: {game.price} -> {data.price}")
+             changes.append(f"💰 Price: {game.price} -> {data.price}")
              game.price = data.price
 
         if data.payment_info and data.payment_info != game.payment_info:
@@ -149,7 +149,7 @@ class GameLifecycleService:
              game.gk_hours = data.gk_hours
              
         if data.duration is not None and data.duration != game.duration:
-             changes.append(f"🕒 Длительность: {game.duration:g}ч -> {data.duration:g}ч")
+             changes.append(f"🕒 Duration: {game.duration:g}h -> {data.duration:g}h")
              game.duration = data.duration
               
         if data.registration_hours is not None and data.registration_hours != game.registration_hours:

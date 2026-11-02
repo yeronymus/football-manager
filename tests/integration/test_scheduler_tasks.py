@@ -58,11 +58,8 @@ async def test_release_gk_slots(session):
         await session.refresh(s2)
         assert s2.status == SignupStatus.ACTIVE
         
-        # Verify notification was sent
-        assert mock_bot.send_message.called
-        # s2.user_id is 2
-        assert mock_bot.send_message.call_args[0][0] == 2
-        assert "Бронь вратарей снята" in mock_bot.send_message.call_args[0][1]
+        # Verify notification was not spammed to user DM
+        assert not mock_bot.send_message.called
 
 @pytest.mark.asyncio
 async def test_release_gk_slots_no_room(session):

@@ -117,6 +117,19 @@ async def send_voting_message(game_id: int):
         SchedulerService().schedule_mvp_calculation_at(game_id, now_dt + timedelta(hours=24))
 
 
+def format_votes_count(count: int, lang: str) -> str:
+    lang = (lang or "en").lower()
+    if lang == "ru":
+        c_abs = abs(count)
+        if c_abs % 10 == 1 and c_abs % 100 != 11:
+            return f"{count} голос"
+        elif 2 <= c_abs % 10 <= 4 and not (12 <= c_abs % 100 <= 14):
+            return f"{count} голоса"
+        else:
+            return f"{count} голосов"
+    return f"{count} vote" if count == 1 else f"{count} votes"
+
+
 async def calculate_mvp(game_id: int):
     """
     Closes the MVP voting by removing the keyboard, determines MVP winners per team,
@@ -170,26 +183,35 @@ async def calculate_mvp(game_id: int):
             if v_team in votes_by_team:
                 votes_by_team[v_team][target_id] = count
 
-        # 4. Resolve MVPs per team
+        # 4. Resolve MVPs and runners-up per team
         mvp_ids_by_team = {}
+        runners_up_by_team = {}
         all_mvp_ids = set()
 
         for team in teams_in_game:
             team_votes = votes_by_team.get(team, {})
             if not team_votes:
                 mvp_ids_by_team[team] = []
+                runners_up_by_team[team] = []
                 continue
-            max_v = max(team_votes.values())
+            sorted_candidates = sorted(team_votes.items(), key=lambda x: x[1], reverse=True)
+            max_v = sorted_candidates[0][1] if sorted_candidates else 0
             if max_v > 0:
-                top_players = [uid for uid, c in team_votes.items() if c == max_v]
+                top_players = [uid for uid, c in sorted_candidates if c == max_v]
                 mvp_ids_by_team[team] = [(uid, max_v) for uid in top_players]
                 for uid in top_players:
                     all_mvp_ids.add(uid)
+                runners = [(uid, c) for uid, c in sorted_candidates if c < max_v and c > 0]
+                runners_up_by_team[team] = runners
             else:
                 mvp_ids_by_team[team] = []
+                runners_up_by_team[team] = []
 
         # 5. Fetch names of players
-        all_candidate_ids = {uid for team_list in mvp_ids_by_team.values() for uid, _ in team_list}
+        all_candidate_ids = (
+            {uid for team_list in mvp_ids_by_team.values() for uid, _ in team_list}
+            | {uid for r_list in runners_up_by_team.values() for uid, _ in r_list}
+        )
         user_names = {}
         if all_candidate_ids:
             u_res = await session.execute(
@@ -207,9 +229,11 @@ async def calculate_mvp(game_id: int):
                 locale=chat_lang,
             )
             winners = mvp_ids_by_team.get(team, [])
+            runners = runners_up_by_team.get(team, [])
             if winners:
                 names = ", ".join([user_names.get(uid, f"User {uid}") for uid, _ in winners])
                 votes_count = winners[0][1]
+                votes_display = format_votes_count(votes_count, chat_lang)
                 announcement += (
                     t(
                         "mvp_team_winner_line",
@@ -217,9 +241,22 @@ async def calculate_mvp(game_id: int):
                         team=team_label,
                         names=names,
                         votes=votes_count,
+                        votes_display=votes_display,
                     )
                     + "\n"
                 )
+                for r_uid, r_votes in runners:
+                    r_name = user_names.get(r_uid, f"User {r_uid}")
+                    r_votes_display = format_votes_count(r_votes, chat_lang)
+                    announcement += (
+                        t(
+                            "mvp_team_runner_up_line",
+                            locale=chat_lang,
+                            name=r_name,
+                            votes=r_votes_display,
+                        )
+                        + "\n"
+                    )
             else:
                 announcement += t("mvp_team_none_line", locale=chat_lang, team=team_label) + "\n"
 

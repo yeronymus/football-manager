@@ -228,5 +228,13 @@
     "mvp_results_footer": "\n🎉 Congratulations to the MVPs! +5 rating has been awarded.",
     "finish_mvp_voting_open": "\n🏆 <b>Voting for MVP is currently open in the group!</b> Results will be finalized in 24 hours.\n",
     "vote_all_teams_done": "✅ You voted for all teams! Thank you!",
-    "promoted_by_admin_msg": "<b>You are in the main squad!</b>\nAdmin moved you from reserve. <b>Please confirm in the group that you will play!</b>"
+    "promoted_by_admin_msg": "<b>You are in the main squad!</b>\nAdmin moved you from reserve. <b>Please confirm in the group that you will play!</b>",
+    "mvp_team_runner_up_line": "   ▫️ {name} — {votes}",
+    "cmd_get_id_response": "🆔 Chat ID: <code>{chat_id}</code>\nChat is registered.",
+    "btn_open_leaderboard": "🏆 Open Leaderboard",
+    "open_leaderboard_prompt": "Click the button below to open the Leaderboard:",
+    "err_game_load_failed": "⚠️ Error loading game: {error}",
+    "prompt_open_history": "Click below to view group match history:",
+    "prompt_open_profile": "Click below to open your profile:",
+    "not_registered_yet": "You are not registered yet. Press /start to begin!"
 }

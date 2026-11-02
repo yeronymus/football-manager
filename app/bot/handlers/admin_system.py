@@ -16,7 +16,10 @@ async def cmd_get_id(message: types.Message, session: AsyncSession):
         chat = Chat(chat_id=message.chat.id, title=message.chat.title or "Unknown")
         session.add(chat)
         await session.commit()
-    await message.answer(f"🆔 ID этого чата: <code>{message.chat.id}</code>\nЧат зарегистрирован.")
+    from app.bot.utils import resolve_chat_language
+    from app.bot.i18n import t
+    chat_lang = await resolve_chat_language(session, message.chat.id)
+    await message.answer(t("cmd_get_id_response", locale=chat_lang, chat_id=message.chat.id), parse_mode="HTML")
 
 @router.message(Command("debug_game"))
 async def cmd_debug_game(message: types.Message, command: CommandObject, session: AsyncSession):
