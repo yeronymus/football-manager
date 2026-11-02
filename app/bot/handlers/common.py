@@ -157,16 +157,17 @@ async def cmd_refresh_game(message: types.Message, command: CommandObject, sessi
 async def cmd_rules(message: types.Message):
     rules_web_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html"
 
-    kb = types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                types.InlineKeyboardButton(
-                    text="📖 Открыть правила (Web) / Open Rules",
-                    web_app=types.WebAppInfo(url=rules_web_url),
-                )
-            ]
-        ]
-    )
+    if message.chat.type == "private":
+        btn = types.InlineKeyboardButton(
+            text="📖 Открыть правила / Open Rules",
+            web_app=types.WebAppInfo(url=rules_web_url),
+        )
+    else:
+        btn = types.InlineKeyboardButton(
+            text="📖 Открыть правила / Open Rules",
+            url=rules_web_url,
+        )
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[[btn]])
 
     text = (
         "📋 <b>How to Play & Group Rules / Как играть</b>\n\n"
