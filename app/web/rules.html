@@ -1,169 +1,156 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>⚽ Match Guide & Rules | Football Community</title>
+    <title>Community Rules & Match Guide</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="/web/css/style.css?v=2.2.0">
+    <link rel="stylesheet" href="/web/css/style.css?v=2.3.0">
     <style>
-        :root {
-            --green-glow: rgba(34, 197, 94, 0.2);
-            --orange-glow: rgba(249, 115, 22, 0.2);
-            --red-glow: rgba(239, 68, 68, 0.2);
-            --accent-glow: rgba(56, 189, 248, 0.25);
-        }
-
         .rules-wrapper {
-            max-width: 640px;
+            max-width: 620px;
             margin: 0 auto;
-            padding: 12px 14px 100px;
+            padding: 12px 14px 80px;
         }
 
-        /* Top Nav Header */
-        .sticky-top-bar {
+        /* Top Bar */
+        .top-bar {
             position: sticky;
             top: 0;
-            background: rgba(15, 23, 42, 0.94);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 10px 16px;
+            padding: 12px 16px;
             z-index: 500;
+        }
+
+        .top-bar-title {
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: -0.2px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .lang-switch-group {
             display: flex;
-            background: rgba(255, 255, 255, 0.06);
-            border-radius: 24px;
-            padding: 3px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            gap: 2px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2px;
+            border: 1px solid var(--border-color);
         }
 
         .lang-btn {
             background: none;
             border: none;
             color: var(--hint-color);
-            font-size: 11px;
+            font-size: 11.5px;
             font-weight: 700;
             padding: 5px 10px;
-            border-radius: 18px;
+            border-radius: 16px;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.15s ease;
         }
 
         .lang-btn.active {
             background: var(--accent-color);
             color: #0f172a;
-            box-shadow: 0 2px 10px rgba(56, 189, 248, 0.4);
         }
 
         /* Hero */
         .hero {
-            text-align: center;
-            padding: 20px 10px 14px;
+            padding: 20px 8px 12px;
         }
 
         .hero h1 {
-            font-size: 26px;
-            font-weight: 900;
-            letter-spacing: -0.5px;
-            margin-bottom: 6px;
-            background: linear-gradient(135deg, #ffffff 0%, #38bdf8 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0 0 6px 0;
+            color: #ffffff;
         }
 
         .hero p {
             font-size: 13.5px;
             color: var(--hint-color);
             margin: 0;
+            line-height: 1.45;
         }
 
-        /* Visual Step Card */
-        .visual-card {
+        /* Strict Clean Cards */
+        .rule-card {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
-            border-radius: 20px;
-            padding: 18px;
-            margin-bottom: 16px;
-            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 12px;
         }
 
-        .visual-card:active {
-            transform: none; /* keep stable on scroll */
-        }
-
-        .card-header-flex {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 14px;
-        }
-
-        .step-num-badge {
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 14px;
-            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
-            color: #0f172a;
-            flex-shrink: 0;
-            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
-        }
-
-        .card-header-title {
-            font-size: 16px;
-            font-weight: 800;
+        .rule-card-header {
+            font-size: 15px;
+            font-weight: 700;
             color: #ffffff;
-            margin: 0;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        /* Visual Steps Grid / Gallery */
-        .steps-visual-grid {
+        .rule-body {
+            font-size: 13.5px;
+            line-height: 1.55;
+            color: #cbd5e1;
+        }
+
+        .rule-body p {
+            margin: 0 0 8px 0;
+        }
+
+        .rule-body p:last-child {
+            margin-bottom: 0;
+        }
+
+        .rule-body ul {
+            margin: 0 0 8px 0;
+            padding-left: 20px;
+        }
+
+        .rule-body li {
+            margin-bottom: 4px;
+        }
+
+        .rule-body li:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Thumbnails Strip */
+        .screens-strip {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin: 14px 0;
+            gap: 8px;
+            margin: 12px 0 6px;
         }
 
-        .step-box {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 14px;
-            padding: 8px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .step-img-frame {
-            width: 100%;
-            aspect-ratio: 9/16;
+        .screen-thumb {
+            background: #000;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: #000;
-            margin-bottom: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            aspect-ratio: 9/16;
             cursor: pointer;
-            transition: transform 0.2s ease;
+            transition: opacity 0.15s ease;
         }
 
-        .step-img-frame:hover {
-            transform: scale(1.02);
+        .screen-thumb:hover {
+            opacity: 0.85;
         }
 
-        .step-img-frame img {
+        .screen-thumb img {
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -171,758 +158,626 @@
             display: block;
         }
 
-        .step-box-title {
+        .screen-caption {
             font-size: 11px;
-            font-weight: 800;
-            color: var(--accent-color);
-            margin-bottom: 4px;
-            text-transform: uppercase;
+            color: var(--hint-color);
+            text-align: center;
+            margin-top: 4px;
         }
 
-        .step-box-desc {
-            font-size: 11.5px;
-            line-height: 1.35;
-            color: #cbd5e1;
+        /* Callout Box */
+        .callout-box {
+            background: rgba(255, 255, 255, 0.04);
+            border-left: 3px solid var(--accent-color);
+            border-radius: 0 8px 8px 0;
+            padding: 8px 12px;
+            margin: 8px 0;
+            font-size: 13px;
         }
 
-        /* Diagram Boxes */
-        .diagram-container {
+        .callout-box.warn {
+            background: rgba(244, 63, 94, 0.08);
+            border-left-color: #f43f5e;
+            color: #fecdd3;
+        }
+
+        /* MVP Ballot Mockup - Strict & Clean */
+        .mvp-mockup {
             background: rgba(15, 23, 42, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 14px;
-            margin: 12px 0;
-        }
-
-        .flow-horizontal {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            position: relative;
-        }
-
-        .flow-node {
-            flex: 1;
-            background: rgba(30, 41, 59, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
-            padding: 10px 8px;
-            text-align: center;
-            font-size: 11.5px;
-            font-weight: 600;
-            color: #f1f5f9;
+            padding: 12px;
+            margin: 10px 0;
         }
 
-        .flow-node.active-success {
-            border-color: #22c55e;
-            box-shadow: 0 0 15px var(--green-glow);
-        }
-
-        .flow-arrow {
-            color: var(--accent-color);
-            font-weight: 900;
-            font-size: 16px;
-            animation: pulseArrow 1.5s infinite alternate ease-in-out;
-        }
-
-        @keyframes pulseArrow {
-            from { transform: translateX(-2px); opacity: 0.6; }
-            to { transform: translateX(2px); opacity: 1; }
-        }
-
-        /* Timeline Bar */
-        .timeline-bar {
-            display: flex;
-            border-radius: 12px;
-            overflow: hidden;
-            margin: 12px 0 6px;
-            font-size: 11px;
-            font-weight: 800;
-            text-align: center;
-            height: 38px;
-            line-height: 38px;
-        }
-
-        .timeline-free {
-            flex: 1.2;
-            background: linear-gradient(90deg, #15803d, #22c55e);
-            color: #ffffff;
-        }
-
-        .timeline-deadline {
-            background: #f59e0b;
-            color: #0f172a;
-            padding: 0 10px;
-            font-size: 10px;
-            font-weight: 900;
+        .mvp-mockup-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
             letter-spacing: 0.5px;
-            border-left: 2px dashed #ffffff;
-            border-right: 2px dashed #ffffff;
+            color: var(--hint-color);
+            margin-bottom: 8px;
         }
 
-        .timeline-late {
-            flex: 1;
-            background: linear-gradient(90deg, #ef4444, #991b1b);
-            color: #ffffff;
-        }
-
-        /* MVP Voting Ballot UI */
-        .mvp-ballot-box {
-            background: rgba(15, 23, 42, 0.85);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 14px;
-            margin: 12px 0;
-        }
-
-        .mvp-teams-grid {
+        .mvp-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 10px;
+            gap: 10px;
         }
 
-        .mvp-team-col {
-            border-radius: 12px;
-            padding: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .mvp-team-col.green-col {
-            background: rgba(34, 197, 94, 0.06);
-            border-color: rgba(34, 197, 94, 0.3);
-        }
-
-        .mvp-team-col.orange-col {
-            background: rgba(249, 115, 22, 0.06);
-            border-color: rgba(249, 115, 22, 0.3);
-        }
-
-        .team-col-header {
-            font-size: 12px;
-            font-weight: 800;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .green-col .team-col-header { color: #4ade80; }
-        .orange-col .team-col-header { color: #fb923c; }
-
-        .player-vote-pill {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            padding: 6px 8px;
-            font-size: 12px;
-            margin-bottom: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .player-vote-pill.selected {
-            background: rgba(56, 189, 248, 0.2);
-            border-color: #38bdf8;
-            font-weight: 700;
-            color: #ffffff;
-        }
-
-        .vote-rule-callout {
-            background: rgba(245, 158, 11, 0.12);
-            border-left: 3px solid #f59e0b;
-            padding: 8px 12px;
-            border-radius: 0 10px 10px 0;
-            font-size: 12.5px;
-            line-height: 1.45;
-            color: #fef08a;
-            margin-top: 10px;
-        }
-
-        /* ELO Chips */
-        .elo-chips-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
-            margin-top: 10px;
-        }
-
-        .elo-chip {
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+        .mvp-col {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 10px;
-            padding: 8px 4px;
-            text-align: center;
+            padding: 8px;
         }
 
-        .elo-chip-label {
-            font-size: 10.5px;
-            color: var(--hint-color);
+        .mvp-col-head {
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .mvp-item {
+            font-size: 12px;
+            padding: 5px 8px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .mvp-item.checked {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: rgba(56, 189, 248, 0.4);
+            color: #ffffff;
             font-weight: 600;
-            margin-bottom: 2px;
         }
 
-        .elo-chip-val {
+        /* ELO Simple Table */
+        .elo-table {
+            width: 100%;
+            border-collapse: collapse;
             font-size: 13px;
-            font-weight: 900;
+            margin-top: 6px;
         }
 
-        /* Action Button */
-        .primary-action-btn {
+        .elo-table td {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .elo-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Action Buttons */
+        .btn-link {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
             width: 100%;
-            padding: 14px;
-            border-radius: 16px;
-            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
-            color: #0f172a;
-            font-weight: 800;
-            font-size: 15px;
-            text-decoration: none;
-            box-shadow: 0 8px 24px rgba(56, 189, 248, 0.35);
-            margin-top: 16px;
-            transition: transform 0.15s ease;
-        }
-
-        .primary-action-btn:active {
-            transform: scale(0.98);
-        }
-
-        .secondary-btn-row {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        .sec-action-btn {
-            flex: 1;
-            padding: 10px;
+            padding: 12px;
             border-radius: 12px;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--accent-color);
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 14px;
+            text-decoration: none;
+            margin-top: 10px;
+            box-sizing: border-box;
+        }
+
+        .btn-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .btn-sub {
+            padding: 9px 6px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
             color: #ffffff;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 600;
             text-align: center;
             text-decoration: none;
         }
 
-        /* Modal Lightbox for images */
+        /* Contacts List */
+        .contact-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 13px;
+        }
+
+        .contact-item:last-child {
+            border-bottom: none;
+        }
+
+        .contact-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* Modal Lightbox */
         #img-lightbox {
             display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.92);
-            backdrop-filter: blur(12px);
+            background: rgba(0, 0, 0, 0.9);
             z-index: 2000;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 16px;
             cursor: pointer;
         }
 
         #img-lightbox img {
-            max-width: 90%;
+            max-width: 92%;
             max-height: 85vh;
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
         }
     </style>
 </head>
 <body>
-    <!-- Top Sticky Bar with 3-way Language Switcher -->
-    <div class="sticky-top-bar">
-        <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:20px;">⚽</span>
-            <span style="font-weight:900; font-size:15px; letter-spacing:-0.3px;">Match Guide</span>
+    <div class="top-bar">
+        <div class="top-bar-title">
+            <span>⚽</span> <span>Football Manager</span>
         </div>
         <div class="lang-switch-group">
-            <button class="lang-btn" id="btn-ru" onclick="switchLang('ru')">🇷🇺 RU</button>
-            <button class="lang-btn" id="btn-en" onclick="switchLang('en')">🇬🇧 EN</button>
-            <button class="lang-btn" id="btn-kz" onclick="switchLang('kz')">🇰🇿 KZ</button>
+            <button class="lang-btn active" id="btn-en" onclick="switchLang('en')">EN</button>
+            <button class="lang-btn" id="btn-ru" onclick="switchLang('ru')">RU</button>
+            <button class="lang-btn" id="btn-kz" onclick="switchLang('kz')">KZ</button>
         </div>
     </div>
 
     <div class="rules-wrapper">
         <div class="hero">
-            <h1 id="t-hero-title">Правила сообщества</h1>
-            <p id="t-hero-subtitle">Меньше слов, больше футбола. Всё наглядно за 1 минуту.</p>
+            <h1 id="t-hero-title">Community Rules & Match Guide</h1>
+            <p id="t-hero-subtitle">How match sign-ups, reserve promotions, rules, and MVP voting work.</p>
         </div>
 
-        <!-- 1. How to Sign Up (Screenshots 1-3) -->
-        <div class="visual-card">
-            <div class="card-header-flex">
-                <div class="step-num-badge">1</div>
-                <h3 class="card-header-title" id="t-s1-title">Как записаться на игру</h3>
-            </div>
-
-            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 10px;" id="t-s1-desc">
-                Увидел анонс в группе — жми кнопку <b>«⚽ Join Game»</b>. Всё происходит прямо в Telegram!
-            </p>
-
-            <div class="steps-visual-grid">
-                <!-- Step 1 Thumbnail -->
-                <div class="step-box">
-                    <div class="step-img-frame" onclick="openLightbox('/web/img/step1_post.png')">
-                        <img src="/web/img/step1_post.png" alt="Step 1: Match Post">
+        <!-- 1. How to Sign Up -->
+        <div class="rule-card">
+            <div class="rule-card-header" id="t-s1-title">1. How to Sign Up</div>
+            <div class="rule-body" id="t-s1-body">
+                <ul>
+                    <li>Tap <b>«⚽ Join Game»</b> under the match announcement in the group.</li>
+                    <li>The web interface opens directly inside Telegram.</li>
+                    <li><b>First time?</b> Complete the quick profile once (enter Latin name and select pitch positions).</li>
+                    <li>Tap <b>«Sign Up for Game»</b>. Open spots put you straight into the <b>Main Squad</b>. When full, you enter the <b>Reserve Queue</b>.</li>
+                </ul>
+                <div class="screens-strip">
+                    <div class="screen-thumb" onclick="openLightbox('/web/img/step1_post.png')">
+                        <img src="/web/img/step1_post.png" alt="Match announcement">
                     </div>
-                    <div class="step-box-title" id="t-box1-title">Шаг 1: Анонс</div>
-                    <div class="step-box-desc" id="t-box1-desc">Жми «⚽ Join Game» под постом</div>
-                </div>
-
-                <!-- Step 2 Thumbnail -->
-                <div class="step-box">
-                    <div class="step-img-frame" onclick="openLightbox('/web/img/step2_profile.png')">
-                        <img src="/web/img/step2_profile.png" alt="Step 2: Create Profile">
+                    <div class="screen-thumb" onclick="openLightbox('/web/img/step2_profile.png')">
+                        <img src="/web/img/step2_profile.png" alt="Create profile">
                     </div>
-                    <div class="step-box-title" id="t-box2-title">Шаг 2: Профиль</div>
-                    <div class="step-box-desc" id="t-box2-desc">1 раз: Имя латиницей + позиции</div>
-                </div>
-
-                <!-- Step 3 Thumbnail -->
-                <div class="step-box">
-                    <div class="step-img-frame" onclick="openLightbox('/web/img/step3_join.png')">
-                        <img src="/web/img/step3_join.png" alt="Step 3: Join Game">
+                    <div class="screen-thumb" onclick="openLightbox('/web/img/step3_join.png')">
+                        <img src="/web/img/step3_join.png" alt="Sign up screen">
                     </div>
-                    <div class="step-box-title" id="t-box3-title">Шаг 3: Запись</div>
-                    <div class="step-box-desc" id="t-box3-desc">Жми «Sign Up». Ты в игре!</div>
                 </div>
-            </div>
-
-            <div style="font-size:12px; color:var(--hint-color); text-align:center;">
-                <span id="t-click-hint">👆 Нажми на скриншот, чтобы увеличить</span>
-            </div>
-
-            <div style="background:rgba(56,189,248,0.1); border-left:3px solid var(--accent-color); padding:8px 12px; border-radius:0 10px 10px 0; margin-top:12px; font-size:12.5px; color:#e0f2fe;" id="t-gk-priority">
-                🧤 <b>Приоритет вратарей (GK):</b> первые 2-4 часа после анонса слоты в основе забронированы для голкиперов, чтобы игра состоялась с вратарями.
+                <div class="screen-caption" id="t-screen-caption">Tap any screenshot to enlarge</div>
             </div>
         </div>
 
-        <!-- 2. Reserve -> Main Squad (Auto-Promotion) -->
-        <div class="visual-card">
-            <div class="card-header-flex">
-                <div class="step-num-badge">2</div>
-                <h3 class="card-header-title" id="t-s2-title">Резерв и авто-продвижение</h3>
-            </div>
-
-            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 10px;" id="t-s2-desc">
-                Закончились места в основе? Записывайся в <b>Резерв</b>. Бот сам продвигает очередь!
-            </p>
-
-            <div class="diagram-container">
-                <div class="flow-horizontal">
-                    <div class="flow-node">
-                        <span style="font-size:16px;">❌</span><br>
-                        <span id="t-flow-1">Игрок основы выписался</span>
-                    </div>
-                    <div class="flow-arrow">➔</div>
-                    <div class="flow-node active-success">
-                        <span style="font-size:16px;">🤖</span><br>
-                        <span id="t-flow-2">Бот двигает #1 из Резерва в Основу</span>
-                    </div>
-                    <div class="flow-arrow">➔</div>
-                    <div class="flow-node">
-                        <span style="font-size:16px;">🔔</span><br>
-                        <span id="t-flow-3">Уведомление в ЛС Телеграма</span>
-                    </div>
+        <!-- 2. Moving from Reserve to Main Squad -->
+        <div class="rule-card">
+            <div class="rule-card-header" id="t-s2-title">2. Moving from Reserve to Main Squad</div>
+            <div class="rule-body" id="t-s2-body">
+                <p>When a main squad player drops out, the bot automatically promotes the first reserve player into the main roster.</p>
+                <div class="callout-box">
+                    The bot sends a direct Telegram message notification. Keep bot notifications unmuted.
                 </div>
-            </div>
-
-            <div style="font-size:12.5px; color:#94a3b8; line-height:1.4;" id="t-s2-note">
-                ⚠️ <b>Важно:</b> держи уведомления от бота включёнными, чтобы не пропустить приглашение в основу!
             </div>
         </div>
 
-        <!-- 3. Cancellation Policy (24h Deadline) -->
-        <div class="visual-card">
-            <div class="card-header-flex">
-                <div class="step-num-badge">3</div>
-                <h3 class="card-header-title" id="t-s3-title">Правила отмены (Дедлайн 24 часа)</h3>
-            </div>
-
-            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 8px;" id="t-s3-desc">
-                Поле бронируется заранее под точное число людей. Если планы изменились — выписывайся вовремя через кнопку «❌ Leave Game».
-            </p>
-
-            <!-- Visual Timeline Bar -->
-            <div class="timeline-bar">
-                <div class="timeline-free" id="t-tl-free">🟢 До 24 часов: БЕСПЛАТНО</div>
-                <div class="timeline-deadline">⏰ ДЕДЛАЙН</div>
-                <div class="timeline-late" id="t-tl-late">🔴 Меньше 24ч: ВЗНОС / КАРТОЧКА</div>
-            </div>
-
-            <div style="background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; padding:8px 12px; border-radius:0 10px 10px 0; margin-top:10px; font-size:12.5px; color:#fca5a5;" id="t-s3-warn">
-                ⚠️ <b>Поздний слив (< 24ч) или неявка (No-show):</b> игрок обязан оплатить взнос за матч либо самостоятельно найти себе замену. Иначе выдаётся 🟨 жёлтая карточка.
+        <!-- 3. Cancellation Policy -->
+        <div class="rule-card">
+            <div class="rule-card-header" id="t-s3-title">3. Cancellation Policy</div>
+            <div class="rule-body" id="t-s3-body">
+                <p>To cancel: open the match card in the bot and tap <b>«❌ Leave Game»</b>.</p>
+                <ul>
+                    <li><b>Free cancellation:</b> cancel at least <b>24 hours</b> before kick-off so reserve players have time to prepare.</li>
+                    <li><b>Late cancellation (< 24 hours) or No-Show:</b> without finding a replacement or a valid emergency, you are responsible for paying the match fee and receive a yellow card.</li>
+                </ul>
             </div>
         </div>
 
         <!-- 4. Match Fee & Payment -->
-        <div class="visual-card">
-            <div class="card-header-flex">
-                <div class="step-num-badge">4</div>
-                <h3 class="card-header-title" id="t-s4-title">Взнос и оплата</h3>
-            </div>
-
-            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 6px;" id="t-s4-desc">
-                Сумма взноса и реквизиты (номер банковского счёта или наличные) всегда указаны прямо в карточке матча.
-            </p>
-            <div style="background:rgba(34,197,94,0.1); border-left:3px solid #22c55e; padding:8px 12px; border-radius:0 10px 10px 0; font-size:12.5px; color:#bbf7d0;" id="t-s4-note">
-                💳 Оплата переводится <b>до начала матча</b> или <b>сразу после финального свистка</b>. При переводе указывай своё имя в примечании.
+        <div class="rule-card">
+            <div class="rule-card-header" id="t-s4-title">4. Match Fee & Payment</div>
+            <div class="rule-body" id="t-s4-body">
+                <p>The fee and payment details (bank account or cash) are shown on the match card. Please send the payment <b>before the match</b> to the provided account.</p>
             </div>
         </div>
 
-        <!-- 5. Pitch Conduct (Fair Play) -->
-        <div class="visual-card">
-            <div class="card-header-flex">
-                <div class="step-num-badge">5</div>
-                <h3 class="card-header-title" id="t-s5-title">Поведение на поле (Fair Play)</h3>
+        <!-- 5. Pitch Conduct -->
+        <div class="rule-card">
+            <div class="rule-card-header" id="t-s5-title">5. Pitch Conduct</div>
+            <div class="rule-body" id="t-s5-body">
+                <ul>
+                    <li>Dangerous tackles, rough challenges, fights, and toxic insults are prohibited.</li>
+                    <li>Arrive on time to avoid losing booked pitch time.</li>
+                    <li>First offense leads to a warning/card; repeated offenses result in a ban.</li>
+                </ul>
             </div>
-
-            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 8px;" id="t-s5-desc">
-                Мы собираемся ради футбола и хорошего настроения:
-            </p>
-            <ul style="margin:0; padding-left:18px; font-size:13px; color:#e2e8f0; line-height:1.6;" id="t-s5-list">
-                <li>⛔ <b>Запрещено:</b> опасные подкаты сзади, грубость, драки и токсичность.</li>
-                <li>⏰ <b>Приходи вовремя:</b> опоздания сжигают общее оплаченное время поля.</li>
-                <li>🟨 Первое нарушение — предупреждение / жёлтая карточка. Систематическая грубость — 🟥 бан.</li>
-            </ul>
         </div>
 
-        <!-- 6. MVP Voting (THE KAZAKH REQUEST HIGHLIGHT!) -->
-        <div class="visual-card" style="border: 2px solid rgba(245, 158, 11, 0.4); box-shadow: 0 0 25px rgba(245, 158, 11, 0.15);">
-            <div class="card-header-flex">
-                <div class="step-num-badge" style="background:linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">6</div>
-                <h3 class="card-header-title" style="color:#fbbf24;" id="t-s6-title">После матча: Голосование за MVP</h3>
-            </div>
-
-            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 6px;" id="t-s6-desc">
-                Сразу после игры в чате открывается голосование за лучшего игрока (MVP).
-            </p>
-
-            <!-- MVP Ballot Interactive / Visual Scheme -->
-            <div class="mvp-ballot-box">
-                <div style="font-size:13px; font-weight:800; color:#ffffff; text-align:center;" id="t-mvp-box-head">
-                    🗳️ ОБРАЗЕЦ ГОЛОСОВАНИЯ: ГОЛОСУЕМ ЗА ОБЕ КОМАНДЫ!
-                </div>
-
-                <div class="mvp-teams-grid">
-                    <!-- Team A -->
-                    <div class="mvp-team-col green-col">
-                        <div class="team-col-header">
-                            <span id="t-col-green">Зелёные (Team A)</span>
-                            <span>⚽</span>
+        <!-- 6. Post-Match & MVP Voting -->
+        <div class="rule-card">
+            <div class="rule-card-header" id="t-s6-title">6. Post-Match & MVP Voting</div>
+            <div class="rule-body" id="t-s6-body">
+                <p>The MVP poll opens in the group chat after full-time. <b>Vote for 1 player from EACH team</b> (1 from Green + 1 from Orange = 2 votes total). Do not vote for only 1 player overall.</p>
+                
+                <div class="mvp-mockup">
+                    <div class="mvp-mockup-title" id="t-mvp-sample-title">Sample Ballot: 2 votes required</div>
+                    <div class="mvp-grid">
+                        <div class="mvp-col">
+                            <div class="mvp-col-head" style="color:#4ade80;" id="t-mvp-team-a">Green (Team A)</div>
+                            <div class="mvp-item"><span>Zidane</span> <span>⚪</span></div>
+                            <div class="mvp-item checked"><span>Modrić</span> <span>✓ Vote #1</span></div>
+                            <div class="mvp-item"><span>Henry</span> <span>⚪</span></div>
                         </div>
-                        <div class="player-vote-pill"><span>Alikhan</span> <span>⚪</span></div>
-                        <div class="player-vote-pill selected"><span>Dias</span> <span>✅ Голос #1</span></div>
-                        <div class="player-vote-pill"><span>Yeronym</span> <span>⚪</span></div>
-                    </div>
-
-                    <!-- Team B -->
-                    <div class="mvp-team-col orange-col">
-                        <div class="team-col-header">
-                            <span id="t-col-orange">Оранжевые (Team B)</span>
-                            <span>⚽</span>
+                        <div class="mvp-col">
+                            <div class="mvp-col-head" style="color:#fb923c;" id="t-mvp-team-b">Orange (Team B)</div>
+                            <div class="mvp-item"><span>Iniesta</span> <span>⚪</span></div>
+                            <div class="mvp-item checked"><span>De Bruyne</span> <span>✓ Vote #2</span></div>
+                            <div class="mvp-item"><span>Beckham</span> <span>⚪</span></div>
                         </div>
-                        <div class="player-vote-pill"><span>Niyaz</span> <span>⚪</span></div>
-                        <div class="player-vote-pill selected"><span>Mukhammed</span> <span>✅ Голос #2</span></div>
-                        <div class="player-vote-pill"><span>Radik</span> <span>⚪</span></div>
                     </div>
                 </div>
 
-                <div class="vote-rule-callout" id="t-mvp-rule-callout">
-                    👉 <b>ГЛАВНОЕ ПРАВИЛО:</b> Ты выбираешь <b>1 человека из Зелёных</b> И <b>1 человека из Оранжевых</b> (всего 2 голоса)! Не голосуй только за одну команду — поддержи лучших в обеих!
+                <div class="callout-box" id="t-mvp-note">
+                    You cannot vote for yourself. Both teams must receive your vote.
                 </div>
-            </div>
 
-            <!-- ELO rating bonus -->
-            <div style="font-size:13px; font-weight:700; color:#ffffff; margin:14px 0 6px;" id="t-elo-title">
-                🏆 Начисление рейтинга ELO (MMR):
+                <p style="margin-top:10px; font-weight:600;" id="t-elo-header">ELO Rating (MMR):</p>
+                <table class="elo-table">
+                    <tr><td id="t-elo-win">Victory</td><td style="text-align:right; font-weight:700; color:#4ade80;">+10 MMR</td></tr>
+                    <tr><td id="t-elo-draw">Draw</td><td style="text-align:right; font-weight:700; color:var(--hint-color);">0 MMR</td></tr>
+                    <tr><td id="t-elo-loss">Defeat</td><td style="text-align:right; font-weight:700; color:#f87171;">-5 MMR</td></tr>
+                    <tr><td id="t-elo-mvp">Match MVP Bonus</td><td style="text-align:right; font-weight:700; color:#f59e0b;">+5 MMR</td></tr>
+                </table>
             </div>
-            <div class="elo-chips-row">
-                <div class="elo-chip">
-                    <div class="elo-chip-label" id="t-chip-win">Победа</div>
-                    <div class="elo-chip-val" style="color:#4ade80;">+10 MMR</div>
-                </div>
-                <div class="elo-chip">
-                    <div class="elo-chip-label" id="t-chip-draw">Ничья</div>
-                    <div class="elo-chip-val" style="color:var(--hint-color);">0 MMR</div>
-                </div>
-                <div class="elo-chip">
-                    <div class="elo-chip-label" id="t-chip-loss">Поражение</div>
-                    <div class="elo-chip-val" style="color:#f87171;">-5 MMR</div>
-                </div>
-                <div class="elo-chip" style="border-color:rgba(245,158,11,0.4);">
-                    <div class="elo-chip-label" id="t-chip-mvp">MVP бонус</div>
-                    <div class="elo-chip-val" style="color:#fbbf24;">+5 MMR</div>
+        </div>
+
+        <!-- 7. Profile, Stats & Direct Links -->
+        <div class="rule-card">
+            <div class="rule-card-header" id="t-s7-title">7. Profile, Stats & Disciplinary Cards</div>
+            <div class="rule-body" id="t-s7-body">
+                <p>Personal statistics, match history, and MMR rating are available anytime via <code>/profile</code> in private chat with the bot.</p>
+                <ul>
+                    <li><b>Yellow Card:</b> disciplinary warning active for 2–4 weeks.</li>
+                    <li><b>Red Card:</b> temporary ban from registering for upcoming matches.</li>
+                </ul>
+
+                <!-- Direct Links right under profile -->
+                <a href="https://t.me/fm_metabot" class="btn-link" id="t-link-bot">
+                    <span>⚽</span> <span id="t-link-bot-text">Open Football Manager Bot</span>
+                </a>
+                <div class="btn-row">
+                    <a href="/web/profile.html" class="btn-sub" id="t-link-prof">👤 My Profile</a>
+                    <a href="/web/leaderboard.html" class="btn-sub" id="t-link-lead">🏆 Leaderboard</a>
+                    <a href="/web/history.html" class="btn-sub" id="t-link-hist">📅 History</a>
                 </div>
             </div>
         </div>
 
-        <!-- 7. Profile & Stats -->
-        <div class="visual-card">
-            <div class="card-header-flex">
-                <div class="step-num-badge">7</div>
-                <h3 class="card-header-title" id="t-s7-title">Профиль, статистика и карточки</h3>
-            </div>
+        <!-- 8. Organizers & Contacts -->
+        <div class="rule-card">
+            <div class="rule-card-header" id="t-s8-title">8. Contacts & Questions</div>
+            <div class="rule-body">
+                <div class="contact-item">
+                    <div>
+                        <div style="font-weight:600;" id="t-c1-role">Matches, pitch, squads, balls & partnership:</div>
+                        <div style="font-size:12px; color:var(--hint-color);">Али / Елдос</div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <a href="https://t.me/mukhvmmed" class="contact-link" target="_blank">@mukhvmmed</a>
+                        <a href="https://t.me/qaddafi_1" class="contact-link" target="_blank">@qaddafi_1</a>
+                    </div>
+                </div>
 
-            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 10px;" id="t-s7-desc">
-                Вся твоя личная статистика доступна в боте в любое время:
-            </p>
+                <div class="contact-item">
+                    <div>
+                        <div style="font-weight:600;" id="t-c2-role">Match fees, payments & partnership:</div>
+                        <div style="font-size:12px; color:var(--hint-color);" id="t-c2-name">Оплата и финансы</div>
+                    </div>
+                    <div>
+                        <a href="https://t.me/napovorotenapravo" class="contact-link" target="_blank">@napovorotenapravo</a>
+                    </div>
+                </div>
 
-            <div style="background:rgba(15,23,42,0.6); border-radius:12px; padding:10px 14px; font-size:13px; line-height:1.5; color:#e2e8f0; border:1px solid rgba(255,255,255,0.06);" id="t-s7-body">
-                • <b>Команда /profile:</b> просмотр сыгранных игр, забитых голов, наград MVP и текущего MMR.<br>
-                • <b>Позиции:</b> настрой свою основную позицию (GK, CB, CM, ST...), чтобы авто-драфт правильно ставил тебя в состав.<br>
-                • <b>Карточки:</b> 🟨 жёлтая карточка активна 2-4 недели. 🟥 красная карточка временно блокирует запись на матчи.
-            </div>
-        </div>
-
-        <!-- Call to Action Buttons -->
-        <div style="text-align:center; margin-top:20px;">
-            <a href="https://t.me/fm_metabot" class="primary-action-btn" id="t-btn-bot">
-                <span>⚽</span> <span id="t-btn-bot-text">Открыть бота Football Manager</span>
-            </a>
-
-            <div class="secondary-btn-row">
-                <a href="/web/profile.html" class="sec-action-btn" id="t-btn-prof">👤 Мой профиль</a>
-                <a href="/web/leaderboard.html" class="sec-action-btn" id="t-btn-lead">🏆 Лидерборд</a>
-                <a href="/web/history.html" class="sec-action-btn" id="t-btn-hist">📅 История</a>
+                <div class="contact-item">
+                    <div>
+                        <div style="font-weight:600;" id="t-c3-role">Bot & technical questions:</div>
+                        <div style="font-size:12px; color:var(--hint-color);">Ернур</div>
+                    </div>
+                    <div>
+                        <a href="https://t.me/yeronym" class="contact-link" target="_blank">@yeronym</a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Lightbox overlay -->
+    <!-- Lightbox for screenshots -->
     <div id="img-lightbox" onclick="closeLightbox()">
-        <img id="lightbox-img" src="" alt="Fullscreen preview">
+        <img id="lightbox-img" src="" alt="Screenshot preview">
     </div>
 
     <script>
-        const DICT = {
-            ru: {
-                hero_title: "Правила сообщества",
-                hero_subtitle: "Меньше слов, больше футбола. Всё наглядно за 1 минуту.",
-                s1_title: "Как записаться на игру",
-                s1_desc: "Увидел анонс в группе — жми кнопку <b>«⚽ Join Game»</b>. Всё происходит прямо в Telegram!",
-                box1_title: "Шаг 1: Анонс",
-                box1_desc: "Жми «⚽ Join Game» под постом",
-                box2_title: "Шаг 2: Профиль",
-                box2_desc: "1 раз: Имя латиницей + позиции",
-                box3_title: "Шаг 3: Запись",
-                box3_desc: "Жми «Sign Up». Ты в игре!",
-                click_hint: "👆 Нажми на скриншот, чтобы увеличить",
-                gk_priority: "🧤 <b>Приоритет вратарей (GK):</b> первые 2-4 часа слоты в основе забронированы для голкиперов, чтобы игра состоялась с вратарями.",
-                s2_title: "Резерв и авто-продвижение",
-                s2_desc: "Закончились места в основе? Записывайся в <b>Резерв</b>. Бот сам продвигает очередь!",
-                flow_1: "Игрок основы выписался",
-                flow_2: "Бот двигает #1 из Резерва в Основу",
-                flow_3: "Уведомление в ЛС Телеграма",
-                s2_note: "⚠️ <b>Важно:</b> держи уведомления от бота включёнными, чтобы не пропустить приглашение в основу!",
-                s3_title: "Правила отмены (Дедлайн 24 часа)",
-                s3_desc: "Поле бронируется заранее под точное число людей. Если планы изменились — выписывайся вовремя через кнопку «❌ Leave Game».",
-                tl_free: "🟢 До 24 часов: БЕСПЛАТНО",
-                tl_late: "🔴 Меньше 24ч: ВЗНОС / КАРТОЧКА",
-                s3_warn: "⚠️ <b>Поздний слив (< 24ч) или неявка (No-show):</b> игрок обязан оплатить взнос за матч либо самостоятельно найти себе замену. Иначе выдаётся 🟨 жёлтая карточка.",
-                s4_title: "Взнос и оплата",
-                s4_desc: "Сумма взноса и реквизиты (номер банковского счёта или наличные) всегда указаны прямо в карточке матча.",
-                s4_note: "💳 Оплата переводится <b>до начала матча</b> или <b>сразу после финального свистка</b>. При переводе указывай своё имя в примечании.",
-                s5_title: "Поведение на поле (Fair Play)",
-                s5_desc: "Мы собираемся ради футбола и хорошего настроения:",
-                s5_list: `<li>⛔ <b>Запрещено:</b> опасные подкаты сзади, грубость, драки и токсичность.</li>
-                    <li>⏰ <b>Приходи вовремя:</b> опоздания сжигают общее оплаченное время поля.</li>
-                    <li>🟨 Первое нарушение — предупреждение / жёлтая карточка. Систематическая грубость — 🟥 бан.</li>`,
-                s6_title: "После матча: Голосование за MVP",
-                s6_desc: "Сразу после игры в чате открывается голосование за лучшего игрока (MVP).",
-                mvp_box_head: "🗳️ ОБРАЗЕЦ ГОЛОСОВАНИЯ: ГОЛОСУЕМ ЗА ОБЕ КОМАНДЫ!",
-                col_green: "Зелёные (Team A)",
-                col_orange: "Оранжевые (Team B)",
-                mvp_rule_callout: "👉 <b>ГЛАВНОЕ ПРАВИЛО:</b> Ты выбираешь <b>1 человека из Зелёных</b> И <b>1 человека из Оранжевых</b> (всего 2 голоса)! Не голосуй только за одну команду — поддержи лучших в обеих!",
-                elo_title: "🏆 Начисление рейтинга ELO (MMR):",
-                chip_win: "Победа",
-                chip_draw: "Ничья",
-                chip_loss: "Поражение",
-                chip_mvp: "MVP бонус",
-                s7_title: "Профиль, статистика и карточки",
-                s7_desc: "Вся твоя личная статистика доступна в боте в любое время:",
-                s7_body: `• <b>Команда /profile:</b> просмотр сыгранных игр, забитых голов, наград MVP и текущего MMR.<br>
-                    • <b>Позиции:</b> настрой свою основную позицию (GK, CB, CM, ST...), чтобы авто-драфт правильно ставил тебя в состав.<br>
-                    • <b>Карточки:</b> 🟨 жёлтая карточка активна 2-4 недели. 🟥 красная карточка временно блокирует запись на матчи.`,
-                btn_bot_text: "Открыть бота Football Manager",
-                btn_prof: "👤 Мой профиль",
-                btn_lead: "🏆 Лидерборд",
-                btn_hist: "📅 История"
-            },
+        const TRANSLATIONS = {
             en: {
-                hero_title: "Community Match Guide",
-                hero_subtitle: "Less talking, more football. Everything clear in 1 minute.",
+                hero_title: "Community Rules & Match Guide",
+                hero_subtitle: "How match sign-ups, reserve promotions, rules, and MVP voting work.",
                 s1_title: "1. How to Sign Up",
-                s1_desc: "See the game post in the group? Just tap <b>«⚽ Join Game»</b>. Works right inside Telegram!",
-                box1_title: "Step 1: Announcement",
-                box1_desc: "Tap «⚽ Join Game» on post",
-                box2_title: "Step 2: Profile",
-                box2_desc: "Once: Latin name + pitch role",
-                box3_title: "Step 3: Sign Up",
-                box3_desc: "Tap «Sign Up». You're in!",
-                click_hint: "👆 Tap on screenshots to enlarge",
-                gk_priority: "🧤 <b>Goalkeeper (GK) Priority:</b> first 2-4 hours spots are reserved for goalkeepers to guarantee real GKs for the game.",
-                s2_title: "2. Reserve Queue & Auto-Promotion",
-                s2_desc: "Main squad full? Join the <b>Reserve list</b>. The bot handles promotion automatically!",
-                flow_1: "Main squad player cancels",
-                flow_2: "Bot auto-promotes #1 Reserve to Main",
-                flow_3: "DM notification sent to you",
-                s2_note: "⚠️ <b>Important:</b> keep bot notifications unmuted so you don't miss last-minute call-ups!",
-                s3_title: "3. Cancellation Policy (24h Deadline)",
-                s3_desc: "Pitches are booked in advance for exact numbers. Plans changed? Unregister in time via «❌ Leave Game».",
-                tl_free: "🟢 > 24 Hours: FREE",
-                tl_late: "🔴 < 24 Hours: FEE / YELLOW CARD",
-                s3_warn: "⚠️ <b>Late cancellation (< 24h) or No-Show:</b> you must pay the match fee or find a replacement player. Otherwise a 🟨 yellow card is issued.",
+                s1_body: `<ul>
+                    <li>Tap <b>«⚽ Join Game»</b> under the match announcement in the group.</li>
+                    <li>The web interface opens directly inside Telegram.</li>
+                    <li><b>First time?</b> Complete the quick profile once (enter Latin name and select pitch positions).</li>
+                    <li>Tap <b>«Sign Up for Game»</b>. Open spots put you straight into the <b>Main Squad</b>. When full, you enter the <b>Reserve Queue</b>.</li>
+                </ul>`,
+                screen_caption: "Tap any screenshot to enlarge",
+                s2_title: "2. Moving from Reserve to Main Squad",
+                s2_body: `<p>When a main squad player drops out, the bot automatically promotes the first reserve player into the main roster.</p>
+                    <div class="callout-box">
+                        The bot sends a direct Telegram message notification. Keep bot notifications unmuted.
+                    </div>`,
+                s3_title: "3. Cancellation Policy",
+                s3_body: `<p>To cancel: open the match card in the bot and tap <b>«❌ Leave Game»</b>.</p>
+                    <ul>
+                        <li><b>Free cancellation:</b> cancel at least <b>24 hours</b> before kick-off so reserve players have time to prepare.</li>
+                        <li><b>Late cancellation (< 24 hours) or No-Show:</b> without finding a replacement or a valid emergency, you are responsible for paying the match fee and receive a yellow card.</li>
+                    </ul>`,
                 s4_title: "4. Match Fee & Payment",
-                s4_desc: "Fee amount and payment details (bank transfer or cash) are clearly listed on the match card.",
-                s4_note: "💳 Send payment <b>before kickoff</b> or <b>immediately after full-time</b>. Mention your name in transfer note.",
-                s5_title: "5. Pitch Conduct (Fair Play)",
-                s5_desc: "We play for football, fitness and good vibes:",
-                s5_list: `<li>⛔ <b>Prohibited:</b> reckless tackles from behind, aggression, fights and toxic insults.</li>
-                    <li>⏰ <b>Arrive on time:</b> being late wastes paid pitch time.</li>
-                    <li>🟨 1st offense = warning / yellow card. Repeated rough play = 🟥 ban.</li>`,
-                s6_title: "6. Post-Match: Voting for MVP",
-                s6_desc: "Immediately after the match, the MVP poll opens in the chat.",
-                mvp_box_head: "🗳️ VOTING SAMPLE: VOTE FOR BOTH TEAMS!",
-                col_green: "Green Team (Team A)",
-                col_orange: "Orange Team (Team B)",
-                mvp_rule_callout: "👉 <b>GOLDEN RULE:</b> You must vote for <b>1 player from Green</b> AND <b>1 player from Orange</b> (2 votes total)! Do not just vote for 1 team — support the best player on each side!",
-                elo_title: "🏆 ELO Rating (MMR) Calculation:",
-                chip_win: "Victory",
-                chip_draw: "Draw",
-                chip_loss: "Defeat",
-                chip_mvp: "MVP Bonus",
-                s7_title: "7. Player Profile, Stats & Cards",
-                s7_desc: "All your personal career statistics are in the bot 24/7:",
-                s7_body: `• <b>Command /profile:</b> check your games played, goals scored, MVP titles and live MMR rating.<br>
-                    • <b>Positions:</b> set your primary pitch role (GK, CB, CM, ST...) so auto-draft balances teams properly.<br>
-                    • <b>Cards:</b> 🟨 yellow card lasts 2-4 weeks. 🟥 red card temporarily suspends match registration.`,
-                btn_bot_text: "Open Football Manager Bot",
-                btn_prof: "👤 My Profile",
-                btn_lead: "🏆 Leaderboard",
-                btn_hist: "📅 History"
+                s4_body: `<p>The fee and payment details (bank account or cash) are shown on the match card. Please send the payment <b>before the match</b> to the provided account.</p>`,
+                s5_title: "5. Pitch Conduct",
+                s5_body: `<ul>
+                    <li>Dangerous tackles, rough challenges, fights, and toxic insults are prohibited.</li>
+                    <li>Arrive on time to avoid losing booked pitch time.</li>
+                    <li>First offense leads to a warning/card; repeated offenses result in a ban.</li>
+                </ul>`,
+                s6_title: "6. Post-Match & MVP Voting",
+                s6_body: `<p>The MVP poll opens in the group chat after full-time. <b>Vote for 1 player from EACH team</b> (1 from Green + 1 from Orange = 2 votes total). Do not vote for only 1 player overall.</p>`,
+                mvp_sample_title: "Sample Ballot: 2 votes required",
+                mvp_team_a: "Green (Team A)",
+                mvp_team_b: "Orange (Team B)",
+                mvp_note: "You cannot vote for yourself. Both teams must receive your vote.",
+                elo_header: "ELO Rating (MMR):",
+                elo_win: "Victory",
+                elo_draw: "Draw",
+                elo_loss: "Defeat",
+                elo_mvp: "Match MVP Bonus",
+                s7_title: "7. Profile, Stats & Disciplinary Cards",
+                s7_body: `<p>Personal statistics, match history, and MMR rating are available anytime via <code>/profile</code> in private chat with the bot.</p>
+                    <ul>
+                        <li><b>Yellow Card:</b> disciplinary warning active for 2–4 weeks.</li>
+                        <li><b>Red Card:</b> temporary ban from registering for upcoming matches.</li>
+                    </ul>`,
+                link_bot_text: "Open Football Manager Bot",
+                link_prof: "👤 My Profile",
+                link_lead: "🏆 Leaderboard",
+                link_hist: "📅 History",
+                s8_title: "8. Contacts & Questions",
+                c1_role: "Matches, pitch, squads, balls & partnership:",
+                c2_role: "Match fees, payments & partnership:",
+                c2_name: "Payments & finance",
+                c3_role: "Bot & technical questions:"
+            },
+            ru: {
+                hero_title: "Правила сообщества и матчей",
+                hero_subtitle: "Запись на игры, переход из резерва в основу, оплата и голосование за MVP.",
+                s1_title: "1. Как записаться на игру",
+                s1_body: `<ul>
+                    <li>Нажмите <b>«⚽ Join Game»</b> под сообщением с анонсом в группе.</li>
+                    <li>Веб-окно откроется прямо в Telegram.</li>
+                    <li><b>Впервые?</b> Заполните короткий профиль один раз (имя латиницей и позиции).</li>
+                    <li>Нажмите <b>«Sign Up for Game»</b>. При наличии мест вы попадаете в <b>Основной состав</b>. Если лимит исчерпан — в <b>Список резерва</b>.</li>
+                </ul>`,
+                screen_caption: "Нажмите на скриншот, чтобы увеличить",
+                s2_title: "2. Переход из Резерва в Основу",
+                s2_body: `<p>Когда игрок основного состава выписывается, бот автоматически переводит первого игрока из резерва в основной состав.</p>
+                    <div class="callout-box">
+                        Бот присылает уведомление в личные сообщения Telegram. Не отключайте уведомления бота.
+                    </div>`,
+                s3_title: "3. Правила отмены записи",
+                s3_body: `<p>Для отмены откройте карточку матча в боте и нажмите <b>«❌ Leave Game»</b>.</p>
+                    <ul>
+                        <li><b>Бесплатная отмена:</b> не позднее чем за <b>24 часа</b> до свистка, чтобы игроки из резерва успели собраться.</li>
+                        <li><b>Поздняя отмена (< 24 часов) или неявка:</b> без уважительной причины или найденной замены вы обязаны оплатить взнос за матч и получаете жёлтую карточку.</li>
+                    </ul>`,
+                s4_title: "4. Взнос и оплата",
+                s4_body: `<p>Сумма взноса и реквизиты указаны в карточке матча. Пожалуйста, переводите взнос <b>до начала матча</b> по указанным реквизитам.</p>`,
+                s5_title: "5. Поведение на поле",
+                s5_body: `<ul>
+                    <li>Опасные подкаты сзади, грубость, драки и оскорбления запрещены.</li>
+                    <li>Приходите вовремя, чтобы не терять оплаченное время поля.</li>
+                    <li>Первое нарушение — предупреждение / карточка. Повторные нарушения — бан.</li>
+                </ul>`,
+                s6_title: "6. Голосование за MVP после матча",
+                s6_body: `<p>После матча в чате запускается опрос за лучшего игрока. <b>Голосовать нужно за 1 игрока из КАЖДОЙ команды</b> (1 из Зелёных + 1 из Оранжевых = всего 2 голоса). Не отдавайте голос только за одну команду.</p>`,
+                mvp_sample_title: "Образец бюллетеня: 2 обязательных голоса",
+                mvp_team_a: "Зелёные (Команда А)",
+                mvp_team_b: "Оранжевые (Команда B)",
+                mvp_note: "За себя голосовать нельзя. Поддержите лучшего игрока в каждой команде.",
+                elo_header: "Рейтинг ELO (MMR):",
+                elo_win: "Победа",
+                elo_draw: "Ничья",
+                elo_loss: "Поражение",
+                elo_mvp: "Бонус MVP матча",
+                s7_title: "7. Профиль, статистика и карточки",
+                s7_body: `<p>Личная статистика, история матчей и рейтинг MMR доступны в любой момент через <code>/profile</code> в ЛС с ботом.</p>
+                    <ul>
+                        <li><b>Жёлтая карточка:</b> предупреждение, действует 2–4 недели.</li>
+                        <li><b>Красная карточка:</b> временный запрет на запись на матчи.</li>
+                    </ul>`,
+                link_bot_text: "Открыть бота Football Manager",
+                link_prof: "👤 Мой профиль",
+                link_lead: "🏆 Лидерборд",
+                link_hist: "📅 История",
+                s8_title: "8. Контакты и вопросы",
+                c1_role: "Игры, поле, составы, мяч и сотрудничество:",
+                c2_role: "Взносы, оплата и сотрудничество:",
+                c2_name: "Оплата и финансы",
+                c3_role: "Бот и технические вопросы:"
             },
             kz: {
-                hero_title: "Қауымдастық ережелері",
-                hero_subtitle: "Артық сөзсіз, тек футбол. Барлығы 1 минутта түсінікті.",
+                hero_title: "Қауымдастық пен матч ережелері",
+                hero_subtitle: "Ойынға жазылу, резервтен негізге өту, төлем және MVP-ге дауыс беру.",
                 s1_title: "1. Ойынға қалай жазылу керек",
-                s1_desc: "Топтағы хабарландыруды көрдің бе — посттың астындағы <b>«⚽ Join Game»</b> түймесін бас. Барлығы Telegram ішінде өтеді!",
-                box1_title: "1-қадам: Пост",
-                box1_desc: "«⚽ Join Game» түймесін бас",
-                box2_title: "2-қадам: Профиль",
-                box2_desc: "1 рет: Латынша атың + позицияң",
-                box3_title: "3-қадам: Жазылу",
-                box3_desc: "«Sign Up» бас. Ойындасың!",
-                click_hint: "👆 Үлкейту үшін скриншотты бас",
-                gk_priority: "🧤 <b>Қақпашыларға (GK) басымдық:</b> алғашқы 2-4 сағатта негізгі орындар қақпашыларға сақталады.",
-                s2_title: "2. Резерв және авто-жылжу",
-                s2_desc: "Негізгі құрам толды ма? <b>Резервке</b> жазыл. Бот кезекті өзі автоматты жылжытады!",
-                flow_1: "Негізгі құрамнан біреу шықты",
-                flow_2: "Бот Резервтегі #1 ойыншыны негізге өткізді",
-                flow_3: "Телеграм жеке хабарлама жіберді",
-                s2_note: "⚠️ <b>Маңызды:</b> шақыруды өткізіп алмас үшін бот хабарландыруларын қосулы ұстаңыз!",
-                s3_title: "3. Бас тарту ережесі (24 сағат дедлайн)",
-                s3_desc: "Алаң нақты адам санына алдын ала брондалады. Жоспарың өзгерсе — «❌ Leave Game» арқылы уақытында шық.",
-                tl_free: "🟢 24 сағатқа дейін: ТЕГІН",
-                tl_late: "🔴 24 сағаттан аз: ТӨЛЕМ / САРЫ ҚАҒАЗ",
-                s3_warn: "⚠️ <b>Кеш шығу (< 24 сағ) немесе келмей қалу (No-show):</b> ойыншы матч ақысын төлеуге немесе орнына адам табуға міндетті. Әйтпесе 🟨 сары қағаз беріледі.",
+                s1_body: `<ul>
+                    <li>Топтағы хабарландыру астындағы <b>«⚽ Join Game»</b> түймесін басыңыз.</li>
+                    <li>Веб-терезе бірден Telegram ішінде ашылады.</li>
+                    <li><b>Алғаш рет пе?</b> Қысқа профильді 1 рет толтырыңыз (аты-жөніңіз латынша және позицияңыз).</li>
+                    <li><b>«Sign Up for Game»</b> басыңыз. Бос орын болса <b>Негізгі құрамға</b> кіресіз. Орын толса — <b>Резерв тізіміне</b> түсесіз.</li>
+                </ul>`,
+                screen_caption: "Үлкейту үшін скриншотты басыңыз",
+                s2_title: "2. Резервтен Негізгі құрамға өту",
+                s2_body: `<p>Негізгі құрамнан ойыншы шыққанда, бот автоматты түрде резервтегі бірінші адамды негізгі құрамға ауыстырады.</p>
+                    <div class="callout-box">
+                        Бот Telegram жеке хабарлама жібереді. Бот хабарламаларын қосулы ұстаңыз.
+                    </div>`,
+                s3_title: "3. Ойыннан бас тарту ережесі",
+                s3_body: `<p>Бас тарту үшін: боттағы карточканы ашып, <b>«❌ Leave Game»</b> басыңыз.</p>
+                    <ul>
+                        <li><b>Тегін бас тарту:</b> ойын басталуына кемінде <b>24 сағат</b> қалғанға дейін, резервтегілер дайындалып үлгеруі үшін.</li>
+                        <li><b>Кеш бас тарту (< 24 сағат) немесе келмей қалу:</b> себепсіз немесе орныңызға адам таппасаңыз, матч ақысын төлеуге міндеттісіз және сары қағаз беріледі.</li>
+                    </ul>`,
                 s4_title: "4. Ойын жарнасы мен төлем",
-                s4_desc: "Жарна сомасы мен реквизиттер (банк шоты немесе қолма-қол) әрқашан матч карточкасында жазылады.",
-                s4_note: "💳 Төлем <b>ойын басталғанға дейін</b> немесе <b>соңғы ысқырықтан соң бірден</b> аударылады. Аударымда өз атыңды көрсет.",
-                s5_title: "5. Алаңдағы тәртіп (Fair Play)",
-                s5_desc: "Біз достық пен футбол үшін жиналамыз:",
-                s5_list: `<li>⛔ <b>Тыйым салынады:</b> арттан қауіпті подкат жасау, төбелес, балағат сөздер мен агрессия.</li>
-                    <li>⏰ <b>Уақытында кел:</b> кешігу жалпы алаң уақытын ұрлайды.</li>
-                    <li>🟨 Бірінші ескерту — сары қағаз. Дөрекілік қайталанса — 🟥 бан.</li>`,
-                s6_title: "6. Ойыннан кейін: МВП-ге дауыс беру",
-                s6_desc: "Ойын біткен соң чатта матчтың үздігін (MVP) анықтауға дауыс беру басталады.",
-                mvp_box_head: "🗳️ ДАУЫС БЕРУ ҮЛГІСІ: ЕКІ КОМАНДАҒА ДА ДАУЫС БЕРЕМІЗ!",
-                col_green: "Жасылдар (Team A)",
-                col_orange: "Қызғылт сарылар (Team B)",
-                mvp_rule_callout: "👉 <b>БАСТЫ ЕРЕЖЕ:</b> Сен <b>Жасылдардан 1 адамға</b> ЖӘНЕ <b>Қызғылт сарылардан 1 адамға</b> дауыс бересің (барлығы 2 дауыс)! Бүкіл ойынға тек 1-ақ адамға дауыс беріп қойма — екі команданың да үздігін қолда!",
-                elo_title: "🏆 ELO рейтингі (MMR) қалай есептеледі:",
-                chip_win: "Жеңіс",
-                chip_draw: "Тең",
-                chip_loss: "Жеңіліс",
-                chip_mvp: "МВП бонус",
+                s4_body: `<p>Жарна мөлшері мен реквизиттер матч карточкасында жазылған. Төлемді <b>ойын басталғанға дейін</b> көрсетілген шотқа аударыңыз.</p>`,
+                s5_title: "5. Алаңдағы тәртіп",
+                s5_body: `<ul>
+                    <li>Арттан қауіпті подкат жасауға, дөрекілікке, төбелеске және балағат сөздерге тыйым салынады.</li>
+                    <li>Алаң уақытын жоғалтпас үшін уақытында келіңіз.</li>
+                    <li>Бірінші бұзушылық — ескерту / қағаз. Қайталанса — бан.</li>
+                </ul>`,
+                s6_title: "6. Ойыннан соң MVP-ге дауыс беру",
+                s6_body: `<p>Ойын біткен соң чатта үздік ойыншыны анықтау басталады. <b>Әр командадан 1 ойыншыға дауыс беру керек</b> (Жасылдардан 1 адам + Қызғылт сарылардан 1 адам = барлығы 2 дауыс). Бүкіл ойынға тек 1-ақ адамға дауыс бермеңіз.</p>`,
+                mvp_sample_title: "Дауыс беру үлгісі: 2 міндетті дауыс",
+                mvp_team_a: "Жасылдар (А командасы)",
+                mvp_team_b: "Қызғылт сарылар (B командасы)",
+                mvp_note: "Өзіңізге дауыс беруге болмайды. Екі команданың да үздігіне дауыс беріңіз.",
+                elo_header: "ELO рейтингі (MMR):",
+                elo_win: "Жеңіс",
+                elo_draw: "Тең",
+                elo_loss: "Жеңіліс",
+                elo_mvp: "Матч MVP бонусы",
                 s7_title: "7. Профиль, статистика және қағаздар",
-                s7_desc: "Барлық жеке статистикаң ботта тәулік бойы қолжетімді:",
-                s7_body: `• <b>/profile командасы:</b> ойнаған матчтарыңды, соққан голдарыңды, MVP марапаттарын және MMR рейтингіңді көр.<br>
-                    • <b>Позиция:</b> авто-драфт команданы тең бөлуі үшін негізгі позицияңды белгіле (GK, CB, CM, ST...).<br>
-                    • <b>Қағаздар:</b> 🟨 сары қағаз 2-4 апта жүреді. 🟥 қызыл қағаз ойынға жазылуды уақытша бұғаттайды.`,
-                btn_bot_text: "Football Manager ботын ашу",
-                btn_prof: "👤 Менің профилім",
-                btn_lead: "🏆 Көшбасшылар",
-                btn_hist: "📅 Тарих"
+                s7_body: `<p>Жеке статистика, матчтар тарихы және MMR рейтингі кез келген уақытта бот жеке чатында <code>/profile</code> арқылы қолжетімді.</p>
+                    <ul>
+                        <li><b>Сары қағаз:</b> ескерту, 2–4 аптаға беріледі.</li>
+                        <li><b>Қызыл қағаз:</b> алдағы ойындарға жазылуды уақытша бұғаттау.</li>
+                    </ul>`,
+                link_bot_text: "Football Manager ботын ашу",
+                link_prof: "👤 Менің профилім",
+                link_lead: "🏆 Көшбасшылар",
+                link_hist: "📅 Тарих",
+                s8_title: "8. Байланыс және сұрақтар",
+                c1_role: "Ойындар, алаң, құрамдар, доп және әріптестік:",
+                c2_role: "Жарна, төлем және әріптестік:",
+                c2_name: "Төлем және қаржы",
+                c3_role: "Бот және техникалық сұрақтар:"
             }
         };
 
         function switchLang(lang) {
-            if (!DICT[lang]) lang = 'ru';
+            if (!TRANSLATIONS[lang]) lang = 'en';
             localStorage.setItem('webapp_lang', lang);
 
-            const d = DICT[lang];
+            const d = TRANSLATIONS[lang];
             document.getElementById('t-hero-title').innerText = d.hero_title;
             document.getElementById('t-hero-subtitle').innerText = d.hero_subtitle;
 
-            document.getElementById('t-s1-title').innerHTML = d.s1_title;
-            document.getElementById('t-s1-desc').innerHTML = d.s1_desc;
-            document.getElementById('t-box1-title').innerText = d.box1_title;
-            document.getElementById('t-box1-desc').innerText = d.box1_desc;
-            document.getElementById('t-box2-title').innerText = d.box2_title;
-            document.getElementById('t-box2-desc').innerText = d.box2_desc;
-            document.getElementById('t-box3-title').innerText = d.box3_title;
-            document.getElementById('t-box3-desc').innerText = d.box3_desc;
-            document.getElementById('t-click-hint').innerText = d.click_hint;
-            document.getElementById('t-gk-priority').innerHTML = d.gk_priority;
+            document.getElementById('t-s1-title').innerText = d.s1_title;
+            document.getElementById('t-s1-body').innerHTML = d.s1_body + `
+                <div class="screens-strip">
+                    <div class="screen-thumb" onclick="openLightbox('/web/img/step1_post.png')">
+                        <img src="/web/img/step1_post.png" alt="Match announcement">
+                    </div>
+                    <div class="screen-thumb" onclick="openLightbox('/web/img/step2_profile.png')">
+                        <img src="/web/img/step2_profile.png" alt="Create profile">
+                    </div>
+                    <div class="screen-thumb" onclick="openLightbox('/web/img/step3_join.png')">
+                        <img src="/web/img/step3_join.png" alt="Sign up screen">
+                    </div>
+                </div>
+                <div class="screen-caption">${d.screen_caption}</div>
+            `;
 
-            document.getElementById('t-s2-title').innerHTML = d.s2_title;
-            document.getElementById('t-s2-desc').innerHTML = d.s2_desc;
-            document.getElementById('t-flow-1').innerText = d.flow_1;
-            document.getElementById('t-flow-2').innerText = d.flow_2;
-            document.getElementById('t-flow-3').innerText = d.flow_3;
-            document.getElementById('t-s2-note').innerHTML = d.s2_note;
+            document.getElementById('t-s2-title').innerText = d.s2_title;
+            document.getElementById('t-s2-body').innerHTML = d.s2_body;
 
-            document.getElementById('t-s3-title').innerHTML = d.s3_title;
-            document.getElementById('t-s3-desc').innerHTML = d.s3_desc;
-            document.getElementById('t-tl-free').innerText = d.tl_free;
-            document.getElementById('t-tl-late').innerText = d.tl_late;
-            document.getElementById('t-s3-warn').innerHTML = d.s3_warn;
+            document.getElementById('t-s3-title').innerText = d.s3_title;
+            document.getElementById('t-s3-body').innerHTML = d.s3_body;
 
-            document.getElementById('t-s4-title').innerHTML = d.s4_title;
-            document.getElementById('t-s4-desc').innerHTML = d.s4_desc;
-            document.getElementById('t-s4-note').innerHTML = d.s4_note;
+            document.getElementById('t-s4-title').innerText = d.s4_title;
+            document.getElementById('t-s4-body').innerHTML = d.s4_body;
 
-            document.getElementById('t-s5-title').innerHTML = d.s5_title;
-            document.getElementById('t-s5-desc').innerHTML = d.s5_desc;
-            document.getElementById('t-s5-list').innerHTML = d.s5_list;
+            document.getElementById('t-s5-title').innerText = d.s5_title;
+            document.getElementById('t-s5-body').innerHTML = d.s5_body;
 
-            document.getElementById('t-s6-title').innerHTML = d.s6_title;
-            document.getElementById('t-s6-desc').innerHTML = d.s6_desc;
-            document.getElementById('t-mvp-box-head').innerText = d.mvp_box_head;
-            document.getElementById('t-col-green').innerText = d.col_green;
-            document.getElementById('t-col-orange').innerText = d.col_orange;
-            document.getElementById('t-mvp-rule-callout').innerHTML = d.mvp_rule_callout;
-            document.getElementById('t-elo-title').innerText = d.elo_title;
-            document.getElementById('t-chip-win').innerText = d.chip_win;
-            document.getElementById('t-chip-draw').innerText = d.chip_draw;
-            document.getElementById('t-chip-loss').innerText = d.chip_loss;
-            document.getElementById('t-chip-mvp').innerText = d.chip_mvp;
+            document.getElementById('t-s6-title').innerText = d.s6_title;
+            document.getElementById('t-s6-body').innerHTML = d.s6_body + `
+                <div class="mvp-mockup">
+                    <div class="mvp-mockup-title">${d.mvp_sample_title}</div>
+                    <div class="mvp-grid">
+                        <div class="mvp-col">
+                            <div class="mvp-col-head" style="color:#4ade80;">${d.mvp_team_a}</div>
+                            <div class="mvp-item"><span>Zidane</span> <span>⚪</span></div>
+                            <div class="mvp-item checked"><span>Modrić</span> <span>✓</span></div>
+                            <div class="mvp-item"><span>Henry</span> <span>⚪</span></div>
+                        </div>
+                        <div class="mvp-col">
+                            <div class="mvp-col-head" style="color:#fb923c;">${d.mvp_team_b}</div>
+                            <div class="mvp-item"><span>Iniesta</span> <span>⚪</span></div>
+                            <div class="mvp-item checked"><span>De Bruyne</span> <span>✓</span></div>
+                            <div class="mvp-item"><span>Beckham</span> <span>⚪</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="callout-box">${d.mvp_note}</div>
+                <p style="margin-top:10px; font-weight:600;">${d.elo_header}</p>
+                <table class="elo-table">
+                    <tr><td>${d.elo_win}</td><td style="text-align:right; font-weight:700; color:#4ade80;">+10 MMR</td></tr>
+                    <tr><td>${d.elo_draw}</td><td style="text-align:right; font-weight:700; color:var(--hint-color);">0 MMR</td></tr>
+                    <tr><td>${d.elo_loss}</td><td style="text-align:right; font-weight:700; color:#f87171;">-5 MMR</td></tr>
+                    <tr><td>${d.elo_mvp}</td><td style="text-align:right; font-weight:700; color:#f59e0b;">+5 MMR</td></tr>
+                </table>
+            `;
 
-            document.getElementById('t-s7-title').innerHTML = d.s7_title;
-            document.getElementById('t-s7-desc').innerHTML = d.s7_desc;
-            document.getElementById('t-s7-body').innerHTML = d.s7_body;
+            document.getElementById('t-s7-title').innerText = d.s7_title;
+            document.getElementById('t-s7-body').innerHTML = d.s7_body + `
+                <a href="https://t.me/fm_metabot" class="btn-link">
+                    <span>⚽</span> <span>${d.link_bot_text}</span>
+                </a>
+                <div class="btn-row">
+                    <a href="/web/profile.html" class="btn-sub">${d.link_prof}</a>
+                    <a href="/web/leaderboard.html" class="btn-sub">${d.link_lead}</a>
+                    <a href="/web/history.html" class="btn-sub">${d.link_hist}</a>
+                </div>
+            `;
 
-            document.getElementById('t-btn-bot-text').innerText = d.btn_bot_text;
-            document.getElementById('t-btn-prof').innerText = d.btn_prof;
-            document.getElementById('t-btn-lead').innerText = d.btn_lead;
-            document.getElementById('t-btn-hist').innerText = d.btn_hist;
+            document.getElementById('t-s8-title').innerText = d.s8_title;
+            document.getElementById('t-c1-role').innerText = d.c1_role;
+            document.getElementById('t-c2-role').innerText = d.c2_role;
+            document.getElementById('t-c2-name').innerText = d.c2_name;
+            document.getElementById('t-c3-role').innerText = d.c3_role;
 
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
             const activeBtn = document.getElementById(`btn-${lang}`);
@@ -941,22 +796,22 @@
             document.getElementById('img-lightbox').style.display = 'none';
         }
 
-        // Init
+        // Initialize: default is ALWAYS 'en' unless already explicitly chosen with bot / saved
         (function() {
             const urlParams = new URLSearchParams(window.location.search);
             const urlLang = urlParams.get('lang');
-            let initialLang = 'ru';
+            let initialLang = 'en'; // Default English
 
-            if (DICT[urlLang]) {
+            if (urlLang && TRANSLATIONS[urlLang]) {
                 initialLang = urlLang;
             } else {
                 const saved = localStorage.getItem('webapp_lang');
-                if (DICT[saved]) {
+                if (saved && TRANSLATIONS[saved]) {
                     initialLang = saved;
                 } else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
                     const code = (window.Telegram.WebApp.initDataUnsafe.user.language_code || '').toLowerCase();
                     if (code.startsWith('kk') || code.startsWith('kz')) initialLang = 'kz';
-                    else if (!code.startsWith('ru')) initialLang = 'en';
+                    else if (code.startsWith('ru')) initialLang = 'ru';
                 }
             }
 
