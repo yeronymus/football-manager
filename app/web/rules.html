@@ -3,472 +3,960 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Правила сообщества | Football Community Rules</title>
+    <title>⚽ Match Guide & Rules | Football Community</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="/web/css/style.css?v=2.2.0">
     <style>
-        .rules-container {
-            max-width: 680px;
-            margin: 0 auto;
-            padding: 16px 12px 100px;
+        :root {
+            --green-glow: rgba(34, 197, 94, 0.2);
+            --orange-glow: rgba(249, 115, 22, 0.2);
+            --red-glow: rgba(239, 68, 68, 0.2);
+            --accent-glow: rgba(56, 189, 248, 0.25);
         }
-        .header-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
+
+        .rules-wrapper {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 12px 14px 100px;
+        }
+
+        /* Top Nav Header */
+        .sticky-top-bar {
             position: sticky;
             top: 0;
-            background: rgba(15, 23, 42, 0.92);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: rgba(15, 23, 42, 0.94);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
             border-bottom: 1px solid var(--border-color);
-            z-index: 100;
-        }
-        .lang-switch {
             display: flex;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 2px;
-            border: 1px solid var(--border-color);
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            z-index: 500;
         }
+
+        .lang-switch-group {
+            display: flex;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            padding: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 2px;
+        }
+
         .lang-btn {
             background: none;
             border: none;
             color: var(--hint-color);
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
-            padding: 6px 12px;
-            border-radius: 16px;
+            padding: 5px 10px;
+            border-radius: 18px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
         .lang-btn.active {
             background: var(--accent-color);
             color: #0f172a;
-            box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4);
+            box-shadow: 0 2px 10px rgba(56, 189, 248, 0.4);
         }
-        .hero-section {
+
+        /* Hero */
+        .hero {
             text-align: center;
-            padding: 24px 16px 16px;
+            padding: 20px 10px 14px;
         }
-        .hero-title {
+
+        .hero h1 {
             font-size: 26px;
-            font-weight: 800;
-            line-height: 1.2;
-            margin-bottom: 8px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
             background: linear-gradient(135deg, #ffffff 0%, #38bdf8 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        .hero-subtitle {
-            font-size: 14px;
+
+        .hero p {
+            font-size: 13.5px;
             color: var(--hint-color);
-            line-height: 1.5;
-            max-width: 500px;
-            margin: 0 auto;
+            margin: 0;
         }
-        .rule-card {
+
+        /* Visual Step Card */
+        .visual-card {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
-            border-radius: 18px;
+            border-radius: 20px;
             padding: 18px;
-            margin-bottom: 14px;
-            box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25);
-            transition: transform 0.2s ease;
+            margin-bottom: 16px;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
         }
-        .rule-card-header {
+
+        .visual-card:active {
+            transform: none; /* keep stable on scroll */
+        }
+
+        .card-header-flex {
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
         }
-        .rule-badge {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
+
+        .step-num-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-weight: 900;
+            font-size: 14px;
+            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+            color: #0f172a;
             flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
         }
-        .badge-cyan { background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); }
-        .badge-amber { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); }
-        .badge-rose { background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.3); }
-        .badge-green { background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); }
-        .badge-purple { background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); }
 
-        .rule-title {
+        .card-header-title {
             font-size: 16px;
+            font-weight: 800;
+            color: #ffffff;
+            margin: 0;
+        }
+
+        /* Visual Steps Grid / Gallery */
+        .steps-visual-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 14px 0;
+        }
+
+        .step-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 8px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .step-img-frame {
+            width: 100%;
+            aspect-ratio: 9/16;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #000;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .step-img-frame:hover {
+            transform: scale(1.02);
+        }
+
+        .step-img-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top;
+            display: block;
+        }
+
+        .step-box-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--accent-color);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .step-box-desc {
+            font-size: 11.5px;
+            line-height: 1.35;
+            color: #cbd5e1;
+        }
+
+        /* Diagram Boxes */
+        .diagram-container {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 14px;
+            margin: 12px 0;
+        }
+
+        .flow-horizontal {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            position: relative;
+        }
+
+        .flow-node {
+            flex: 1;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .flow-node.active-success {
+            border-color: #22c55e;
+            box-shadow: 0 0 15px var(--green-glow);
+        }
+
+        .flow-arrow {
+            color: var(--accent-color);
+            font-weight: 900;
+            font-size: 16px;
+            animation: pulseArrow 1.5s infinite alternate ease-in-out;
+        }
+
+        @keyframes pulseArrow {
+            from { transform: translateX(-2px); opacity: 0.6; }
+            to { transform: translateX(2px); opacity: 1; }
+        }
+
+        /* Timeline Bar */
+        .timeline-bar {
+            display: flex;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 12px 0 6px;
+            font-size: 11px;
+            font-weight: 800;
+            text-align: center;
+            height: 38px;
+            line-height: 38px;
+        }
+
+        .timeline-free {
+            flex: 1.2;
+            background: linear-gradient(90deg, #15803d, #22c55e);
+            color: #ffffff;
+        }
+
+        .timeline-deadline {
+            background: #f59e0b;
+            color: #0f172a;
+            padding: 0 10px;
+            font-size: 10px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            border-left: 2px dashed #ffffff;
+            border-right: 2px dashed #ffffff;
+        }
+
+        .timeline-late {
+            flex: 1;
+            background: linear-gradient(90deg, #ef4444, #991b1b);
+            color: #ffffff;
+        }
+
+        /* MVP Voting Ballot UI */
+        .mvp-ballot-box {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 14px;
+            margin: 12px 0;
+        }
+
+        .mvp-teams-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .mvp-team-col {
+            border-radius: 12px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .mvp-team-col.green-col {
+            background: rgba(34, 197, 94, 0.06);
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .mvp-team-col.orange-col {
+            background: rgba(249, 115, 22, 0.06);
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+
+        .team-col-header {
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .green-col .team-col-header { color: #4ade80; }
+        .orange-col .team-col-header { color: #fb923c; }
+
+        .player-vote-pill {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 6px 8px;
+            font-size: 12px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player-vote-pill.selected {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: #38bdf8;
             font-weight: 700;
             color: #ffffff;
         }
-        .rule-text {
-            font-size: 13.5px;
-            line-height: 1.6;
-            color: #cbd5e1;
-        }
-        .rule-text p {
-            margin: 0 0 8px 0;
-        }
-        .rule-text p:last-child {
-            margin-bottom: 0;
-        }
-        .rule-highlight {
-            background: rgba(255, 255, 255, 0.04);
-            border-left: 3px solid var(--accent-color);
+
+        .vote-rule-callout {
+            background: rgba(245, 158, 11, 0.12);
+            border-left: 3px solid #f59e0b;
             padding: 8px 12px;
-            border-radius: 0 8px 8px 0;
-            margin: 8px 0;
+            border-radius: 0 10px 10px 0;
+            font-size: 12.5px;
+            line-height: 1.45;
+            color: #fef08a;
+            margin-top: 10px;
+        }
+
+        /* ELO Chips */
+        .elo-chips-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .elo-chip {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 8px 4px;
+            text-align: center;
+        }
+
+        .elo-chip-label {
+            font-size: 10.5px;
+            color: var(--hint-color);
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .elo-chip-val {
             font-size: 13px;
+            font-weight: 900;
         }
-        .warning-highlight {
-            background: rgba(244, 63, 94, 0.08);
-            border-left: 3px solid #f43f5e;
-            padding: 8px 12px;
-            border-radius: 0 8px 8px 0;
-            margin: 8px 0;
-            font-size: 13px;
-            color: #fecdd3;
-        }
-        .elo-table {
-            width: 100%;
-            margin-top: 8px;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        .elo-table td {
-            padding: 6px 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .elo-table tr:last-child td {
-            border-bottom: none;
-        }
-        .cta-btn {
+
+        /* Action Button */
+        .primary-action-btn {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
             width: 100%;
             padding: 14px;
-            border-radius: 14px;
+            border-radius: 16px;
             background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
             color: #0f172a;
-            font-weight: 700;
+            font-weight: 800;
             font-size: 15px;
             text-decoration: none;
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 8px 20px rgba(56, 189, 248, 0.3);
-            margin-top: 20px;
+            box-shadow: 0 8px 24px rgba(56, 189, 248, 0.35);
+            margin-top: 16px;
             transition: transform 0.15s ease;
         }
-        .cta-btn:active {
+
+        .primary-action-btn:active {
             transform: scale(0.98);
+        }
+
+        .secondary-btn-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .sec-action-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        /* Modal Lightbox for images */
+        #img-lightbox {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.92);
+            backdrop-filter: blur(12px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            cursor: pointer;
+        }
+
+        #img-lightbox img {
+            max-width: 90%;
+            max-height: 85vh;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
         }
     </style>
 </head>
 <body>
-    <div class="header-bar">
+    <!-- Top Sticky Bar with 3-way Language Switcher -->
+    <div class="sticky-top-bar">
         <div style="display:flex; align-items:center; gap:8px;">
             <span style="font-size:20px;">⚽</span>
-            <span style="font-weight:800; font-size:15px; letter-spacing:-0.3px;">Football Rules</span>
+            <span style="font-weight:900; font-size:15px; letter-spacing:-0.3px;">Match Guide</span>
         </div>
-        <div class="lang-switch">
+        <div class="lang-switch-group">
             <button class="lang-btn" id="btn-ru" onclick="switchLang('ru')">🇷🇺 RU</button>
             <button class="lang-btn" id="btn-en" onclick="switchLang('en')">🇬🇧 EN</button>
+            <button class="lang-btn" id="btn-kz" onclick="switchLang('kz')">🇰🇿 KZ</button>
         </div>
     </div>
 
-    <div class="rules-container">
-        <div class="hero-section">
-            <div class="hero-title" id="t-hero-title">Правила сообщества</div>
-            <div class="hero-subtitle" id="t-hero-subtitle">Всё, что нужно знать о записи на игры, правилах отмены, балансировке составов и рейтинге ELO.</div>
+    <div class="rules-wrapper">
+        <div class="hero">
+            <h1 id="t-hero-title">Правила сообщества</h1>
+            <p id="t-hero-subtitle">Меньше слов, больше футбола. Всё наглядно за 1 минуту.</p>
         </div>
 
-        <!-- 1. Sign Up -->
-        <div class="rule-card">
-            <div class="rule-card-header">
-                <div class="rule-badge badge-cyan">⚽</div>
-                <div>
-                    <div class="rule-title" id="t-signup-title">1. Запись на игру</div>
-                </div>
+        <!-- 1. How to Sign Up (Screenshots 1-3) -->
+        <div class="visual-card">
+            <div class="card-header-flex">
+                <div class="step-num-badge">1</div>
+                <h3 class="card-header-title" id="t-s1-title">Как записаться на игру</h3>
             </div>
-            <div class="rule-text" id="t-signup-body">
-                <p>Анонсы предстоящих матчей публикуются прямо в группе. Для записи нажмите кнопку <b>«⚽ Записаться на игру»</b> под карточкой матча.</p>
-                <div class="rule-highlight">
-                    💡 Приложение открывается прямо в группе в один клик. Выберите статус: <b>«В основу»</b> или <b>«В резерв»</b>.
-                </div>
-                <p>🧤 <b>Приоритет вратарей (GK):</b> в первые часы после анонса слоты в основе забронированы для голкиперов, чтобы игра гарантированно состоялась с вратарями.</p>
-            </div>
-        </div>
 
-        <!-- 2. Waitlist -->
-        <div class="rule-card">
-            <div class="rule-card-header">
-                <div class="rule-badge badge-amber">👥</div>
-                <div>
-                    <div class="rule-title" id="t-waitlist-title">2. Резерв и авто-продвижение</div>
-                </div>
-            </div>
-            <div class="rule-text" id="t-waitlist-body">
-                <p>Если места в основном составе закончились (например, 18/18), вы можете записаться в <b>Список резерва</b>.</p>
-                <div class="rule-highlight">
-                    🔄 <b>Авто-продвижение:</b> если игрок основы выписывается, первый в очереди из резерва автоматически переходит в основной состав и получает уведомление.
-                </div>
-            </div>
-        </div>
+            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 10px;" id="t-s1-desc">
+                Увидел анонс в группе — жми кнопку <b>«⚽ Join Game»</b>. Всё происходит прямо в Telegram!
+            </p>
 
-        <!-- 3. Cancellation Policy -->
-        <div class="rule-card">
-            <div class="rule-card-header">
-                <div class="rule-badge badge-rose">⏰</div>
-                <div>
-                    <div class="rule-title" id="t-cancel-title">3. Правила отмены (Дедлайн 24ч)</div>
+            <div class="steps-visual-grid">
+                <!-- Step 1 Thumbnail -->
+                <div class="step-box">
+                    <div class="step-img-frame" onclick="openLightbox('/web/img/step1_post.png')">
+                        <img src="/web/img/step1_post.png" alt="Step 1: Match Post">
+                    </div>
+                    <div class="step-box-title" id="t-box1-title">Шаг 1: Анонс</div>
+                    <div class="step-box-desc" id="t-box1-desc">Жми «⚽ Join Game» под постом</div>
+                </div>
+
+                <!-- Step 2 Thumbnail -->
+                <div class="step-box">
+                    <div class="step-img-frame" onclick="openLightbox('/web/img/step2_profile.png')">
+                        <img src="/web/img/step2_profile.png" alt="Step 2: Create Profile">
+                    </div>
+                    <div class="step-box-title" id="t-box2-title">Шаг 2: Профиль</div>
+                    <div class="step-box-desc" id="t-box2-desc">1 раз: Имя латиницей + позиции</div>
+                </div>
+
+                <!-- Step 3 Thumbnail -->
+                <div class="step-box">
+                    <div class="step-img-frame" onclick="openLightbox('/web/img/step3_join.png')">
+                        <img src="/web/img/step3_join.png" alt="Step 3: Join Game">
+                    </div>
+                    <div class="step-box-title" id="t-box3-title">Шаг 3: Запись</div>
+                    <div class="step-box-desc" id="t-box3-desc">Жми «Sign Up». Ты в игре!</div>
                 </div>
             </div>
-            <div class="rule-text" id="t-cancel-body">
-                <p>Мы бронируем поле заранее под точное количество игроков. Пожалуйста, уважайте время остальных участников.</p>
-                <div class="rule-highlight">
-                    🟢 <b>Бесплатная отмена:</b> возможна не позднее чем за <b>24 часа</b> до свистка через кнопку «❌ Выписаться».
-                </div>
-                <div class="warning-highlight">
-                    🔴 <b>Поздняя отмена (< 24 часов) или неявка (No-Show):</b> игрок обязан оплатить взнос за матч либо найти себе замену. Неоплаченный пропуск влечёт за собой штрафную карточку.
-                </div>
+
+            <div style="font-size:12px; color:var(--hint-color); text-align:center;">
+                <span id="t-click-hint">👆 Нажми на скриншот, чтобы увеличить</span>
+            </div>
+
+            <div style="background:rgba(56,189,248,0.1); border-left:3px solid var(--accent-color); padding:8px 12px; border-radius:0 10px 10px 0; margin-top:12px; font-size:12.5px; color:#e0f2fe;" id="t-gk-priority">
+                🧤 <b>Приоритет вратарей (GK):</b> первые 2-4 часа после анонса слоты в основе забронированы для голкиперов, чтобы игра состоялась с вратарями.
             </div>
         </div>
 
-        <!-- 4. Payment -->
-        <div class="rule-card">
-            <div class="rule-card-header">
-                <div class="rule-badge badge-green">💳</div>
-                <div>
-                    <div class="rule-title" id="t-payment-title">4. Оплата участия</div>
+        <!-- 2. Reserve -> Main Squad (Auto-Promotion) -->
+        <div class="visual-card">
+            <div class="card-header-flex">
+                <div class="step-num-badge">2</div>
+                <h3 class="card-header-title" id="t-s2-title">Резерв и авто-продвижение</h3>
+            </div>
+
+            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 10px;" id="t-s2-desc">
+                Закончились места в основе? Записывайся в <b>Резерв</b>. Бот сам продвигает очередь!
+            </p>
+
+            <div class="diagram-container">
+                <div class="flow-horizontal">
+                    <div class="flow-node">
+                        <span style="font-size:16px;">❌</span><br>
+                        <span id="t-flow-1">Игрок основы выписался</span>
+                    </div>
+                    <div class="flow-arrow">➔</div>
+                    <div class="flow-node active-success">
+                        <span style="font-size:16px;">🤖</span><br>
+                        <span id="t-flow-2">Бот двигает #1 из Резерва в Основу</span>
+                    </div>
+                    <div class="flow-arrow">➔</div>
+                    <div class="flow-node">
+                        <span style="font-size:16px;">🔔</span><br>
+                        <span id="t-flow-3">Уведомление в ЛС Телеграма</span>
+                    </div>
                 </div>
             </div>
-            <div class="rule-text" id="t-payment-body">
-                <p>Сумма взноса и реквизиты (банковский перевод или наличные на поле) всегда указаны в сообщении анонса игры.</p>
-                <p>Взнос переводится организатору до игры или сразу после свистка. При переводе указывайте ваше имя из профиля Telegram.</p>
+
+            <div style="font-size:12.5px; color:#94a3b8; line-height:1.4;" id="t-s2-note">
+                ⚠️ <b>Важно:</b> держи уведомления от бота включёнными, чтобы не пропустить приглашение в основу!
             </div>
         </div>
 
-        <!-- 5. ELO MMR & Auto-Draft -->
-        <div class="rule-card">
-            <div class="rule-card-header">
-                <div class="rule-badge badge-purple">🏆</div>
-                <div>
-                    <div class="rule-title" id="t-elo-title">5. Рейтинг ELO (MMR) и составы</div>
+        <!-- 3. Cancellation Policy (24h Deadline) -->
+        <div class="visual-card">
+            <div class="card-header-flex">
+                <div class="step-num-badge">3</div>
+                <h3 class="card-header-title" id="t-s3-title">Правила отмены (Дедлайн 24 часа)</h3>
+            </div>
+
+            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 8px;" id="t-s3-desc">
+                Поле бронируется заранее под точное число людей. Если планы изменились — выписывайся вовремя через кнопку «❌ Leave Game».
+            </p>
+
+            <!-- Visual Timeline Bar -->
+            <div class="timeline-bar">
+                <div class="timeline-free" id="t-tl-free">🟢 До 24 часов: БЕСПЛАТНО</div>
+                <div class="timeline-deadline">⏰ ДЕДЛАЙН</div>
+                <div class="timeline-late" id="t-tl-late">🔴 Меньше 24ч: ВЗНОС / КАРТОЧКА</div>
+            </div>
+
+            <div style="background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; padding:8px 12px; border-radius:0 10px 10px 0; margin-top:10px; font-size:12.5px; color:#fca5a5;" id="t-s3-warn">
+                ⚠️ <b>Поздний слив (< 24ч) или неявка (No-show):</b> игрок обязан оплатить взнос за матч либо самостоятельно найти себе замену. Иначе выдаётся 🟨 жёлтая карточка.
+            </div>
+        </div>
+
+        <!-- 4. Match Fee & Payment -->
+        <div class="visual-card">
+            <div class="card-header-flex">
+                <div class="step-num-badge">4</div>
+                <h3 class="card-header-title" id="t-s4-title">Взнос и оплата</h3>
+            </div>
+
+            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 6px;" id="t-s4-desc">
+                Сумма взноса и реквизиты (номер банковского счёта или наличные) всегда указаны прямо в карточке матча.
+            </p>
+            <div style="background:rgba(34,197,94,0.1); border-left:3px solid #22c55e; padding:8px 12px; border-radius:0 10px 10px 0; font-size:12.5px; color:#bbf7d0;" id="t-s4-note">
+                💳 Оплата переводится <b>до начала матча</b> или <b>сразу после финального свистка</b>. При переводе указывай своё имя в примечании.
+            </div>
+        </div>
+
+        <!-- 5. Pitch Conduct (Fair Play) -->
+        <div class="visual-card">
+            <div class="card-header-flex">
+                <div class="step-num-badge">5</div>
+                <h3 class="card-header-title" id="t-s5-title">Поведение на поле (Fair Play)</h3>
+            </div>
+
+            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 8px;" id="t-s5-desc">
+                Мы собираемся ради футбола и хорошего настроения:
+            </p>
+            <ul style="margin:0; padding-left:18px; font-size:13px; color:#e2e8f0; line-height:1.6;" id="t-s5-list">
+                <li>⛔ <b>Запрещено:</b> опасные подкаты сзади, грубость, драки и токсичность.</li>
+                <li>⏰ <b>Приходи вовремя:</b> опоздания сжигают общее оплаченное время поля.</li>
+                <li>🟨 Первое нарушение — предупреждение / жёлтая карточка. Систематическая грубость — 🟥 бан.</li>
+            </ul>
+        </div>
+
+        <!-- 6. MVP Voting (THE KAZAKH REQUEST HIGHLIGHT!) -->
+        <div class="visual-card" style="border: 2px solid rgba(245, 158, 11, 0.4); box-shadow: 0 0 25px rgba(245, 158, 11, 0.15);">
+            <div class="card-header-flex">
+                <div class="step-num-badge" style="background:linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">6</div>
+                <h3 class="card-header-title" style="color:#fbbf24;" id="t-s6-title">После матча: Голосование за MVP</h3>
+            </div>
+
+            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 6px;" id="t-s6-desc">
+                Сразу после игры в чате открывается голосование за лучшего игрока (MVP).
+            </p>
+
+            <!-- MVP Ballot Interactive / Visual Scheme -->
+            <div class="mvp-ballot-box">
+                <div style="font-size:13px; font-weight:800; color:#ffffff; text-align:center;" id="t-mvp-box-head">
+                    🗳️ ОБРАЗЕЦ ГОЛОСОВАНИЯ: ГОЛОСУЕМ ЗА ОБЕ КОМАНДЫ!
+                </div>
+
+                <div class="mvp-teams-grid">
+                    <!-- Team A -->
+                    <div class="mvp-team-col green-col">
+                        <div class="team-col-header">
+                            <span id="t-col-green">Зелёные (Team A)</span>
+                            <span>⚽</span>
+                        </div>
+                        <div class="player-vote-pill"><span>Alikhan</span> <span>⚪</span></div>
+                        <div class="player-vote-pill selected"><span>Dias</span> <span>✅ Голос #1</span></div>
+                        <div class="player-vote-pill"><span>Yeronym</span> <span>⚪</span></div>
+                    </div>
+
+                    <!-- Team B -->
+                    <div class="mvp-team-col orange-col">
+                        <div class="team-col-header">
+                            <span id="t-col-orange">Оранжевые (Team B)</span>
+                            <span>⚽</span>
+                        </div>
+                        <div class="player-vote-pill"><span>Niyaz</span> <span>⚪</span></div>
+                        <div class="player-vote-pill selected"><span>Mukhammed</span> <span>✅ Голос #2</span></div>
+                        <div class="player-vote-pill"><span>Radik</span> <span>⚪</span></div>
+                    </div>
+                </div>
+
+                <div class="vote-rule-callout" id="t-mvp-rule-callout">
+                    👉 <b>ГЛАВНОЕ ПРАВИЛО:</b> Ты выбираешь <b>1 человека из Зелёных</b> И <b>1 человека из Оранжевых</b> (всего 2 голоса)! Не голосуй только за одну команду — поддержи лучших в обеих!
                 </div>
             </div>
-            <div class="rule-text" id="t-elo-body">
-                <p>Каждый участник начинает с базового рейтинга <b>1000 MMR</b>. Результаты игр влияют на персональный рейтинг:</p>
-                <table class="elo-table">
-                    <tr><td>🟢 Победа</td><td style="font-weight:800; color:#4caf50; text-align:right">+10 MMR</td></tr>
-                    <tr><td>⚪ Ничья</td><td style="font-weight:800; color:var(--hint-color); text-align:right">0 MMR</td></tr>
-                    <tr><td>🔴 Поражение</td><td style="font-weight:800; color:#f44336; text-align:right">-5 MMR</td></tr>
-                    <tr><td>🌟 Лучший игрок (MVP)</td><td style="font-weight:800; color:#f59e0b; text-align:right">+5 MMR</td></tr>
-                </table>
-                <div class="rule-highlight" style="margin-top:12px;">
-                    ⚖️ <b>Авто-драфт команд:</b> перед игрой бот автоматически распределяет участников на равные по силе и позициям команды (Зелёные, Оранжевые, Синие) на основе их рейтинга и амплуа.
+
+            <!-- ELO rating bonus -->
+            <div style="font-size:13px; font-weight:700; color:#ffffff; margin:14px 0 6px;" id="t-elo-title">
+                🏆 Начисление рейтинга ELO (MMR):
+            </div>
+            <div class="elo-chips-row">
+                <div class="elo-chip">
+                    <div class="elo-chip-label" id="t-chip-win">Победа</div>
+                    <div class="elo-chip-val" style="color:#4ade80;">+10 MMR</div>
+                </div>
+                <div class="elo-chip">
+                    <div class="elo-chip-label" id="t-chip-draw">Ничья</div>
+                    <div class="elo-chip-val" style="color:var(--hint-color);">0 MMR</div>
+                </div>
+                <div class="elo-chip">
+                    <div class="elo-chip-label" id="t-chip-loss">Поражение</div>
+                    <div class="elo-chip-val" style="color:#f87171;">-5 MMR</div>
+                </div>
+                <div class="elo-chip" style="border-color:rgba(245,158,11,0.4);">
+                    <div class="elo-chip-label" id="t-chip-mvp">MVP бонус</div>
+                    <div class="elo-chip-val" style="color:#fbbf24;">+5 MMR</div>
                 </div>
             </div>
         </div>
 
-        <!-- 6. Discipline & Cards -->
-        <div class="rule-card">
-            <div class="rule-card-header">
-                <div class="rule-badge badge-rose">🟨</div>
-                <div>
-                    <div class="rule-title" id="t-cards-title">6. Дисциплина и карточки</div>
-                </div>
+        <!-- 7. Profile & Stats -->
+        <div class="visual-card">
+            <div class="card-header-flex">
+                <div class="step-num-badge">7</div>
+                <h3 class="card-header-title" id="t-s7-title">Профиль, статистика и карточки</h3>
             </div>
-            <div class="rule-text" id="t-cards-body">
-                <p>В сообществе действует автоматическая система дисциплинарных санкций:</p>
-                <p>🟨 <b>Жёлтая карточка:</b> выносится за опоздание на матч, срыв игры или неспортивное поведение. Действует от 2 до 4 недель.</p>
-                <div class="warning-highlight">
-                    🟥 <b>Красная карточка:</b> выдаётся за получение двух жёлтых карточек, грубое нарушение или неоплаченную неявку. <b>Блокирует возможность записи на игры</b> до истечения срока бана.
-                </div>
+
+            <p style="font-size:13.5px; color:#cbd5e1; margin:0 0 10px;" id="t-s7-desc">
+                Вся твоя личная статистика доступна в боте в любое время:
+            </p>
+
+            <div style="background:rgba(15,23,42,0.6); border-radius:12px; padding:10px 14px; font-size:13px; line-height:1.5; color:#e2e8f0; border:1px solid rgba(255,255,255,0.06);" id="t-s7-body">
+                • <b>Команда /profile:</b> просмотр сыгранных игр, забитых голов, наград MVP и текущего MMR.<br>
+                • <b>Позиции:</b> настрой свою основную позицию (GK, CB, CM, ST...), чтобы авто-драфт правильно ставил тебя в состав.<br>
+                • <b>Карточки:</b> 🟨 жёлтая карточка активна 2-4 недели. 🟥 красная карточка временно блокирует запись на матчи.
             </div>
         </div>
 
-        <!-- 7. Profile & Positions -->
-        <div class="rule-card">
-            <div class="rule-card-header">
-                <div class="rule-badge badge-cyan">👤</div>
-                <div>
-                    <div class="rule-title" id="t-profile-title">7. Профиль игрока и позиции</div>
-                </div>
-            </div>
-            <div class="rule-text" id="t-profile-body">
-                <p>В веб-приложении бота вы можете указать основную позицию (GK, CB, LB, RB, CM, CAM, CDM, ST, LW, RW) и дополнительные амплуа.</p>
-                <p>Это помогает алгоритму авто-драфта собирать сбалансированные команды с нужным количеством защитников, полузащитников и нападающих.</p>
-            </div>
-        </div>
-
-        <!-- Bot Actions -->
-        <div style="margin-top: 24px; text-align:center;">
-            <a href="https://t.me/fm_metabot" class="cta-btn" id="t-cta-btn">
-                <span>⚽</span> <span id="t-cta-text">Открыть бота Football Manager</span>
+        <!-- Call to Action Buttons -->
+        <div style="text-align:center; margin-top:20px;">
+            <a href="https://t.me/fm_metabot" class="primary-action-btn" id="t-btn-bot">
+                <span>⚽</span> <span id="t-btn-bot-text">Открыть бота Football Manager</span>
             </a>
-            <div style="font-size:12px; color:var(--hint-color); margin-top:12px;" id="t-commands-hint">
-                Полезные команды: /rules • /profile • /history • /leaderboard
+
+            <div class="secondary-btn-row">
+                <a href="/web/profile.html" class="sec-action-btn" id="t-btn-prof">👤 Мой профиль</a>
+                <a href="/web/leaderboard.html" class="sec-action-btn" id="t-btn-lead">🏆 Лидерборд</a>
+                <a href="/web/history.html" class="sec-action-btn" id="t-btn-hist">📅 История</a>
             </div>
         </div>
+    </div>
+
+    <!-- Lightbox overlay -->
+    <div id="img-lightbox" onclick="closeLightbox()">
+        <img id="lightbox-img" src="" alt="Fullscreen preview">
     </div>
 
     <script>
-        const TRANSLATIONS = {
+        const DICT = {
             ru: {
                 hero_title: "Правила сообщества",
-                hero_subtitle: "Всё, что нужно знать о записи на игры, правилах отмены, балансировке составов и рейтинге ELO.",
-                signup_title: "1. Запись на игру",
-                signup_body: `<p>Анонсы предстоящих матчей публикуются прямо в группе. Для записи нажмите кнопку <b>«⚽ Записаться на игру»</b> под карточкой матча.</p>
-                    <div class="rule-highlight">
-                        💡 Приложение открывается прямо в группе в один клик. Выберите статус: <b>«В основу»</b> или <b>«В резерв»</b>.
-                    </div>
-                    <p>🧤 <b>Приоритет вратарей (GK):</b> в первые часы после анонса слоты в основе забронированы для голкиперов, чтобы игра гарантированно состоялась с вратарями.</p>`,
-                waitlist_title: "2. Резерв и авто-продвижение",
-                waitlist_body: `<p>Если места в основном составе закончились (например, 18/18), вы можете записаться в <b>Список резерва</b>.</p>
-                    <div class="rule-highlight">
-                        🔄 <b>Авто-продвижение:</b> если игрок основы выписывается, первый в очереди из резерва автоматически переходит в основной состав и получает уведомление.
-                    </div>`,
-                cancel_title: "3. Правила отмены (Дедлайн 24ч)",
-                cancel_body: `<p>Мы бронируем поле заранее под точное количество игроков. Пожалуйста, уважайте время остальных участников.</p>
-                    <div class="rule-highlight">
-                        🟢 <b>Бесплатная отмена:</b> возможна не позднее чем за <b>24 часа</b> до свистка через кнопку «❌ Выписаться».
-                    </div>
-                    <div class="warning-highlight">
-                        🔴 <b>Поздняя отмена (< 24 часов) или неявка (No-Show):</b> игрок обязан оплатить взнос за матч либо найти себе замену. Неоплаченный пропуск влечёт за собой штрафную карточку.
-                    </div>`,
-                payment_title: "4. Оплата участия",
-                payment_body: `<p>Сумма взноса и реквизиты (банковский перевод или наличные на поле) всегда указаны в сообщении анонса игры.</p>
-                    <p>Взнос переводится организатору до игры или сразу после свистка. При переводе указывайте ваше имя из профиля Telegram.</p>`,
-                elo_title: "5. Рейтинг ELO (MMR) и составы",
-                elo_body: `<p>Каждый участник начинает с базового рейтинга <b>1000 MMR</b>. Результаты игр влияют на персональный рейтинг:</p>
-                    <table class="elo-table">
-                        <tr><td>🟢 Победа</td><td style="font-weight:800; color:#4caf50; text-align:right">+10 MMR</td></tr>
-                        <tr><td>⚪ Ничья</td><td style="font-weight:800; color:var(--hint-color); text-align:right">0 MMR</td></tr>
-                        <tr><td>🔴 Поражение</td><td style="font-weight:800; color:#f44336; text-align:right">-5 MMR</td></tr>
-                        <tr><td>🌟 Лучший игрок (MVP)</td><td style="font-weight:800; color:#f59e0b; text-align:right">+5 MMR</td></tr>
-                    </table>
-                    <div class="rule-highlight" style="margin-top:12px;">
-                        ⚖️ <b>Авто-драфт команд:</b> перед игрой бот автоматически распределяет участников на равные по силе и позициям команды (Зелёные, Оранжевые, Синие) на основе их рейтинга и амплуа.
-                    </div>`,
-                cards_title: "6. Дисциплина и карточки",
-                cards_body: `<p>В сообществе действует автоматическая система дисциплинарных санкций:</p>
-                    <p>🟨 <b>Жёлтая карточка:</b> выносится за опоздание на матч, срыв игры или неспортивное поведение. Действует от 2 до 4 недель.</p>
-                    <div class="warning-highlight">
-                        🟥 <b>Красная карточка:</b> выдаётся за получение двух жёлтых карточек, грубое нарушение или неоплаченную неявку. <b>Блокирует возможность записи на игры</b> до истечения срока бана.
-                    </div>`,
-                profile_title: "7. Профиль игрока и позиции",
-                profile_body: `<p>В веб-приложении бота вы можете указать основную позицию (GK, CB, LB, RB, CM, CAM, CDM, ST, LW, RW) и дополнительные амплуа.</p>
-                    <p>Это помогает алгоритму авто-драфта собирать сбалансированные команды с нужным количеством защитников, полузащитников и нападающих.</p>`,
-                cta_text: "Открыть бота Football Manager",
-                commands_hint: "Полезные команды: /rules • /profile • /history • /leaderboard"
+                hero_subtitle: "Меньше слов, больше футбола. Всё наглядно за 1 минуту.",
+                s1_title: "Как записаться на игру",
+                s1_desc: "Увидел анонс в группе — жми кнопку <b>«⚽ Join Game»</b>. Всё происходит прямо в Telegram!",
+                box1_title: "Шаг 1: Анонс",
+                box1_desc: "Жми «⚽ Join Game» под постом",
+                box2_title: "Шаг 2: Профиль",
+                box2_desc: "1 раз: Имя латиницей + позиции",
+                box3_title: "Шаг 3: Запись",
+                box3_desc: "Жми «Sign Up». Ты в игре!",
+                click_hint: "👆 Нажми на скриншот, чтобы увеличить",
+                gk_priority: "🧤 <b>Приоритет вратарей (GK):</b> первые 2-4 часа слоты в основе забронированы для голкиперов, чтобы игра состоялась с вратарями.",
+                s2_title: "Резерв и авто-продвижение",
+                s2_desc: "Закончились места в основе? Записывайся в <b>Резерв</b>. Бот сам продвигает очередь!",
+                flow_1: "Игрок основы выписался",
+                flow_2: "Бот двигает #1 из Резерва в Основу",
+                flow_3: "Уведомление в ЛС Телеграма",
+                s2_note: "⚠️ <b>Важно:</b> держи уведомления от бота включёнными, чтобы не пропустить приглашение в основу!",
+                s3_title: "Правила отмены (Дедлайн 24 часа)",
+                s3_desc: "Поле бронируется заранее под точное число людей. Если планы изменились — выписывайся вовремя через кнопку «❌ Leave Game».",
+                tl_free: "🟢 До 24 часов: БЕСПЛАТНО",
+                tl_late: "🔴 Меньше 24ч: ВЗНОС / КАРТОЧКА",
+                s3_warn: "⚠️ <b>Поздний слив (< 24ч) или неявка (No-show):</b> игрок обязан оплатить взнос за матч либо самостоятельно найти себе замену. Иначе выдаётся 🟨 жёлтая карточка.",
+                s4_title: "Взнос и оплата",
+                s4_desc: "Сумма взноса и реквизиты (номер банковского счёта или наличные) всегда указаны прямо в карточке матча.",
+                s4_note: "💳 Оплата переводится <b>до начала матча</b> или <b>сразу после финального свистка</b>. При переводе указывай своё имя в примечании.",
+                s5_title: "Поведение на поле (Fair Play)",
+                s5_desc: "Мы собираемся ради футбола и хорошего настроения:",
+                s5_list: `<li>⛔ <b>Запрещено:</b> опасные подкаты сзади, грубость, драки и токсичность.</li>
+                    <li>⏰ <b>Приходи вовремя:</b> опоздания сжигают общее оплаченное время поля.</li>
+                    <li>🟨 Первое нарушение — предупреждение / жёлтая карточка. Систематическая грубость — 🟥 бан.</li>`,
+                s6_title: "После матча: Голосование за MVP",
+                s6_desc: "Сразу после игры в чате открывается голосование за лучшего игрока (MVP).",
+                mvp_box_head: "🗳️ ОБРАЗЕЦ ГОЛОСОВАНИЯ: ГОЛОСУЕМ ЗА ОБЕ КОМАНДЫ!",
+                col_green: "Зелёные (Team A)",
+                col_orange: "Оранжевые (Team B)",
+                mvp_rule_callout: "👉 <b>ГЛАВНОЕ ПРАВИЛО:</b> Ты выбираешь <b>1 человека из Зелёных</b> И <b>1 человека из Оранжевых</b> (всего 2 голоса)! Не голосуй только за одну команду — поддержи лучших в обеих!",
+                elo_title: "🏆 Начисление рейтинга ELO (MMR):",
+                chip_win: "Победа",
+                chip_draw: "Ничья",
+                chip_loss: "Поражение",
+                chip_mvp: "MVP бонус",
+                s7_title: "Профиль, статистика и карточки",
+                s7_desc: "Вся твоя личная статистика доступна в боте в любое время:",
+                s7_body: `• <b>Команда /profile:</b> просмотр сыгранных игр, забитых голов, наград MVP и текущего MMR.<br>
+                    • <b>Позиции:</b> настрой свою основную позицию (GK, CB, CM, ST...), чтобы авто-драфт правильно ставил тебя в состав.<br>
+                    • <b>Карточки:</b> 🟨 жёлтая карточка активна 2-4 недели. 🟥 красная карточка временно блокирует запись на матчи.`,
+                btn_bot_text: "Открыть бота Football Manager",
+                btn_prof: "👤 Мой профиль",
+                btn_lead: "🏆 Лидерборд",
+                btn_hist: "📅 История"
             },
             en: {
-                hero_title: "Community Rules",
-                hero_subtitle: "Everything you need to know about match sign-ups, cancellation policies, auto-drafting, and ELO ratings.",
-                signup_title: "1. Match Sign-Up",
-                signup_body: `<p>Match announcements are posted directly in the group chat. To register, tap <b>«⚽ Sign Up for Game»</b> under the match card.</p>
-                    <div class="rule-highlight">
-                        💡 The WebApp opens right in the group with one click. Select: <b>«Main Squad»</b> or <b>«Reserve List»</b>.
-                    </div>
-                    <p>🧤 <b>Goalkeeper (GK) Priority:</b> during the first few hours after announcement, main squad spots are reserved for GKs so every match gets real goalkeepers.</p>`,
-                waitlist_title: "2. Reserve List & Auto-Promotion",
-                waitlist_body: `<p>If the main squad is fully booked (e.g. 18/18 players), you can join the <b>Reserve List (Waitlist)</b>.</p>
-                    <div class="rule-highlight">
-                        🔄 <b>Auto-promotion:</b> whenever a player from the main roster cancels, the first player in the reserve queue is automatically promoted to the main squad and notified.
-                    </div>`,
-                cancel_title: "3. Cancellation Policy (24h Deadline)",
-                cancel_body: `<p>Pitches are booked in advance for exact player counts. Please respect your fellow teammates' time.</p>
-                    <div class="rule-highlight">
-                        🟢 <b>Free cancellation:</b> allowed up to <b>24 hours</b> before kickoff by tapping «❌ Leave Match».
-                    </div>
-                    <div class="warning-highlight">
-                        🔴 <b>Late cancellation (< 24 hours) or No-Show:</b> you are responsible for paying the match fee or finding a replacement player. Unpaid absences result in disciplinary cards.
-                    </div>`,
-                payment_title: "4. Match Fee & Payment",
-                payment_body: `<p>The fee and payment details (bank transfer or cash at the pitch) are always stated in the game announcement card.</p>
-                    <p>Please pay the organizer before the match or immediately after. Include your Telegram name in the transfer note.</p>`,
-                elo_title: "5. ELO MMR & Auto-Drafting",
-                elo_body: `<p>Every player starts with a base rating of <b>1000 MMR</b>. Match outcomes affect your rating:</p>
-                    <table class="elo-table">
-                        <tr><td>🟢 Victory</td><td style="font-weight:800; color:#4caf50; text-align:right">+10 MMR</td></tr>
-                        <tr><td>⚪ Draw</td><td style="font-weight:800; color:var(--hint-color); text-align:right">0 MMR</td></tr>
-                        <tr><td>🔴 Defeat</td><td style="font-weight:800; color:#f44336; text-align:right">-5 MMR</td></tr>
-                        <tr><td>🌟 Match MVP</td><td style="font-weight:800; color:#f59e0b; text-align:right">+5 MMR</td></tr>
-                    </table>
-                    <div class="rule-highlight" style="margin-top:12px;">
-                        ⚖️ <b>Auto-Draft:</b> before kickoff, the bot balances teams (Green, Orange, Blue) based on player positions and ELO MMR to ensure competitive, fair games.
-                    </div>`,
-                cards_title: "6. Disciplinary Cards & Penalties",
-                cards_body: `<p>The community enforces an automated card system:</p>
-                    <p>🟨 <b>Yellow Card:</b> issued for late arrival, disruptive cancellation, or unsportsmanlike behavior. Active for 2-4 weeks.</p>
-                    <div class="warning-highlight">
-                        🟥 <b>Red Card:</b> issued for 2 yellow cards, gross misconduct, or unpaid no-shows. <b>Suspends your ability to sign up for games</b> until the ban expires.
-                    </div>`,
-                profile_title: "7. Player Profile & Positions",
-                profile_body: `<p>Configure your primary position (GK, CB, LB, RB, CM, CAM, CDM, ST, LW, RW) and secondary positions in the bot profile.</p>
-                    <p>This allows the auto-balancer to place you on your preferred pitch role during team draft.</p>`,
-                cta_text: "Open Football Manager Bot",
-                commands_hint: "Useful bot commands: /rules • /profile • /history • /leaderboard"
+                hero_title: "Community Match Guide",
+                hero_subtitle: "Less talking, more football. Everything clear in 1 minute.",
+                s1_title: "1. How to Sign Up",
+                s1_desc: "See the game post in the group? Just tap <b>«⚽ Join Game»</b>. Works right inside Telegram!",
+                box1_title: "Step 1: Announcement",
+                box1_desc: "Tap «⚽ Join Game» on post",
+                box2_title: "Step 2: Profile",
+                box2_desc: "Once: Latin name + pitch role",
+                box3_title: "Step 3: Sign Up",
+                box3_desc: "Tap «Sign Up». You're in!",
+                click_hint: "👆 Tap on screenshots to enlarge",
+                gk_priority: "🧤 <b>Goalkeeper (GK) Priority:</b> first 2-4 hours spots are reserved for goalkeepers to guarantee real GKs for the game.",
+                s2_title: "2. Reserve Queue & Auto-Promotion",
+                s2_desc: "Main squad full? Join the <b>Reserve list</b>. The bot handles promotion automatically!",
+                flow_1: "Main squad player cancels",
+                flow_2: "Bot auto-promotes #1 Reserve to Main",
+                flow_3: "DM notification sent to you",
+                s2_note: "⚠️ <b>Important:</b> keep bot notifications unmuted so you don't miss last-minute call-ups!",
+                s3_title: "3. Cancellation Policy (24h Deadline)",
+                s3_desc: "Pitches are booked in advance for exact numbers. Plans changed? Unregister in time via «❌ Leave Game».",
+                tl_free: "🟢 > 24 Hours: FREE",
+                tl_late: "🔴 < 24 Hours: FEE / YELLOW CARD",
+                s3_warn: "⚠️ <b>Late cancellation (< 24h) or No-Show:</b> you must pay the match fee or find a replacement player. Otherwise a 🟨 yellow card is issued.",
+                s4_title: "4. Match Fee & Payment",
+                s4_desc: "Fee amount and payment details (bank transfer or cash) are clearly listed on the match card.",
+                s4_note: "💳 Send payment <b>before kickoff</b> or <b>immediately after full-time</b>. Mention your name in transfer note.",
+                s5_title: "5. Pitch Conduct (Fair Play)",
+                s5_desc: "We play for football, fitness and good vibes:",
+                s5_list: `<li>⛔ <b>Prohibited:</b> reckless tackles from behind, aggression, fights and toxic insults.</li>
+                    <li>⏰ <b>Arrive on time:</b> being late wastes paid pitch time.</li>
+                    <li>🟨 1st offense = warning / yellow card. Repeated rough play = 🟥 ban.</li>`,
+                s6_title: "6. Post-Match: Voting for MVP",
+                s6_desc: "Immediately after the match, the MVP poll opens in the chat.",
+                mvp_box_head: "🗳️ VOTING SAMPLE: VOTE FOR BOTH TEAMS!",
+                col_green: "Green Team (Team A)",
+                col_orange: "Orange Team (Team B)",
+                mvp_rule_callout: "👉 <b>GOLDEN RULE:</b> You must vote for <b>1 player from Green</b> AND <b>1 player from Orange</b> (2 votes total)! Do not just vote for 1 team — support the best player on each side!",
+                elo_title: "🏆 ELO Rating (MMR) Calculation:",
+                chip_win: "Victory",
+                chip_draw: "Draw",
+                chip_loss: "Defeat",
+                chip_mvp: "MVP Bonus",
+                s7_title: "7. Player Profile, Stats & Cards",
+                s7_desc: "All your personal career statistics are in the bot 24/7:",
+                s7_body: `• <b>Command /profile:</b> check your games played, goals scored, MVP titles and live MMR rating.<br>
+                    • <b>Positions:</b> set your primary pitch role (GK, CB, CM, ST...) so auto-draft balances teams properly.<br>
+                    • <b>Cards:</b> 🟨 yellow card lasts 2-4 weeks. 🟥 red card temporarily suspends match registration.`,
+                btn_bot_text: "Open Football Manager Bot",
+                btn_prof: "👤 My Profile",
+                btn_lead: "🏆 Leaderboard",
+                btn_hist: "📅 History"
+            },
+            kz: {
+                hero_title: "Қауымдастық ережелері",
+                hero_subtitle: "Артық сөзсіз, тек футбол. Барлығы 1 минутта түсінікті.",
+                s1_title: "1. Ойынға қалай жазылу керек",
+                s1_desc: "Топтағы хабарландыруды көрдің бе — посттың астындағы <b>«⚽ Join Game»</b> түймесін бас. Барлығы Telegram ішінде өтеді!",
+                box1_title: "1-қадам: Пост",
+                box1_desc: "«⚽ Join Game» түймесін бас",
+                box2_title: "2-қадам: Профиль",
+                box2_desc: "1 рет: Латынша атың + позицияң",
+                box3_title: "3-қадам: Жазылу",
+                box3_desc: "«Sign Up» бас. Ойындасың!",
+                click_hint: "👆 Үлкейту үшін скриншотты бас",
+                gk_priority: "🧤 <b>Қақпашыларға (GK) басымдық:</b> алғашқы 2-4 сағатта негізгі орындар қақпашыларға сақталады.",
+                s2_title: "2. Резерв және авто-жылжу",
+                s2_desc: "Негізгі құрам толды ма? <b>Резервке</b> жазыл. Бот кезекті өзі автоматты жылжытады!",
+                flow_1: "Негізгі құрамнан біреу шықты",
+                flow_2: "Бот Резервтегі #1 ойыншыны негізге өткізді",
+                flow_3: "Телеграм жеке хабарлама жіберді",
+                s2_note: "⚠️ <b>Маңызды:</b> шақыруды өткізіп алмас үшін бот хабарландыруларын қосулы ұстаңыз!",
+                s3_title: "3. Бас тарту ережесі (24 сағат дедлайн)",
+                s3_desc: "Алаң нақты адам санына алдын ала брондалады. Жоспарың өзгерсе — «❌ Leave Game» арқылы уақытында шық.",
+                tl_free: "🟢 24 сағатқа дейін: ТЕГІН",
+                tl_late: "🔴 24 сағаттан аз: ТӨЛЕМ / САРЫ ҚАҒАЗ",
+                s3_warn: "⚠️ <b>Кеш шығу (< 24 сағ) немесе келмей қалу (No-show):</b> ойыншы матч ақысын төлеуге немесе орнына адам табуға міндетті. Әйтпесе 🟨 сары қағаз беріледі.",
+                s4_title: "4. Ойын жарнасы мен төлем",
+                s4_desc: "Жарна сомасы мен реквизиттер (банк шоты немесе қолма-қол) әрқашан матч карточкасында жазылады.",
+                s4_note: "💳 Төлем <b>ойын басталғанға дейін</b> немесе <b>соңғы ысқырықтан соң бірден</b> аударылады. Аударымда өз атыңды көрсет.",
+                s5_title: "5. Алаңдағы тәртіп (Fair Play)",
+                s5_desc: "Біз достық пен футбол үшін жиналамыз:",
+                s5_list: `<li>⛔ <b>Тыйым салынады:</b> арттан қауіпті подкат жасау, төбелес, балағат сөздер мен агрессия.</li>
+                    <li>⏰ <b>Уақытында кел:</b> кешігу жалпы алаң уақытын ұрлайды.</li>
+                    <li>🟨 Бірінші ескерту — сары қағаз. Дөрекілік қайталанса — 🟥 бан.</li>`,
+                s6_title: "6. Ойыннан кейін: МВП-ге дауыс беру",
+                s6_desc: "Ойын біткен соң чатта матчтың үздігін (MVP) анықтауға дауыс беру басталады.",
+                mvp_box_head: "🗳️ ДАУЫС БЕРУ ҮЛГІСІ: ЕКІ КОМАНДАҒА ДА ДАУЫС БЕРЕМІЗ!",
+                col_green: "Жасылдар (Team A)",
+                col_orange: "Қызғылт сарылар (Team B)",
+                mvp_rule_callout: "👉 <b>БАСТЫ ЕРЕЖЕ:</b> Сен <b>Жасылдардан 1 адамға</b> ЖӘНЕ <b>Қызғылт сарылардан 1 адамға</b> дауыс бересің (барлығы 2 дауыс)! Бүкіл ойынға тек 1-ақ адамға дауыс беріп қойма — екі команданың да үздігін қолда!",
+                elo_title: "🏆 ELO рейтингі (MMR) қалай есептеледі:",
+                chip_win: "Жеңіс",
+                chip_draw: "Тең",
+                chip_loss: "Жеңіліс",
+                chip_mvp: "МВП бонус",
+                s7_title: "7. Профиль, статистика және қағаздар",
+                s7_desc: "Барлық жеке статистикаң ботта тәулік бойы қолжетімді:",
+                s7_body: `• <b>/profile командасы:</b> ойнаған матчтарыңды, соққан голдарыңды, MVP марапаттарын және MMR рейтингіңді көр.<br>
+                    • <b>Позиция:</b> авто-драфт команданы тең бөлуі үшін негізгі позицияңды белгіле (GK, CB, CM, ST...).<br>
+                    • <b>Қағаздар:</b> 🟨 сары қағаз 2-4 апта жүреді. 🟥 қызыл қағаз ойынға жазылуды уақытша бұғаттайды.`,
+                btn_bot_text: "Football Manager ботын ашу",
+                btn_prof: "👤 Менің профилім",
+                btn_lead: "🏆 Көшбасшылар",
+                btn_hist: "📅 Тарих"
             }
         };
 
         function switchLang(lang) {
-            if (lang !== 'ru' && lang !== 'en') lang = 'ru';
+            if (!DICT[lang]) lang = 'ru';
             localStorage.setItem('webapp_lang', lang);
 
-            const dict = TRANSLATIONS[lang];
-            document.getElementById('t-hero-title').innerText = dict.hero_title;
-            document.getElementById('t-hero-subtitle').innerText = dict.hero_subtitle;
-            
-            document.getElementById('t-signup-title').innerText = dict.signup_title;
-            document.getElementById('t-signup-body').innerHTML = dict.signup_body;
+            const d = DICT[lang];
+            document.getElementById('t-hero-title').innerText = d.hero_title;
+            document.getElementById('t-hero-subtitle').innerText = d.hero_subtitle;
 
-            document.getElementById('t-waitlist-title').innerText = dict.waitlist_title;
-            document.getElementById('t-waitlist-body').innerHTML = dict.waitlist_body;
+            document.getElementById('t-s1-title').innerHTML = d.s1_title;
+            document.getElementById('t-s1-desc').innerHTML = d.s1_desc;
+            document.getElementById('t-box1-title').innerText = d.box1_title;
+            document.getElementById('t-box1-desc').innerText = d.box1_desc;
+            document.getElementById('t-box2-title').innerText = d.box2_title;
+            document.getElementById('t-box2-desc').innerText = d.box2_desc;
+            document.getElementById('t-box3-title').innerText = d.box3_title;
+            document.getElementById('t-box3-desc').innerText = d.box3_desc;
+            document.getElementById('t-click-hint').innerText = d.click_hint;
+            document.getElementById('t-gk-priority').innerHTML = d.gk_priority;
 
-            document.getElementById('t-cancel-title').innerText = dict.cancel_title;
-            document.getElementById('t-cancel-body').innerHTML = dict.cancel_body;
+            document.getElementById('t-s2-title').innerHTML = d.s2_title;
+            document.getElementById('t-s2-desc').innerHTML = d.s2_desc;
+            document.getElementById('t-flow-1').innerText = d.flow_1;
+            document.getElementById('t-flow-2').innerText = d.flow_2;
+            document.getElementById('t-flow-3').innerText = d.flow_3;
+            document.getElementById('t-s2-note').innerHTML = d.s2_note;
 
-            document.getElementById('t-payment-title').innerText = dict.payment_title;
-            document.getElementById('t-payment-body').innerHTML = dict.payment_body;
+            document.getElementById('t-s3-title').innerHTML = d.s3_title;
+            document.getElementById('t-s3-desc').innerHTML = d.s3_desc;
+            document.getElementById('t-tl-free').innerText = d.tl_free;
+            document.getElementById('t-tl-late').innerText = d.tl_late;
+            document.getElementById('t-s3-warn').innerHTML = d.s3_warn;
 
-            document.getElementById('t-elo-title').innerText = dict.elo_title;
-            document.getElementById('t-elo-body').innerHTML = dict.elo_body;
+            document.getElementById('t-s4-title').innerHTML = d.s4_title;
+            document.getElementById('t-s4-desc').innerHTML = d.s4_desc;
+            document.getElementById('t-s4-note').innerHTML = d.s4_note;
 
-            document.getElementById('t-cards-title').innerText = dict.cards_title;
-            document.getElementById('t-cards-body').innerHTML = dict.cards_body;
+            document.getElementById('t-s5-title').innerHTML = d.s5_title;
+            document.getElementById('t-s5-desc').innerHTML = d.s5_desc;
+            document.getElementById('t-s5-list').innerHTML = d.s5_list;
 
-            document.getElementById('t-profile-title').innerText = dict.profile_title;
-            document.getElementById('t-profile-body').innerHTML = dict.profile_body;
+            document.getElementById('t-s6-title').innerHTML = d.s6_title;
+            document.getElementById('t-s6-desc').innerHTML = d.s6_desc;
+            document.getElementById('t-mvp-box-head').innerText = d.mvp_box_head;
+            document.getElementById('t-col-green').innerText = d.col_green;
+            document.getElementById('t-col-orange').innerText = d.col_orange;
+            document.getElementById('t-mvp-rule-callout').innerHTML = d.mvp_rule_callout;
+            document.getElementById('t-elo-title').innerText = d.elo_title;
+            document.getElementById('t-chip-win').innerText = d.chip_win;
+            document.getElementById('t-chip-draw').innerText = d.chip_draw;
+            document.getElementById('t-chip-loss').innerText = d.chip_loss;
+            document.getElementById('t-chip-mvp').innerText = d.chip_mvp;
 
-            document.getElementById('t-cta-text').innerText = dict.cta_text;
-            document.getElementById('t-commands-hint').innerText = dict.commands_hint;
+            document.getElementById('t-s7-title').innerHTML = d.s7_title;
+            document.getElementById('t-s7-desc').innerHTML = d.s7_desc;
+            document.getElementById('t-s7-body').innerHTML = d.s7_body;
 
-            document.getElementById('btn-ru').classList.toggle('active', lang === 'ru');
-            document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+            document.getElementById('t-btn-bot-text').innerText = d.btn_bot_text;
+            document.getElementById('t-btn-prof').innerText = d.btn_prof;
+            document.getElementById('t-btn-lead').innerText = d.btn_lead;
+            document.getElementById('t-btn-hist').innerText = d.btn_hist;
+
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            const activeBtn = document.getElementById(`btn-${lang}`);
+            if (activeBtn) activeBtn.classList.add('active');
             document.documentElement.lang = lang;
         }
 
-        // Initialize language
+        function openLightbox(src) {
+            const lb = document.getElementById('img-lightbox');
+            const img = document.getElementById('lightbox-img');
+            img.src = src;
+            lb.style.display = 'flex';
+        }
+
+        function closeLightbox() {
+            document.getElementById('img-lightbox').style.display = 'none';
+        }
+
+        // Init
         (function() {
             const urlParams = new URLSearchParams(window.location.search);
             const urlLang = urlParams.get('lang');
             let initialLang = 'ru';
 
-            if (urlLang === 'en' || urlLang === 'ru') {
+            if (DICT[urlLang]) {
                 initialLang = urlLang;
             } else {
                 const saved = localStorage.getItem('webapp_lang');
-                if (saved === 'en' || saved === 'ru') {
+                if (DICT[saved]) {
                     initialLang = saved;
                 } else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
                     const code = (window.Telegram.WebApp.initDataUnsafe.user.language_code || '').toLowerCase();
-                    if (!code.startsWith('ru')) initialLang = 'en';
+                    if (code.startsWith('kk') || code.startsWith('kz')) initialLang = 'kz';
+                    else if (!code.startsWith('ru')) initialLang = 'en';
                 }
             }
 

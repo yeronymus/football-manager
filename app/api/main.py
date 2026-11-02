@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, Header, HTTPException
+from fastapi.responses import RedirectResponse
 from typing import Optional
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -129,6 +130,11 @@ app.include_router(users.router, prefix="/api", tags=["Users"])
 app.include_router(ads.router, prefix="/api", tags=["Ads"])
 app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])
 app.include_router(nss.router, prefix="/api", tags=["NSS Verification"])
+
+@app.get("/web", include_in_schema=False)
+@app.get("/web/", include_in_schema=False)
+async def redirect_web_root():
+    return RedirectResponse(url="/web/profile.html")
 
 app.mount("/web", StaticFiles(directory="app/web", html=True), name="web")
 
