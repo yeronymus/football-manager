@@ -103,6 +103,8 @@ def get_channel_game_keyboard(game_id: int, lang: str = "en") -> InlineKeyboardM
     btn_text = t("btn_channel_join", locale=lang)
     rules_text = t("btn_channel_rules", locale=lang)
     rules_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html"
+    if lang:
+        rules_url += f"?lang={lang}"
     
     buttons = [
         [InlineKeyboardButton(text=btn_text, url=direct_link)],
