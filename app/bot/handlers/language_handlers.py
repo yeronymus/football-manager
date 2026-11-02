@@ -27,6 +27,12 @@ def get_language_selection_keyboard(current_lang: str = "en") -> InlineKeyboardM
 @router.message(Command("lang"))
 async def cmd_language(message: types.Message, session: AsyncSession, _):
     """Command to choose language preference."""
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
     user_id = message.from_user.id
     user_repo = UserRepository(session)
     user = await user_repo.get_user(user_id)

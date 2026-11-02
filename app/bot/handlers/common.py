@@ -155,18 +155,18 @@ async def cmd_refresh_game(message: types.Message, command: CommandObject, sessi
 @router.message(Command("rules"))
 @router.message(Command("info"))
 async def cmd_rules(message: types.Message):
-    rules_web_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html"
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
 
-    if message.chat.type == "private":
-        btn = types.InlineKeyboardButton(
-            text="📖 Открыть правила / Open Rules",
-            web_app=types.WebAppInfo(url=rules_web_url),
-        )
-    else:
-        btn = types.InlineKeyboardButton(
-            text="📖 Открыть правила / Open Rules",
-            url=rules_web_url,
-        )
+    rules_web_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html"
+    btn = types.InlineKeyboardButton(
+        text="📖 Открыть правила / Open Rules",
+        web_app=types.WebAppInfo(url=rules_web_url),
+    )
     kb = types.InlineKeyboardMarkup(inline_keyboard=[[btn]])
 
     text = (
@@ -190,6 +190,12 @@ async def cmd_rules(message: types.Message):
 
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
     help_text = (
         "🆘 <b>Help & FAQ / Помощь</b>\n\n"
         "🇬🇧 <b>ENGLISH:</b>\n"

@@ -62,6 +62,12 @@ async def cmd_create(message: types.Message):
 
 @router.message(Command("dashboard"))
 async def cmd_dashboard(message: types.Message, session: AsyncSession, _=t):
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
     if (
         message.from_user.id not in settings.admin_ids
         and message.from_user.id != settings.system_owner_id
@@ -98,6 +104,12 @@ async def cmd_dashboard(message: types.Message, session: AsyncSession, _=t):
 
 @router.message(Command("force_refresh"))
 async def cmd_force_refresh(message: types.Message, session: AsyncSession):
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
     if (
         message.from_user.id not in settings.admin_ids
         and message.from_user.id != settings.system_owner_id
@@ -127,6 +139,12 @@ async def cmd_force_refresh(message: types.Message, session: AsyncSession):
 
 @router.message(Command("republish"))
 async def cmd_republish(message: types.Message, session: AsyncSession):
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
     if (
         message.from_user.id not in settings.admin_ids
         and message.from_user.id != settings.system_owner_id
@@ -156,6 +174,12 @@ async def cmd_republish(message: types.Message, session: AsyncSession):
 
 @router.message(Command("start_voting"))
 async def cmd_start_voting(message: types.Message, session: AsyncSession):
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
     if (
         message.from_user.id not in settings.admin_ids
         and message.from_user.id != settings.system_owner_id
@@ -185,6 +209,12 @@ async def cmd_start_voting(message: types.Message, session: AsyncSession):
 
 @router.message(Command("add_player"))
 async def cmd_add_player(message: types.Message, session: AsyncSession):
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
     if (
         message.from_user.id not in settings.admin_ids
         and message.from_user.id != settings.system_owner_id
@@ -348,6 +378,12 @@ async def cancel_guest_addition(callback: types.CallbackQuery, state: FSMContext
 
 @router.message(Command("promote"))
 async def cmd_promote_admin(message: types.Message, session: AsyncSession):
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
     if (
         message.from_user.id not in settings.admin_ids
         and message.from_user.id != settings.system_owner_id
@@ -390,3 +426,71 @@ async def cmd_promote_admin(message: types.Message, session: AsyncSession):
         await message.answer(t("ids_must_be_numbers", locale=user_lang))
     except Exception as e:
         await message.answer(f"Error: {e}")
+
+
+@router.message(Command("post_rules"))
+async def cmd_post_rules(message: types.Message, session: AsyncSession):
+    """Admin-only command in PRIVATE CHAT to post rules into the active group(s) and pin."""
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
+
+    if (
+        message.from_user.id not in settings.admin_ids
+        and message.from_user.id != settings.system_owner_id
+    ):
+        return
+
+    from app.db.models import Chat
+    chats_res = await session.execute(select(Chat))
+    chats = chats_res.scalars().all()
+    if not chats:
+        await message.answer("❌ Нет зарегистрированных групп.")
+        return
+
+    rules_web_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html"
+    kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text="📖 Community Rules & Guide / Правила",
+                    url=rules_web_url,
+                )
+            ]
+        ]
+    )
+
+    text = (
+        "⚽ <b>Community Rules & Match Guide / Правила сообщества</b>\n\n"
+        "🇬🇧 <b>How to Play:</b>\n"
+        "• Tap <b>«⚽ Join Game»</b> on any match announcement in this chat to sign up.\n"
+        "• Unregister at least 24h prior if you cannot make it (no fee, late unregister = 🟨).\n"
+        "• Send match fee before kickoff via bank transfer.\n\n"
+        "🇷🇺 <b>Как играть:</b>\n"
+        "• Нажмите <b>«⚽ Join Game»</b> под карточкой матча для записи.\n"
+        "• Отменяйте запись минимум за 24 часа до игры (без взноса, поздняя отмена = 🟨).\n"
+        "• Переводите взнос за матч до игры на банковский счёт.\n\n"
+        "👉 <i>Все правила, система карточек, ELO-рейтинг и контакты — по кнопке ниже:</i>"
+    )
+
+    sent_count = 0
+    for chat in chats:
+        try:
+            msg = await message.bot.send_message(
+                chat_id=chat.chat_id,
+                text=text,
+                parse_mode="HTML",
+                reply_markup=kb,
+            )
+            try:
+                await message.bot.pin_chat_message(chat_id=chat.chat_id, message_id=msg.message_id)
+            except Exception as pe:
+                logger.warning(f"Could not pin message in {chat.chat_id}: {pe}")
+            sent_count += 1
+        except Exception as e:
+            logger.error(f"Failed to post rules to {chat.chat_id} ({chat.title}): {e}")
+
+    await message.answer(f"✅ Правила отправлены и закреплены в {sent_count} группе(ах)!")

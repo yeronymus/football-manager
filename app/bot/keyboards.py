@@ -101,9 +101,12 @@ def get_channel_game_keyboard(game_id: int, lang: str = "en") -> InlineKeyboardM
         direct_link = f"https://t.me/{bot_username}?start=game_{game_id}"
     
     btn_text = t("btn_channel_join", locale=lang)
+    rules_text = t("btn_channel_rules", locale=lang)
+    rules_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html"
     
     buttons = [
-        [InlineKeyboardButton(text=btn_text, url=direct_link)]
+        [InlineKeyboardButton(text=btn_text, url=direct_link)],
+        [InlineKeyboardButton(text=rules_text, url=rules_url)]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 

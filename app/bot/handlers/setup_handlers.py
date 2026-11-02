@@ -75,8 +75,11 @@ def get_setup_keyboard(current_lang: str = "en"):
 
 @router.message(Command("setup"))
 async def cmd_setup(message: types.Message, session: AsyncSession, tenant: Chat, _):
-    if message.chat.type == "private":
-        await message.answer(_("setup_group_only"))
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
         return
         
     if not await is_user_chat_admin(session, message.from_user.id, message.chat.id):

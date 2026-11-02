@@ -20,6 +20,12 @@ router = Router()
 
 @router.message(Command("history"))
 async def cmd_history(message: types.Message, _):
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
     current_chat_id = message.chat.id
     web_app_url = f"{settings.webapp_url.rstrip('/')}/web/history.html?chat_id={current_chat_id}&v=7"
     
