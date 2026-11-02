@@ -97,6 +97,7 @@
             leaderboard_title: "Group Leaderboard",
             leaderboard_games_goals: "{games} games • {goals} goals",
             btn_close_popup: "Close",
+            btn_try_again: "Try Again",
             lbl_ad: "Sponsored",
             error_loading_title: "Loading Error",
             error_no_connection: "No connection to server. Check your internet or VPN."
@@ -197,6 +198,7 @@
             leaderboard_title: "Лидерборд группы",
             leaderboard_games_goals: "{games} игр • {goals} голов",
             btn_close_popup: "Закрыть",
+            btn_try_again: "Попробовать снова",
             lbl_ad: "Реклама",
             error_loading_title: "Ошибка загрузки",
             error_no_connection: "Нет связи с сервером. Проверьте интернет или VPN."

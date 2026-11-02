@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Правила сообщества | Football Community Rules</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/web/css/style.css?v=2.2.0">
+    <style>
+        .rules-container {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 16px 12px 100px;
+        }
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            position: sticky;
+            top: 0;
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 100;
+        }
+        .lang-switch {
+            display: flex;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 2px;
+            border: 1px solid var(--border-color);
+        }
+        .lang-btn {
+            background: none;
+            border: none;
+            color: var(--hint-color);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .lang-btn.active {
+            background: var(--accent-color);
+            color: #0f172a;
+            box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4);
+        }
+        .hero-section {
+            text-align: center;
+            padding: 24px 16px 16px;
+        }
+        .hero-title {
+            font-size: 26px;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #ffffff 0%, #38bdf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-subtitle {
+            font-size: 14px;
+            color: var(--hint-color);
+            line-height: 1.5;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .rule-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s ease;
+        }
+        .rule-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .rule-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .badge-cyan { background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); }
+        .badge-amber { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-rose { background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.3); }
+        .badge-green { background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); }
+        .badge-purple { background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); }
+
+        .rule-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        .rule-text {
+            font-size: 13.5px;
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+        .rule-text p {
+            margin: 0 0 8px 0;
+        }
+        .rule-text p:last-child {
+            margin-bottom: 0;
+        }
+        .rule-highlight {
+            background: rgba(255, 255, 255, 0.04);
+            border-left: 3px solid var(--accent-color);
+            padding: 8px 12px;
+            border-radius: 0 8px 8px 0;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+        .warning-highlight {
+            background: rgba(244, 63, 94, 0.08);
+            border-left: 3px solid #f43f5e;
+            padding: 8px 12px;
+            border-radius: 0 8px 8px 0;
+            margin: 8px 0;
+            font-size: 13px;
+            color: #fecdd3;
+        }
+        .elo-table {
+            width: 100%;
+            margin-top: 8px;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .elo-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .elo-table tr:last-child td {
+            border-bottom: none;
+        }
+        .cta-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 15px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(56, 189, 248, 0.3);
+            margin-top: 20px;
+            transition: transform 0.15s ease;
+        }
+        .cta-btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:20px;">⚽</span>
+            <span style="font-weight:800; font-size:15px; letter-spacing:-0.3px;">Football Rules</span>
+        </div>
+        <div class="lang-switch">
+            <button class="lang-btn" id="btn-ru" onclick="switchLang('ru')">🇷🇺 RU</button>
+            <button class="lang-btn" id="btn-en" onclick="switchLang('en')">🇬🇧 EN</button>
+        </div>
+    </div>
+
+    <div class="rules-container">
+        <div class="hero-section">
+            <div class="hero-title" id="t-hero-title">Правила сообщества</div>
+            <div class="hero-subtitle" id="t-hero-subtitle">Всё, что нужно знать о записи на игры, правилах отмены, балансировке составов и рейтинге ELO.</div>
+        </div>
+
+        <!-- 1. Sign Up -->
+        <div class="rule-card">
+            <div class="rule-card-header">
+                <div class="rule-badge badge-cyan">⚽</div>
+                <div>
+                    <div class="rule-title" id="t-signup-title">1. Запись на игру</div>
+                </div>
+            </div>
+            <div class="rule-text" id="t-signup-body">
+                <p>Анонсы предстоящих матчей публикуются прямо в группе. Для записи нажмите кнопку <b>«⚽ Записаться на игру»</b> под карточкой матча.</p>
+                <div class="rule-highlight">
+                    💡 Приложение открывается прямо в группе в один клик. Выберите статус: <b>«В основу»</b> или <b>«В резерв»</b>.
+                </div>
+                <p>🧤 <b>Приоритет вратарей (GK):</b> в первые часы после анонса слоты в основе забронированы для голкиперов, чтобы игра гарантированно состоялась с вратарями.</p>
+            </div>
+        </div>
+
+        <!-- 2. Waitlist -->
+        <div class="rule-card">
+            <div class="rule-card-header">
+                <div class="rule-badge badge-amber">👥</div>
+                <div>
+                    <div class="rule-title" id="t-waitlist-title">2. Резерв и авто-продвижение</div>
+                </div>
+            </div>
+            <div class="rule-text" id="t-waitlist-body">
+                <p>Если места в основном составе закончились (например, 18/18), вы можете записаться в <b>Список резерва</b>.</p>
+                <div class="rule-highlight">
+                    🔄 <b>Авто-продвижение:</b> если игрок основы выписывается, первый в очереди из резерва автоматически переходит в основной состав и получает уведомление.
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Cancellation Policy -->
+        <div class="rule-card">
+            <div class="rule-card-header">
+                <div class="rule-badge badge-rose">⏰</div>
+                <div>
+                    <div class="rule-title" id="t-cancel-title">3. Правила отмены (Дедлайн 24ч)</div>
+                </div>
+            </div>
+            <div class="rule-text" id="t-cancel-body">
+                <p>Мы бронируем поле заранее под точное количество игроков. Пожалуйста, уважайте время остальных участников.</p>
+                <div class="rule-highlight">
+                    🟢 <b>Бесплатная отмена:</b> возможна не позднее чем за <b>24 часа</b> до свистка через кнопку «❌ Выписаться».
+                </div>
+                <div class="warning-highlight">
+                    🔴 <b>Поздняя отмена (< 24 часов) или неявка (No-Show):</b> игрок обязан оплатить взнос за матч либо найти себе замену. Неоплаченный пропуск влечёт за собой штрафную карточку.
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Payment -->
+        <div class="rule-card">
+            <div class="rule-card-header">
+                <div class="rule-badge badge-green">💳</div>
+                <div>
+                    <div class="rule-title" id="t-payment-title">4. Оплата участия</div>
+                </div>
+            </div>
+            <div class="rule-text" id="t-payment-body">
+                <p>Сумма взноса и реквизиты (банковский перевод или наличные на поле) всегда указаны в сообщении анонса игры.</p>
+                <p>Взнос переводится организатору до игры или сразу после свистка. При переводе указывайте ваше имя из профиля Telegram.</p>
+            </div>
+        </div>
+
+        <!-- 5. ELO MMR & Auto-Draft -->
+        <div class="rule-card">
+            <div class="rule-card-header">
+                <div class="rule-badge badge-purple">🏆</div>
+                <div>
+                    <div class="rule-title" id="t-elo-title">5. Рейтинг ELO (MMR) и составы</div>
+                </div>
+            </div>
+            <div class="rule-text" id="t-elo-body">
+                <p>Каждый участник начинает с базового рейтинга <b>1000 MMR</b>. Результаты игр влияют на персональный рейтинг:</p>
+                <table class="elo-table">
+                    <tr><td>🟢 Победа</td><td style="font-weight:800; color:#4caf50; text-align:right">+10 MMR</td></tr>
+                    <tr><td>⚪ Ничья</td><td style="font-weight:800; color:var(--hint-color); text-align:right">0 MMR</td></tr>
+                    <tr><td>🔴 Поражение</td><td style="font-weight:800; color:#f44336; text-align:right">-5 MMR</td></tr>
+                    <tr><td>🌟 Лучший игрок (MVP)</td><td style="font-weight:800; color:#f59e0b; text-align:right">+5 MMR</td></tr>
+                </table>
+                <div class="rule-highlight" style="margin-top:12px;">
+                    ⚖️ <b>Авто-драфт команд:</b> перед игрой бот автоматически распределяет участников на равные по силе и позициям команды (Зелёные, Оранжевые, Синие) на основе их рейтинга и амплуа.
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Discipline & Cards -->
+        <div class="rule-card">
+            <div class="rule-card-header">
+                <div class="rule-badge badge-rose">🟨</div>
+                <div>
+                    <div class="rule-title" id="t-cards-title">6. Дисциплина и карточки</div>
+                </div>
+            </div>
+            <div class="rule-text" id="t-cards-body">
+                <p>В сообществе действует автоматическая система дисциплинарных санкций:</p>
+                <p>🟨 <b>Жёлтая карточка:</b> выносится за опоздание на матч, срыв игры или неспортивное поведение. Действует от 2 до 4 недель.</p>
+                <div class="warning-highlight">
+                    🟥 <b>Красная карточка:</b> выдаётся за получение двух жёлтых карточек, грубое нарушение или неоплаченную неявку. <b>Блокирует возможность записи на игры</b> до истечения срока бана.
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. Profile & Positions -->
+        <div class="rule-card">
+            <div class="rule-card-header">
+                <div class="rule-badge badge-cyan">👤</div>
+                <div>
+                    <div class="rule-title" id="t-profile-title">7. Профиль игрока и позиции</div>
+                </div>
+            </div>
+            <div class="rule-text" id="t-profile-body">
+                <p>В веб-приложении бота вы можете указать основную позицию (GK, CB, LB, RB, CM, CAM, CDM, ST, LW, RW) и дополнительные амплуа.</p>
+                <p>Это помогает алгоритму авто-драфта собирать сбалансированные команды с нужным количеством защитников, полузащитников и нападающих.</p>
+            </div>
+        </div>
+
+        <!-- Bot Actions -->
+        <div style="margin-top: 24px; text-align:center;">
+            <a href="https://t.me/fm_metabot" class="cta-btn" id="t-cta-btn">
+                <span>⚽</span> <span id="t-cta-text">Открыть бота Football Manager</span>
+            </a>
+            <div style="font-size:12px; color:var(--hint-color); margin-top:12px;" id="t-commands-hint">
+                Полезные команды: /rules • /profile • /history • /leaderboard
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TRANSLATIONS = {
+            ru: {
+                hero_title: "Правила сообщества",
+                hero_subtitle: "Всё, что нужно знать о записи на игры, правилах отмены, балансировке составов и рейтинге ELO.",
+                signup_title: "1. Запись на игру",
+                signup_body: `<p>Анонсы предстоящих матчей публикуются прямо в группе. Для записи нажмите кнопку <b>«⚽ Записаться на игру»</b> под карточкой матча.</p>
+                    <div class="rule-highlight">
+                        💡 Приложение открывается прямо в группе в один клик. Выберите статус: <b>«В основу»</b> или <b>«В резерв»</b>.
+                    </div>
+                    <p>🧤 <b>Приоритет вратарей (GK):</b> в первые часы после анонса слоты в основе забронированы для голкиперов, чтобы игра гарантированно состоялась с вратарями.</p>`,
+                waitlist_title: "2. Резерв и авто-продвижение",
+                waitlist_body: `<p>Если места в основном составе закончились (например, 18/18), вы можете записаться в <b>Список резерва</b>.</p>
+                    <div class="rule-highlight">
+                        🔄 <b>Авто-продвижение:</b> если игрок основы выписывается, первый в очереди из резерва автоматически переходит в основной состав и получает уведомление.
+                    </div>`,
+                cancel_title: "3. Правила отмены (Дедлайн 24ч)",
+                cancel_body: `<p>Мы бронируем поле заранее под точное количество игроков. Пожалуйста, уважайте время остальных участников.</p>
+                    <div class="rule-highlight">
+                        🟢 <b>Бесплатная отмена:</b> возможна не позднее чем за <b>24 часа</b> до свистка через кнопку «❌ Выписаться».
+                    </div>
+                    <div class="warning-highlight">
+                        🔴 <b>Поздняя отмена (< 24 часов) или неявка (No-Show):</b> игрок обязан оплатить взнос за матч либо найти себе замену. Неоплаченный пропуск влечёт за собой штрафную карточку.
+                    </div>`,
+                payment_title: "4. Оплата участия",
+                payment_body: `<p>Сумма взноса и реквизиты (банковский перевод или наличные на поле) всегда указаны в сообщении анонса игры.</p>
+                    <p>Взнос переводится организатору до игры или сразу после свистка. При переводе указывайте ваше имя из профиля Telegram.</p>`,
+                elo_title: "5. Рейтинг ELO (MMR) и составы",
+                elo_body: `<p>Каждый участник начинает с базового рейтинга <b>1000 MMR</b>. Результаты игр влияют на персональный рейтинг:</p>
+                    <table class="elo-table">
+                        <tr><td>🟢 Победа</td><td style="font-weight:800; color:#4caf50; text-align:right">+10 MMR</td></tr>
+                        <tr><td>⚪ Ничья</td><td style="font-weight:800; color:var(--hint-color); text-align:right">0 MMR</td></tr>
+                        <tr><td>🔴 Поражение</td><td style="font-weight:800; color:#f44336; text-align:right">-5 MMR</td></tr>
+                        <tr><td>🌟 Лучший игрок (MVP)</td><td style="font-weight:800; color:#f59e0b; text-align:right">+5 MMR</td></tr>
+                    </table>
+                    <div class="rule-highlight" style="margin-top:12px;">
+                        ⚖️ <b>Авто-драфт команд:</b> перед игрой бот автоматически распределяет участников на равные по силе и позициям команды (Зелёные, Оранжевые, Синие) на основе их рейтинга и амплуа.
+                    </div>`,
+                cards_title: "6. Дисциплина и карточки",
+                cards_body: `<p>В сообществе действует автоматическая система дисциплинарных санкций:</p>
+                    <p>🟨 <b>Жёлтая карточка:</b> выносится за опоздание на матч, срыв игры или неспортивное поведение. Действует от 2 до 4 недель.</p>
+                    <div class="warning-highlight">
+                        🟥 <b>Красная карточка:</b> выдаётся за получение двух жёлтых карточек, грубое нарушение или неоплаченную неявку. <b>Блокирует возможность записи на игры</b> до истечения срока бана.
+                    </div>`,
+                profile_title: "7. Профиль игрока и позиции",
+                profile_body: `<p>В веб-приложении бота вы можете указать основную позицию (GK, CB, LB, RB, CM, CAM, CDM, ST, LW, RW) и дополнительные амплуа.</p>
+                    <p>Это помогает алгоритму авто-драфта собирать сбалансированные команды с нужным количеством защитников, полузащитников и нападающих.</p>`,
+                cta_text: "Открыть бота Football Manager",
+                commands_hint: "Полезные команды: /rules • /profile • /history • /leaderboard"
+            },
+            en: {
+                hero_title: "Community Rules",
+                hero_subtitle: "Everything you need to know about match sign-ups, cancellation policies, auto-drafting, and ELO ratings.",
+                signup_title: "1. Match Sign-Up",
+                signup_body: `<p>Match announcements are posted directly in the group chat. To register, tap <b>«⚽ Sign Up for Game»</b> under the match card.</p>
+                    <div class="rule-highlight">
+                        💡 The WebApp opens right in the group with one click. Select: <b>«Main Squad»</b> or <b>«Reserve List»</b>.
+                    </div>
+                    <p>🧤 <b>Goalkeeper (GK) Priority:</b> during the first few hours after announcement, main squad spots are reserved for GKs so every match gets real goalkeepers.</p>`,
+                waitlist_title: "2. Reserve List & Auto-Promotion",
+                waitlist_body: `<p>If the main squad is fully booked (e.g. 18/18 players), you can join the <b>Reserve List (Waitlist)</b>.</p>
+                    <div class="rule-highlight">
+                        🔄 <b>Auto-promotion:</b> whenever a player from the main roster cancels, the first player in the reserve queue is automatically promoted to the main squad and notified.
+                    </div>`,
+                cancel_title: "3. Cancellation Policy (24h Deadline)",
+                cancel_body: `<p>Pitches are booked in advance for exact player counts. Please respect your fellow teammates' time.</p>
+                    <div class="rule-highlight">
+                        🟢 <b>Free cancellation:</b> allowed up to <b>24 hours</b> before kickoff by tapping «❌ Leave Match».
+                    </div>
+                    <div class="warning-highlight">
+                        🔴 <b>Late cancellation (< 24 hours) or No-Show:</b> you are responsible for paying the match fee or finding a replacement player. Unpaid absences result in disciplinary cards.
+                    </div>`,
+                payment_title: "4. Match Fee & Payment",
+                payment_body: `<p>The fee and payment details (bank transfer or cash at the pitch) are always stated in the game announcement card.</p>
+                    <p>Please pay the organizer before the match or immediately after. Include your Telegram name in the transfer note.</p>`,
+                elo_title: "5. ELO MMR & Auto-Drafting",
+                elo_body: `<p>Every player starts with a base rating of <b>1000 MMR</b>. Match outcomes affect your rating:</p>
+                    <table class="elo-table">
+                        <tr><td>🟢 Victory</td><td style="font-weight:800; color:#4caf50; text-align:right">+10 MMR</td></tr>
+                        <tr><td>⚪ Draw</td><td style="font-weight:800; color:var(--hint-color); text-align:right">0 MMR</td></tr>
+                        <tr><td>🔴 Defeat</td><td style="font-weight:800; color:#f44336; text-align:right">-5 MMR</td></tr>
+                        <tr><td>🌟 Match MVP</td><td style="font-weight:800; color:#f59e0b; text-align:right">+5 MMR</td></tr>
+                    </table>
+                    <div class="rule-highlight" style="margin-top:12px;">
+                        ⚖️ <b>Auto-Draft:</b> before kickoff, the bot balances teams (Green, Orange, Blue) based on player positions and ELO MMR to ensure competitive, fair games.
+                    </div>`,
+                cards_title: "6. Disciplinary Cards & Penalties",
+                cards_body: `<p>The community enforces an automated card system:</p>
+                    <p>🟨 <b>Yellow Card:</b> issued for late arrival, disruptive cancellation, or unsportsmanlike behavior. Active for 2-4 weeks.</p>
+                    <div class="warning-highlight">
+                        🟥 <b>Red Card:</b> issued for 2 yellow cards, gross misconduct, or unpaid no-shows. <b>Suspends your ability to sign up for games</b> until the ban expires.
+                    </div>`,
+                profile_title: "7. Player Profile & Positions",
+                profile_body: `<p>Configure your primary position (GK, CB, LB, RB, CM, CAM, CDM, ST, LW, RW) and secondary positions in the bot profile.</p>
+                    <p>This allows the auto-balancer to place you on your preferred pitch role during team draft.</p>`,
+                cta_text: "Open Football Manager Bot",
+                commands_hint: "Useful bot commands: /rules • /profile • /history • /leaderboard"
+            }
+        };
+
+        function switchLang(lang) {
+            if (lang !== 'ru' && lang !== 'en') lang = 'ru';
+            localStorage.setItem('webapp_lang', lang);
+
+            const dict = TRANSLATIONS[lang];
+            document.getElementById('t-hero-title').innerText = dict.hero_title;
+            document.getElementById('t-hero-subtitle').innerText = dict.hero_subtitle;
+            
+            document.getElementById('t-signup-title').innerText = dict.signup_title;
+            document.getElementById('t-signup-body').innerHTML = dict.signup_body;
+
+            document.getElementById('t-waitlist-title').innerText = dict.waitlist_title;
+            document.getElementById('t-waitlist-body').innerHTML = dict.waitlist_body;
+
+            document.getElementById('t-cancel-title').innerText = dict.cancel_title;
+            document.getElementById('t-cancel-body').innerHTML = dict.cancel_body;
+
+            document.getElementById('t-payment-title').innerText = dict.payment_title;
+            document.getElementById('t-payment-body').innerHTML = dict.payment_body;
+
+            document.getElementById('t-elo-title').innerText = dict.elo_title;
+            document.getElementById('t-elo-body').innerHTML = dict.elo_body;
+
+            document.getElementById('t-cards-title').innerText = dict.cards_title;
+            document.getElementById('t-cards-body').innerHTML = dict.cards_body;
+
+            document.getElementById('t-profile-title').innerText = dict.profile_title;
+            document.getElementById('t-profile-body').innerHTML = dict.profile_body;
+
+            document.getElementById('t-cta-text').innerText = dict.cta_text;
+            document.getElementById('t-commands-hint').innerText = dict.commands_hint;
+
+            document.getElementById('btn-ru').classList.toggle('active', lang === 'ru');
+            document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+            document.documentElement.lang = lang;
+        }
+
+        // Initialize language
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlLang = urlParams.get('lang');
+            let initialLang = 'ru';
+
+            if (urlLang === 'en' || urlLang === 'ru') {
+                initialLang = urlLang;
+            } else {
+                const saved = localStorage.getItem('webapp_lang');
+                if (saved === 'en' || saved === 'ru') {
+                    initialLang = saved;
+                } else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+                    const code = (window.Telegram.WebApp.initDataUnsafe.user.language_code || '').toLowerCase();
+                    if (!code.startsWith('ru')) initialLang = 'en';
+                }
+            }
+
+            switchLang(initialLang);
+
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.expand();
+                window.Telegram.WebApp.ready();
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -4,6 +4,40 @@ const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
 let currentChatId = null;
 let historyMode = 'mine'; // 'mine' or 'all'
 let currentTab = 'profile';
+
+function resolveInitialTab() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const path = (window.location.pathname || '').toLowerCase();
+        
+        // 1. Direct path check
+        if (path.includes('history')) return 'history';
+        if (path.includes('leaderboard') || path.includes('top')) return 'leaderboard';
+        if (path.includes('profile')) return 'profile';
+        
+        // 2. Query param ?tab=
+        const tabParam = (urlParams.get('tab') || '').toLowerCase();
+        if (['history', 'matches'].includes(tabParam)) return 'history';
+        if (['leaderboard', 'top', 'rating'].includes(tabParam)) return 'leaderboard';
+        if (['profile', 'me'].includes(tabParam)) return 'profile';
+
+        // 3. Telegram WebApp start_param
+        const startParam = (
+            (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param) ||
+            urlParams.get('tgWebAppStartParam') ||
+            ''
+        ).toLowerCase();
+        
+        if (['history', 'matches'].includes(startParam)) return 'history';
+        if (['leaderboard', 'top', 'rating'].includes(startParam)) return 'leaderboard';
+        if (['profile', 'me'].includes(startParam)) return 'profile';
+    } catch (e) {
+        console.warn('Error resolving initial tab:', e);
+    }
+    return 'profile';
+}
+
+window.loadCurrentTab = () => switchTab(currentTab);
 const tg = window.Telegram ? window.Telegram.WebApp : null;
 if (!tg) {
     console.error("Telegram WebApp object not found!");
@@ -72,6 +106,7 @@ async function init() {
             if (header) header.style.display = 'flex';
         }
         
+        currentTab = resolveInitialTab();
         await switchTab(currentTab);
         
         if (tg) {
@@ -104,7 +139,7 @@ async function init() {
             <div class="card" style="margin:20px; text-align:center;">
                 <h3 style="color:#f44336">${escapeHTML(errorTitle)}</h3>
                 <p class="subtitle" style="word-break: break-all;">${escapeHTML(errorDetail)}</p>
-                <button onclick="location.reload()" class="group-btn" style="margin-top:20px; background:var(--accent-color); color:white; justify-content:center;">Попробовать снова</button>
+                <button onclick="location.reload()" class="group-btn" style="margin-top:20px; background:var(--accent-color); color:white; justify-content:center;">${t('btn_try_again')}</button>
             </div>
         `;
         if (tg) {
@@ -129,6 +164,7 @@ window.switchTab = async function(tab) {
         if (pages[tab]) pages[tab].classList.add('active');
         const activeNav = document.querySelector(`.nav-item[onclick*="switchTab('${tab}')"]`);
         if (activeNav) activeNav.classList.add('active');
+        if (window.i18n) window.i18n.applyDOM();
     } catch (e) {
         console.error(e);
     } finally {
@@ -501,8 +537,8 @@ window.renderHistory = async function(mode = null) {
     
     if(pages.history) pages.history.innerHTML = `
         <div class="history-filter" style="display:flex; gap:8px; padding:0 16px; margin-bottom:16px;">
-            <button class="filter-btn ${historyMode === 'mine' ? 'active' : ''}" onclick="renderHistory('mine')" style="flex:1; padding:10px; border-radius:12px; border:1px solid var(--border-color); background:${historyMode === 'mine' ? 'var(--accent-color)' : 'transparent'}; color:${historyMode === 'mine' ? 'white' : 'var(--text-color)'}; font-weight:700; font-size:12px; cursor:pointer; transition:all 0.2s;">Мои игры</button>
-            <button class="filter-btn ${historyMode === 'all' ? 'active' : ''}" onclick="renderHistory('all')" style="flex:1; padding:10px; border-radius:12px; border:1px solid var(--border-color); background:${historyMode === 'all' ? 'var(--accent-color)' : 'transparent'}; color:${historyMode === 'all' ? 'white' : 'var(--text-color)'}; font-weight:700; font-size:12px; cursor:pointer; transition:all 0.2s;">Все игры группы</button>
+            <button class="filter-btn ${historyMode === 'mine' ? 'active' : ''}" onclick="renderHistory('mine')" style="flex:1; padding:10px; border-radius:12px; border:1px solid var(--border-color); background:${historyMode === 'mine' ? 'var(--accent-color)' : 'transparent'}; color:${historyMode === 'mine' ? 'white' : 'var(--text-color)'}; font-weight:700; font-size:12px; cursor:pointer; transition:all 0.2s;">${t('history_my_games')}</button>
+            <button class="filter-btn ${historyMode === 'all' ? 'active' : ''}" onclick="renderHistory('all')" style="flex:1; padding:10px; border-radius:12px; border:1px solid var(--border-color); background:${historyMode === 'all' ? 'var(--accent-color)' : 'transparent'}; color:${historyMode === 'all' ? 'white' : 'var(--text-color)'}; font-weight:700; font-size:12px; cursor:pointer; transition:all 0.2s;">${t('history_all_games')}</button>
         </div>
     ` + listHtml;
 }

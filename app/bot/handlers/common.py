@@ -155,22 +155,36 @@ async def cmd_refresh_game(message: types.Message, command: CommandObject, sessi
 @router.message(Command("rules"))
 @router.message(Command("info"))
 async def cmd_rules(message: types.Message):
+    rules_web_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html"
+
+    kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text="📖 Открыть правила (Web) / Open Rules",
+                    web_app=types.WebAppInfo(url=rules_web_url),
+                )
+            ]
+        ]
+    )
+
     text = (
         "📋 <b>How to Play & Group Rules / Как играть</b>\n\n"
         "🇬🇧 <b>ENGLISH:</b>\n"
-        "1. <b>Be in the group:</b> Matches are organized exclusively in this group via the bot.\n"
-        "2. <b>Profile:</b> Create your player profile once via the bot (takes 30 seconds).\n"
+        "1. <b>Matches in Group:</b> Matches are organized in this group via the bot.\n"
+        "2. <b>Profile:</b> Create your player profile once via the bot.\n"
         "3. <b>Sign Up:</b> Click <b>Sign Up for Game</b> under the match card in the group.\n"
-        "4. <b>Cancellation:</b> If you can't come, unregister at least 24h before kickoff so reserve players can take your spot.\n"
-        "5. <b>Payment:</b> Pay match fee using the organizer's details shown in the game card.\n\n"
+        "4. <b>Cancellation:</b> Unregister at least 24h before kickoff if you cannot attend.\n"
+        "5. <b>Payment:</b> Pay match fee using details in the game card.\n\n"
         "🇷🇺 <b>РУССКИЙ:</b>\n"
-        "1. <b>Быть в группе:</b> Игры проводятся строго в этой группе через бота.\n"
-        "2. <b>Профиль:</b> Создайте профиль игрока один раз в боте (занимает 30 секунд).\n"
-        "3. <b>Запись:</b> Жмите кнопку <b>Записаться на игру</b> под постом матча в группе.\n"
-        "4. <b>Отмена:</b> Если не получается прийти — выпишитесь минимум за 24ч до игры, чтобы освободить место резерву.\n"
-        "5. <b>Оплата:</b> Переводите взнос за игру по реквизитам организатора из карточки матча."
+        "1. <b>Игры в группе:</b> Запись на матчи происходит прямо в этой группе.\n"
+        "2. <b>Профиль:</b> Создайте профиль один раз в боте.\n"
+        "3. <b>Запись:</b> Жмите кнопку <b>Записаться на игру</b> под сообщением в группе.\n"
+        "4. <b>Отмена:</b> Выписывайтесь минимум за 24ч до игры при невозможности прийти.\n"
+        "5. <b>Оплата:</b> Переводите взнос по реквизитам из карточки игры.\n\n"
+        f"📖 <i>Полная версия с описанием ELO, драфта и карточек:</i>\n{rules_web_url}"
     )
-    await message.answer(text, parse_mode="HTML")
+    await message.answer(text, parse_mode="HTML", reply_markup=kb)
 
 
 @router.message(Command("help"))
