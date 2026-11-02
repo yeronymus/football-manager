@@ -256,9 +256,14 @@ async def admin_update_teams(data: UpdateTeamsRequest, background_tasks: Backgro
             
             async def send_notify(uid):
                 try:
+                    u = await session.get(User, uid)
+                    user_lang = "ru"
+                    if u and getattr(u, "language", None):
+                        user_lang = u.language.value if hasattr(u.language, "value") else str(u.language)
+                    from app.bot.i18n import t
                     await _bot.send_message(
                         uid,
-                        "<b>Ты в основном составе!</b>\nАдмин перенес тебя из резерва. <b>Подтверди в группе или админам, что будешь играть!</b>",
+                        t("promoted_by_admin_msg", locale=user_lang),
                         parse_mode="HTML"
                     )
                 except Exception as e:
@@ -302,6 +307,34 @@ async def admin_publish_teams(data: BalanceTeams, background_tasks: BackgroundTa
     background_tasks.add_task(event_bus.publish, TeamsPublishedEvent(game_id=game.id))
     return {"status": "published"}
 
+async def _get_mvp_winners_from_votes(session: AsyncSession, game_id: int) -> set[int]:
+    """Helper to compute MVP winners per team from cast votes."""
+    from app.db.models import Vote, Signup, SignupStatus, Team
+    signups_res = await session.execute(
+        select(Signup.team).where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
+    )
+    active_teams = {s[0] for s in signups_res.all() if s[0]} or {Team.A, Team.B}
+
+    votes_res = await session.execute(
+        select(Vote.vote_team, Vote.target_id, func.count(Vote.id))
+        .where(Vote.game_id == game_id)
+        .group_by(Vote.vote_team, Vote.target_id)
+    )
+    votes_by_team = {}
+    for v_team, target_id, count in votes_res.all():
+        votes_by_team.setdefault(v_team, {})[target_id] = count
+
+    mvp_ids = set()
+    for team in active_teams:
+        team_votes = votes_by_team.get(team, {})
+        if team_votes:
+            max_v = max(team_votes.values())
+            if max_v > 0:
+                for uid, c in team_votes.items():
+                    if c == max_v:
+                        mvp_ids.add(uid)
+    return mvp_ids
+
 async def _get_voting_results(session: AsyncSession, game_id: int):
     """Helper to fetch top 5 MVP voting results for finished game."""
     from app.db.models import Vote
@@ -315,7 +348,7 @@ async def _get_voting_results(session: AsyncSession, game_id: int):
     )
     return res_v.all()
 
-async def _build_finish_announcement(session: AsyncSession, game, voting_results, data) -> str:
+async def _build_finish_announcement(session: AsyncSession, game, voting_results, data, mvp_ids: set[int] = None) -> str:
     """Helper to build HTML announcement message text for a finished game."""
     from app.bot.utils import get_group_game_number, resolve_chat_language
     from app.bot.i18n import t
@@ -325,19 +358,20 @@ async def _build_finish_announcement(session: AsyncSession, game, voting_results
     text = t("finish_match_title", locale=chat_lang, game_num=game_num)
     text += t("finish_teams_score", locale=chat_lang, score_a=game.score_a, score_b=game.score_b)
     
-    async def get_names(uids):
-        if not uids: return []
-        res = await session.execute(select(User).where(User.user_id.in_(uids)))
-        return [u.full_name for u in res.scalars().all()]
+    if mvp_ids is None:
+        mvp_ids = set()
+        if getattr(data, "mvp_team_a", None):
+            mvp_ids.add(data.mvp_team_a)
+        if getattr(data, "mvp_team_b", None):
+            mvp_ids.add(data.mvp_team_b)
 
-    mvp_ids = []
-    if data.mvp_team_a: mvp_ids.append(data.mvp_team_a)
-    if data.mvp_team_b: mvp_ids.append(data.mvp_team_b)
-    
     if mvp_ids:
-        mvp_names = await get_names(mvp_ids)
+        res = await session.execute(select(User.full_name).where(User.user_id.in_(mvp_ids)))
+        mvp_names = [row[0] for row in res.all()]
         if mvp_names:
             text += t("finish_mvp_label", locale=chat_lang, names=", ".join(mvp_names))
+    else:
+        text += t("finish_mvp_voting_open", locale=chat_lang)
     
     if voting_results:
         text += t("finish_mvp_votes_header", locale=chat_lang)
@@ -372,6 +406,14 @@ async def finish_game(data: GameFinishRequest, background_tasks: BackgroundTasks
         from app.core.services.game_lifecycle import GameLifecycleService
         from app.core.uow import UnitOfWork
         
+        mvp_ids = set()
+        if data.mvp_team_a:
+            mvp_ids.add(data.mvp_team_a)
+        if data.mvp_team_b:
+            mvp_ids.add(data.mvp_team_b)
+        if not mvp_ids:
+            mvp_ids = await _get_mvp_winners_from_votes(session, data.game_id)
+
         dto = FinishGameDTO(
             game_id=data.game_id,
             score_a=data.score_a,
@@ -379,6 +421,7 @@ async def finish_game(data: GameFinishRequest, background_tasks: BackgroundTasks
             winner_team=data.winner_team,
             mvp_team_a=data.mvp_team_a,
             mvp_team_b=data.mvp_team_b,
+            mvp_ids=mvp_ids,
             player_stats=[PlayerStatDTO(user_id=p.user_id, goals=p.goals) for p in data.player_stats],
         )
 
@@ -389,8 +432,8 @@ async def finish_game(data: GameFinishRequest, background_tasks: BackgroundTasks
             game = await lifecycle.finish_game(dto)
             await uow.commit()
 
-        voting_results = await _get_voting_results(session, game.id)
-        text = await _build_finish_announcement(session, game, voting_results, data)
+        voting_results = await _get_voting_results(session, game.id) if mvp_ids else []
+        text = await _build_finish_announcement(session, game, voting_results, data, mvp_ids=mvp_ids)
 
         background_tasks.add_task(event_bus.publish, GameFinishedEvent(
             game_id=game.id,

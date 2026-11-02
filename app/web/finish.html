@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finish Game</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/web/js/i18n.js?v=2.2.0"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -316,10 +317,6 @@
             if (scoreA > scoreB) winner = "A";
             if (scoreB > scoreA) winner = "B";
 
-            // Get MVPs
-            const mvpA = document.getElementById('mvp-team-a').value;
-            const mvpB = document.getElementById('mvp-team-b').value;
-
             const playerStats = Object.entries(playerGoals).map(([uid, goals]) => ({
                 user_id: parseInt(uid),
                 goals: goals
@@ -330,8 +327,6 @@
                 score_a: scoreA,
                 score_b: scoreB,
                 winner_team: winner,
-                mvp_team_a: mvpA ? parseInt(mvpA) : null,
-                mvp_team_b: mvpB ? parseInt(mvpB) : null,
                 player_stats: playerStats,
                 initData: initData
             };
@@ -424,40 +419,13 @@
 
             html += `</div>`;
 
-            // MVP Selection Dropdown
+            // MVP Voting Preview & Auto-Resolution notice
             html += `
                 <div style="background:var(--tg-theme-secondary-bg-color, #f5f5f5); padding:15px; border-radius:12px; margin-bottom:20px;">
-                    <h3 style="margin-top:0; margin-bottom:10px;">⭐ Результаты голосования</h3>
-                    <div id="voting-preview" style="font-size:14px; color:var(--tg-theme-hint-color); margin-bottom:15px;">Загрузка голосов...</div>
-                    
-                    <h3 style="margin-top:20px; margin-bottom:10px;">🏆 Выберите MVP (итоговых)</h3>
-                    
-                    <div style="margin-bottom: 10px;">
-                        <label>🟠 MVP (Orange):</label>
-                        <select id="mvp-team-a" style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 6px;">
-                            <option value="">-- Никто --</option>
-            `;
-
-            gameData.team_a.forEach(p => {
-                html += `<option value="${p.id}">${p.name}</option>`;
-            });
-
-            html += `
-                        </select>
-                    </div>
-
-                    <div>
-                        <label>🟢 MVP (Green):</label>
-                        <select id="mvp-team-b" style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 6px;">
-                            <option value="">-- Никто --</option>
-            `;
-
-            gameData.team_b.forEach(p => {
-                html += `<option value="${p.id}">${p.name}</option>`;
-            });
-
-            html += `
-                        </select>
+                    <h3 style="margin-top:0; margin-bottom:10px;">⭐ Результаты голосования MVP</h3>
+                    <div id="voting-preview" style="font-size:14px; color:var(--tg-theme-hint-color); margin-bottom:10px;">Загрузка голосов...</div>
+                    <div style="font-size:13px; color:var(--tg-theme-hint-color); border-top:1px solid rgba(0,0,0,0.06); padding-top:10px; line-height:1.4;">
+                        🏆 <b>MVP матча</b> выбирается автоматически по результатам голосования игроков в чате через 24 часа после матча.
                     </div>
                 </div>
             `;

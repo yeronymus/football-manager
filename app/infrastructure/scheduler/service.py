@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from app.scheduler.main import scheduler
 from app.scheduler.tasks import (
     send_voting_message, 
-    remind_admin_to_finish, 
     release_gk_slots, 
     publish_game_task,
     calculate_mvp
@@ -20,23 +19,17 @@ class SchedulerService:
     
     def schedule_game_lifecycle(self, game: Game):
         """Schedules all standard tasks for a new game."""
-        # 1. Publish Task (if needed)
-        # Assuming publish is done immediately by Service if needed, 
-        # or via this method if we pass 'publish_at'. 
-        # For now, let's focus on the 'lifecycle' events: Voting, Reminder, GK Release.
-        
         if not game.date_time:
-             return
+            return
 
         duration = getattr(game, 'duration', 2.0) or 2.0
         self.schedule_voting(game.id, game.date_time, duration=duration)
-        self.schedule_admin_reminder(game.id, game.date_time)
         self.schedule_gk_release(game)
 
     def schedule_voting(self, game_id: int, date_time: datetime, duration: float = 2.0):
-        """Schedules voting task based on match duration."""
+        """Schedules voting task based on match duration, and MVP resolution 24h later."""
         match_hours = float(duration) if duration and duration > 0 else 2.0
-        run_date = date_time + timedelta(hours=match_hours, minutes=15)
+        run_date = date_time + timedelta(hours=match_hours)
         now_tz = datetime.now(date_time.tzinfo) if date_time.tzinfo else datetime.now()
         
         if run_date > now_tz:
@@ -51,23 +44,10 @@ class SchedulerService:
             )
             logger.info(f"Scheduled voting for game {game_id} at {run_date}")
 
-    def schedule_admin_reminder(self, game_id: int, date_time: datetime):
-        """Schedules admin reminder."""
-        # Reminder 7.5h after game start (5h after voting opens)
-        run_date = date_time + timedelta(hours=7, minutes=30)
-        now_tz = datetime.now(date_time.tzinfo) if date_time.tzinfo else datetime.now()
-        
-        if run_date > now_tz:
-            job_id = f"reminder_{game_id}"
-            scheduler.add_job(
-                remind_admin_to_finish, 
-                'date', 
-                run_date=run_date, 
-                args=[game_id], 
-                id=job_id, 
-                replace_existing=True
-            )
-            logger.info(f"Scheduled reminder for game {game_id} at {run_date}")
+        # Schedule automatic MVP calculation 24 hours after voting starts
+        mvp_run_date = run_date + timedelta(hours=24)
+        if mvp_run_date > now_tz:
+            self.schedule_mvp_calculation_at(game_id, mvp_run_date)
 
     def schedule_gk_release(self, game: Game):
         """Schedules GK slot release."""
@@ -113,21 +93,6 @@ class SchedulerService:
                 replace_existing=True
             )
 
-    def schedule_mvp_calculation(self, game_id: int):
-        """
-        Schedules MVP calculation 5h after voting starts.
-        Typically called by send_voting_message handler, but we expose it here
-        for manual scheduling or recovery.
-        """
-        # Voting opens 2.5h after game. MVP calc is 5h after THAT (total 7.5h).
-        # We need to know specific time.
-        # Ideally, we calculate it from game_time. 
-        # But this method signature only has game_id? 
-        # Let's change signature or fetch game.
-        # Fetching game inside infrastructure service is discouraged (circular dependency risk).
-        # Better: pass date_time.
-        pass
-
     def schedule_mvp_calculation_at(self, game_id: int, run_date: datetime):
         """Schedules MVP calculation at specific time."""
         now_tz = datetime.now(run_date.tzinfo) if run_date.tzinfo else datetime.now()
@@ -148,7 +113,6 @@ class SchedulerService:
         """Cancels all tasks for a game."""
         job_ids = [
             f"voting_{game_id}",
-            f"reminder_{game_id}",
             f"gk_release_{game_id}",
             f"publish_{game_id}",
             f"mvp_calc_{game_id}"

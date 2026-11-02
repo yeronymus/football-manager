@@ -100,10 +100,6 @@ class GameLifecycleService:
                     self.scheduler.schedule_publish(game.id, pub_at)
             
             self.scheduler.schedule_game_lifecycle(game)
-            
-            # Schedule MVP Calc
-            mvp_time = game.date_time + timedelta(hours=7, minutes=30)
-            self.scheduler.schedule_mvp_calculation_at(game.id, mvp_time)
         
         # No Commit here. Caller must commit.
         return game
@@ -136,15 +132,7 @@ class GameLifecycleService:
                  # Reschedule
                  if game.id > settings.last_legacy_game_id:
                      self.scheduler.cancel_game_tasks(game.id)
-                     # Always attempt to schedule voting/reminder. 
-                     # The scheduler methods themselves check if run_date is in the future.
                      self.scheduler.schedule_voting(game.id, game.date_time, duration=game.duration)
-                     self.scheduler.schedule_admin_reminder(game.id, game.date_time)
-                     
-                     # NEW: Schedule MVP Calc (Game Start + 7.5h)
-                     from datetime import timedelta
-                     mvp_time = game.date_time + timedelta(hours=7, minutes=30)
-                     self.scheduler.schedule_mvp_calculation_at(game.id, mvp_time)
         
         if data.max_players and data.max_players != game.max_players:
              changes.append(f"👥 Мест: {game.max_players} -> {data.max_players}")
@@ -197,10 +185,14 @@ class GameLifecycleService:
         game.winner_team = data.winner_team
         game.status = GameStatus.FINISHED
         
-        # Process Inputs for Manual Stats
+        # Process Inputs for Stats
         mvp_ids = set()
-        if data.mvp_team_a: mvp_ids.add(data.mvp_team_a)
-        if data.mvp_team_b: mvp_ids.add(data.mvp_team_b)
+        if getattr(data, "mvp_ids", None):
+            mvp_ids.update(data.mvp_ids)
+        if data.mvp_team_a:
+            mvp_ids.add(data.mvp_team_a)
+        if data.mvp_team_b:
+            mvp_ids.add(data.mvp_team_b)
         
         processed_users = set()
         

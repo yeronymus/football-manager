@@ -87,12 +87,21 @@ async def process_vote(
     )
     voted_teams = {row[0] for row in voted_result.all()}
 
-    all_teams = {Team.A, Team.B}
-    remaining = all_teams - voted_teams
+    # Query participating teams in this game
+    teams_query = await session.execute(
+        select(Signup.team).where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE).distinct()
+    )
+    participating_teams = {row[0] for row in teams_query.all() if row[0] is not None}
+    if not participating_teams:
+        participating_teams = {Team.A, Team.B}
+
+    remaining = participating_teams - voted_teams
 
     if not remaining:
-        await callback.answer(_("vote_both_done"))
+        await callback.answer(_("vote_all_teams_done" if len(participating_teams) > 2 else "vote_both_done"))
     else:
-        remaining_team = next(iter(remaining))
-        team_label = _("team_a_name") if remaining_team == Team.A else _("team_b_name")
-        await callback.answer(_("vote_one_done", team=target_team.value, remaining=team_label))
+        rem_labels = [
+            _("team_a_name") if t_val == Team.A else (_("team_b_name") if t_val == Team.B else _("team_c_name"))
+            for t_val in remaining
+        ]
+        await callback.answer(_("vote_one_done", team=target_team.value, remaining=", ".join(rem_labels)))

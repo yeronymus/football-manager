@@ -1,29 +1,30 @@
 import asyncio
-from app.bot.instance import bot
-from app.db.database import async_session_maker
-from app.db.models import Game, Signup, User, SignupStatus, GameStatus, Team
+import logging
 from sqlalchemy import select, func
-from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from app.bot.instance import bot
+from app.bot.i18n import t
 from app.config import settings
+from app.db.database import async_session_maker
+from app.db.models import Game, Signup, User, SignupStatus, GameStatus, Team
 
-import logging
 logger = logging.getLogger(__name__)
+
 
 async def send_voting_message(game_id: int):
     """
     Sends the MVP voting message with inline player buttons to the chat.
-    Triggered when a game is finished.
+    Triggered when a game duration is over or manually by admin.
+    Also schedules automatic MVP calculation 24 hours after start.
     """
     async with async_session_maker() as session:
         result = await session.execute(select(Game).where(Game.id == game_id))
         game = result.scalar_one_or_none()
-        
+
         if not game:
             return
 
-        # Get active players
         # Get active players with team info
         result = await session.execute(
             select(User, Signup.team)
@@ -31,7 +32,7 @@ async def send_voting_message(game_id: int):
             .where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
         )
         players_data = result.all()
-        
+
         if not players_data:
             return
 
@@ -39,7 +40,7 @@ async def send_voting_message(game_id: int):
         team_b = []
         team_c = []
         unassigned = []
-        
+
         for user, team in players_data:
             if team == Team.A:
                 team_a.append(user)
@@ -52,33 +53,27 @@ async def send_voting_message(game_id: int):
 
         # Determine chat language
         from app.bot.utils import resolve_chat_language
+
         chat_lang = await resolve_chat_language(session, game.chat_id)
 
         # Create inline keyboard with players
         from app.bot.keyboards import get_voting_keyboard, get_channel_voting_keyboard
-        keyboard = get_voting_keyboard(game_id, team_a, team_b, team_c=team_c, unassigned=unassigned, lang=chat_lang)
-        
+
+        keyboard = get_voting_keyboard(
+            game_id, team_a, team_b, team_c=team_c, unassigned=unassigned, lang=chat_lang
+        )
+
         # Delete old voting message if it exists
         if game.voting_message_id:
             try:
                 await bot.delete_message(chat_id=game.chat_id, message_id=game.voting_message_id)
             except Exception as e:
                 logger.warning(f"Failed to delete old voting message for game {game_id}: {e}")
-        
+
         from app.bot.utils import get_group_game_number
+
         game_num = await get_group_game_number(session, game)
-        if chat_lang == "ru":
-            text = (
-                f"Матч <b>#{game_num}</b> завершен.\n\n"
-                f"🏆 <b>Голосование за MVP открыто!</b>\n"
-                f"Выберите лучших игроков, нажав на кнопки ниже."
-            )
-        else:
-            text = (
-                f"Match <b>#{game_num}</b> is finished.\n\n"
-                f"🏆 <b>Voting for MVP is open!</b>\n"
-                f"Vote for the best players using the buttons below."
-            )
+        text = t("voting_opened_title", locale=chat_lang, game_num=game_num)
 
         msg = None
         try:
@@ -86,17 +81,19 @@ async def send_voting_message(game_id: int):
                 chat_id=game.chat_id,
                 text=text,
                 reply_markup=keyboard,
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
         except Exception as e:
-            logger.warning(f"Failed to send standard voting keyboard (e.g. channel or markup limits): {e}, falling back to channel-safe deep link keyboard")
+            logger.warning(
+                f"Failed to send standard voting keyboard: {e}, falling back to deep link keyboard"
+            )
             try:
                 channel_kb = get_channel_voting_keyboard(game_id, lang=chat_lang)
                 msg = await bot.send_message(
                     chat_id=game.chat_id,
                     text=text,
                     reply_markup=channel_kb,
-                    parse_mode="HTML"
+                    parse_mode="HTML",
                 )
             except Exception as ex:
                 logger.error(f"Failed to send fallback voting message for game {game_id}: {ex}")
@@ -106,137 +103,233 @@ async def send_voting_message(game_id: int):
             game.voting_message_id = msg.message_id
             await session.commit()
 
+        # Schedule automatic MVP calculation 24 hours from now
+        from app.infrastructure.scheduler.service import SchedulerService
+        from datetime import datetime, timedelta
+        import zoneinfo
+
+        try:
+            tz = zoneinfo.ZoneInfo("Europe/Prague")
+            now_dt = datetime.now(tz)
+        except Exception:
+            now_dt = datetime.now()
+
+        SchedulerService().schedule_mvp_calculation_at(game_id, now_dt + timedelta(hours=24))
+
+
 async def calculate_mvp(game_id: int):
     """
-    Closes the MVP voting by editing the voting message and removing the keyboard.
-    Triggered 24 hours after the voting starts.
+    Closes the MVP voting by removing the keyboard, determines MVP winners per team,
+    announces results to the group chat, and applies MVP stats/ratings if the match is finished.
     """
     async with async_session_maker() as session:
-        # Get game info
         result = await session.execute(select(Game).where(Game.id == game_id))
         game = result.scalar_one_or_none()
-        
+
         if not game:
             return
 
-        # Silently edit old voting message to clean it up and remove keyboard
+        from app.bot.utils import get_group_game_number, resolve_chat_language
+
+        chat_lang = await resolve_chat_language(session, game.chat_id)
+        game_num = await get_group_game_number(session, game)
+
+        # 1. Close old voting message (remove keyboard)
         if game.voting_message_id:
             try:
-                from app.bot.utils import get_group_game_number
-                game_num = await get_group_game_number(session, game)
                 await bot.edit_message_text(
                     chat_id=game.chat_id,
                     message_id=game.voting_message_id,
-                    text=f"Матч <b>#{game_num}</b> завершен.\n\n<b>Голосование за MVP закрыто!</b>",
+                    text=t("voting_closed_title", locale=chat_lang, game_num=game_num),
                     reply_markup=None,
-                    parse_mode="HTML"
+                    parse_mode="HTML",
                 )
             except Exception as e:
                 logger.warning(f"Failed to edit/close voting message for game {game_id}: {e}")
 
+        # 2. Query active players and their teams
+        signups_res = await session.execute(
+            select(Signup.user_id, Signup.team)
+            .where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
+        )
+        active_signups = signups_res.all()
+        teams_in_game = [Team.A, Team.B]
+        if any(s[1] == Team.C for s in active_signups):
+            teams_in_game.append(Team.C)
 
-async def remind_admin_to_finish(game_id: int):
-    """
-    Sends a notification reminder to the game creator to complete/log the match stats
-    once the game duration is expected to be over.
-    """
-    async with async_session_maker() as session:
-        # 1. Fetch game
-        game = await session.get(Game, game_id)
-        
-        # If game is already finished, do not disturb
-        if not game or game.status == GameStatus.FINISHED:
-            return
+        # 3. Query all votes
+        from app.db.models import Vote
 
-        # Double-check timing: If game was rescheduled, this old job might be firing prematurely.
-        # Ensure now is actually past the reminder threshold (date_time + 2h).
-        from datetime import datetime, timedelta
-        # Ensure timezone awareness match
-        now_tz = datetime.now(game.date_time.tzinfo) if game.date_time.tzinfo else datetime.now()
-        threshold = game.date_time + timedelta(hours=1, minutes=59) # slightly lenient
-        
-        if now_tz < threshold:
-             # This is an old job firing for a game that was moved to the future. Ignore.
-             return
+        votes_res = await session.execute(
+            select(Vote.vote_team, Vote.target_id, func.count(Vote.id))
+            .where(Vote.game_id == game_id)
+            .group_by(Vote.vote_team, Vote.target_id)
+        )
+        votes_by_team = {Team.A: {}, Team.B: {}, Team.C: {}}
+        for v_team, target_id, count in votes_res.all():
+            if v_team in votes_by_team:
+                votes_by_team[v_team][target_id] = count
 
-        # 2. Find game creator
-        creator_id = game.created_by
-        
-        # 3. Build inline button for game completion screen
-        web_app_url = f"{settings.webapp_url.rstrip('/')}/web/finish.html?id={game.id}"
-        
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📝 Заполнить матч", web_app=types.WebAppInfo(url=web_app_url))]
-        ])
-        
+        # 4. Resolve MVPs per team
+        mvp_ids_by_team = {}
+        all_mvp_ids = set()
+
+        for team in teams_in_game:
+            team_votes = votes_by_team.get(team, {})
+            if not team_votes:
+                mvp_ids_by_team[team] = []
+                continue
+            max_v = max(team_votes.values())
+            if max_v > 0:
+                top_players = [uid for uid, c in team_votes.items() if c == max_v]
+                mvp_ids_by_team[team] = [(uid, max_v) for uid in top_players]
+                for uid in top_players:
+                    all_mvp_ids.add(uid)
+            else:
+                mvp_ids_by_team[team] = []
+
+        # 5. Fetch names of players
+        all_candidate_ids = {uid for team_list in mvp_ids_by_team.values() for uid, _ in team_list}
+        user_names = {}
+        if all_candidate_ids:
+            u_res = await session.execute(
+                select(User.user_id, User.full_name).where(User.user_id.in_(all_candidate_ids))
+            )
+            user_names = {row[0]: row[1] for row in u_res.all()}
+
+        # 6. Build Announcement text
+        announcement = t("mvp_results_announcement_header", locale=chat_lang, game_num=game_num)
+        for team in teams_in_game:
+            team_label = t(
+                "team_a_name"
+                if team == Team.A
+                else ("team_b_name" if team == Team.B else "team_c_name"),
+                locale=chat_lang,
+            )
+            winners = mvp_ids_by_team.get(team, [])
+            if winners:
+                names = ", ".join([user_names.get(uid, f"User {uid}") for uid, _ in winners])
+                votes_count = winners[0][1]
+                announcement += (
+                    t(
+                        "mvp_team_winner_line",
+                        locale=chat_lang,
+                        team=team_label,
+                        names=names,
+                        votes=votes_count,
+                    )
+                    + "\n"
+                )
+            else:
+                announcement += t("mvp_team_none_line", locale=chat_lang, team=team_label) + "\n"
+
+        if all_mvp_ids:
+            announcement += t("mvp_results_footer", locale=chat_lang)
+
+        # Send announcement to group chat
         try:
-            from app.bot.utils import get_group_game_number
-            game_num = await get_group_game_number(session, game)
             await bot.send_message(
-                chat_id=creator_id,
-                text=f"⏰ Матч <b>#{game_num}</b> уже должен закончиться.\n\nЗаполните счет и забитые голы для обновления статистики!",
-                reply_markup=kb,
-                parse_mode="HTML"
+                chat_id=game.chat_id,
+                text=announcement,
+                parse_mode="HTML",
             )
         except Exception as e:
-            # Admin could have blocked the bot
-             print(f"Failed to remind admin: {e}")
+            logger.error(f"Failed to send MVP announcement for game {game_id}: {e}")
+
+        # 7. If game is already FINISHED, apply stats and ratings to the MVPs
+        if game.status == GameStatus.FINISHED and all_mvp_ids:
+            from app.db.models import GameStats, PlayerProfile, RatingHistory
+
+            for mvp_id in all_mvp_ids:
+                stat_res = await session.execute(
+                    select(GameStats).where(
+                        GameStats.game_id == game_id, GameStats.user_id == mvp_id
+                    )
+                )
+                stat = stat_res.scalar_one_or_none()
+                if stat:
+                    stat.is_mvp = True
+                else:
+                    session.add(
+                        GameStats(game_id=game_id, user_id=mvp_id, goals=0, is_mvp=True)
+                    )
+
+                u = await session.get(User, mvp_id)
+                if u:
+                    u.stats_mvp = (u.stats_mvp or 0) + 1
+                    u.rating = (u.rating or 100) + 5
+
+                p_res = await session.execute(
+                    select(PlayerProfile).where(
+                        PlayerProfile.user_id == mvp_id, PlayerProfile.chat_id == game.chat_id
+                    )
+                )
+                p = p_res.scalar_one_or_none()
+                if p:
+                    p.stats_mvp = (p.stats_mvp or 0) + 1
+                    p.rating = (p.rating or 100) + 5
+
+                h_res = await session.execute(
+                    select(RatingHistory).where(
+                        RatingHistory.game_id == game_id, RatingHistory.user_id == mvp_id
+                    )
+                )
+                h = h_res.scalar_one_or_none()
+                if h:
+                    h.new_rating = (h.new_rating or 100) + 5
+                    h.change = (h.change or 0) + 5
+
+            await session.commit()
+            logger.info(f"Awarded MVP bonuses for game {game_id} to {all_mvp_ids}")
+
+
 async def release_gk_slots(game_id: int):
     """
-    Called 48h after game creation.
-    Releases the "GK Reservation" by auto-promoting players from the waiting list
-    if there are still empty slots (which were effectively reserved).
+    Called after gk_hours after game creation.
+    Releases the 'GK Reservation' by promoting players from the waiting list
+    if empty slots remain. Silently updates the match card without private message spam.
     """
     async with async_session_maker() as session:
         game = await session.get(Game, game_id)
         if not game or game.status not in [GameStatus.OPEN, GameStatus.ACTIVE]:
             return
 
-        # Count active
         result = await session.execute(
             select(func.count(Signup.id))
             .where(Signup.game_id == game_id, Signup.status == SignupStatus.ACTIVE)
         )
         active_count = result.scalar()
-        
+
         slots_available = game.max_players - active_count
-        
+
         if slots_available > 0:
-                    # Promote from reserve
             reserves_result = await session.execute(
                 select(Signup)
-                .where(Signup.game_id == game_id, Signup.status == SignupStatus.RESERVE, Signup.user_id >= 0)
-                .order_by(Signup.created_at) # FIFO
+                .where(
+                    Signup.game_id == game_id,
+                    Signup.status == SignupStatus.RESERVE,
+                    Signup.user_id >= 0,
+                )
+                .order_by(Signup.created_at)
                 .limit(slots_available)
             )
             promoted_signups = reserves_result.scalars().all()
-            
+
             if promoted_signups:
-                from app.bot.utils import get_group_game_number
-                game_num = await get_group_game_number(session, game)
-                async def notify_user(signup):
-                    try:
-                        await bot.send_message(
-                            signup.user_id, 
-                            f"🧤 Бронь вратарей снята (24ч)!\nВы переведены в основной состав на матч #{game_num}!"
-                        )
-                    except Exception as e:
-                        print(f"Failed to notify user {signup.user_id}: {e}")
-                
                 for signup in promoted_signups:
                     signup.status = SignupStatus.ACTIVE
 
-                await asyncio.gather(*(notify_user(signup) for signup in promoted_signups))
-
                 await session.commit()
-                
-                # Update Message
+
+                # Update Match Card in Chat
                 from app.bot.utils import format_game_message, resolve_chat_language
+
                 chat_lang = await resolve_chat_language(session, game.chat_id)
                 text = await format_game_message(game, session, lang=chat_lang)
-                
+
                 if game.message_id and game.chat_id:
                     from app.bot.keyboards import get_channel_game_keyboard
+
                     kb = get_channel_game_keyboard(game.id, lang=chat_lang)
                     try:
                         await bot.edit_message_text(
@@ -244,16 +337,18 @@ async def release_gk_slots(game_id: int):
                             message_id=game.message_id,
                             text=text,
                             reply_markup=kb,
-                            parse_mode="HTML"
+                            parse_mode="HTML",
                         )
                     except Exception:
                         pass
-                
+
                 try:
                     from app.bot.admin_dashboard import update_dashboard_message
+
                     await update_dashboard_message(bot, game.id, session)
-                except (ImportError, Exception) as e:
+                except Exception as e:
                     logger.warning(f"Failed to update dashboard: {e}")
+
 
 async def publish_game_task(game_id: int):
     """
@@ -266,44 +361,46 @@ async def publish_game_task(game_id: int):
 
         from app.bot.utils import format_game_message, resolve_chat_language
         from app.bot.keyboards import get_channel_game_keyboard
+
         chat_lang = await resolve_chat_language(session, game.chat_id)
-        
+
         # 1. Publish to Channel (Full)
         if game.channel_id:
             text_full = await format_game_message(game, session, is_short=False, lang=chat_lang)
-            
-            # Add hidden deep link so Telegram channel discussion forward carries the start link
-            from app.config import settings
+
             bot_username = settings.bot_username
             hidden_link = f'<a href="https://t.me/{bot_username}?start=game_{game.id}">&#8203;</a>'
             text_full = hidden_link + text_full
-            
+
             try:
                 sent_full = await bot.send_message(
                     chat_id=game.channel_id,
                     text=text_full,
-                    reply_markup=get_channel_game_keyboard(game.id, lang=chat_lang)
+                    reply_markup=get_channel_game_keyboard(game.id, lang=chat_lang),
                 )
                 game.channel_message_id = sent_full.message_id
             except Exception as e:
-                print(f"Failed to publish to channel {game.channel_id}: {e}")
+                logger.error(f"Failed to publish to channel {game.channel_id}: {e}")
 
-        # 2. Publish to Group (Full mode per user request)
+        # 2. Publish to Group
         text_short = await format_game_message(game, session, is_short=False, lang=chat_lang)
         kb = get_channel_game_keyboard(game.id, lang=chat_lang)
         try:
             sent_message = await bot.send_message(
                 chat_id=game.chat_id,
                 text=text_short,
-                reply_markup=kb
+                reply_markup=kb,
             )
-            
+
             game.message_id = sent_message.message_id
             await session.commit()
-            
+
             try:
-                await bot.pin_chat_message(chat_id=game.chat_id, message_id=sent_message.message_id)
-            except: pass
-            
+                await bot.pin_chat_message(
+                    chat_id=game.chat_id, message_id=sent_message.message_id
+                )
+            except Exception:
+                pass
+
         except Exception as e:
-            print(f"Failed to publish game task {game.id} to chat: {e}")
+            logger.error(f"Failed to publish game task {game.id} to chat: {e}")

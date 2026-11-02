@@ -37,7 +37,7 @@
     "vote_already_voted_team": "You have already voted for Team {team} MVP!",
     "vote_both_done": "✅ You voted for both teams! Thank you!",
     "vote_one_done": "Vote for Team {team} recorded! Now choose MVP for {remaining}.",
-    "voting_opened_title": "Match <b>#{game_num}</b> is finished.\n\n<b>Voting for MVP is open!</b>\nVote for the best players using the buttons below.",
+    "voting_opened_title": "Match <b>#{game_num}</b> is finished.\n\n🏆 <b>Voting for MVP is open!</b>\nVote for the best players using the buttons below.",
     "lang_select_title": "🌐 <b>Select your language / Выберите язык:</b>\nCurrent preference: <b>{lang}</b>",
     "lang_changed_en": "✅ Language successfully set to <b>English</b>!\nAll private messages and bot responses will now be in English.",
     "lang_changed_ru": "✅ Язык успешно изменен на <b>Русский</b>!\nВсе личные сообщения бота теперь будут на русском языке.",
@@ -68,7 +68,7 @@
     "group_payment_reminder": "📢 <b>Match #{game_num} — Payment Reminder</b>\n\n📍 <b>{location}</b> ({date})\n💰 Match fee: <b>{price} CZK</b>\n💳 Payment info: <code>{payment}</code>\n\n⏳ <b>Awaiting payment from ({count} players):</b>\n{debtors}\n\n<i>Guys, please send your share as soon as possible. Thank you!</i>",
     "group_payment_reminder_no_details": "Contact organizer",
     "promoted_to_active_detailed": "🚀 <b>You have been moved to the active lineup!</b>\n\nMatch <b>#{game_num}</b>\n📍 <b>{location}</b>\n📅 <b>{date}</b>\n\nGet ready for the game!",
-    "voting_closed_title": "Match <b>#{game_num}</b> is finished.\n\n<b>Voting for MVP is closed!</b>\nResults published below.",
+    "voting_closed_title": "Match <b>#{game_num}</b> is finished.\n\n<b>Voting for MVP is closed!</b>",
     "promoted_by_admin": "🎉 <b>You have been moved to the main squad!</b>\n\nMatch: <b>#{game_num}</b>\n📍 Location: <b>{location}</b>\n⏰ Time: <b>{date}</b>\n\nThe organizer has promoted you to the active lineup. See you on the pitch! ⚽",
     "promoted_auto": "🎉 <b>You have been moved to the main squad!</b>\n\nMatch: <b>#{game_num}</b>\n📍 Location: <b>{location}</b>\n⏰ Time: <b>{date}</b>\n\nSomeone left the game, vacant slot opened. See you on the pitch! ⚽",
     "cmd_start_voting_title": "🏆 <b>Voting for MVP (Match #{game_num})</b>\n\nVote for the best players using the buttons below:",
@@ -221,5 +221,12 @@
     "promote_usage_private": "In private messages use: `/promote <user_id> <chat_id>`\nYou can find chat_id in logs or database.",
     "promote_usage_group": "In groups use: `/promote <user_id>`",
     "already_admin": "This user is already an admin of this group.",
-    "promoted_admin_success": "✅ User {user_id} successfully appointed admin of group {chat_id}!"
+    "promoted_admin_success": "✅ User {user_id} successfully appointed admin of group {chat_id}!",
+    "mvp_results_announcement_header": "🏆 <b>MVP Voting Results — Match #{game_num}</b>\n\nOfficial results by player votes:\n",
+    "mvp_team_winner_line": "{team}: ⭐️ <b>{names}</b> ({votes} votes)",
+    "mvp_team_none_line": "{team}: No MVP (0 votes)",
+    "mvp_results_footer": "\n🎉 Congratulations to the MVPs! +5 rating has been awarded.",
+    "finish_mvp_voting_open": "\n🏆 <b>Voting for MVP is currently open in the group!</b> Results will be finalized in 24 hours.\n",
+    "vote_all_teams_done": "✅ You voted for all teams! Thank you!",
+    "promoted_by_admin_msg": "<b>You are in the main squad!</b>\nAdmin moved you from reserve. <b>Please confirm in the group that you will play!</b>"
 }
