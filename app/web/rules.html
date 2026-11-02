@@ -52,7 +52,7 @@
             color: var(--hint-color);
             font-size: 11.5px;
             font-weight: 700;
-            padding: 5px 10px;
+            padding: 5px 12px;
             border-radius: 16px;
             cursor: pointer;
             transition: all 0.15s ease;
@@ -121,7 +121,7 @@
         }
 
         .rule-body li {
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
 
         .rule-body li:last-child {
@@ -175,13 +175,7 @@
             font-size: 13px;
         }
 
-        .callout-box.warn {
-            background: rgba(244, 63, 94, 0.08);
-            border-left-color: #f43f5e;
-            color: #fecdd3;
-        }
-
-        /* MVP Ballot Mockup - Strict & Clean */
+        /* MVP Ballot Mockup */
         .mvp-mockup {
             background: rgba(15, 23, 42, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.08);
@@ -296,7 +290,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 0;
+            padding: 10px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             font-size: 13px;
         }
@@ -340,7 +334,6 @@
         <div class="lang-switch-group">
             <button class="lang-btn active" id="btn-en" onclick="switchLang('en')">EN</button>
             <button class="lang-btn" id="btn-ru" onclick="switchLang('ru')">RU</button>
-            <button class="lang-btn" id="btn-kz" onclick="switchLang('kz')">KZ</button>
         </div>
     </div>
 
@@ -406,14 +399,16 @@
             </div>
         </div>
 
-        <!-- 5. Pitch Conduct -->
+        <!-- 5. Pitch Conduct & Card System -->
         <div class="rule-card">
-            <div class="rule-card-header" id="t-s5-title">5. Pitch Conduct</div>
+            <div class="rule-card-header" id="t-s5-title">5. Pitch Conduct & Disciplinary Cards</div>
             <div class="rule-body" id="t-s5-body">
                 <ul>
-                    <li>Dangerous tackles, rough challenges, fights, and toxic insults are prohibited.</li>
+                    <li>Dangerous tackles, rough challenges, fights, and toxic insults are strictly prohibited.</li>
                     <li>Arrive on time to avoid losing booked pitch time.</li>
-                    <li>First offense leads to a warning/card; repeated offenses result in a ban.</li>
+                    <li><b>Yellow Card (🟨):</b> warning issued for unsportsmanlike conduct, late arrival, or late dropouts (< 24h). Active for 2–4 weeks.</li>
+                    <li><b>Red Card (🟥):</b> issued for 2 yellow cards, gross misconduct, or unpaid absences. Temporarily suspends match registration.</li>
+                    <li><b>Card Reason:</b> the specific reason is always stated in the card notification and in your profile. If you have questions or want to discuss a card, you can always contact the <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">organizers below</a>.</li>
                 </ul>
             </div>
         </div>
@@ -458,13 +453,9 @@
 
         <!-- 7. Profile, Stats & Direct Links -->
         <div class="rule-card">
-            <div class="rule-card-header" id="t-s7-title">7. Profile, Stats & Disciplinary Cards</div>
+            <div class="rule-card-header" id="t-s7-title">7. Profile, Stats & Active Cards</div>
             <div class="rule-body" id="t-s7-body">
-                <p>Personal statistics, match history, and MMR rating are available anytime via <code>/profile</code> in private chat with the bot.</p>
-                <ul>
-                    <li><b>Yellow Card:</b> disciplinary warning active for 2–4 weeks.</li>
-                    <li><b>Red Card:</b> temporary ban from registering for upcoming matches.</li>
-                </ul>
+                <p>Personal statistics, match history, and MMR rating are available anytime via <code>/profile</code> in private chat with the bot. <b>Your active cards, the reason they were issued, and the exact expiration date / remaining days</b> are also displayed directly on your profile card.</p>
 
                 <!-- Direct Links right under profile -->
                 <a href="https://t.me/fm_metabot" class="btn-link" id="t-link-bot">
@@ -479,7 +470,7 @@
         </div>
 
         <!-- 8. Organizers & Contacts -->
-        <div class="rule-card">
+        <div class="rule-card" id="contacts">
             <div class="rule-card-header" id="t-s8-title">8. Contacts & Questions</div>
             <div class="rule-body">
                 <div class="contact-item">
@@ -496,7 +487,7 @@
                 <div class="contact-item">
                     <div>
                         <div style="font-weight:600;" id="t-c2-role">Match fees, payments & partnership:</div>
-                        <div style="font-size:12px; color:var(--hint-color);" id="t-c2-name">Оплата и финансы</div>
+                        <div style="font-size:12px; color:var(--hint-color);">Ернар</div>
                     </div>
                     <div>
                         <a href="https://t.me/napovorotenapravo" class="contact-link" target="_blank">@napovorotenapravo</a>
@@ -547,11 +538,13 @@
                     </ul>`,
                 s4_title: "4. Match Fee & Payment",
                 s4_body: `<p>The fee and payment details (bank account or cash) are shown on the match card. Please send the payment <b>before the match</b> to the provided account.</p>`,
-                s5_title: "5. Pitch Conduct",
+                s5_title: "5. Pitch Conduct & Disciplinary Cards",
                 s5_body: `<ul>
-                    <li>Dangerous tackles, rough challenges, fights, and toxic insults are prohibited.</li>
+                    <li>Dangerous tackles, rough challenges, fights, and toxic insults are strictly prohibited.</li>
                     <li>Arrive on time to avoid losing booked pitch time.</li>
-                    <li>First offense leads to a warning/card; repeated offenses result in a ban.</li>
+                    <li><b>Yellow Card (🟨):</b> warning issued for unsportsmanlike conduct, late arrival, or late dropouts (< 24h). Active for 2–4 weeks.</li>
+                    <li><b>Red Card (🟥):</b> issued for 2 yellow cards, gross misconduct, or unpaid absences. Temporarily suspends match registration.</li>
+                    <li><b>Card Reason:</b> the specific reason is always stated in the card notification and in your profile. If you have questions or want to discuss a card, you can always contact the <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">organizers below</a>.</li>
                 </ul>`,
                 s6_title: "6. Post-Match & MVP Voting",
                 s6_body: `<p>The MVP poll opens in the group chat after full-time. <b>Vote for 1 player from EACH team</b> (1 from Green + 1 from Orange = 2 votes total). Do not vote for only 1 player overall.</p>`,
@@ -564,12 +557,8 @@
                 elo_draw: "Draw",
                 elo_loss: "Defeat",
                 elo_mvp: "Match MVP Bonus",
-                s7_title: "7. Profile, Stats & Disciplinary Cards",
-                s7_body: `<p>Personal statistics, match history, and MMR rating are available anytime via <code>/profile</code> in private chat with the bot.</p>
-                    <ul>
-                        <li><b>Yellow Card:</b> disciplinary warning active for 2–4 weeks.</li>
-                        <li><b>Red Card:</b> temporary ban from registering for upcoming matches.</li>
-                    </ul>`,
+                s7_title: "7. Profile, Stats & Active Cards",
+                s7_body: `<p>Personal statistics, match history, and MMR rating are available anytime via <code>/profile</code> in private chat with the bot. <b>Your active cards, the reason they were issued, and the exact expiration date / remaining days</b> are also displayed directly on your profile card.</p>`,
                 link_bot_text: "Open Football Manager Bot",
                 link_prof: "👤 My Profile",
                 link_lead: "🏆 Leaderboard",
@@ -577,7 +566,6 @@
                 s8_title: "8. Contacts & Questions",
                 c1_role: "Matches, pitch, squads, balls & partnership:",
                 c2_role: "Match fees, payments & partnership:",
-                c2_name: "Payments & finance",
                 c3_role: "Bot & technical questions:"
             },
             ru: {
@@ -604,11 +592,13 @@
                     </ul>`,
                 s4_title: "4. Взнос и оплата",
                 s4_body: `<p>Сумма взноса и реквизиты указаны в карточке матча. Пожалуйста, переводите взнос <b>до начала матча</b> по указанным реквизитам.</p>`,
-                s5_title: "5. Поведение на поле",
+                s5_title: "5. Поведение на поле и система карточек",
                 s5_body: `<ul>
-                    <li>Опасные подкаты сзади, грубость, драки и оскорбления запрещены.</li>
+                    <li>Опасные подкаты сзади, грубость, драки и токсичное поведение запрещены.</li>
                     <li>Приходите вовремя, чтобы не терять оплаченное время поля.</li>
-                    <li>Первое нарушение — предупреждение / карточка. Повторные нарушения — бан.</li>
+                    <li><b>Жёлтая карточка (🟨):</b> предупреждение за грубую игру, опоздание или поздний слив (< 24ч). Действует 2–4 недели.</li>
+                    <li><b>Красная карточка (🟥):</b> за 2 жёлтые карточки, драку или неоплаченную неявку. Временно блокирует запись на матчи.</li>
+                    <li><b>Причина карточки:</b> точная причина всегда пишется в уведомлении от бота и в вашем профиле. Если у вас есть вопросы или вы хотите оспорить карточку — всегда можете написать <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">администраторам ниже</a>.</li>
                 </ul>`,
                 s6_title: "6. Голосование за MVP после матча",
                 s6_body: `<p>После матча в чате запускается опрос за лучшего игрока. <b>Голосовать нужно за 1 игрока из КАЖДОЙ команды</b> (1 из Зелёных + 1 из Оранжевых = всего 2 голоса). Не отдавайте голос только за одну команду.</p>`,
@@ -622,11 +612,7 @@
                 elo_loss: "Поражение",
                 elo_mvp: "Бонус MVP матча",
                 s7_title: "7. Профиль, статистика и карточки",
-                s7_body: `<p>Личная статистика, история матчей и рейтинг MMR доступны в любой момент через <code>/profile</code> в ЛС с ботом.</p>
-                    <ul>
-                        <li><b>Жёлтая карточка:</b> предупреждение, действует 2–4 недели.</li>
-                        <li><b>Красная карточка:</b> временный запрет на запись на матчи.</li>
-                    </ul>`,
+                s7_body: `<p>Личная статистика, история матчей и рейтинг MMR доступны в любой момент через <code>/profile</code> в ЛС с ботом. <b>Все ваши активные карточки, причина их выдачи и точный срок действия (сколько дней осталось)</b> отображаются прямо в вашем профиле.</p>`,
                 link_bot_text: "Открыть бота Football Manager",
                 link_prof: "👤 Мой профиль",
                 link_lead: "🏆 Лидерборд",
@@ -634,65 +620,7 @@
                 s8_title: "8. Контакты и вопросы",
                 c1_role: "Игры, поле, составы, мяч и сотрудничество:",
                 c2_role: "Взносы, оплата и сотрудничество:",
-                c2_name: "Оплата и финансы",
                 c3_role: "Бот и технические вопросы:"
-            },
-            kz: {
-                hero_title: "Қауымдастық пен матч ережелері",
-                hero_subtitle: "Ойынға жазылу, резервтен негізге өту, төлем және MVP-ге дауыс беру.",
-                s1_title: "1. Ойынға қалай жазылу керек",
-                s1_body: `<ul>
-                    <li>Топтағы хабарландыру астындағы <b>«⚽ Join Game»</b> түймесін басыңыз.</li>
-                    <li>Веб-терезе бірден Telegram ішінде ашылады.</li>
-                    <li><b>Алғаш рет пе?</b> Қысқа профильді 1 рет толтырыңыз (аты-жөніңіз латынша және позицияңыз).</li>
-                    <li><b>«Sign Up for Game»</b> басыңыз. Бос орын болса <b>Негізгі құрамға</b> кіресіз. Орын толса — <b>Резерв тізіміне</b> түсесіз.</li>
-                </ul>`,
-                screen_caption: "Үлкейту үшін скриншотты басыңыз",
-                s2_title: "2. Резервтен Негізгі құрамға өту",
-                s2_body: `<p>Негізгі құрамнан ойыншы шыққанда, бот автоматты түрде резервтегі бірінші адамды негізгі құрамға ауыстырады.</p>
-                    <div class="callout-box">
-                        Бот Telegram жеке хабарлама жібереді. Бот хабарламаларын қосулы ұстаңыз.
-                    </div>`,
-                s3_title: "3. Ойыннан бас тарту ережесі",
-                s3_body: `<p>Бас тарту үшін: боттағы карточканы ашып, <b>«❌ Leave Game»</b> басыңыз.</p>
-                    <ul>
-                        <li><b>Тегін бас тарту:</b> ойын басталуына кемінде <b>24 сағат</b> қалғанға дейін, резервтегілер дайындалып үлгеруі үшін.</li>
-                        <li><b>Кеш бас тарту (< 24 сағат) немесе келмей қалу:</b> себепсіз немесе орныңызға адам таппасаңыз, матч ақысын төлеуге міндеттісіз және сары қағаз беріледі.</li>
-                    </ul>`,
-                s4_title: "4. Ойын жарнасы мен төлем",
-                s4_body: `<p>Жарна мөлшері мен реквизиттер матч карточкасында жазылған. Төлемді <b>ойын басталғанға дейін</b> көрсетілген шотқа аударыңыз.</p>`,
-                s5_title: "5. Алаңдағы тәртіп",
-                s5_body: `<ul>
-                    <li>Арттан қауіпті подкат жасауға, дөрекілікке, төбелеске және балағат сөздерге тыйым салынады.</li>
-                    <li>Алаң уақытын жоғалтпас үшін уақытында келіңіз.</li>
-                    <li>Бірінші бұзушылық — ескерту / қағаз. Қайталанса — бан.</li>
-                </ul>`,
-                s6_title: "6. Ойыннан соң MVP-ге дауыс беру",
-                s6_body: `<p>Ойын біткен соң чатта үздік ойыншыны анықтау басталады. <b>Әр командадан 1 ойыншыға дауыс беру керек</b> (Жасылдардан 1 адам + Қызғылт сарылардан 1 адам = барлығы 2 дауыс). Бүкіл ойынға тек 1-ақ адамға дауыс бермеңіз.</p>`,
-                mvp_sample_title: "Дауыс беру үлгісі: 2 міндетті дауыс",
-                mvp_team_a: "Жасылдар (А командасы)",
-                mvp_team_b: "Қызғылт сарылар (B командасы)",
-                mvp_note: "Өзіңізге дауыс беруге болмайды. Екі команданың да үздігіне дауыс беріңіз.",
-                elo_header: "ELO рейтингі (MMR):",
-                elo_win: "Жеңіс",
-                elo_draw: "Тең",
-                elo_loss: "Жеңіліс",
-                elo_mvp: "Матч MVP бонусы",
-                s7_title: "7. Профиль, статистика және қағаздар",
-                s7_body: `<p>Жеке статистика, матчтар тарихы және MMR рейтингі кез келген уақытта бот жеке чатында <code>/profile</code> арқылы қолжетімді.</p>
-                    <ul>
-                        <li><b>Сары қағаз:</b> ескерту, 2–4 аптаға беріледі.</li>
-                        <li><b>Қызыл қағаз:</b> алдағы ойындарға жазылуды уақытша бұғаттау.</li>
-                    </ul>`,
-                link_bot_text: "Football Manager ботын ашу",
-                link_prof: "👤 Менің профилім",
-                link_lead: "🏆 Көшбасшылар",
-                link_hist: "📅 Тарих",
-                s8_title: "8. Байланыс және сұрақтар",
-                c1_role: "Ойындар, алаң, құрамдар, доп және әріптестік:",
-                c2_role: "Жарна, төлем және әріптестік:",
-                c2_name: "Төлем және қаржы",
-                c3_role: "Бот және техникалық сұрақтар:"
             }
         };
 
@@ -776,7 +704,6 @@
             document.getElementById('t-s8-title').innerText = d.s8_title;
             document.getElementById('t-c1-role').innerText = d.c1_role;
             document.getElementById('t-c2-role').innerText = d.c2_role;
-            document.getElementById('t-c2-name').innerText = d.c2_name;
             document.getElementById('t-c3-role').innerText = d.c3_role;
 
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
@@ -810,8 +737,7 @@
                     initialLang = saved;
                 } else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
                     const code = (window.Telegram.WebApp.initDataUnsafe.user.language_code || '').toLowerCase();
-                    if (code.startsWith('kk') || code.startsWith('kz')) initialLang = 'kz';
-                    else if (code.startsWith('ru')) initialLang = 'ru';
+                    if (code.startsWith('ru')) initialLang = 'ru';
                 }
             }
 
