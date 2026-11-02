@@ -5,7 +5,22 @@ if (tg) {
 }
 
 const urlParams = new URLSearchParams(window.location.search);
-const gameId = urlParams.get('game_id');
+
+function resolveGameId() {
+    let id = urlParams.get('game_id');
+    if (!id) {
+        const raw = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) 
+            || urlParams.get('tgWebAppStartParam') 
+            || urlParams.get('startapp') 
+            || urlParams.get('start_param');
+        if (raw) {
+            id = String(raw).replace(/^game_/, '');
+        }
+    }
+    return id;
+}
+
+let gameId = resolveGameId();
 let chatId = urlParams.get('chat_id');
 let currentUserProfile = null;
 let currentGame = null;
@@ -46,6 +61,9 @@ function rerenderAll() {
 }
 
 async function init() {
+    if (!gameId) {
+        gameId = resolveGameId();
+    }
     if (!gameId) {
         showError('No Game ID provided. Please open the Mini App via the proper match link.');
         return;

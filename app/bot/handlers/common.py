@@ -27,14 +27,14 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
 
     for entity in all_entities:
         if entity.type == "text_link" and entity.url:
-            match = re.search(r"start=game_(\d+)", entity.url)
+            match = re.search(r"start(?:app)?=game_(\d+)", entity.url)
             if match:
                 game_id = int(match.group(1))
                 break
 
     if not game_id:
         text_to_check = message.text or message.caption or ""
-        match = re.search(r"start=game_(\d+)", text_to_check)
+        match = re.search(r"start(?:app)?=game_(\d+)", text_to_check)
         if match:
             game_id = int(match.group(1))
 
@@ -402,15 +402,29 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
 
             # Show Game Interface
             try:
+                try:
+                    await message.delete()
+                except Exception:
+                    pass
+
                 result = await session.execute(select(Game).where(Game.id == game_id))
                 game = result.scalar_one_or_none()
                 if game:
-                    from app.bot.utils import format_game_message, resolve_chat_language
+                    from app.bot.utils import get_group_game_number, _format_date
+                    from app.bot.keyboards import get_game_keyboard
 
-                    match_lang = await resolve_chat_language(session, game.chat_id)
-                    text = await format_game_message(game, session, lang=match_lang)
-                    kb = get_game_keyboard(game_id, is_admin=is_admin, lang=match_lang)
-                    await message.answer(text, reply_markup=kb)
+                    game_num = await get_group_game_number(session, game)
+                    date_str = _format_date(game.date_time, lang=user_lang)
+
+                    card_text = t(
+                        "dm_game_signup_card",
+                        locale=user_lang,
+                        game_num=game_num,
+                        date=date_str,
+                        location=html.escape(game.location or ""),
+                    )
+                    kb = get_game_keyboard(game_id, is_admin=is_admin, lang=user_lang)
+                    await message.answer(card_text, reply_markup=kb, parse_mode="HTML")
                     return
                 else:
                     await message.answer(t("game_not_found", locale=user_lang))

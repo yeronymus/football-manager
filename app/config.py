@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # Telegram Bot
     bot_token: str
     bot_username: str = "fm_metabot"
+    webapp_short_name: str = "game"
     admin_ids: List[int] = []
     allowed_users: List[int] = []
     system_owner_id: Optional[int] = None

@@ -236,5 +236,6 @@
     "err_game_load_failed": "⚠️ Ошибка при загрузке игры: {error}",
     "prompt_open_history": "Нажмите кнопку ниже, чтобы посмотреть архив игр текущей группы:",
     "prompt_open_profile": "Нажмите кнопку ниже, чтобы открыть ваш профиль:",
-    "not_registered_yet": "Вы еще не зарегистрированы. Нажмите /start"
+    "not_registered_yet": "Вы еще не зарегистрированы. Нажмите /start",
+    "dm_game_signup_card": "⚽ <b>Игра #{game_num}</b>\n📅 <b>{date}</b>\n📍 <b>{location}</b>\n\nЧтобы записаться на игру, нажмите на кнопку ниже:"
 }

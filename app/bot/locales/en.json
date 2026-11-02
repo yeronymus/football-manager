@@ -236,5 +236,6 @@
     "err_game_load_failed": "⚠️ Error loading game: {error}",
     "prompt_open_history": "Click below to view group match history:",
     "prompt_open_profile": "Click below to open your profile:",
-    "not_registered_yet": "You are not registered yet. Press /start to begin!"
+    "not_registered_yet": "You are not registered yet. Press /start to begin!",
+    "dm_game_signup_card": "⚽ <b>Match #{game_num}</b>\n📅 <b>{date}</b>\n📍 <b>{location}</b>\n\nClick the button below to join:"
 }
