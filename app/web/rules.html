@@ -386,7 +386,7 @@
                 <p>To cancel: open the match card in the bot and tap <b>«❌ Leave Game»</b>.</p>
                 <ul>
                     <li><b>Free cancellation:</b> cancel at least <b>24 hours</b> before kick-off so reserve players have time to prepare.</li>
-                    <li><b>Late cancellation (< 24 hours) or No-Show:</b> without finding a replacement or a valid emergency, you are responsible for paying the match fee and receive a yellow card.</li>
+                    <li><b>Late cancellation (< 24 hours):</b> no fee is charged for late cancellation, only a yellow card (🟨).</li>
                 </ul>
             </div>
         </div>
@@ -395,7 +395,7 @@
         <div class="rule-card">
             <div class="rule-card-header" id="t-s4-title">4. Match Fee & Payment</div>
             <div class="rule-body" id="t-s4-body">
-                <p>The fee and payment details (bank account or cash) are shown on the match card. Please send the payment <b>before the match</b> to the provided account.</p>
+                <p>The fee and bank account details are shown on the match card. Please send the payment <b>before the match</b> via bank transfer to the provided account.</p>
             </div>
         </div>
 
@@ -406,8 +406,8 @@
                 <ul>
                     <li>Dangerous tackles, rough challenges, fights, and toxic insults are strictly prohibited.</li>
                     <li>Arrive on time to avoid losing booked pitch time.</li>
-                    <li><b>Yellow Card (🟨):</b> warning issued for unsportsmanlike conduct, late arrival, or late dropouts (< 24h). Active for 2–4 weeks.</li>
-                    <li><b>Red Card (🟥):</b> issued for 2 yellow cards, gross misconduct, or unpaid absences. Temporarily suspends match registration.</li>
+                    <li><b>Yellow Card (🟨):</b> warning issued for unsportsmanlike conduct, late arrival, or late cancellation (< 24h). Active for 2–4 weeks.</li>
+                    <li><b>Red Card (🟥):</b> issued for 2 yellow cards, gross misconduct, or unexcused no-shows. Temporarily suspends match registration.</li>
                     <li><b>Card Reason:</b> the specific reason is always stated in the card notification and in your profile. If you have questions or want to discuss a card, you can always contact the <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">organizers below</a>.</li>
                 </ul>
             </div>
@@ -476,7 +476,7 @@
                 <div class="contact-item">
                     <div>
                         <div style="font-weight:600;" id="t-c1-role">Matches, pitch, squads, balls & partnership:</div>
-                        <div style="font-size:12px; color:var(--hint-color);">Али / Елдос</div>
+                        <div style="font-size:12px; color:var(--hint-color);" id="t-c1-names">Ali / Yeldos</div>
                     </div>
                     <div style="display:flex; gap:8px;">
                         <a href="https://t.me/mukhvmmed" class="contact-link" target="_blank">@mukhvmmed</a>
@@ -487,7 +487,7 @@
                 <div class="contact-item">
                     <div>
                         <div style="font-weight:600;" id="t-c2-role">Match fees, payments & partnership:</div>
-                        <div style="font-size:12px; color:var(--hint-color);">Ернар</div>
+                        <div style="font-size:12px; color:var(--hint-color);" id="t-c2-name">Yernar</div>
                     </div>
                     <div>
                         <a href="https://t.me/napovorotenapravo" class="contact-link" target="_blank">@napovorotenapravo</a>
@@ -497,7 +497,7 @@
                 <div class="contact-item">
                     <div>
                         <div style="font-weight:600;" id="t-c3-role">Bot & technical questions:</div>
-                        <div style="font-size:12px; color:var(--hint-color);">Ернур</div>
+                        <div style="font-size:12px; color:var(--hint-color);" id="t-c3-name">Yernur</div>
                     </div>
                     <div>
                         <a href="https://t.me/yeronym" class="contact-link" target="_blank">@yeronym</a>
@@ -534,16 +534,16 @@
                 s3_body: `<p>To cancel: open the match card in the bot and tap <b>«❌ Leave Game»</b>.</p>
                     <ul>
                         <li><b>Free cancellation:</b> cancel at least <b>24 hours</b> before kick-off so reserve players have time to prepare.</li>
-                        <li><b>Late cancellation (< 24 hours) or No-Show:</b> without finding a replacement or a valid emergency, you are responsible for paying the match fee and receive a yellow card.</li>
+                        <li><b>Late cancellation (< 24 hours):</b> no fee is charged for late cancellation, only a yellow card (🟨).</li>
                     </ul>`,
                 s4_title: "4. Match Fee & Payment",
-                s4_body: `<p>The fee and payment details (bank account or cash) are shown on the match card. Please send the payment <b>before the match</b> to the provided account.</p>`,
+                s4_body: `<p>The fee and bank account details are shown on the match card. Please send the payment <b>before the match</b> via bank transfer to the provided account.</p>`,
                 s5_title: "5. Pitch Conduct & Disciplinary Cards",
                 s5_body: `<ul>
                     <li>Dangerous tackles, rough challenges, fights, and toxic insults are strictly prohibited.</li>
                     <li>Arrive on time to avoid losing booked pitch time.</li>
-                    <li><b>Yellow Card (🟨):</b> warning issued for unsportsmanlike conduct, late arrival, or late dropouts (< 24h). Active for 2–4 weeks.</li>
-                    <li><b>Red Card (🟥):</b> issued for 2 yellow cards, gross misconduct, or unpaid absences. Temporarily suspends match registration.</li>
+                    <li><b>Yellow Card (🟨):</b> warning issued for unsportsmanlike conduct, late arrival, or late cancellation (< 24h). Active for 2–4 weeks.</li>
+                    <li><b>Red Card (🟥):</b> issued for 2 yellow cards, gross misconduct, or unexcused no-shows. Temporarily suspends match registration.</li>
                     <li><b>Card Reason:</b> the specific reason is always stated in the card notification and in your profile. If you have questions or want to discuss a card, you can always contact the <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">organizers below</a>.</li>
                 </ul>`,
                 s6_title: "6. Post-Match & MVP Voting",
@@ -565,8 +565,11 @@
                 link_hist: "📅 History",
                 s8_title: "8. Contacts & Questions",
                 c1_role: "Matches, pitch, squads, balls & partnership:",
+                c1_names: "Ali / Yeldos",
                 c2_role: "Match fees, payments & partnership:",
-                c3_role: "Bot & technical questions:"
+                c2_name: "Yernar",
+                c3_role: "Bot & technical questions:",
+                c3_name: "Yernur"
             },
             ru: {
                 hero_title: "Правила сообщества и матчей",
@@ -588,16 +591,16 @@
                 s3_body: `<p>Для отмены откройте карточку матча в боте и нажмите <b>«❌ Leave Game»</b>.</p>
                     <ul>
                         <li><b>Бесплатная отмена:</b> не позднее чем за <b>24 часа</b> до свистка, чтобы игроки из резерва успели собраться.</li>
-                        <li><b>Поздняя отмена (< 24 часов) или неявка:</b> без уважительной причины или найденной замены вы обязаны оплатить взнос за матч и получаете жёлтую карточку.</li>
+                        <li><b>Поздняя отмена (< 24 часов):</b> взнос не взимается, выдаётся только жёлтая карточка (🟨).</li>
                     </ul>`,
                 s4_title: "4. Взнос и оплата",
-                s4_body: `<p>Сумма взноса и реквизиты указаны в карточке матча. Пожалуйста, переводите взнос <b>до начала матча</b> по указанным реквизитам.</p>`,
+                s4_body: `<p>Сумма взноса и банковские реквизиты указаны в карточке матча. Пожалуйста, переводите взнос <b>до начала матча</b> на указанный банковский счёт.</p>`,
                 s5_title: "5. Поведение на поле и система карточек",
                 s5_body: `<ul>
                     <li>Опасные подкаты сзади, грубость, драки и токсичное поведение запрещены.</li>
                     <li>Приходите вовремя, чтобы не терять оплаченное время поля.</li>
-                    <li><b>Жёлтая карточка (🟨):</b> предупреждение за грубую игру, опоздание или поздний слив (< 24ч). Действует 2–4 недели.</li>
-                    <li><b>Красная карточка (🟥):</b> за 2 жёлтые карточки, драку или неоплаченную неявку. Временно блокирует запись на матчи.</li>
+                    <li><b>Жёлтая карточка (🟨):</b> предупреждение за грубую игру, опоздание или позднюю отмену записи (< 24ч). Действует 2–4 недели.</li>
+                    <li><b>Красная карточка (🟥):</b> за 2 жёлтые карточки, драку или грубое нарушение. Временно блокирует запись на матчи.</li>
                     <li><b>Причина карточки:</b> точная причина всегда пишется в уведомлении от бота и в вашем профиле. Если у вас есть вопросы или вы хотите оспорить карточку — всегда можете написать <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">администраторам ниже</a>.</li>
                 </ul>`,
                 s6_title: "6. Голосование за MVP после матча",
@@ -619,8 +622,11 @@
                 link_hist: "📅 История",
                 s8_title: "8. Контакты и вопросы",
                 c1_role: "Игры, поле, составы, мяч и сотрудничество:",
+                c1_names: "Али / Елдос",
                 c2_role: "Взносы, оплата и сотрудничество:",
-                c3_role: "Бот и технические вопросы:"
+                c2_name: "Ернар",
+                c3_role: "Бот и технические вопросы:",
+                c3_name: "Ернур"
             }
         };
 
@@ -703,8 +709,11 @@
 
             document.getElementById('t-s8-title').innerText = d.s8_title;
             document.getElementById('t-c1-role').innerText = d.c1_role;
+            document.getElementById('t-c1-names').innerText = d.c1_names;
             document.getElementById('t-c2-role').innerText = d.c2_role;
+            document.getElementById('t-c2-name').innerText = d.c2_name;
             document.getElementById('t-c3-role').innerText = d.c3_role;
+            document.getElementById('t-c3-name').innerText = d.c3_name;
 
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
             const activeBtn = document.getElementById(`btn-${lang}`);
