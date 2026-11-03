@@ -14,6 +14,12 @@ function resolveGameId() {
             || urlParams.get('startapp') 
             || urlParams.get('start_param');
         if (raw) {
+            if (raw === 'rules' || raw.startsWith('rules_') || raw.startsWith('rules')) {
+                const lang = raw.includes('ru') ? 'ru' : (raw.includes('en') ? 'en' : '');
+                const q = lang ? `?lang=${lang}` : '';
+                window.location.replace(`/web/rules.html${q}`);
+                return null;
+            }
             id = String(raw).replace(/^game_/, '');
         }
     }

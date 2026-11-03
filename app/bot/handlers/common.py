@@ -253,6 +253,29 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 action_type = "game"
             except ValueError:
                 pass
+        elif args.startswith("rules"):
+            rules_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html"
+            if "en" in args:
+                rules_url += "?lang=en"
+            elif "ru" in args:
+                rules_url += "?lang=ru"
+            
+            kb = types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        types.InlineKeyboardButton(
+                            text=t("btn_channel_rules", locale=user_lang),
+                            web_app=types.WebAppInfo(url=rules_url),
+                        )
+                    ]
+                ]
+            )
+            await message.answer(
+                "📖 <b>Community Rules & Match Guide / Правила сообщества</b>",
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            return
         elif args.startswith("finish_") or args.startswith("edit_"):
             try:
                 game_id = int(args.split("_")[1])
