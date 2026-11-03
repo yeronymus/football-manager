@@ -1,73 +1,94 @@
-# app/cli/draft.py
-import os
-import sys
+from typing import Optional
 
-# Ensure project root in path
-sys.path.append(os.getcwd())
+from sqlalchemy import func, select
 
-from app.core.domain.historical_data import PLAYER_PROPS, FAST_SET, GAMES_1_7
+from app.db.database import async_session_maker
+from app.db.models import Game, GameStats, GameStatus, PlayerProfile, Signup, SignupStatus, User
 
-def calc_win_pct(w, d, l):
+
+def calc_win_pct(w: int, d: int, l: int) -> str:
     total = w + l + d
-    if total == 0: return "-"
-    return f"{w/total*100:.0f}%"
+    if total == 0:
+        return "-"
+    return f"{w / total * 100:.0f}%"
 
-async def generate_draft_report_command(args):
-    """Generate Draft Report markdown file."""
-    output_file = args.output or "Draft_Stats.md"
+
+async def generate_draft_report_command(args) -> None:
+    """Generate a Markdown player draft report from live database records."""
+    output_file = getattr(args, "output", None) or "Draft_Stats.md"
+    chat_id: Optional[int] = getattr(args, "chat_id", None)
     print(f"Generating Draft Report to {output_file}...")
-    
-    # 1. Compile stats from historical games (for simplicity, like generate_draft.py did)
-    stats = {}
-    for p in PLAYER_PROPS:
-        stats[p] = {"elo": 100, "gp": 0, "g": 0, "w": 0, "l": 0, "d": 0, "mvp": 0}
 
-    for g in GAMES_1_7:
-        w_team = g.get("W", [])
-        l_team = g.get("L", [])
-        goals = g.get("goals", {})
-        
-        for p in w_team:
-            if p not in stats: stats[p] = {"elo":100,"gp":0,"g":0,"w":0,"l":0,"d":0,"mvp":0}
-            stats[p]["gp"] += 1; stats[p]["w"] += 1; stats[p]["elo"] += 10
-            stats[p]["g"] += goals.get(p, 0)
-        for p in l_team:
-            if p not in stats: stats[p] = {"elo":100,"gp":0,"g":0,"w":0,"l":0,"d":0,"mvp":0}
-            stats[p]["gp"] += 1; stats[p]["l"] += 1
-            # Simulation of draw logic for Game 1
-            if g["id"] == 1 and p in ["Arsen Kudaibergen", "Aidyn Galymbekov", "Umid Kamilov", "Daryn Bakyrkhan", "Zhanibek Xenbek", "Aktan Abdullaatov"]:
-                stats[p]["d"] += 1; stats[p]["l"] -= 1
-            else:
-                stats[p]["elo"] -= 5
-            stats[p]["g"] += goals.get(p, 0)
-        for p in g.get("mvp", []):
-            if p in stats: stats[p]["mvp"] += 1; stats[p]["elo"] += 5
+    async with async_session_maker() as db:
+        if chat_id is not None:
+            stmt = (
+                select(User, PlayerProfile)
+                .join(PlayerProfile, PlayerProfile.user_id == User.user_id)
+                .where(PlayerProfile.chat_id == chat_id)
+            )
+            rows = (await db.execute(stmt)).all()
+            players = [
+                (
+                    u.user_id,
+                    u.full_name or f"Player #{u.user_id}",
+                    u.player_position.value if u.player_position else "-",
+                    p.rating or 100,
+                    p.games_played or 0,
+                    p.stats_mvp or 0,
+                )
+                for u, p in rows
+            ]
+        else:
+            users = (await db.execute(select(User))).scalars().all()
+            players = [
+                (
+                    u.user_id,
+                    u.full_name or f"Player #{u.user_id}",
+                    u.player_position.value if u.player_position else "-",
+                    u.rating or 100,
+                    u.games_played or 0,
+                    u.stats_mvp or 0,
+                )
+                for u in users
+            ]
 
-    # 2. Target Draft List (replicated from tools/generate_draft.py)
-    draft_list = [
-        "Yernar Bestikpayev", "Yeldos Ismailov", "Adok Salimzhan", "Yernur Bauyrzhanuly", "Bakhtiyar Temirbayev", 
-        "Dias August", "Dias Bekbosyn", "Mirlan Toktoshev", "Niyaz Bayankulov", "Iliyas Akbergen", 
-        "Dastan Sadyraliyev", "Aidyn Galymbekov", "Nurkabyl Sharipbay", "Raimbek Sarzhakov", "Nurken Samigullin", 
-        "Vlad Lishanlo", "Aidyn Kassym", "Aldiyar Kazbekov", "Miras Mukanov", "Nurislam", 
-        "Zhanibek Xenbek", "Mansur Mutayev", "Assylbek Nurmagambetov", "Daryn Bakyrkhan", "Yerik Yekibay", 
-        "Umid Kamilov", "Asset Khassan", "Medeu Yersain"
-    ]
+        goals_stmt = select(GameStats.user_id, func.coalesce(func.sum(GameStats.goals), 0))
+        if chat_id is not None:
+            goals_stmt = goals_stmt.join(Game, Game.id == GameStats.game_id).where(Game.chat_id == chat_id)
+        goals_stmt = goals_stmt.group_by(GameStats.user_id)
+        goals_map = {uid: int(total) for uid, total in (await db.execute(goals_stmt)).all()}
 
-    with open(output_file, "w", encoding='utf-8') as f:
-        draft_stats = []
-        for p in draft_list:
-            if p not in stats:
-                draft_stats.append((p, PLAYER_PROPS.get(p, {"pos": "?"})["pos"], 100, 0, 0, "-", 0, "☪" if p in FAST_SET else ""))
-            else:
-                s = stats[p]
-                draft_stats.append((p, PLAYER_PROPS[p]["pos"], s["elo"], s["gp"], s["g"], calc_win_pct(s["w"], s.get("d",0), s["l"]), s["mvp"], "☪" if p in FAST_SET else ""))
-                
-        draft_stats.sort(key=lambda x: (-x[2], -x[4], -x[3]))
-        
-        f.write("| Player | Pos | ELO | Games | Goals | Win% | MVP | Fasting |\n")
-        f.write("|--------|-----|-----|-------|-------|------|-----|---------|\n")
-        for row in draft_stats:
-            mvp_star = f"⭐{row[6]}" if row[6] > 0 else ""
-            f.write(f"| {row[0]} | {row[1]} | **{row[2]}** | {row[3]} | {row[4]} | {row[5]} | {mvp_star} | {row[7]} |\n")
+        wdl_map: dict[int, list[int]] = {}
+        signup_stmt = (
+            select(Signup.user_id, Signup.team, Game.winner_team)
+            .join(Game, Game.id == Signup.game_id)
+            .where(Signup.status == SignupStatus.ACTIVE, Game.status == GameStatus.FINISHED)
+        )
+        if chat_id is not None:
+            signup_stmt = signup_stmt.where(Game.chat_id == chat_id)
 
-    print(f"DRAFT REPORT DONE: {output_file}")
+        for uid, team, winner_team in (await db.execute(signup_stmt)).all():
+            counts = wdl_map.setdefault(uid, [0, 0, 0])  # [wins, draws, losses]
+            if winner_team is None:
+                counts[1] += 1
+            elif team is not None and team == winner_team:
+                counts[0] += 1
+            elif team is not None:
+                counts[2] += 1
+
+    draft_rows = []
+    for uid, name, pos, elo, gp, mvp in players:
+        w, d, l = wdl_map.get(uid, [0, 0, 0])
+        goals = goals_map.get(uid, 0)
+        draft_rows.append((name, pos, elo, gp, goals, calc_win_pct(w, d, l), mvp))
+
+    draft_rows.sort(key=lambda item: (-item[2], -item[4], -item[3], item[0]))
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write("| Player | Pos | ELO | Games | Goals | Win% | MVP |\n")
+        f.write("|--------|-----|-----|-------|-------|------|-----|\n")
+        for name, pos, elo, gp, goals, win_pct, mvp in draft_rows:
+            mvp_star = f"⭐{mvp}" if mvp > 0 else ""
+            f.write(f"| {name} | {pos} | **{elo}** | {gp} | {goals} | {win_pct} | {mvp_star} |\n")
+
+    print(f"DRAFT REPORT DONE: {output_file} ({len(draft_rows)} players)")

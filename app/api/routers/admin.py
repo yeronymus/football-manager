@@ -144,6 +144,8 @@ async def create_game(
             await cache_service.evict(f"game_details:{new_game.id}")
             return {"game_id": new_game.id, "status": "created"}
 
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -206,6 +208,8 @@ async def update_game(
             event_bus.publish, GameUpdatedEvent(game_id=updated_game.id, changes=changes)
         )
         return {"status": "updated", "id": updated_game.id}
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -245,6 +249,8 @@ async def admin_balance_teams(
             event_bus.publish, GameStateChangedEvent(game_id=data.game_id)
         )
         return {"status": "balanced"}
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -317,6 +323,8 @@ async def admin_update_teams(
             event_bus.publish, GameStateChangedEvent(game_id=data.game_id)
         )
         return {"status": "updated"}
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -530,6 +538,8 @@ async def finish_game(
             ),
         )
         return {"status": "finished"}
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

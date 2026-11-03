@@ -147,7 +147,10 @@ flowchart TD
 
 ## Core Capabilities
 
-- **Multi-Tenant Group & Channel Orchestration**: Manage multiple independent clubs or corporate departments from a single deployment; each tenant maintains isolated configuration defaults, schedules, rosters, and leaderboards.
+- **Multi-Tenant Group & Channel Orchestration**: Manage multiple independent clubs or corporate departments from a single deployment; each tenant maintains isolated configuration defaults, schedules, rosters, and leaderboards, with `REGISTRATION_MODE` supporting both instant self-service (`open_saas`) and gated enterprise onboarding (`approval_required`).
+- **JSON-Catalog Localization (`EN` / `RU` / `CS`)**: Unified zero-code-change `LocaleCatalog` (`app/locales/*.json`) defaulting universally to English with automatic locale discovery and CI placeholder-parity enforcement across Bot, Services, Scheduler, and Mini Apps.
+- **Sport Presets & Tenant Policy Engine**: Built-in `SportPresets` (`football`, `futsal`, `volleyball`, `basketball`, `generic`) and per-tenant JSONB `TenantPolicy` governing free cancellation windows, rating deltas, and dynamic organizer contacts.
+- **3-Mode Billing & Czech QR Platba (`SPAYD 1.0`)**: Supports `manual` transfers, `spayd_qr` (ČNB Mod-11 IBAN conversion + offline pure-Python SVG QR generation), and `free_corporate` zero-cost company events.
 - **Mobile-First Telegram Mini Apps**:
   - **Match Creator & Editor** (`index.html`, `edit_game.html`): Date/time scheduling, pitch capacity, role windows, and fee configuration.
   - **Interactive Team Balancer & Draft** (`draft.html`): Algorithmic rating + position optimizer across 2 or 3 teams with manual drag/swap overrides.
@@ -268,6 +271,7 @@ PYTHONPATH=. uv run pytest
 
 ## Documentation Index
 
+- **[Configuration, Tenant Policy & Localization Guide](./docs/CONFIGURATION_AND_I18N.md)** — `EN/RU/CS` JSON locale catalog, `SportPresets`, `TenantPolicy` schema, Czech `SPAYD 1.0` QR Platba, and `free_corporate` billing mode.
 - **[Developer Sandbox & Workflow Guide](./docs/DEVELOPMENT.md)** — Local Docker Compose sandbox, `DEV_AUTH_BYPASS` browser testing, Cloudflare HTTPS tunnel for mobile WebApps, and CI gates.
 - **[Backup & Disaster Recovery Runbook](./docs/BACKUP_AND_DR.md)** — 3-2-1 backup strategy, `age`/`gpg` encryption, S3/R2 off-site sync, pre-migration hooks, and automated restore drills.
 

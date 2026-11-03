@@ -1,9 +1,22 @@
-from typing import Callable, Dict, Any, Awaitable
+from typing import Any, Awaitable, Callable, Dict
+
 from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject, Message, CallbackQuery
+from aiogram.types import CallbackQuery, Message, TelegramObject
 from sqlalchemy import select
-from app.db.models import Chat, PlayerProfile, User
 from sqlalchemy.ext.asyncio import async_sessionmaker
+
+from app.config import settings
+from app.db.models import Chat, PlayerProfile, User
+
+
+def is_auto_approved_tenant(actor_id: int | None) -> bool:
+    """Resolve whether a newly discovered Telegram group should be immediately active."""
+    if actor_id is not None and (
+        actor_id == settings.system_owner_id or actor_id in settings.admin_ids
+    ):
+        return True
+    return settings.registration_mode != "approval_required"
+
 
 class DbSessionMiddleware(BaseMiddleware):
     def __init__(self, session_pool: async_sessionmaker):
@@ -18,7 +31,6 @@ class DbSessionMiddleware(BaseMiddleware):
     ) -> Any:
         async with self.session_pool() as session:
             data["session"] = session
-            # Auto-sync user's username and full_name if user exists in DB
             tg_user = getattr(event, "from_user", None)
             if tg_user and not getattr(tg_user, "is_bot", False):
                 try:
@@ -40,8 +52,6 @@ class DbSessionMiddleware(BaseMiddleware):
             return await handler(event, data)
 
 
-from app.config import settings
-
 class InstanceAccessMiddleware(BaseMiddleware):
     async def __call__(
         self,
@@ -49,10 +59,8 @@ class InstanceAccessMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: Dict[str, Any],
     ) -> Any:
-        # Whitelist filtering for staging/private environments
         if settings.allowed_users and event.from_user:
             if event.from_user.id not in settings.allowed_users:
-                # Intercept update and reply with access denied if it's a message
                 if isinstance(event, Message):
                     try:
                         await event.answer("Staging environment. Access denied.")
@@ -67,14 +75,16 @@ class InstanceAccessMiddleware(BaseMiddleware):
 
         return await handler(event, data)
 
+
 class TenantMiddleware(BaseMiddleware):
     """
-    SaaS Middleware:
+    Multi-Tenant Onboarding & Context Middleware:
     1. Intercepts events in group chats.
-    2. Ensures Chat settings exist in DB.
+    2. Ensures Chat settings exist in DB (honoring REGISTRATION_MODE: open_saas vs approval_required).
     3. Ensures PlayerProfile exists for the user in this Chat.
     4. Injects `tenant` (Chat) and `player` (PlayerProfile) into handler data.
     """
+
     async def __call__(
         self,
         handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
@@ -84,10 +94,10 @@ class TenantMiddleware(BaseMiddleware):
         session = data.get("session")
         if not session:
             return await handler(event, data)
-            
+
         tg_chat = None
         tg_user = None
-        
+
         if isinstance(event, Message):
             tg_chat = event.chat
             tg_user = event.from_user
@@ -95,40 +105,42 @@ class TenantMiddleware(BaseMiddleware):
             if event.message:
                 tg_chat = event.message.chat
             tg_user = event.from_user
-            
+
         if not tg_chat or tg_chat.type == "private":
-            # Pass through for private PMs (no tenant context here)
             return await handler(event, data)
-            
-        # 1. Provide/Create Chat (Tenant)
+
         chat_id = tg_chat.id
+        actor_id = tg_user.id if tg_user else None
         chat_obj = await session.get(Chat, chat_id)
         if not chat_obj:
-            chat_obj = Chat(chat_id=chat_id, title=tg_chat.title or "Group")
+            chat_obj = Chat(
+                chat_id=chat_id,
+                title=tg_chat.title or "Group",
+                is_active=is_auto_approved_tenant(actor_id),
+            )
             session.add(chat_obj)
             await session.commit()
         elif tg_chat.title and chat_obj.title != tg_chat.title:
             chat_obj.title = tg_chat.title
             await session.commit()
-            
+
         data["tenant"] = chat_obj
-        
-        # 2. Provide/Create PlayerProfile for current user
+
         if tg_user:
             user_obj = await session.get(User, tg_user.id)
             if user_obj:
                 stmt = select(PlayerProfile).where(
-                    PlayerProfile.user_id == tg_user.id, 
-                    PlayerProfile.chat_id == chat_id
+                    PlayerProfile.user_id == tg_user.id,
+                    PlayerProfile.chat_id == chat_id,
                 )
                 result = await session.execute(stmt)
                 profile = result.scalar_one_or_none()
-                
+
                 if not profile:
                     profile = PlayerProfile(user_id=tg_user.id, chat_id=chat_id)
                     session.add(profile)
                     await session.commit()
-                
+
                 data["player"] = profile
-        
+
         return await handler(event, data)

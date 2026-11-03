@@ -478,7 +478,7 @@ async def test_finish_announcement_localization(session: AsyncSession):
     from app.core.domain.dto import PlayerStatDTO
     
     # Setup users
-    u1 = User(user_id=501, full_name="Yeronym", player_position=Position.MID)
+    u1 = User(user_id=501, full_name="Jordan", player_position=Position.MID)
     u2 = User(user_id=502, full_name="Alex", player_position=Position.FWD)
     session.add_all([u1, u2])
     
@@ -508,12 +508,12 @@ async def test_finish_announcement_localization(session: AsyncSession):
     text_ru = await _build_finish_announcement(
         session=session,
         game=game_ru,
-        voting_results=[("Yeronym", 5)],
+        voting_results=[("Jordan", 5)],
         data=MockFinishData()
     )
     assert "Матч #1 завершен!" in text_ru
     assert "Команда оранжевые 🟠 3:2 🟢 Команда зеленые" in text_ru
-    assert "MVP:</b> Yeronym" in text_ru
+    assert "MVP:</b> Jordan" in text_ru
     assert "Голоса за MVP:" in text_ru
     assert "Голы:" in text_ru
     assert "Alex: 2" in text_ru
@@ -539,12 +539,12 @@ async def test_finish_announcement_localization(session: AsyncSession):
     text_en = await _build_finish_announcement(
         session=session,
         game=game_en,
-        voting_results=[("Yeronym", 7)],
+        voting_results=[("Jordan", 7)],
         data=MockFinishData()
     )
     assert "Match #1 finished!" in text_en
     assert "Team Orange 🟠 4:1 🟢 Team Green" in text_en
-    assert "MVP:</b> Yeronym" in text_en
+    assert "MVP:</b> Jordan" in text_en
     assert "MVP Votes:" in text_en
     assert "Goals:" in text_en
     assert "Alex: 2" in text_en

@@ -35,10 +35,22 @@ class GameLifecycleService:
         Creates a new game, enforces tenant billing mode, handles auto-joins, and schedules lifecycle tasks.
         """
         chat = await self.session.get(Chat, data.chat_id)
+        is_superadmin = (
+            creator_id == settings.system_owner_id or creator_id in settings.admin_ids
+        )
         if not chat:
-            chat = Chat(chat_id=data.chat_id, title="Unknown Chat (Auto-created)")
+            chat = Chat(
+                chat_id=data.chat_id,
+                title="Unknown Chat (Auto-created)",
+                is_active=(settings.registration_mode != "approval_required" or is_superadmin),
+            )
             self.session.add(chat)
             await self.session.flush()
+
+        if chat.is_active is False and not is_superadmin:
+            raise PermissionError(
+                "This group is pending administrator approval before scheduling matches."
+            )
 
         resolved_location = (data.location or "").strip() or (
             chat.default_location or ""

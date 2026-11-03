@@ -107,27 +107,46 @@ def test_locale_catalog_key_and_placeholder_parity_and_opsec():
                 f"expected {en_ph}, got {loc_ph}"
             )
 
-    # OPSEC Gate: Zero personal handles, bank accounts, or homelab references
-    forbidden_tokens = (
-        "yeronym",
-        "mukhvmmed",
-        "qaddafi_1",
-        "napovorotenapravo",
-        "fm_metabot",
-        "2924402033",
-        "147.32.107.65",
-        "57.131.147.83",
-    )
-    audited_paths = [
-        *locale_files,
-        REPO_ROOT / "app" / "bot" / "handlers" / "common.py",
-        REPO_ROOT / "app" / "web" / "rules.html",
-        REPO_ROOT / "app" / "web" / "js" / "i18n.js",
-    ]
-    for path in audited_paths:
-        content_lower = path.read_text(encoding="utf-8").lower()
-        for token in forbidden_tokens:
-            assert token not in content_lower, f"OPSEC leak '{token}' found in {path.name}"
+    # Full-Repo OPSEC Gate: Zero personal handles, private infrastructure hosts/IPs, or real bank accounts
+    # Stored as SHA-256 digests so even test files contain zero plaintext personal identifiers.
+    import hashlib
+    import subprocess
+
+    forbidden_sha256 = {
+        "16965dedff4d3bcf632bc6bca565b872c2bec0810ad3e7f1ec884696c133fd29",
+        "c10e7672fa1a7569360c3a89437a85bcbe32c7800921d1f2bdeedc463680a3c4",
+        "715544540e7db901e203e044ec91e9a3ca946d0c149d68675ead2142645d58b6",
+        "040e0f2afab838a1bb8917e50104daec7a677cf0d97d219b750052dcf1bbcecd",
+        "d20dbd6a870c25193970ab56921ac6c12c60f19b53ca5cf7d8d30e89adf83cda",
+        "8be0b5445fca6eb16d14c6f4eaff1cf1d1a3362ef660bfb2b66e74bf309b7e61",
+        "d433cd0524ab4b4c29df517cc423e0afb4bac91e704cb53a9a7f5dac6d11fa22",
+        "c67b4083adc0c8e394420fd1008eed8cc064bfaa889675938c0056a0ce581a6c",
+        "4c2514756d73f5e4a40235c2a4daaaaca6f1b9c267b27c3a3c76c2cb7f7148d5",
+        "d229398bf5cc231a53c64bccfefa5e5974897c6e750bfa51a542a69510ccb2c7",
+        "d2ec854df25934248ff4d7d251973ebc19082d21118f691a036a0bcd0ef1bb3f",
+        "824bcc1aca31b497d348d8aeadad9e55fe832b76d48b5fec4db437be370f598b",
+        "706ac9afb3008b321e4f1c08dc6779a9bcb924dc5cd60b001c836f6c044b7d2a",
+        "dcb7e522a79d164966982137875c416c6c095e9fe3144c18f81527090ab35583",
+        "370fbd990f49eddd21f472bf2efd758f55a8dfb26ec828e4e703783d65a8f0f3",
+        "6988cd7eaf858d72eca53e6a7634935c5a9ff346136601199bd5918eeeacf940",
+        "750ae0fa6e4252d9984d12de123a3c17352d3b8c34ca4b5a38d94ba2a2e8d5e7",
+    }
+    token_re = re.compile(r"(?:\d{1,3}(?:\.\d{1,3}){3})|[a-z0-9_]{4,}")
+    skip_suffixes = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".woff", ".woff2", ".lock"}
+
+    tracked_files = subprocess.check_output(
+        ["git", "ls-files"], cwd=REPO_ROOT, text=True
+    ).splitlines()
+    for rel_path in tracked_files:
+        path = REPO_ROOT / rel_path
+        if not path.is_file() or path.suffix.lower() in skip_suffixes:
+            continue
+        content_lower = path.read_text(encoding="utf-8", errors="ignore").lower()
+        for tok in set(token_re.findall(content_lower)):
+            digest = hashlib.sha256(tok.encode("utf-8")).hexdigest()
+            assert digest not in forbidden_sha256, (
+                f"OPSEC forbidden identifier detected in tracked file: {rel_path}"
+            )
 
 
 def test_zero_code_change_locale_autodiscovery_and_normalization(tmp_path: Path):
@@ -415,3 +434,92 @@ async def test_platform_api_locales_presets_rules_and_spayd_qr(session):
     assert code_qr == 200
     assert "image/svg+xml" in hdrs_qr.get("content-type", "")
     assert raw_qr.startswith(b"<svg ")
+
+
+# ==============================================================================
+# 5. Architectural Quick-Wins: UoW Rollback, Custom PK Locking & Registration Mode
+# ==============================================================================
+
+
+@pytest.mark.asyncio
+async def test_uow_rolls_back_external_session_on_exception():
+    from unittest.mock import AsyncMock
+
+    ext_session = MagicMock()
+    ext_session.rollback = AsyncMock()
+    ext_session.close = AsyncMock()
+
+    with pytest.raises(RuntimeError, match="simulated failure"):
+        async with UnitOfWork(session=ext_session):
+            raise RuntimeError("simulated failure")
+
+    ext_session.rollback.assert_awaited_once()
+    ext_session.close.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_base_repository_get_with_lock_supports_custom_primary_keys(session):
+    from app.core.repositories.base import BaseRepository
+
+    chat = Chat(chat_id=-1009401, title="Lockable Tenant")
+    user = User(user_id=9401, full_name="Lockable Player", player_position=Position.CM)
+    session.add_all([chat, user])
+    await session.commit()
+
+    chat_repo = BaseRepository(session, Chat)
+    user_repo = BaseRepository(session, User)
+
+    locked_chat = await chat_repo.get_with_lock(-1009401)
+    locked_user = await user_repo.get_with_lock(9401)
+    assert locked_chat is not None and locked_chat.title == "Lockable Tenant"
+    assert locked_user is not None and locked_user.full_name == "Lockable Player"
+
+
+@pytest.mark.asyncio
+async def test_registration_mode_approval_required_blocks_unapproved_tenant(session, monkeypatch):
+    from app.bot.middlewares import is_auto_approved_tenant
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "registration_mode", "approval_required")
+    monkeypatch.setattr(settings, "system_owner_id", 777001)
+    monkeypatch.setattr(settings, "admin_ids", [777001])
+
+    assert is_auto_approved_tenant(9501) is False
+    assert is_auto_approved_tenant(777001) is True
+
+    creator = User(user_id=9501, full_name="Dept Organizer", player_position=Position.CM)
+    owner = User(user_id=777001, full_name="Platform Owner", player_position=Position.GK)
+    session.add_all([creator, owner])
+    await session.commit()
+
+    mock_scheduler = MagicMock()
+
+    # Non-superadmin creating game in an unknown group under approval_required -> blocked!
+    with pytest.raises(PermissionError, match="pending administrator approval"):
+        async with UnitOfWork(session=session) as uow:
+            lifecycle = GameLifecycleService(uow, mock_scheduler, StatsService(uow.session))
+            await lifecycle.create_game(
+                CreateGameDTO(
+                    chat_id=-1009501,
+                    date_time=datetime.now() + timedelta(days=2),
+                    location="Pending Pitch",
+                ),
+                creator_id=9501,
+            )
+
+    # Superadmin / system owner auto-approves new tenant and succeeds
+    async with UnitOfWork(session=session) as uow:
+        lifecycle = GameLifecycleService(uow, mock_scheduler, StatsService(uow.session))
+        game = await lifecycle.create_game(
+            CreateGameDTO(
+                chat_id=-1009502,
+                date_time=datetime.now() + timedelta(days=2),
+                location="Approved Pitch",
+            ),
+            creator_id=777001,
+        )
+        await uow.commit()
+
+    approved_chat = await session.get(Chat, -1009502)
+    assert approved_chat is not None and approved_chat.is_active is True
+    assert game.id is not None
