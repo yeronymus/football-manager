@@ -3,16 +3,20 @@ listeners.py — Bot-side event handlers.
 
 Subscribes to domain events from core/events.py and reacts by updating
 the Telegram UI. This module knows about the bot, but core/ does NOT.
-
-The bot object is imported from instance.py (no circular deps).
 """
+import html
 import logging
+from app.bot.instance import bot
 from app.core.events import (
-    event_bus, GameStateChangedEvent, GameMessageNeedsUpdateEvent,
-    GameCreatedEvent, GameFinishedEvent, GameUpdatedEvent, TeamsPublishedEvent,
+    GameCreatedEvent,
+    GameFinishedEvent,
+    GameMessageNeedsUpdateEvent,
+    GameStateChangedEvent,
+    GameUpdatedEvent,
+    TeamsPublishedEvent,
+    event_bus,
 )
 from app.core.services.roster import PlayerJoinedEvent, PlayerLeftEvent
-from app.bot.instance import bot
 from app.db.database import async_session_maker
 from app.db.models import Game
 
@@ -32,14 +36,9 @@ def setup_listeners():
     logger.info("Event listeners registered.")
 
 
-# ---------------------------------------------------------------------------
-# Domain event handlers
-# ---------------------------------------------------------------------------
-
 async def on_game_created(event: GameCreatedEvent):
-    """Handle new game: send message to chat, pin it, update dashboard."""
+    """Handle new game: send message to chat and pin it."""
     if not event.should_publish:
-        # Deferred publish or past game — just update dashboard
         await _refresh_dashboard(event.game_id)
         return
 
@@ -49,32 +48,27 @@ async def on_game_created(event: GameCreatedEvent):
             return
 
         try:
-            from app.bot.utils import format_game_message
+            from app.bot.keyboards import get_channel_game_keyboard
+            from app.bot.utils import format_game_message, resolve_chat_language
 
-            # Check if chat is a channel
-            is_channel = False
             try:
                 chat_info = await bot.get_chat(event.chat_id)
                 if chat_info.type == "channel":
                     game.channel_id = event.chat_id
-                    is_channel = True
             except Exception as e:
                 logger.warning(f"Failed to check chat type: {e}")
 
-            from app.bot.utils import resolve_chat_language
             chat_lang = await resolve_chat_language(session, game.chat_id)
-
-            text = await format_game_message(game, session, is_short=False, lang=chat_lang)
-            
-            # Group chats and channels must always use the channel-safe keyboard (deep-link transitioning to private DMs)
-            from app.bot.keyboards import get_channel_game_keyboard
+            text = await format_game_message(
+                game, session, is_short=False, lang=chat_lang
+            )
             kb = get_channel_game_keyboard(game.id, lang=chat_lang)
 
             msg = await bot.send_message(
                 chat_id=game.chat_id,
                 text=text,
                 reply_markup=kb,
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
             game.message_id = msg.message_id
             if game.channel_id == game.chat_id:
@@ -83,9 +77,11 @@ async def on_game_created(event: GameCreatedEvent):
             await session.commit()
 
             try:
-                await bot.pin_chat_message(chat_id=game.chat_id, message_id=msg.message_id)
+                await bot.pin_chat_message(
+                    chat_id=game.chat_id, message_id=msg.message_id
+                )
             except Exception:
-                pass  # Pin may fail if bot lacks permissions
+                pass
 
         except Exception as e:
             logger.warning(f"Failed to publish game {event.game_id} to chat: {e}")
@@ -94,62 +90,71 @@ async def on_game_created(event: GameCreatedEvent):
 
 
 async def on_game_finished(event: GameFinishedEvent):
-    """Send finish result text to chat, then refresh dashboard."""
+    """Send finish result text to chat, unpin match post, and close voting message."""
     if event.result_text:
         try:
             await bot.send_message(
                 chat_id=event.chat_id,
                 text=event.result_text,
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
         except Exception as e:
             logger.warning(f"Failed to send finish message for game {event.game_id}: {e}")
 
-    # Clean up and close the MVP voting message if it exists, and unpin announcement
     async with async_session_maker() as session:
         game = await session.get(Game, event.game_id)
         if game:
-            # Automatically unpin game announcement from group chat
             if game.chat_id and game.message_id:
                 try:
-                    await bot.unpin_chat_message(chat_id=game.chat_id, message_id=game.message_id)
-                    logger.info(f"Unpinned game #{event.game_id} announcement ({game.message_id}) in chat {game.chat_id}")
+                    await bot.unpin_chat_message(
+                        chat_id=game.chat_id, message_id=game.message_id
+                    )
                 except Exception as e:
-                    logger.warning(f"Failed to unpin message for game {event.game_id} in chat {game.chat_id}: {e}")
+                    logger.warning(
+                        f"Failed to unpin message for game {event.game_id} in chat {game.chat_id}: {e}"
+                    )
 
-            # Automatically unpin from channel if it was pinned there
             if game.channel_id and game.channel_message_id:
                 try:
-                    await bot.unpin_chat_message(chat_id=game.channel_id, message_id=game.channel_message_id)
-                    logger.info(f"Unpinned game #{event.game_id} announcement ({game.channel_message_id}) in channel {game.channel_id}")
+                    await bot.unpin_chat_message(
+                        chat_id=game.channel_id, message_id=game.channel_message_id
+                    )
                 except Exception as e:
-                    logger.warning(f"Failed to unpin channel message for game {event.game_id} in channel {game.channel_id}: {e}")
+                    logger.warning(
+                        f"Failed to unpin channel message for game {event.game_id} in channel {game.channel_id}: {e}"
+                    )
 
             if game.voting_message_id:
                 try:
-                    from app.bot.utils import get_group_game_number
-                    game_num = await get_group_game_number(session, game)
-                    from app.bot.utils import resolve_chat_language
-                    chat_lang = await resolve_chat_language(session, game.chat_id)
-
                     from app.bot.i18n import t
-                    v_text = t("voting_closed_title", locale=chat_lang, game_num=game_num)
+                    from app.bot.utils import (
+                        get_group_game_number,
+                        resolve_chat_language,
+                    )
+
+                    game_num = await get_group_game_number(session, game)
+                    chat_lang = await resolve_chat_language(session, game.chat_id)
+                    v_text = t(
+                        "voting_closed_title", locale=chat_lang, game_num=game_num
+                    )
 
                     await bot.edit_message_text(
                         chat_id=game.chat_id,
                         message_id=game.voting_message_id,
                         text=v_text,
                         reply_markup=None,
-                        parse_mode="HTML"
+                        parse_mode="HTML",
                     )
                 except Exception as e:
-                    logger.warning(f"Failed to close voting message on game finish for game {event.game_id}: {e}")
+                    logger.warning(
+                        f"Failed to close voting message on game finish for game {event.game_id}: {e}"
+                    )
 
     await _refresh_full(event.game_id)
 
 
 async def on_game_updated(event: GameUpdatedEvent):
-    """Edit public message if there were changes, then refresh dashboard."""
+    """Edit public message if there were changes."""
     if event.changes:
         await _refresh_public_message(event.game_id)
     await _refresh_dashboard(event.game_id)
@@ -163,14 +168,11 @@ async def on_teams_published(event: TeamsPublishedEvent):
             return
 
         try:
-            from app.bot.utils import format_game_message
-
-            from app.bot.utils import resolve_chat_language
-            chat_lang = await resolve_chat_language(session, game.chat_id)
-
-            public_text = await format_game_message(game, session, lang=chat_lang)
-            
             from app.bot.keyboards import get_channel_game_keyboard
+            from app.bot.utils import format_game_message, resolve_chat_language
+
+            chat_lang = await resolve_chat_language(session, game.chat_id)
+            public_text = await format_game_message(game, session, lang=chat_lang)
             kb = get_channel_game_keyboard(game.id, lang=chat_lang)
 
             if game.message_id:
@@ -180,22 +182,25 @@ async def on_teams_published(event: TeamsPublishedEvent):
                         message_id=game.message_id,
                         text=public_text,
                         reply_markup=kb,
-                        parse_mode="HTML"
+                        parse_mode="HTML",
                     )
                 except Exception as e:
                     err_str = str(e)
                     if "message is not modified" in err_str:
                         pass
-                    elif any(x in err_str for x in [
-                        "message to edit not found",
-                        "message can't be edited",
-                        "BUTTON_TYPE_INVALID"
-                    ]):
+                    elif any(
+                        x in err_str
+                        for x in [
+                            "message to edit not found",
+                            "message can't be edited",
+                            "BUTTON_TYPE_INVALID",
+                        ]
+                    ):
                         msg = await bot.send_message(
                             chat_id=game.chat_id,
                             text=public_text,
                             reply_markup=kb,
-                            parse_mode="HTML"
+                            parse_mode="HTML",
                         )
                         game.message_id = msg.message_id
                         await session.commit()
@@ -206,60 +211,58 @@ async def on_teams_published(event: TeamsPublishedEvent):
                     chat_id=game.chat_id,
                     text=public_text,
                     reply_markup=kb,
-                    parse_mode="HTML"
+                    parse_mode="HTML",
                 )
                 game.message_id = msg.message_id
                 await session.commit()
 
-            # Also update MVP voting message keyboard if voting is already open/created
             if game.voting_message_id:
                 try:
                     from sqlalchemy import select
-                    from app.db.models import User, Signup, SignupStatus, Team
-                    
+                    from app.bot.keyboards import get_voting_keyboard
+                    from app.db.models import Signup, SignupStatus, Team, User
+
                     result = await session.execute(
                         select(User, Signup.team)
                         .join(Signup)
-                        .where(Signup.game_id == game.id, Signup.status == SignupStatus.ACTIVE)
+                        .where(
+                            Signup.game_id == game.id,
+                            Signup.status == SignupStatus.ACTIVE,
+                        )
                     )
                     players_data = result.all()
-                    
-                    team_a = []
-                    team_b = []
-                    for user, team in players_data:
-                        if team == Team.A:
-                            team_a.append(user)
-                        elif team == Team.B:
-                            team_b.append(user)
-                    
-                    from app.bot.keyboards import get_voting_keyboard
-                    voting_kb = get_voting_keyboard(game.id, team_a, team_b)
-                    
+
+                    team_a = [u for u, t_enum in players_data if t_enum == Team.A]
+                    team_b = [u for u, t_enum in players_data if t_enum == Team.B]
+                    team_c = [u for u, t_enum in players_data if t_enum == Team.C]
+
+                    voting_kb = get_voting_keyboard(
+                        game.id, team_a, team_b, team_c=team_c, lang=chat_lang
+                    )
+
                     await bot.edit_message_reply_markup(
                         chat_id=game.chat_id,
                         message_id=game.voting_message_id,
-                        reply_markup=voting_kb
+                        reply_markup=voting_kb,
                     )
                 except Exception as ex:
-                    logger.warning(f"Failed to update voting message keyboard for game {game.id}: {ex}")
+                    logger.warning(
+                        f"Failed to update voting message keyboard for game {game.id}: {ex}"
+                    )
 
         except Exception as e:
-            logger.error(f"Failed to publish teams for game {event.game_id}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to publish teams for game {event.game_id}: {e}", exc_info=True
+            )
 
     await _refresh_dashboard(event.game_id)
 
 
-# ---------------------------------------------------------------------------
-# Roster event handlers
-# ---------------------------------------------------------------------------
-
 async def on_game_state_changed(event: GameStateChangedEvent):
-    """Full UI refresh: dashboard + public message."""
     await _refresh_full(event.game_id)
 
 
 async def on_game_message_needs_update(event: GameMessageNeedsUpdateEvent):
-    """Only refresh the public group/channel message."""
     await _refresh_public_message(event.game_id)
 
 
@@ -278,37 +281,35 @@ async def on_player_left(event: PlayerLeftEvent):
                 if game:
                     from app.bot.utils import get_group_game_number
                     from app.core.timezone import format_prague_dt
+
                     game_num = await get_group_game_number(session, game)
                     date_str = format_prague_dt(game.date_time)
                     loc_str = game.location or ""
-                
-                from app.bot.utils import resolve_chat_language
-                p_lang = await resolve_chat_language(session, game.chat_id if game else None)
-                import html
+
                 from app.bot.i18n import t
+                from app.bot.utils import resolve_chat_language
+
+                p_lang = await resolve_chat_language(
+                    session, game.chat_id if game else None
+                )
                 p_text = t(
                     "promoted_auto",
                     locale=p_lang,
                     game_num=game_num,
                     location=html.escape(loc_str),
-                    date=date_str
+                    date=date_str,
                 )
                 await bot.send_message(
                     event.promoted_user.user_id,
                     p_text,
-                    parse_mode="HTML"
+                    parse_mode="HTML",
                 )
         except Exception as e:
             logger.warning(f"Failed to notify promoted user: {e}")
     await _refresh_full(event.game_id)
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
 async def _refresh_full(game_id: int):
-    """Refresh both the public message and the admin dashboard."""
     await _refresh_public_message(game_id)
     await _refresh_dashboard(game_id)
 
@@ -320,6 +321,7 @@ async def _refresh_public_message(game_id: int):
         if not game:
             return
         from app.bot.utils import update_game_message
+
         try:
             await update_game_message(bot, game, session)
         except Exception as e:
@@ -327,15 +329,9 @@ async def _refresh_public_message(game_id: int):
 
 
 async def _refresh_dashboard(game_id: int):
-    """Refresh only the admin dashboard message."""
-    async with async_session_maker() as session:
-        try:
-            from app.bot.admin_dashboard import update_dashboard_message
-            await update_dashboard_message(bot, game_id, session)
-        except (ImportError, Exception) as e:
-            logger.warning(f"Failed to update dashboard for game {game_id}: {e}")
+    """No-op hook retained for backward compatibility with WebApp dashboard model."""
+    return
 
 
-# Keep for backward-compat
 async def update_game_ui(game_id: int):
     await _refresh_full(game_id)

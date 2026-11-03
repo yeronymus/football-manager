@@ -10,8 +10,12 @@ variables:
   POSTGRES_PASSWORD: test_password
   POSTGRES_HOST: postgres
   POSTGRES_PORT: 5432
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_PASSWORD: ""
+  APP_ENV: staging
   BOT_TOKEN: "123456:dummytoken_for_ci_testing"
-  BOT_USERNAME: "fm_metabot"
+  BOT_USERNAME: "sports_ci_bot"
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
   PYTHONPATH: "$CI_PROJECT_DIR"
@@ -32,28 +36,31 @@ linting:
     - ruff check .
   allow_failure: false
 
-# Stage 2: Integration tests with PostgreSQL database
+# Stage 2: Integration tests with PostgreSQL & Redis
 integration_tests:
   stage: test
   image: python:3.12-slim
   services:
     - name: postgres:15-alpine
       alias: postgres
+    - name: redis:7-alpine
+      alias: redis
   script:
     - apt-get update && apt-get install -y libpq-dev gcc
     - pip install uv
-    - uv sync
+    - uv sync --all-extras
     - |
       uv run python -c "
       import time, socket
-      for _ in range(30):
-          try:
-              with socket.create_connection(('postgres', 5432), timeout=1):
-                  print('Postgres is ready!')
-                  break
-          except Exception:
-              print('Waiting for Postgres...')
-              time.sleep(1)
+      for host, port in [('postgres', 5432), ('redis', 6379)]:
+          for _ in range(30):
+              try:
+                  with socket.create_connection((host, port), timeout=1):
+                      print(f'{host}:{port} is ready!')
+                      break
+              except Exception:
+                  print(f'Waiting for {host}:{port}...')
+                  time.sleep(1)
       "
     - |
       uv run python -c "
@@ -80,43 +87,49 @@ docker_build:
   services:
     - docker:24.0.5-dind
   script:
-    # Log in to GitLab Container Registry if credentials are provided
     - |
       if [ -n "$CI_REGISTRY_USER" ]; then
         echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
       fi
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA -t $CI_REGISTRY_IMAGE:latest .
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "main" ]; then
+        docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:latest
+      fi
     - |
       if [ -n "$CI_REGISTRY_USER" ]; then
         docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
-        docker push $CI_REGISTRY_IMAGE:latest
+        if [ "$CI_COMMIT_BRANCH" = "main" ]; then
+          docker push $CI_REGISTRY_IMAGE:latest
+        fi
       fi
   only:
     - main
+    - develop
     - release
 
-# Stage 4: Deploy (Simulation / Environment Showcase)
+# Stage 4: Deploy (Environment Orchestration)
 deploy_staging:
   stage: deploy
-  image: alpine:latest
+  image: alpine:3.20
   script:
     - echo "Deploying build $CI_COMMIT_SHORT_SHA to Staging environment..."
-    - echo "Executing remote migration & container restart script..."
+    - echo "Executing pre-migration snapshot & container rollout..."
   environment:
     name: staging
-    url: https://staging.fm-bot.cz
+    url: https://staging.sports.example.com
   only:
     - develop
 
 deploy_production:
   stage: deploy
-  image: alpine:latest
+  image: alpine:3.20
   script:
     - echo "Deploying build $CI_COMMIT_SHORT_SHA to Production environment..."
     - echo "Deploy completed successfully."
   environment:
     name: production
-    url: https://fm-bot.cz
+    url: https://sports.example.com
   only:
     - main
     - release

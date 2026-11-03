@@ -327,8 +327,8 @@ class RosterService:
 
         players = []
         for user, _ in active_rows:
-            user.rating = profile_map.get(user.user_id, 100)
-            players.append(DomainPlayer(user))
+            effective_rating = profile_map.get(user.user_id, 100)
+            players.append(DomainPlayer(user, rating_override=effective_rating))
 
         team_count = game.team_count if game.team_count else 2
         teams = balance_teams(players, team_count=team_count)

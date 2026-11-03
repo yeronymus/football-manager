@@ -1,7 +1,10 @@
-from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, List
+from typing import List, Optional
+
+from pydantic import BaseModel
+
 from app.db.models import Team
+
 
 class GameCreate(BaseModel):
     chat_id: int
@@ -21,6 +24,7 @@ class GameCreate(BaseModel):
     signup_limit: Optional[int] = 999
     initData: str
 
+
 class GameUpdate(BaseModel):
     game_id: int
     location: Optional[str] = None
@@ -34,30 +38,36 @@ class GameUpdate(BaseModel):
     main_players_count: Optional[int] = None
     signup_limit: Optional[int] = None
     initData: str
-    initData: str
+
 
 class BalanceTeams(BaseModel):
     game_id: int
     initData: str
+
 
 class GameResult(BaseModel):
     game_id: int
     winner_team: Team
     initData: str
 
+
 class PlayerStat(BaseModel):
     user_id: int
     goals: int
+
 
 class GameFinishRequest(BaseModel):
     game_id: int
     score_a: int
     score_b: int
-    winner_team: Optional[Team]
+    score_c: Optional[int] = None
+    winner_team: Optional[Team] = None
     mvp_team_a: Optional[int] = None
     mvp_team_b: Optional[int] = None
-    player_stats: list[PlayerStat]
+    mvp_team_c: Optional[int] = None
+    player_stats: list[PlayerStat] = []
     initData: str
+
 
 class UpdateTeamsRequest(BaseModel):
     game_id: int
@@ -65,14 +75,16 @@ class UpdateTeamsRequest(BaseModel):
     team_b: List[int]
     team_c: Optional[List[int]] = None
     unassigned: Optional[List[int]] = None
-    reserve: Optional[List[int]] = None # Added reserve field
+    reserve: Optional[List[int]] = None
     positions: Optional[dict[int, str]] = None
     initData: str
+
 
 class AddPlayerRequest(BaseModel):
     game_id: int
     user_id: int
     initData: str
+
 
 class AddGuestRequest(BaseModel):
     game_id: int
@@ -80,6 +92,7 @@ class AddGuestRequest(BaseModel):
     position: str
     alt_positions: Optional[List[str]] = []
     initData: str
+
 
 class VoteRequest(BaseModel):
     game_id: int

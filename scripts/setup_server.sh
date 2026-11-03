@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 # ==============================================================================
-# Prague Football Manager — Server Pre-flight & Setup Script
+# Sports Logistics & Team Engagement Platform — Server Pre-flight & Setup Script
 # ==============================================================================
 
-echo "🚀 Preparing server environment for Prague Football Manager..."
+echo "🚀 Preparing server environment..."
 
 # 1. Verify Docker and Docker Compose
 if ! command -v docker &> /dev/null; then
@@ -34,7 +34,7 @@ if [ ! -f ".env" ]; then
     if [ -f ".env.example" ]; then
         echo "📄 Generating .env from .env.example..."
         cp .env.example .env
-        echo "⚠️ Created .env file. Please edit it with your real BOT_TOKEN, DB credentials, and domain!"
+        echo "⚠️ Created .env file. Please edit it with your BOT_TOKEN, DB credentials, and HTTPS domain."
     else
         echo "⚠️ Warning: .env.example not found."
     fi
@@ -50,7 +50,7 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'football_manager_api'
+  - job_name: 'sports_platform_api'
     metrics_path: '/metrics'
     static_configs:
       - targets: ['app:8000']
@@ -60,6 +60,6 @@ fi
 
 echo "🎉 Server pre-flight setup completed!"
 echo "Next steps:"
-echo "  1. Review and edit .env with your BOT_TOKEN and passwords"
+echo "  1. Review and edit .env with your BOT_TOKEN and credentials"
 echo "  2. Start containers: docker compose up -d --build"
 echo "  3. Check container logs: docker compose logs -f"

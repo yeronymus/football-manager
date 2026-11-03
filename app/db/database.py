@@ -1,42 +1,48 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
 engine = create_async_engine(
-    settings.DATABASE_URL, 
+    settings.DATABASE_URL,
     echo=settings.debug,
-    pool_size=20,
-    max_overflow=30,
-    pool_pre_ping=True  # Helpful for Proxmox/LXC environments where connections might be dropped
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
+    pool_pre_ping=True,
 )
 
 async_session_maker = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
 
+
 class Base(DeclarativeBase):
     pass
+
 
 async def get_session() -> AsyncSession:
     async with async_session_maker() as session:
         yield session
 
+
 async def init_models():
     import asyncio
     import logging
     import sys
-    
+
     logger = logging.getLogger(__name__)
     logger.info("Running database migrations via Alembic...")
     try:
-        # Run "alembic upgrade head" using the current python executable to guarantee venv compatibility
         process = await asyncio.create_subprocess_exec(
-            sys.executable, "-m", "alembic", "upgrade", "head",
+            sys.executable,
+            "-m",
+            "alembic",
+            "upgrade",
+            "head",
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await process.communicate()
-        
+
         if process.returncode == 0:
             logger.info("Alembic migrations completed successfully.")
             if stdout:
