@@ -98,7 +98,7 @@ async def _run_async_tests():
     assert res.success is True
     assert res.is_reserve is False
 
-    # Case 6: 18 Players, 16 active, 0 GKs -> non-GK should be reserve (held for GKs)
+    # Case 6: 18 Players, 16 active, 0 GKs -> GK priority is removed, so non-GK is ACTIVE
     g6 = Game(id=6, status=GameStatus.OPEN, max_players=18, registration_hours=0, gk_hours=48)
     g6.date_time = datetime.now() + timedelta(hours=10)
     g6.created_at = datetime.now()
@@ -108,8 +108,7 @@ async def _run_async_tests():
         uow.game_repo.signups.append(Signup(game_id=6, user_id=200+i, status=SignupStatus.ACTIVE))
     res = await service.join_player(6, user)
     assert res.success is True
-    assert res.is_reserve is True
-    assert "goalkeepers" in res.message.lower()
+    assert res.is_reserve is False
 
     # Case 7: 18 Players, 16 active, 2 GKs already present -> non-GK should be ACTIVE (bug fixed!)
     g7 = Game(id=7, status=GameStatus.OPEN, max_players=18, registration_hours=0, gk_hours=48)

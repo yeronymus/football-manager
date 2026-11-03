@@ -42,6 +42,7 @@ async function fetchAPI(endpoint, options = {}) {
     
     const response = await fetch('/api' + endpoint, {
         ...options,
+        cache: 'no-store',
         headers: { ...headers, ...options.headers }
     });
     
@@ -120,6 +121,9 @@ async function init() {
 
         // 4. Load Ads
         await loadAds();
+
+        // 5. Start Real-time Live Polling
+        startLivePolling();
 
     } catch (e) {
         console.error("Init error:", e);
@@ -245,23 +249,7 @@ function renderStatusInfo() {
     const titleText = document.getElementById('status-info-title');
     const t = window.i18n ? window.i18n.t : (k => k);
     
-    // GK Reservation countdown warning
-    const now = new Date();
-    const created = currentGame.created_at ? new Date(currentGame.created_at) : null;
     let showCard = false;
-
-    if (created && currentGame.gk_hours > 0) {
-        const hoursPassed = (now - created) / (3600 * 1000);
-        if (hoursPassed < currentGame.gk_hours) {
-            const hoursLeft = Math.ceil(currentGame.gk_hours - hoursPassed);
-            descText.innerText = t('gk_priority_notice', { hours: currentGame.gk_hours, left: hoursLeft });
-            titleText.innerText = t('booking_status');
-            titleText.style.color = 'var(--accent-color)';
-            statusCard.style.background = 'rgba(56,189,248,0.05)';
-            statusCard.style.borderColor = 'rgba(56,189,248,0.2)';
-            showCard = true;
-        }
-    }
     
     // Match closed status
     if (currentGame.status === 'finished') {
@@ -397,12 +385,11 @@ function renderRosters() {
     activePlayers.forEach(p => activeMap.set(p.id, p));
     activePlayers = Array.from(activeMap.values());
 
-    // Sort active players by rating descending
-    activePlayers.sort((a, b) => b.rating - a.rating);
+    // Sort active players by rating descending (safe default)
+    activePlayers.sort((a, b) => (Number(b.rating) || 5.0) - (Number(a.rating) || 5.0));
 
-    // Sort reserve players by rating descending
+    // Reserve players maintain chronological queue order (FIFO)
     let reservePlayers = currentGame.reserve || [];
-    reservePlayers.sort((a, b) => b.rating - a.rating);
 
     // Render Active Players list
     const activeList = document.getElementById('roster-active');
@@ -538,15 +525,14 @@ async function handleJoin() {
         const successMsg = t('join_success');
         if (tg) {
             tg.HapticFeedback.notificationOccurred('success');
-            tg.showConfirm(res.message || successMsg);
+            tg.showAlert(res.message || successMsg);
         } else {
             alert(res.message || successMsg);
         }
         
-        // Refresh
-        currentGame = await fetchAPI(`/game/${gameId}`);
-        renderRosters();
-        setupActionButtons();
+        // Immediate cache-busted refresh
+        currentGame = await fetchAPI(`/game/${gameId}?_t=${Date.now()}`);
+        rerenderAll();
     } catch(e) {
         if (tg) tg.showAlert(e.message);
         else alert(e.message);
@@ -584,10 +570,9 @@ async function executeLeave() {
             alert(res.message || leaveMsg);
         }
         
-        // Refresh
-        currentGame = await fetchAPI(`/game/${gameId}`);
-        renderRosters();
-        setupActionButtons();
+        // Immediate cache-busted refresh
+        currentGame = await fetchAPI(`/game/${gameId}?_t=${Date.now()}`);
+        rerenderAll();
     } catch(e) {
         if (tg) tg.showAlert(e.message);
         else alert(e.message);
@@ -654,6 +639,67 @@ function showError(msg) {
             <button onclick="window.Telegram.WebApp.close()" class="pos-btn" style="width:100%; margin-top:10px; background:transparent; border:none; color:var(--hint-color); font-weight:600; font-size:12px;">${closeBtn}</button>
         </div>
     `;
+}
+
+
+let livePollingInterval = null;
+let isPollingActive = false;
+
+function startLivePolling() {
+    if (livePollingInterval) {
+        clearInterval(livePollingInterval);
+        livePollingInterval = null;
+    }
+
+    const poll = async () => {
+        if (document.hidden || isPollingActive || !gameId) return;
+        try {
+            isPollingActive = true;
+            const updated = await fetchAPI(`/game/${gameId}?_t=${Date.now()}`);
+            if (!updated) return;
+
+            const currentFingerprint = JSON.stringify([
+                currentGame?.status,
+                currentGame?.team_a?.map(p => `${p.id}_${p.status}_${p.is_paid}`),
+                currentGame?.team_b?.map(p => `${p.id}_${p.status}_${p.is_paid}`),
+                currentGame?.team_c?.map(p => `${p.id}_${p.status}_${p.is_paid}`),
+                currentGame?.unassigned?.map(p => `${p.id}_${p.status}_${p.is_paid}`),
+                currentGame?.reserve?.map(p => `${p.id}_${p.status}_${p.is_paid}`),
+                currentGame?.max_players,
+            ]);
+
+            const newFingerprint = JSON.stringify([
+                updated?.status,
+                updated?.team_a?.map(p => `${p.id}_${p.status}_${p.is_paid}`),
+                updated?.team_b?.map(p => `${p.id}_${p.status}_${p.is_paid}`),
+                updated?.team_c?.map(p => `${p.id}_${p.status}_${p.is_paid}`),
+                updated?.unassigned?.map(p => `${p.id}_${p.status}_${p.is_paid}`),
+                updated?.reserve?.map(p => `${p.id}_${p.status}_${p.is_paid}`),
+                updated?.max_players,
+            ]);
+
+            if (currentFingerprint !== newFingerprint) {
+                currentGame = updated;
+                rerenderAll();
+            }
+        } catch (e) {
+            console.debug("Silent live polling check:", e);
+        } finally {
+            isPollingActive = false;
+        }
+    };
+
+    livePollingInterval = setInterval(poll, 3000);
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            poll();
+        }
+    });
+
+    window.addEventListener('focus', () => {
+        poll();
+    });
 }
 
 document.addEventListener("DOMContentLoaded", init);
