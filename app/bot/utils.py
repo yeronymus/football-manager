@@ -161,7 +161,7 @@ def _format_teams_section(game, signups, lang: str = "en") -> str:
 
 
 def _format_players_section(game, active_players, lang: str = "en") -> str:
-    limit = getattr(game, 'signup_limit', game.max_players) or game.max_players
+    limit = game.max_players
     header = f"{t('players_header', locale=lang, count=len(active_players), limit=limit)}\n"
     text = header
 
@@ -337,21 +337,30 @@ async def update_game_message(bot, game, session: AsyncSession):
         except Exception as e:
             logging.error(f"Unexpected error when editing message in channel {game.channel_id}: {e}")
 
-    # 2. Update Primary Chat (Full mode by default per user request)
+    # 2. Update Primary Chat (Full mode by default per user request, with retry loop)
     text_short = await format_game_message(game, session, is_short=False, signups=signups, lang=lang)
     kb = get_channel_game_keyboard(game.id, lang=lang)
-    try:
-        await bot.edit_message_text(
-            chat_id=game.chat_id,
-            message_id=game.message_id,
-            text=text_short,
-            reply_markup=kb,
-            parse_mode="HTML"
-        )
-    except TelegramBadRequest as e:
-        logging.warning(f"Failed to edit message in chat {game.chat_id} due to Telegram API error: {e}")
-    except Exception as e:
-        logging.error(f"Unexpected error when editing message in chat {game.chat_id}: {e}")
+    for attempt in range(3):
+        try:
+            await bot.edit_message_text(
+                chat_id=game.chat_id,
+                message_id=game.message_id,
+                text=text_short,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            break
+        except TelegramBadRequest as e:
+            if "message is not modified" in str(e).lower():
+                break
+            logging.warning(f"Failed to edit message in chat {game.chat_id} due to Telegram API error: {e}")
+            break
+        except Exception as e:
+            if attempt < 2:
+                import asyncio
+                await asyncio.sleep(1.0 * (attempt + 1))
+            else:
+                logging.error(f"Unexpected error when editing message in chat {game.chat_id} after 3 attempts: {e}")
 
     # 3. Trigger Admin Dashboard Update
     try:

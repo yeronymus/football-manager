@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_session
@@ -13,9 +13,14 @@ router = APIRouter()
 @router.get("/game/{game_id}")
 async def get_game_details(
     game_id: int, 
+    response: Response,
     user_id: int = Depends(get_user_from_header), 
     session: AsyncSession = Depends(get_session)
 ):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
     cache_key = f"game_details:{game_id}"
     cached_data = await cache_service.get(cache_key)
     if cached_data:
@@ -34,6 +39,7 @@ async def get_game_details(
         .outerjoin(GameStats, (GameStats.game_id == game_id) & (GameStats.user_id == User.user_id))
         .where(Signup.game_id == game_id)
         .where(Signup.status.in_([SignupStatus.ACTIVE, SignupStatus.RESERVE]))
+        .order_by(Signup.created_at)
     )
     players_data = result.all()
     
@@ -222,6 +228,9 @@ async def join_game(
                 )
             
             await uow.commit()
+
+        from app.core.services.cache import cache_service
+        await cache_service.evict(f"game_details:{game_id}")
             
         if event_payload:
             background_tasks.add_task(event_bus.publish, event_payload)
@@ -255,6 +264,9 @@ async def leave_game(
                 raise HTTPException(status_code=400, detail=msg)
                 
             await uow.commit()
+
+        from app.core.services.cache import cache_service
+        await cache_service.evict(f"game_details:{game_id}")
             
         background_tasks.add_task(event_bus.publish, PlayerLeftEvent(game_id, user_id, msg, promoted))
         return {"success": True, "message": msg}

@@ -117,12 +117,7 @@ class RosterService:
         alert_msg = t("alert_joined_active", locale=user_lang)
         is_reserve = False
 
-        # Goalkeeper priority slots check
-        if self._check_gk_priority(game, active_count, user, ignore_limit, active_gk_count=active_gk_count):
-            status = SignupStatus.RESERVE
-            alert_msg = t("alert_gk_priority_reserve", locale=user_lang)
-            is_reserve = True
-        elif active_count >= game.max_players:
+        if active_count >= game.max_players:
             status = SignupStatus.RESERVE
             alert_msg = t("alert_roster_full_reserve", locale=user_lang)
             is_reserve = True
@@ -195,18 +190,6 @@ class RosterService:
         ignore_limit: bool,
         active_gk_count: int = 0,
     ) -> bool:
-        """Checks if the remaining slots should be reserved exclusively for Goalies."""
-        if not ignore_limit and game.created_at and getattr(game, "gk_hours", 0) and game.gk_hours > 0:
-            now_ts = datetime.now().replace(tzinfo=None)
-            created_at = game.created_at.replace(tzinfo=None)
-            age_hours = (now_ts - created_at).total_seconds() / 3600
-            if age_hours < game.gk_hours and user.player_position != Position.GK:
-                needed_gks = min(2, getattr(game, "team_count", 2) or 2)
-                remaining_gk_needed = max(0, needed_gks - active_gk_count)
-                if remaining_gk_needed > 0:
-                    slots_left = game.max_players - active_count
-                    if slots_left <= remaining_gk_needed:
-                        return True
         return False
 
     async def leave_player(
@@ -261,19 +244,8 @@ class RosterService:
         signups_with_user = await self.uow.game_repo.get_all_signups_sorted(game_id)
 
         active_count = 0
-        active_gk_count = 0
-        needed_gks = min(2, getattr(game, "team_count", 2) or 2)
-
-        is_gk_window = False
-        if game.created_at and getattr(game, "gk_hours", 0) and game.gk_hours > 0:
-            now_ts = datetime.now().replace(tzinfo=None)
-            created_at = game.created_at.replace(tzinfo=None)
-            age_hours = (now_ts - created_at).total_seconds() / 3600
-            if age_hours < game.gk_hours:
-                is_gk_window = True
 
         for signup, user in signups_with_user:
-            is_gk = user.player_position == Position.GK
             is_guest = user.user_id < 0
 
             if is_guest:
@@ -281,17 +253,10 @@ class RosterService:
                     signup.status = SignupStatus.RESERVE
                 continue
 
-            remaining_gk_needed = max(0, needed_gks - active_gk_count) if is_gk_window else 0
-            effective_max = (
-                game.max_players - remaining_gk_needed if not is_gk else game.max_players
-            )
-
-            if active_count < effective_max:
+            if active_count < game.max_players:
                 if signup.status != SignupStatus.ACTIVE:
                     signup.status = SignupStatus.ACTIVE
                 active_count += 1
-                if is_gk:
-                    active_gk_count += 1
             else:
                 if signup.status != SignupStatus.RESERVE:
                     signup.status = SignupStatus.RESERVE

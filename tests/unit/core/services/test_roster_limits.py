@@ -108,8 +108,7 @@ async def _run_async_tests():
         uow.game_repo.signups.append(Signup(game_id=6, user_id=200+i, status=SignupStatus.ACTIVE))
     res = await service.join_player(6, user)
     assert res.success is True
-    assert res.is_reserve is True
-    assert "вратарей" in res.message.lower()
+    assert res.is_reserve is False
 
     # Case 7: 18 Players, 16 active, 2 GKs already present -> non-GK should be ACTIVE (bug fixed!)
     g7 = Game(id=7, status=GameStatus.OPEN, max_players=18, registration_hours=0, gk_hours=48)
