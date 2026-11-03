@@ -63,4 +63,4 @@ async def test_cmd_republish():
         
         assert mock_publish_task.called
         assert message.answer.called
-        assert "успешно переопубликована" in message.answer.call_args[0][0]
+        assert "republished" in message.answer.call_args[0][0]

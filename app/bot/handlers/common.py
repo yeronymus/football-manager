@@ -1,22 +1,46 @@
 import html
 import logging
 import re
-from aiogram import Router, types, F
-from aiogram.filters import CommandStart, CommandObject, Command
+
+from aiogram import F, Router, types
+from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.fsm import GuestAddition
-from app.bot.i18n import t
+from app.bot.i18n import i18n_instance, t
 from app.bot.keyboards import get_game_keyboard
 from app.config import settings
+from app.core.domain.tenant_policy import OrganizerContact, resolve_tenant_policy
+from app.core.i18n import normalize_locale_code
 from app.core.repositories.user_repository import UserRepository
-from app.db.models import Game, Language, User, Signup, SignupStatus, Team
+from app.db.models import Chat, Game, Signup, SignupStatus, Team, User
 
 logger = logging.getLogger(__name__)
 
 router = Router()
+
+
+def _resolve_event_lang(tg_user: types.User | None, db_user: User | None = None) -> str:
+    if db_user and getattr(db_user, "language", None):
+        return i18n_instance.catalog.resolve_supported(db_user.language)
+    lang_code = getattr(tg_user, "language_code", None)
+    if isinstance(lang_code, str) and lang_code.strip():
+        return i18n_instance.catalog.resolve_supported(lang_code)
+    return normalize_locale_code(settings.default_locale, default="en")
+
+
+def _resolve_contact_url(chat: Chat | None) -> str | None:
+    policy = resolve_tenant_policy(getattr(chat, "policy", None) if chat else None)
+    for contact in policy.organizer_contacts:
+        url = contact.resolved_url()
+        if url:
+            return url
+    raw_support = (settings.support_contact or "").strip()
+    if raw_support:
+        return OrganizerContact(name="Support", handle=raw_support).resolved_url()
+    return None
 
 
 @router.message(F.is_automatic_forward == True)
@@ -52,7 +76,9 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
         if game.chat_id == message.chat.id and game.message_id:
             try:
                 await message.delete()
-                logger.info(f"Duplicate forward for game {game_id} in current chat. Silently deleted.")
+                logger.info(
+                    f"Duplicate forward for game {game_id} in current chat. Silently deleted."
+                )
             except Exception as e:
                 logger.warning(f"Failed to delete duplicate forward: {e}")
             return
@@ -67,11 +93,14 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
             ):
                 is_admin = True
 
-            from app.bot.utils import resolve_chat_language, format_game_message
+            from app.bot.utils import format_game_message, resolve_chat_language
+
             chat_lang = await resolve_chat_language(session, message.chat.id)
 
             text_short = await format_game_message(game, session, is_short=True, lang=chat_lang)
-            kb = get_game_keyboard(game_id, is_admin=is_admin, webapp_url=settings.webapp_url, lang=chat_lang)
+            kb = get_game_keyboard(
+                game_id, is_admin=is_admin, webapp_url=settings.webapp_url, lang=chat_lang
+            )
 
             sent_msg = await message.bot.send_message(
                 chat_id=message.chat.id,
@@ -80,14 +109,18 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
                 parse_mode="HTML",
             )
 
-            logger.info(f"Successfully replaced auto-forward with message {sent_msg.message_id} in {message.chat.id}")
+            logger.info(
+                f"Successfully replaced auto-forward with message {sent_msg.message_id} in {message.chat.id}"
+            )
 
             game.chat_id = message.chat.id
             game.message_id = sent_msg.message_id
             await session.commit()
 
             try:
-                await message.bot.pin_chat_message(chat_id=message.chat.id, message_id=sent_msg.message_id)
+                await message.bot.pin_chat_message(
+                    chat_id=message.chat.id, message_id=sent_msg.message_id
+                )
             except Exception:
                 pass
 
@@ -98,6 +131,8 @@ async def handle_auto_forward(message: types.Message, session: AsyncSession):
         if game.chat_id == message.chat.id:
             logger.info(f"Duplicate forward for game {game_id} in current chat. Ignoring.")
             return
+
+        from app.bot.utils import resolve_chat_language
 
         chat_lang = await resolve_chat_language(session, message.chat.id)
         short_text = t("tap_to_signup", locale=chat_lang)
@@ -122,9 +157,7 @@ async def cmd_refresh_game(message: types.Message, command: CommandObject, sessi
     ):
         return
 
-    user_lang = "ru"
-    if message.from_user.language_code and not message.from_user.language_code.startswith("ru"):
-        user_lang = "en"
+    user_lang = _resolve_event_lang(message.from_user)
 
     try:
         game_id = int(command.args)
@@ -154,7 +187,7 @@ async def cmd_refresh_game(message: types.Message, command: CommandObject, sessi
 
 @router.message(Command("rules"))
 @router.message(Command("info"))
-async def cmd_rules(message: types.Message):
+async def cmd_rules(message: types.Message, session: AsyncSession | None = None):
     if message.chat.type != "private":
         try:
             await message.delete()
@@ -162,60 +195,59 @@ async def cmd_rules(message: types.Message):
             pass
         return
 
-    rules_web_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html"
+    db_user = None
+    if session and message.from_user:
+        try:
+            db_user = await UserRepository(session).get_user(message.from_user.id)
+        except Exception:
+            db_user = None
+
+    user_lang = _resolve_event_lang(message.from_user, db_user)
+    rules_web_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html?lang={user_lang}"
     btn = types.InlineKeyboardButton(
-        text="📖 Открыть правила / Open Rules",
+        text=t("cmd_rules_btn", locale=user_lang),
         web_app=types.WebAppInfo(url=rules_web_url),
     )
     kb = types.InlineKeyboardMarkup(inline_keyboard=[[btn]])
 
-    text = (
-        "📋 <b>How to Play & Group Rules / Как играть</b>\n\n"
-        "🇬🇧 <b>ENGLISH:</b>\n"
-        "1. <b>Matches in Group:</b> Matches are organized in this group via the bot.\n"
-        "2. <b>Profile:</b> Create your player profile once via the bot.\n"
-        "3. <b>Sign Up:</b> Click <b>Sign Up for Game</b> under the match card in the group.\n"
-        "4. <b>Cancellation:</b> Unregister at least 24h before kickoff if you cannot attend.\n"
-        "5. <b>Payment:</b> Pay match fee using details in the game card.\n\n"
-        "🇷🇺 <b>РУССКИЙ:</b>\n"
-        "1. <b>Игры в группе:</b> Запись на матчи происходит прямо в этой группе.\n"
-        "2. <b>Профиль:</b> Создайте профиль один раз в боте.\n"
-        "3. <b>Запись:</b> Жмите кнопку <b>Записаться на игру</b> под сообщением в группе.\n"
-        "4. <b>Отмена:</b> Выписывайтесь минимум за 24ч до игры при невозможности прийти.\n"
-        "5. <b>Оплата:</b> Переводите взнос по реквизитам из карточки игры.\n\n"
-        f"📖 <i>Полная версия с описанием ELO, драфта и карточек:</i>\n{rules_web_url}"
-    )
+    text = t("cmd_rules_text", locale=user_lang, cancel_hours=24, rules_url=rules_web_url)
     await message.answer(text, parse_mode="HTML", reply_markup=kb)
 
 
 @router.message(Command("help"))
-async def cmd_help(message: types.Message):
+async def cmd_help(message: types.Message, session: AsyncSession | None = None):
     if message.chat.type != "private":
         try:
             await message.delete()
         except Exception:
             pass
         return
-    help_text = (
-        "🆘 <b>Help & FAQ / Помощь</b>\n\n"
-        "🇬🇧 <b>ENGLISH:</b>\n"
-        "• <b>Join game:</b> Click the sign-up button on the game post in the group.\n"
-        "• <b>Profile & Stats:</b> Open bot in private chat -> Menu -> My Profile.\n"
-        "• <b>Change language:</b> Send /language in private chat with the bot.\n"
-        "• <b>Group rules:</b> Send /rules or /info.\n"
-        "• <b>Support:</b> Contact @yeronymus\n\n"
-        "🇷🇺 <b>РУССКИЙ:</b>\n"
-        "• <b>Запись:</b> Кнопка «Записаться» под сообщением об игре в группе.\n"
-        "• <b>Профиль:</b> В ЛС с ботом -> Меню -> Мой Профиль.\n"
-        "• <b>Смена языка:</b> Отправьте /language в ЛС с ботом.\n"
-        "• <b>Правила:</b> Команда /rules или /info.\n"
-        "• <b>Поддержка:</b> Пишите @yeronymus"
+
+    db_user = None
+    if session and message.from_user:
+        try:
+            db_user = await UserRepository(session).get_user(message.from_user.id)
+        except Exception:
+            db_user = None
+
+    user_lang = _resolve_event_lang(message.from_user, db_user)
+    support = (settings.support_contact or "").strip()
+    support_line = (
+        t("cmd_help_support_line", locale=user_lang, contact=html.escape(support))
+        if support
+        else ""
     )
+    help_text = t("cmd_help_text", locale=user_lang, support_line=support_line)
     await message.answer(help_text, parse_mode="HTML")
 
 
 @router.message(CommandStart())
-async def cmd_start(message: types.Message, command: CommandObject, state: FSMContext, session: AsyncSession):
+async def cmd_start(
+    message: types.Message,
+    command: CommandObject,
+    state: FSMContext,
+    session: AsyncSession,
+):
     await state.clear()
 
     if message.chat.type != "private":
@@ -227,15 +259,10 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
 
     args = command.args
 
-    # 1. Check User Existence
+    # 1. Check User Existence & Resolve Language (Universal Default: 'en')
     user_repo = UserRepository(session)
     user = await user_repo.get_user(message.from_user.id)
-    user_lang = "ru"
-    if user and getattr(user, "language", None):
-        user_lang = user.language.value if hasattr(user.language, "value") else str(user.language)
-    elif message.from_user.language_code and not message.from_user.language_code.startswith("ru"):
-        user_lang = "en"
-    user_lang = (user_lang or "ru").lower()
+    user_lang = _resolve_event_lang(message.from_user, user)
 
     # 2. Logic for Deep Link "reg"
     if args == "reg":
@@ -254,12 +281,15 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
             except ValueError:
                 pass
         elif args.startswith("rules"):
-            rules_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html"
+            rules_lang = user_lang
             if "en" in args:
-                rules_url += "?lang=en"
+                rules_lang = "en"
             elif "ru" in args:
-                rules_url += "?lang=ru"
-            
+                rules_lang = "ru"
+            elif "cs" in args or "cz" in args:
+                rules_lang = "cs"
+            rules_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html?lang={rules_lang}"
+
             kb = types.InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
@@ -271,9 +301,9 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 ]
             )
             await message.answer(
-                "📖 <b>Community Rules & Match Guide / Правила сообщества</b>",
+                t("rules_intro_title", locale=user_lang),
                 reply_markup=kb,
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
             return
         elif args.startswith("finish_") or args.startswith("edit_"):
@@ -284,12 +314,18 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     web_url = f"{base}/web/finish.html?game_id={game_id}&mode=edit&v={settings.webapp_version}"
                     label = t("btn_fill_results", locale=user_lang)
                 else:
-                    web_url = f"{base}/web/edit_game.html?game_id={game_id}&v={settings.webapp_version}"
+                    web_url = (
+                        f"{base}/web/edit_game.html?game_id={game_id}&v={settings.webapp_version}"
+                    )
                     label = t("btn_open_editor", locale=user_lang)
 
                 kb = types.InlineKeyboardMarkup(
                     inline_keyboard=[
-                        [types.InlineKeyboardButton(text=label, web_app=types.WebAppInfo(url=web_url))]
+                        [
+                            types.InlineKeyboardButton(
+                                text=label, web_app=types.WebAppInfo(url=web_url)
+                            )
+                        ]
                     ]
                 )
                 await message.answer(
@@ -323,7 +359,9 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 is_member = True
             elif game:
                 try:
-                    chat_member = await message.bot.get_chat_member(game.chat_id, message.from_user.id)
+                    chat_member = await message.bot.get_chat_member(
+                        game.chat_id, message.from_user.id
+                    )
                     if chat_member.status in ["administrator", "creator"]:
                         is_admin = True
                         is_member = True
@@ -334,14 +372,30 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
 
             if game and not is_member:
                 text_denied = t("denied_private_group_msg", locale=user_lang)
-                btn_contact = t("btn_contact_organizer", locale=user_lang)
                 btn_retry = t("btn_i_am_in_group", locale=user_lang)
 
+                chat_obj = None
+                try:
+                    maybe_chat = await session.get(Chat, game.chat_id)
+                    if isinstance(maybe_chat, Chat):
+                        chat_obj = maybe_chat
+                except Exception:
+                    chat_obj = None
+
+                contact_url = _resolve_contact_url(chat_obj)
                 bot_username = settings.bot_username
-                buttons = [
-                    [types.InlineKeyboardButton(text=btn_contact, url="https://t.me/yeronymus")],
-                    [types.InlineKeyboardButton(text=btn_retry, url=f"https://t.me/{bot_username}?start=game_{game_id}")],
-                ]
+                buttons = []
+                if contact_url:
+                    btn_contact = t("btn_contact_organizer", locale=user_lang)
+                    buttons.append([types.InlineKeyboardButton(text=btn_contact, url=contact_url)])
+                buttons.append(
+                    [
+                        types.InlineKeyboardButton(
+                            text=btn_retry,
+                            url=f"https://t.me/{bot_username}?start=game_{game_id}",
+                        )
+                    ]
+                )
 
                 await message.answer(
                     text_denied,
@@ -454,8 +508,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                 result = await session.execute(select(Game).where(Game.id == game_id))
                 game = result.scalar_one_or_none()
                 if game:
-                    from app.bot.utils import get_group_game_number, _format_date
-                    from app.bot.keyboards import get_game_keyboard
+                    from app.bot.utils import _format_date, get_group_game_number
 
                     game_num = await get_group_game_number(session, game)
                     date_str = _format_date(game.date_time, lang=user_lang)
@@ -475,7 +528,9 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     return
             except Exception as e:
                 logger.error(f"Error in cmd_start game logic: {e}", exc_info=True)
-                await message.answer(t("err_game_load_failed", locale=user_lang, error=html.escape(str(e))))
+                await message.answer(
+                    t("err_game_load_failed", locale=user_lang, error=html.escape(str(e)))
+                )
                 return
 
         # Send Welcome Message
@@ -501,6 +556,15 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
     if game_id:
         reg_url += f"&game_id={game_id}"
 
+    lang_buttons = [
+        types.InlineKeyboardButton(
+            text=f"{loc['flag']} {loc['name']}",
+            callback_data=f"userlang_{loc['code']}",
+        )
+        for loc in i18n_instance.catalog.available_locales()
+    ]
+    lang_rows = [lang_buttons[i : i + 3] for i in range(0, len(lang_buttons), 3)]
+
     kb = types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -509,10 +573,7 @@ async def cmd_start(message: types.Message, command: CommandObject, state: FSMCo
                     web_app=types.WebAppInfo(url=reg_url),
                 )
             ],
-            [
-                types.InlineKeyboardButton(text="🇬🇧 English", callback_data="userlang_en"),
-                types.InlineKeyboardButton(text="🇷🇺 Русский", callback_data="userlang_ru"),
-            ],
+            *lang_rows,
         ]
     )
 

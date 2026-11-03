@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, BigInteger, UniqueConstraint, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, BigInteger, UniqueConstraint, Float, JSON
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -53,9 +53,10 @@ class Team(str, enum.Enum):
     C = "C"
 
 class Language(str, enum.Enum):
-    ru = "ru"
-    cz = "cz"
     en = "en"
+    ru = "ru"
+    cs = "cs"
+    cz = "cz"
 
 class User(Base):
     """
@@ -74,7 +75,7 @@ class User(Base):
     alt_positions = Column(ARRAY(String), default=[])
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     is_superadmin = Column(Boolean, default=False)
-    language = Column(Enum(Language, name="chat_language_enum", native_enum=False), default=Language.ru)
+    language = Column(Enum(Language, name="chat_language_enum", native_enum=False), default=Language.en)
 
     games_created = relationship("Game", back_populates="creator")
     signups = relationship("Signup", back_populates="user")
@@ -96,9 +97,14 @@ class Chat(Base):
     channel_id = Column(BigInteger, nullable=True)    # Linked Announcement Channel
 
     # SaaS / Group Settings
-    language = Column(Enum(Language, name="chat_language_enum", native_enum=False), default=Language.ru)
+    language = Column(Enum(Language, name="chat_language_enum", native_enum=False), default=Language.en)
     payment_info = Column(String, nullable=True)     # If null, uses global default
     is_active = Column(Boolean, default=True)
+    currency = Column(String(8), default="CZK")
+    timezone = Column(String(64), default="Europe/Prague")
+    sport_type = Column(String(32), default="football")
+    billing_mode = Column(String(32), default="manual")
+    policy = Column(JSON, default=dict)
 
     # Defaults for Game Creation
     default_location = Column(String, nullable=True)

@@ -33,11 +33,7 @@ from app.db.database import async_session_maker
 
 dp.include_router(main_router)
 
-
-
-from app.bot.i18n import SimpleI18n, I18nMiddleware
-
-i18n_instance = SimpleI18n("app/bot/locales")
+from app.bot.i18n import i18n_instance, I18nMiddleware
 
 dp.update.middleware(DbSessionMiddleware(session_pool=async_session_maker))
 
@@ -82,13 +78,13 @@ async def start_bot():
         logging.warning(f"Failed to clear commands: {e}")
 
     # 2. Set new commands
-    # English commands (Default)
+    # English commands (Universal Default)
     user_commands_en = [
         types.BotCommand(command="start", description="🏠 Main Menu"),
         types.BotCommand(command="my_profile", description="👤 Profile"),
         types.BotCommand(command="my_history", description="📜 Match History"),
         types.BotCommand(command="top", description="🏆 Leaderboard"),
-        types.BotCommand(command="language", description="🌐 Language / Язык"),
+        types.BotCommand(command="language", description="🌐 Language"),
         types.BotCommand(command="rules", description="📋 Rules & Info"),
     ]
 
@@ -101,6 +97,16 @@ async def start_bot():
         types.BotCommand(command="language", description="🌐 Язык / Language"),
         types.BotCommand(command="rules", description="📋 Правила и инфо"),
     ]
+
+    # Czech commands
+    user_commands_cs = [
+        types.BotCommand(command="start", description="🏠 Hlavní menu"),
+        types.BotCommand(command="my_profile", description="👤 Můj profil"),
+        types.BotCommand(command="my_history", description="📜 Historie zápasů"),
+        types.BotCommand(command="top", description="🏆 Žebříček"),
+        types.BotCommand(command="language", description="🌐 Jazyk / Language"),
+        types.BotCommand(command="rules", description="📋 Pravidla a info"),
+    ]
     
     # Admin-only commands (appended to user commands)
     admin_commands_en = user_commands_en + [
@@ -108,6 +114,9 @@ async def start_bot():
     ]
     admin_commands_ru = user_commands_ru + [
         types.BotCommand(command="dashboard", description="🛠 Панель управления"),
+    ]
+    admin_commands_cs = user_commands_cs + [
+        types.BotCommand(command="dashboard", description="🛠 Správa"),
     ]
 
     # Group commands
@@ -119,18 +128,25 @@ async def start_bot():
         types.BotCommand(command="rules", description="📋 Как играть и правила"),
         types.BotCommand(command="info", description="ℹ️ Информация об играх"),
     ]
+    group_commands_cs = [
+        types.BotCommand(command="rules", description="📋 Pravidla a jak hrát"),
+        types.BotCommand(command="info", description="ℹ️ Informace o zápasech"),
+    ]
 
-    # Set Private Chats Scope (Default / English)
+    # Set Private Chats Scope (Default / English + Localized)
     await bot.set_my_commands(user_commands_en, scope=types.BotCommandScopeAllPrivateChats())
     await bot.set_my_commands(user_commands_ru, scope=types.BotCommandScopeAllPrivateChats(), language_code="ru")
+    await bot.set_my_commands(user_commands_cs, scope=types.BotCommandScopeAllPrivateChats(), language_code="cs")
     
     # Set Group Chats Scope
     await bot.set_my_commands(group_commands_en, scope=types.BotCommandScopeAllGroupChats())
     await bot.set_my_commands(group_commands_ru, scope=types.BotCommandScopeAllGroupChats(), language_code="ru")
+    await bot.set_my_commands(group_commands_cs, scope=types.BotCommandScopeAllGroupChats(), language_code="cs")
     
     # Set Default Scope (Fallback)
     await bot.set_my_commands(user_commands_en, scope=types.BotCommandScopeDefault())
     await bot.set_my_commands(user_commands_ru, scope=types.BotCommandScopeDefault(), language_code="ru")
+    await bot.set_my_commands(user_commands_cs, scope=types.BotCommandScopeDefault(), language_code="cs")
     
     # Set Admin Scope (For specific admins in private chat)
     import asyncio
@@ -139,6 +155,7 @@ async def start_bot():
         try:
             await bot.set_my_commands(admin_commands_en, scope=types.BotCommandScopeChat(chat_id=admin_id))
             await bot.set_my_commands(admin_commands_ru, scope=types.BotCommandScopeChat(chat_id=admin_id), language_code="ru")
+            await bot.set_my_commands(admin_commands_cs, scope=types.BotCommandScopeChat(chat_id=admin_id), language_code="cs")
         except Exception as e:
             logging.warning(f"Failed to set commands for admin {admin_id}: {e}")
 
@@ -146,12 +163,6 @@ async def start_bot():
 
 
     logging.info("Set role-based commands successfully.")
-    
-    # 3. Force 'Commands' menu button explicitly (Only for private chats?)
-    # Actually, setting commands usually sets the button.
-    # To be safe, we might not need set_chat_menu_button if we want it hidden in groups.
-    # But let's leave it, as scope modification above is the primary way.
-    # await bot.set_chat_menu_button(menu_button=types.MenuButtonCommands()) 
 
 async def stop_bot():
     """

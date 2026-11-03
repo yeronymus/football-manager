@@ -6,8 +6,10 @@ if TYPE_CHECKING:
     from app.core.uow import UnitOfWork
 
 from app.bot.i18n import t
+from app.core.domain.tenant_policy import resolve_tenant_policy
 from app.core.events import Event
-from app.db.models import User, Signup, SignupStatus, GameStatus, Position, Team, Game
+from app.core.i18n import normalize_locale_code
+from app.db.models import Chat, Game, GameStatus, Position, Signup, SignupStatus, Team, User
 
 
 @dataclass
@@ -37,13 +39,8 @@ class JoinResult:
 
 def _resolve_user_lang(user: Optional[User]) -> str:
     if not user:
-        return "ru"
-    lang_attr = getattr(user, "language", None)
-    if hasattr(lang_attr, "value") and isinstance(lang_attr.value, str):
-        return lang_attr.value
-    if isinstance(lang_attr, str):
-        return lang_attr
-    return "ru"
+        return "en"
+    return normalize_locale_code(getattr(user, "language", None), default="en")
 
 
 class RosterService:
@@ -55,7 +52,20 @@ class RosterService:
     def __init__(self, uow: "UnitOfWork"):
         self.uow = uow
 
-    async def join_player(self, game_id: int, user: User, ignore_limit: bool = False) -> JoinResult:
+    async def _resolve_cancellation_hours(self, game: Game) -> int:
+        session = getattr(self.uow, "session", None)
+        if session is not None and getattr(game, "chat_id", None):
+            try:
+                chat = await session.get(Chat, game.chat_id)
+                if isinstance(chat, Chat):
+                    return resolve_tenant_policy(chat).free_cancellation_hours
+            except Exception:
+                pass
+        return resolve_tenant_policy(None).free_cancellation_hours
+
+    async def join_player(
+        self, game_id: int, user: User, ignore_limit: bool = False
+    ) -> JoinResult:
         """
         Registers a player to a game.
         Handles game availability, idempotency, registration windows, limits, and goalie priority.
@@ -88,7 +98,11 @@ class RosterService:
             active_card = await self.uow.user_repo.get_active_card(user.user_id, game.chat_id)
             if active_card and getattr(active_card, "card_type", None) == "RED":
                 exp_dt = active_card.expires_at
-                exp_str = exp_dt.strftime("%d.%m.%Y") if hasattr(exp_dt, "strftime") else str(exp_dt)[:10]
+                exp_str = (
+                    exp_dt.strftime("%d.%m.%Y")
+                    if hasattr(exp_dt, "strftime")
+                    else str(exp_dt)[:10]
+                )
                 reason_line = (
                     f" {t('card_reason_prefix', locale=user_lang)}: {active_card.reason}"
                     if getattr(active_card, "reason", None)
@@ -103,7 +117,9 @@ class RosterService:
                 return JoinResult(False, None, msg, False)
 
         # 3. Time and Limit validations
-        limit_error = await self._validate_registration_limits(game, game_id, ignore_limit, user_lang)
+        limit_error = await self._validate_registration_limits(
+            game, game_id, ignore_limit, user_lang
+        )
         if limit_error:
             return limit_error
 
@@ -118,7 +134,9 @@ class RosterService:
         is_reserve = False
 
         # Goalkeeper priority slots check
-        if self._check_gk_priority(game, active_count, user, ignore_limit, active_gk_count=active_gk_count):
+        if self._check_gk_priority(
+            game, active_count, user, ignore_limit, active_gk_count=active_gk_count
+        ):
             status = SignupStatus.RESERVE
             alert_msg = t("alert_gk_priority_reserve", locale=user_lang)
             is_reserve = True
@@ -141,29 +159,35 @@ class RosterService:
         return JoinResult(True, signup, alert_msg, is_reserve)
 
     def _validate_game_status(
-        self, game: Optional[Game], user_lang: str = "ru"
+        self, game: Optional[Game], user_lang: str = "en"
     ) -> Optional[JoinResult]:
         """Validates if the game exists and is in an open/active state."""
+        norm_lang = normalize_locale_code(user_lang, default="en")
         if not game:
-            return JoinResult(False, None, t("err_game_not_found", locale=user_lang), False)
+            return JoinResult(False, None, t("err_game_not_found", locale=norm_lang), False)
 
         if game.status not in [GameStatus.OPEN, GameStatus.ACTIVE]:
-            return JoinResult(False, None, t("err_signup_closed", locale=user_lang), False)
+            return JoinResult(False, None, t("err_signup_closed", locale=norm_lang), False)
         return None
 
     async def _validate_registration_limits(
-        self, game: Game, game_id: int, ignore_limit: bool, user_lang: str = "ru"
+        self, game: Game, game_id: int, ignore_limit: bool, user_lang: str = "en"
     ) -> Optional[JoinResult]:
         """Validates registration deadlines, windows, and total signup limits."""
-        # 3. Validate game date limits
+        norm_lang = normalize_locale_code(user_lang, default="en")
         if game.date_time:
             now = datetime.now().replace(tzinfo=None)
             game_dt = game.date_time.replace(tzinfo=None)
             if game_dt < now:
-                return JoinResult(False, None, t("err_game_past", locale=user_lang), False)
+                return JoinResult(False, None, t("err_game_past", locale=norm_lang), False)
 
         # Configurable Registration Window
-        if game.created_at and game.registration_hours and game.registration_hours > 0 and not ignore_limit:
+        if (
+            game.created_at
+            and game.registration_hours
+            and game.registration_hours > 0
+            and not ignore_limit
+        ):
             now_ts = datetime.now().replace(tzinfo=None)
             created_at = game.created_at.replace(tzinfo=None)
             diff = (now_ts - created_at).total_seconds() / 3600
@@ -171,7 +195,7 @@ class RosterService:
                 return JoinResult(
                     False,
                     None,
-                    t("err_window_expired", locale=user_lang, hours=game.registration_hours),
+                    t("err_window_expired", locale=norm_lang, hours=game.registration_hours),
                     False,
                 )
 
@@ -182,7 +206,7 @@ class RosterService:
                 return JoinResult(
                     False,
                     None,
-                    t("err_limit_reached", locale=user_lang, limit=game.signup_limit),
+                    t("err_limit_reached", locale=norm_lang, limit=game.signup_limit),
                     False,
                 )
         return None
@@ -196,7 +220,12 @@ class RosterService:
         active_gk_count: int = 0,
     ) -> bool:
         """Checks if the remaining slots should be reserved exclusively for Goalies."""
-        if not ignore_limit and game.created_at and getattr(game, "gk_hours", 0) and game.gk_hours > 0:
+        if (
+            not ignore_limit
+            and game.created_at
+            and getattr(game, "gk_hours", 0)
+            and game.gk_hours > 0
+        ):
             now_ts = datetime.now().replace(tzinfo=None)
             created_at = game.created_at.replace(tzinfo=None)
             age_hours = (now_ts - created_at).total_seconds() / 3600
@@ -210,26 +239,30 @@ class RosterService:
         return False
 
     async def leave_player(
-        self, game_id: int, user_id: int, is_admin: bool = False, locale: str = "ru"
+        self, game_id: int, user_id: int, is_admin: bool = False, locale: str = "en"
     ) -> tuple[bool, str, User | None]:
         """
         Removes a player from the game signup list.
         Promotes first reserve player to active list if applicable.
+        Respects per-tenant `free_cancellation_hours` policy.
         """
+        norm_locale = normalize_locale_code(locale, default="en")
         game = await self.uow.game_repo.get_with_lock(game_id)
         if not game:
-            return False, t("err_game_not_found", locale=locale), None
+            return False, t("err_game_not_found", locale=norm_locale), None
 
         signup = await self.uow.game_repo.get_signup(game_id, user_id)
         if not signup:
-            return False, t("leave_not_signed_up", locale=locale), None
+            return False, t("leave_not_signed_up", locale=norm_locale), None
 
         if game.date_time and not is_admin:
-            now = datetime.now().replace(tzinfo=None)
-            game_dt = game.date_time.replace(tzinfo=None)
-            time_to_game = game_dt - now
-            if time_to_game.total_seconds() < 36 * 3600:
-                return False, t("leave_too_late", locale=locale), None
+            cancel_hours = await self._resolve_cancellation_hours(game)
+            if cancel_hours > 0:
+                now = datetime.now().replace(tzinfo=None)
+                game_dt = game.date_time.replace(tzinfo=None)
+                time_to_game = game_dt - now
+                if time_to_game.total_seconds() < cancel_hours * 3600:
+                    return False, t("leave_too_late", locale=norm_locale), None
 
         was_active = signup.status == SignupStatus.ACTIVE
 
@@ -251,7 +284,7 @@ class RosterService:
 
         evict_game_signups_cache(game_id)
 
-        return True, t("leave_success", locale=locale), promoted_user
+        return True, t("leave_success", locale=norm_locale), promoted_user
 
     async def recalculate_roster(self, game_id: int) -> bool:
         game = await self.uow.game_repo.get_with_lock(game_id)
@@ -307,7 +340,10 @@ class RosterService:
         return True
 
     async def balance_teams(self, game_id: int) -> list[tuple[User, Team]]:
-        from app.core.domain.balancer import balance_teams, Player as DomainPlayer
+        from sqlalchemy import select
+
+        from app.core.domain.balancer import Player as DomainPlayer, balance_teams
+        from app.db.models import PlayerProfile
 
         game = await self.uow.game_repo.get_game(game_id)
         if not game:
@@ -316,9 +352,6 @@ class RosterService:
         active_rows = await self.uow.game_repo.get_active_players(game_id)
         if not active_rows:
             return []
-
-        from app.db.models import PlayerProfile
-        from sqlalchemy import select
 
         profiles_res = await self.uow.session.execute(
             select(PlayerProfile).where(PlayerProfile.chat_id == game.chat_id)
@@ -410,7 +443,9 @@ class RosterService:
                 s.team = None
                 s.status = SignupStatus.RESERVE
 
-        picked_ids = set(team_a) | set(team_b) | set(team_c or []) | set(unassigned) | set(reserve)
+        picked_ids = (
+            set(team_a) | set(team_b) | set(team_c or []) | set(unassigned) | set(reserve)
+        )
         for uid, s in signup_map.items():
             if uid not in picked_ids:
                 s.status = SignupStatus.RESERVE

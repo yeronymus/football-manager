@@ -1,14 +1,17 @@
+from datetime import datetime, timedelta
 import html
 import logging
-from datetime import datetime, timedelta
 import zoneinfo
+
 from sqlalchemy import func, select
 
 from app.bot.i18n import t
 from app.bot.instance import bot
 from app.config import settings
+from app.core.domain.tenant_policy import resolve_tenant_policy
+from app.core.i18n import normalize_locale_code
 from app.db.database import async_session_maker
-from app.db.models import Game, GameStatus, Signup, SignupStatus, Team, User
+from app.db.models import Chat, Game, GameStatus, Signup, SignupStatus, Team, User
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,7 @@ async def send_voting_message(game_id: int):
     """
     Sends the MVP voting message with inline player buttons to the chat.
     Triggered when a game duration is over or manually by admin.
-    Also schedules automatic MVP calculation 24 hours after start.
+    Schedules automatic MVP calculation according to `TenantPolicy.mvp_voting_window_hours`.
     """
     async with async_session_maker() as session:
         result = await session.execute(select(Game).where(Game.id == game_id))
@@ -51,9 +54,18 @@ async def send_voting_message(game_id: int):
             else:
                 unassigned.append(user)
 
-        from app.bot.utils import get_group_game_number, resolve_chat_language
         from app.bot.keyboards import get_channel_voting_keyboard, get_voting_keyboard
+        from app.bot.utils import get_group_game_number, resolve_chat_language
 
+        chat = None
+        try:
+            maybe_chat = await session.get(Chat, game.chat_id)
+            if isinstance(maybe_chat, Chat):
+                chat = maybe_chat
+        except Exception:
+            chat = None
+
+        policy = resolve_tenant_policy(chat)
         chat_lang = await resolve_chat_language(session, game.chat_id)
         keyboard = get_voting_keyboard(
             game_id,
@@ -109,28 +121,36 @@ async def send_voting_message(game_id: int):
 
         from app.infrastructure.scheduler.service import SchedulerService
 
+        tz_name = getattr(chat, "timezone", None) or settings.default_timezone or "Europe/Prague"
         try:
-            tz = zoneinfo.ZoneInfo("Europe/Prague")
+            tz = zoneinfo.ZoneInfo(tz_name)
             now_dt = datetime.now(tz)
         except Exception:
             now_dt = datetime.now()
 
         SchedulerService().schedule_mvp_calculation_at(
-            game_id, now_dt + timedelta(hours=24)
+            game_id, now_dt + timedelta(hours=policy.mvp_voting_window_hours)
         )
 
 
 def format_votes_count(count: int, lang: str) -> str:
-    lang = (lang or "en").lower()
-    if lang == "ru":
-        c_abs = abs(count)
+    norm_lang = normalize_locale_code(lang, default="en")
+    c_abs = abs(count)
+    if norm_lang == "ru":
         if c_abs % 10 == 1 and c_abs % 100 != 11:
             return f"{count} голос"
         elif 2 <= c_abs % 10 <= 4 and not (12 <= c_abs % 100 <= 14):
             return f"{count} голоса"
         else:
             return f"{count} голосов"
-    return f"{count} vote" if count == 1 else f"{count} votes"
+    if norm_lang == "cs":
+        if c_abs == 1:
+            return f"{count} hlas"
+        elif 2 <= c_abs <= 4:
+            return f"{count} hlasy"
+        else:
+            return f"{count} hlasů"
+    return f"{count} vote" if c_abs == 1 else f"{count} votes"
 
 
 async def calculate_mvp(game_id: int):
@@ -146,6 +166,17 @@ async def calculate_mvp(game_id: int):
             return
 
         from app.bot.utils import get_group_game_number, resolve_chat_language
+
+        chat = None
+        try:
+            maybe_chat = await session.get(Chat, game.chat_id)
+            if isinstance(maybe_chat, Chat):
+                chat = maybe_chat
+        except Exception:
+            chat = None
+
+        policy = resolve_tenant_policy(chat)
+        mvp_bonus = policy.rating_mvp_bonus
 
         chat_lang = await resolve_chat_language(session, game.chat_id)
         game_num = await get_group_game_number(session, game)
@@ -277,7 +308,9 @@ async def calculate_mvp(game_id: int):
                 )
 
         if all_mvp_ids:
-            announcement += t("mvp_results_footer", locale=chat_lang)
+            announcement += t(
+                "mvp_results_footer", locale=chat_lang, mvp_bonus=mvp_bonus
+            )
 
         try:
             await bot.send_message(
@@ -312,7 +345,7 @@ async def calculate_mvp(game_id: int):
                     u = await session.get(User, mvp_id)
                     if u:
                         u.stats_mvp = (u.stats_mvp or 0) + 1
-                        u.rating = (u.rating or 100) + 5
+                        u.rating = (u.rating or 100) + mvp_bonus
 
                     p_res = await session.execute(
                         select(PlayerProfile).where(
@@ -323,7 +356,7 @@ async def calculate_mvp(game_id: int):
                     p = p_res.scalar_one_or_none()
                     if p:
                         p.stats_mvp = (p.stats_mvp or 0) + 1
-                        p.rating = (p.rating or 100) + 5
+                        p.rating = (p.rating or 100) + mvp_bonus
 
                     h_res = await session.execute(
                         select(RatingHistory).where(
@@ -333,8 +366,8 @@ async def calculate_mvp(game_id: int):
                     )
                     h = h_res.scalar_one_or_none()
                     if h:
-                        h.new_rating = (h.new_rating or 100) + 5
-                        h.change = (h.change or 0) + 5
+                        h.new_rating = (h.new_rating or 100) + mvp_bonus
+                        h.change = (h.change or 0) + mvp_bonus
 
             await session.commit()
             logger.info(

@@ -1,7 +1,10 @@
 import logging
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.domain.tenant_policy import TenantPolicy, resolve_tenant_policy
 from app.db.models import (
+    Chat,
     Game,
     GameStats,
     PlayerProfile,
@@ -18,6 +21,16 @@ logger = logging.getLogger(__name__)
 class StatsService:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    async def _resolve_policy(self, chat_id: int | None) -> TenantPolicy:
+        if chat_id and self.session is not None:
+            try:
+                chat = await self.session.get(Chat, chat_id)
+                if isinstance(chat, Chat):
+                    return resolve_tenant_policy(chat)
+            except Exception:
+                pass
+        return resolve_tenant_policy(None)
 
     async def _fetch_reversion_data(self, game_chat_id: int, user_ids: set[int]):
         """Fetches users and tenant profiles for rating delta reversion."""
@@ -104,8 +117,15 @@ class StatsService:
                 delete(RatingHistory).where(RatingHistory.id.in_(history_ids))
             )
 
-    def _calculate_team_points(self, game: Game) -> dict[Team, int]:
-        """Calculates point change for each team based on ranks and scores."""
+    def _calculate_team_points(
+        self, game: Game, policy: TenantPolicy | None = None
+    ) -> dict[Team, int]:
+        """Calculates point change for each team based on ranks, scores, and TenantPolicy."""
+        active_policy = policy or TenantPolicy()
+        win_pts = active_policy.rating_win_points
+        draw_pts = active_policy.rating_draw_points
+        loss_pts = active_policy.rating_loss_points
+
         team_points = {}
         scores_map = {}
         if game.team_count >= 2:
@@ -121,11 +141,11 @@ class StatsService:
 
         for team, score in sorted_teams:
             if len(unique_scores) == 1:
-                team_points[team] = 0
+                team_points[team] = draw_pts
             else:
                 rank = unique_scores.index(score)
                 max_rank = len(unique_scores) - 1
-                points = 10 - (15 * rank / max_rank)
+                points = win_pts - ((win_pts - loss_pts) * rank / max_rank)
                 team_points[team] = round(points)
         return team_points
 
@@ -137,18 +157,20 @@ class StatsService:
         profile: PlayerProfile,
         team_points: dict,
         mvp_ids: set[int],
+        policy: TenantPolicy | None = None,
     ):
         """Updates tenant PlayerProfile, User stats, and records RatingHistory delta."""
+        active_policy = policy or TenantPolicy()
         if not profile:
             profile = PlayerProfile(user_id=user.user_id, chat_id=game.chat_id)
             self.session.add(profile)
 
         old_rating = profile.rating or 100
-        change = team_points.get(team, -5)
+        change = team_points.get(team, active_policy.rating_loss_points)
 
         is_mvp = user.user_id in mvp_ids
         if is_mvp:
-            change += 5
+            change += active_policy.rating_mvp_bonus
 
         profile.rating = (profile.rating or 100) + change
         profile.games_played = (profile.games_played or 0) + 1
@@ -174,7 +196,8 @@ class StatsService:
 
     async def apply_game_results(self, game: Game, mvp_ids: set[int]):
         """Applies rating deltas and records RatingHistory for active match participants."""
-        team_points = self._calculate_team_points(game)
+        policy = await self._resolve_policy(game.chat_id)
+        team_points = self._calculate_team_points(game, policy=policy)
 
         result = await self.session.execute(
             select(User, Signup.team, PlayerProfile)
@@ -190,5 +213,5 @@ class StatsService:
 
         for user, team, profile in players_data:
             self._update_single_player_stats(
-                game, user, team, profile, team_points, mvp_ids
+                game, user, team, profile, team_points, mvp_ids, policy=policy
             )

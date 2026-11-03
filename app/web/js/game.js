@@ -15,7 +15,7 @@ function resolveGameId() {
             || urlParams.get('start_param');
         if (raw) {
             if (raw === 'rules' || raw.startsWith('rules_') || raw.startsWith('rules')) {
-                const lang = raw.includes('ru') ? 'ru' : (raw.includes('en') ? 'en' : '');
+                const lang = raw.includes('ru') ? 'ru' : ((raw.includes('cs') || raw.includes('cz')) ? 'cs' : (raw.includes('en') ? 'en' : ''));
                 const q = lang ? `?lang=${lang}` : '';
                 window.location.replace(`/web/rules.html${q}`);
                 return null;
@@ -99,7 +99,7 @@ async function init() {
             currentUserProfile = await fetchAPI(`/users/me/profile?chat_id=${chatId}`);
             if (currentUserProfile && currentUserProfile.language && !urlParams.get('lang')) {
                 const userLang = String(currentUserProfile.language).toLowerCase();
-                if (window.i18n && (userLang === 'en' || userLang === 'ru')) {
+                if (window.i18n) {
                     window.i18n.setLanguage(userLang);
                 }
             }
@@ -132,9 +132,53 @@ async function init() {
     }
 }
 
+let qrExpanded = false;
+
+function formatCurrencyUnit(code, lang) {
+    const upper = String(code || 'CZK').toUpperCase();
+    if (upper === 'CZK') {
+        if (lang === 'ru') return 'крон';
+        if (lang === 'cs') return 'Kč';
+        return 'CZK';
+    }
+    return upper;
+}
+
+window.toggleQrPlatba = function() {
+    qrExpanded = !qrExpanded;
+    const panel = document.getElementById('qr-platba-panel');
+    const btn = document.getElementById('btn-toggle-qr');
+    const img = document.getElementById('qr-platba-img');
+    const t = window.i18n ? window.i18n.t : (k => k);
+    if (panel) panel.style.display = qrExpanded ? 'block' : 'none';
+    if (btn) btn.innerText = qrExpanded ? t('btn_hide_qr') : t('btn_show_qr');
+    if (qrExpanded && img && !img.getAttribute('src') && gameId) {
+        img.src = `/api/v1/billing/games/${encodeURIComponent(gameId)}/qr.svg`;
+    }
+};
+
+window.copyGameIban = async function() {
+    if (!currentGame || !currentGame.iban) return;
+    const t = window.i18n ? window.i18n.t : (k => k);
+    try {
+        await navigator.clipboard.writeText(currentGame.iban);
+        const btn = document.getElementById('btn-copy-iban');
+        if (btn) {
+            btn.innerText = `✅ ${t('iban_copied')}`;
+            setTimeout(() => {
+                btn.innerText = t('btn_copy_iban');
+            }, 1800);
+        }
+    } catch (e) {
+        if (tg && tg.showAlert) tg.showAlert(currentGame.iban);
+        else alert(currentGame.iban);
+    }
+};
+
 function renderGameHeader() {
     const num = currentGame.game_number || currentGame.id;
     const t = window.i18n ? window.i18n.t : (k => k);
+    const lang = (window.i18n && window.i18n.currentLang) || 'en';
     document.getElementById('game-label').innerText = t('match_num', { num });
     
     // Status
@@ -155,19 +199,44 @@ function renderGameHeader() {
     
     // Date & Time
     const dt = new Date(currentGame.date);
-    const dateLocale = (window.i18n && window.i18n.currentLang === 'ru') ? 'ru-RU' : 'en-GB';
-    document.getElementById('game-date').innerText = `📅 ${dt.toLocaleString(dateLocale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague' })}`;
-    
-    // Price and Format
-    const currency = (window.i18n && window.i18n.currentLang === 'ru') ? 'крон' : 'CZK';
-    document.getElementById('game-price').innerText = `${currentGame.price} ${currency}`;
+    const dateLocale = lang === 'ru' ? 'ru-RU' : (lang === 'cs' ? 'cs-CZ' : 'en-GB');
+    const tz = currentGame.timezone || 'Europe/Prague';
+    document.getElementById('game-date').innerText = `📅 ${dt.toLocaleString(dateLocale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: tz })}`;
     
     // Main players count for game format
-    const formatCount = currentGame.main_players_count ? (currentGame.main_players_count / 2) : 11;
-    document.getElementById('game-format').innerText = `${formatCount}х${formatCount}`;
+    const teamCount = currentGame.team_count || 2;
+    const formatCount = currentGame.main_players_count ? Math.round(currentGame.main_players_count / 2) : 11;
+    document.getElementById('game-format').innerText = teamCount > 2 ? `${formatCount}x${formatCount} (${teamCount}T)` : `${formatCount}x${formatCount}`;
 
-    // Payment details
-    document.getElementById('game-payment').innerText = currentGame.payment_info || t('payment_cash');
+    // Billing & QR Platba (ADR-05)
+    const isFreeCorporate = currentGame.billing_mode === 'free_corporate' || currentGame.is_free;
+    const qrWrapper = document.getElementById('qr-platba-wrapper');
+    const qrBtn = document.getElementById('btn-toggle-qr');
+    const qrHint = document.getElementById('qr-platba-hint');
+    const copyBtn = document.getElementById('btn-copy-iban');
+    const ibanLine = document.getElementById('qr-iban-line');
+    const vsLine = document.getElementById('qr-vs-line');
+
+    if (isFreeCorporate && (!currentGame.price || currentGame.price <= 0)) {
+        document.getElementById('game-price').innerText = t('payment_free_corporate');
+        document.getElementById('game-payment').innerText = t('payment_covered_org');
+        if (qrWrapper) qrWrapper.style.display = 'none';
+    } else {
+        const currencyUnit = formatCurrencyUnit(currentGame.currency || 'CZK', lang);
+        document.getElementById('game-price').innerText = `${currentGame.price} ${currencyUnit}`;
+        document.getElementById('game-payment').innerText = currentGame.payment_info || t('payment_cash');
+
+        if (currentGame.spayd_payload && qrWrapper) {
+            qrWrapper.style.display = 'block';
+            if (qrBtn) qrBtn.innerText = qrExpanded ? t('btn_hide_qr') : t('btn_show_qr');
+            if (qrHint) qrHint.innerText = t('qr_scan_hint');
+            if (copyBtn) copyBtn.innerText = t('btn_copy_iban');
+            if (ibanLine) ibanLine.innerText = currentGame.iban ? `${t('qr_iban_label')}: ${currentGame.iban}` : '';
+            if (vsLine) vsLine.innerText = currentGame.variable_symbol ? `${t('qr_vs_label')}: ${currentGame.variable_symbol}` : '';
+        } else if (qrWrapper) {
+            qrWrapper.style.display = 'none';
+        }
+    }
 }
 
 function renderStatusInfo() {
@@ -539,7 +608,8 @@ async function loadAds() {
         
         if (adRes.status === 'ok' && adRes.ad) {
             const ad = adRes.ad;
-            const sponsorLabel = (window.i18n && window.i18n.currentLang === 'ru') ? 'Спонсорская Реклама' : 'Sponsored';
+            const t = window.i18n ? window.i18n.t : (k => k);
+            const sponsorLabel = t('lbl_ad');
             
             const html = `
                 <div class="card flex-row" style="margin: 0; padding: 12px; background: linear-gradient(135deg, rgba(30,30,40,0.8), rgba(60,30,80,0.8)); cursor:pointer;" onclick="openAdLink('${ad.link}')">
@@ -571,10 +641,10 @@ window.openAdLink = function(url) {
 }
 
 function showError(msg) {
-    const isRu = window.i18n && window.i18n.currentLang === 'ru';
-    const errTitle = isRu ? 'Ошибка' : 'Error';
-    const retryBtn = isRu ? 'Попробовать снова' : 'Try again';
-    const closeBtn = isRu ? 'Закрыть' : 'Close';
+    const t = window.i18n ? window.i18n.t : (k => k);
+    const errTitle = t('error_loading_title');
+    const retryBtn = t('btn_try_again');
+    const closeBtn = t('btn_close_popup');
 
     document.body.innerHTML = `
         <div class="card" style="margin:20px; text-align:center;">

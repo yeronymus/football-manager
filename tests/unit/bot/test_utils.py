@@ -444,12 +444,12 @@ async def test_format_game_message_english(session: AsyncSession):
 async def test_resolve_chat_language_scenarios(session: AsyncSession):
     from app.bot.utils import resolve_chat_language
     
-    # 1. Missing or None chat_id defaults to 'ru'
-    assert await resolve_chat_language(session, None) == "ru"
-    assert await resolve_chat_language(session, 0) == "ru"
+    # 1. Missing or None chat_id defaults universally to 'en' (ADR-01)
+    assert await resolve_chat_language(session, None) == "en"
+    assert await resolve_chat_language(session, 0) == "en"
     
-    # 2. Non-existent chat defaults to 'ru'
-    assert await resolve_chat_language(session, -999999999) == "ru"
+    # 2. Non-existent chat defaults universally to 'en'
+    assert await resolve_chat_language(session, -999999999) == "en"
     
     # 3. Direct match with Russian chat
     chat_ru = Chat(chat_id=-1005555, title="RU Group", language=Language.ru, channel_id=-1007777)

@@ -1,0 +1,92 @@
+{
+    "football": {
+        "code": "football",
+        "icon": "⚽",
+        "name": {
+            "en": "Football (Outdoor / Artificial Turf)",
+            "ru": "Футбол (большое поле / манеж)",
+            "cs": "Fotbal (venkovní / umělá tráva)"
+        },
+        "has_goalkeeper": true,
+        "default_team_count": 2,
+        "supported_team_counts": [2, 3, 4],
+        "default_main_players_count": 22,
+        "default_max_players": 26,
+        "default_duration_hours": 2.0,
+        "pitch_formats": ["5v5", "6v6", "7v7", "8v8", "9v9", "11v11"],
+        "roles": ["GK", "DEF", "LB", "CB", "RB", "LWB", "RWB", "MID", "CDM", "CM", "CAM", "LM", "RM", "FWD", "ST", "LW", "RW", "CF"],
+        "card_system_enabled": true
+    },
+    "futsal": {
+        "code": "futsal",
+        "icon": "🥅",
+        "name": {
+            "en": "Futsal / Indoor 5-a-Side",
+            "ru": "Футзал / Мини-футбол (5х5)",
+            "cs": "Futsal / Halový fotbal (5v5)"
+        },
+        "has_goalkeeper": true,
+        "default_team_count": 3,
+        "supported_team_counts": [2, 3, 4],
+        "default_main_players_count": 10,
+        "default_max_players": 15,
+        "default_duration_hours": 1.5,
+        "pitch_formats": ["4v4", "5v5"],
+        "roles": ["GK", "DEF", "MID", "FWD"],
+        "card_system_enabled": true
+    },
+    "volleyball": {
+        "code": "volleyball",
+        "icon": "🏐",
+        "name": {
+            "en": "Volleyball",
+            "ru": "Волейбол",
+            "cs": "Volejbal"
+        },
+        "has_goalkeeper": false,
+        "default_team_count": 2,
+        "supported_team_counts": [2, 3, 4],
+        "default_main_players_count": 12,
+        "default_max_players": 14,
+        "default_duration_hours": 2.0,
+        "pitch_formats": ["4v4", "6v6"],
+        "roles": ["DEF", "MID", "FWD"],
+        "card_system_enabled": false
+    },
+    "basketball": {
+        "code": "basketball",
+        "icon": "🏀",
+        "name": {
+            "en": "Basketball",
+            "ru": "Баскетбол",
+            "cs": "Basketbal"
+        },
+        "has_goalkeeper": false,
+        "default_team_count": 2,
+        "supported_team_counts": [2, 3, 4],
+        "default_main_players_count": 10,
+        "default_max_players": 12,
+        "default_duration_hours": 1.5,
+        "pitch_formats": ["3v3", "5v5"],
+        "roles": ["DEF", "MID", "FWD"],
+        "card_system_enabled": true
+    },
+    "generic": {
+        "code": "generic",
+        "icon": "🏃",
+        "name": {
+            "en": "Corporate Wellness / General Team Activity",
+            "ru": "Корпоративный спорт / Командная активность",
+            "cs": "Firemní sport / Týmová aktivita"
+        },
+        "has_goalkeeper": false,
+        "default_team_count": 2,
+        "supported_team_counts": [2, 3, 4],
+        "default_main_players_count": 12,
+        "default_max_players": 20,
+        "default_duration_hours": 1.5,
+        "pitch_formats": ["custom"],
+        "roles": ["DEF", "MID", "FWD"],
+        "card_system_enabled": false
+    }
+}

@@ -87,13 +87,13 @@ async def test_roster_blocks_player_with_active_red_card():
     user = User(user_id=42, full_name="Banned Player", player_position=Position.FWD)
     exp = datetime.datetime.now() + datetime.timedelta(days=14)
 
-    # 1. Red Card active -> Join blocked
+    # 1. Red Card active -> Join blocked (default language is English per ADR-01)
     red_card = PlayerCard(id=1, user_id=42, chat_id=-1001, card_type="RED", weeks=2, reason="Foul language", expires_at=exp, is_active=True)
     service_blocked = RosterService(MockUOW(red_card))
     res_blocked = await service_blocked.join_player(game_id=1, user=user)
 
     assert res_blocked.success is False
-    assert "красная карточка" in res_blocked.message.lower()
+    assert "red card" in res_blocked.message.lower()
     assert "Foul language" in res_blocked.message
 
     # 2. Yellow Card active -> Join allowed
@@ -106,12 +106,11 @@ async def test_roster_blocks_player_with_active_red_card():
     res_forced = await service_blocked.join_player(game_id=1, user=user, ignore_limit=True)
     assert res_forced.success is True
 
-    # 4. English user gets English blocking notice
-    user_en = User(user_id=43, full_name="English Player", player_position=Position.FWD, language="en")
-    res_en = await service_blocked.join_player(game_id=1, user=user_en)
-    assert res_en.success is False
-    assert "red card" in res_en.message.lower()
-    assert "Registration closed" in res_en.message
+    # 4. Russian user gets Russian blocking notice
+    user_ru = User(user_id=43, full_name="Russian Player", player_position=Position.FWD, language="ru")
+    res_ru = await service_blocked.join_player(game_id=1, user=user_ru)
+    assert res_ru.success is False
+    assert "красная карточка" in res_ru.message.lower()
 
 
 @pytest.mark.asyncio

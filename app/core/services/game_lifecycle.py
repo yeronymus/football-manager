@@ -4,8 +4,10 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.config import settings
 from app.core.domain.dto import CreateGameDTO, FinishGameDTO, UpdateGameDTO
+from app.core.domain.tenant_policy import BillingMode, resolve_billing_mode
 from app.core.services.stats import StatsService
 from app.db.models import Chat, Game, GameStats, GameStatus, Signup, SignupStatus
 from app.infrastructure.scheduler.service import SchedulerService
@@ -30,7 +32,7 @@ class GameLifecycleService:
 
     async def create_game(self, data: CreateGameDTO, creator_id: int) -> Game:
         """
-        Creates a new game, handles auto-joins, and schedules lifecycle tasks.
+        Creates a new game, enforces tenant billing mode, handles auto-joins, and schedules lifecycle tasks.
         """
         chat = await self.session.get(Chat, data.chat_id)
         if not chat:
@@ -46,14 +48,19 @@ class GameLifecycleService:
                 "Match location is required. Please set a location or configure group default."
             )
 
-        resolved_payment = (data.payment_info or "").strip() or (
-            chat.payment_info or None
-        )
-        resolved_price = (
-            data.price
-            if (data.price is not None and data.price >= 0)
-            else (chat.default_price if chat.default_price is not None else 100)
-        )
+        billing_mode = resolve_billing_mode(getattr(chat, "billing_mode", None))
+        if billing_mode == BillingMode.FREE_CORPORATE:
+            resolved_price = 0
+            resolved_payment = None
+        else:
+            resolved_payment = (data.payment_info or "").strip() or (
+                chat.payment_info or None
+            )
+            resolved_price = (
+                data.price
+                if (data.price is not None and data.price >= 0)
+                else (chat.default_price if chat.default_price is not None else 100)
+            )
 
         game = Game(
             chat_id=data.chat_id,

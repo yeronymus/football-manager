@@ -267,7 +267,7 @@ async def test_process_leave_success_with_promotion(mock_event_bus, mock_roster_
 
     # Assertions
     mock_uow.commit.assert_called_once()
-    callback.bot.send_message.assert_called_once_with(789, "🚀 Вы переведены в основной состав!")
+    callback.bot.send_message.assert_called_once_with(789, "🚀 You have been moved to the active squad!")
     mock_event_bus.publish.assert_called_once()
     callback.answer.assert_called_once_with("Left game")
 
@@ -318,4 +318,4 @@ async def test_process_leave_system_exception(mock_uow_class):
 
     await process_leave(callback)
 
-    callback.answer.assert_called_once_with("Ошибка выхода.", show_alert=True)
+    callback.answer.assert_called_once_with("Failed to leave match.", show_alert=True)

@@ -1,18 +1,19 @@
 import logging
 import time
 
-from aiogram import Router, F, types
+from aiogram import F, Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.fsm import GuestAddition
-from app.bot.i18n import t
+from app.bot.i18n import i18n_instance, t
 from app.bot.keyboards import get_primary_select_keyboard
 from app.config import settings
+from app.core.i18n import normalize_locale_code
 from app.core.uow import UnitOfWork
-from app.db.models import Signup, User, SignupStatus, Position
+from app.db.models import Position, Signup, SignupStatus, User
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +22,10 @@ router = Router()
 
 def _get_lang(message_or_callback: types.TelegramObject) -> str:
     from_user = getattr(message_or_callback, "from_user", None)
-    if from_user and from_user.language_code and not from_user.language_code.startswith("ru"):
-        return "en"
-    return "ru"
+    lang_code = getattr(from_user, "language_code", None)
+    if isinstance(lang_code, str) and lang_code.strip():
+        return i18n_instance.catalog.resolve_supported(lang_code)
+    return "en"
 
 
 @router.message(Command("create"))
@@ -73,7 +75,10 @@ async def cmd_dashboard(message: types.Message, session: AsyncSession, _=t):
         and message.from_user.id != settings.system_owner_id
     ):
         from app.db.models import ChatAdmin
-        res = await session.execute(select(ChatAdmin).where(ChatAdmin.user_id == message.from_user.id))
+
+        res = await session.execute(
+            select(ChatAdmin).where(ChatAdmin.user_id == message.from_user.id)
+        )
         is_admin = res.first() is not None
 
         user_res = await session.execute(select(User).where(User.user_id == message.from_user.id))
@@ -126,6 +131,7 @@ async def cmd_force_refresh(message: types.Message, session: AsyncSession):
         game_id = int(args[1])
 
         from app.bot.listeners import update_game_ui
+
         await update_game_ui(game_id)
 
         await message.answer(t("force_refresh_done", locale=user_lang))
@@ -161,6 +167,7 @@ async def cmd_republish(message: types.Message, session: AsyncSession):
         game_id = int(args[1])
 
         from app.scheduler.tasks import publish_game_task
+
         await publish_game_task(game_id)
 
         await message.answer(t("republish_success", locale=user_lang, game_num=game_id))
@@ -196,6 +203,7 @@ async def cmd_start_voting(message: types.Message, session: AsyncSession):
         game_id = int(args[1])
 
         from app.scheduler.tasks import send_voting_message
+
         await send_voting_message(game_id)
 
         await message.answer(t("voting_triggered_success", locale=user_lang, game_num=game_id))
@@ -260,13 +268,9 @@ async def cmd_add_player(message: types.Message, session: AsyncSession):
                 )
             )
             try:
-                target_lang = "ru"
-                if target_user and getattr(target_user, "language", None):
-                    target_lang = (
-                        target_user.language.value
-                        if hasattr(target_user.language, "value")
-                        else str(target_user.language)
-                    )
+                target_lang = normalize_locale_code(
+                    getattr(target_user, "language", None), default="en"
+                )
                 await message.bot.send_message(
                     target_user.user_id,
                     t("admin_added_you_msg", locale=target_lang, game_id=game_id),
@@ -359,6 +363,7 @@ async def process_guest_position(
         await state.clear()
 
         from app.bot.listeners import update_game_ui
+
         await update_game_ui(game_id)
 
     except Exception as e:
@@ -394,7 +399,9 @@ async def cmd_promote_admin(message: types.Message, session: AsyncSession):
     parts = message.text.split()
     if message.chat.type == "private":
         if len(parts) != 3:
-            await message.answer(t("promote_usage_private", locale=user_lang), parse_mode="Markdown")
+            await message.answer(
+                t("promote_usage_private", locale=user_lang), parse_mode="Markdown"
+            )
             return
         chat_id = int(parts[2])
     else:
@@ -426,5 +433,3 @@ async def cmd_promote_admin(message: types.Message, session: AsyncSession):
         await message.answer(t("ids_must_be_numbers", locale=user_lang))
     except Exception as e:
         await message.answer(f"Error: {e}")
-
-

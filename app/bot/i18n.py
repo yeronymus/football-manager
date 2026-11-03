@@ -1,64 +1,47 @@
-import json
-import os
-from typing import Callable, Dict, Any, Awaitable, Optional
-from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject, Message, CallbackQuery
 import logging
-from app.db.models import User, Chat
+from pathlib import Path
+from typing import Any, Awaitable, Callable, Dict, Optional
+
+from aiogram import BaseMiddleware
+from aiogram.types import CallbackQuery, Message, TelegramObject
+
+from app.config import settings
+from app.core.i18n import DEFAULT_LOCALES_DIR, LocaleCatalog, normalize_locale_code
+from app.db.models import Chat, User
 
 logger = logging.getLogger(__name__)
 
+
 class SimpleI18n:
-    def __init__(self, locales_dir: str):
-        self.locales_dir = locales_dir
-        self.translations: Dict[str, Dict[str, str]] = {}
-        self.load_translations()
+    """
+    Bot adapter around the unified single-source `LocaleCatalog` (`app/locales/*.json`).
+    Preserves backward compatibility while enforcing 'en' as the universal fallback.
+    """
 
-    def load_translations(self):
-        if not os.path.exists(self.locales_dir):
-            logger.warning(f"Locales dir {self.locales_dir} not found.")
-            return
+    def __init__(self, locales_dir: Optional[str | Path] = None):
+        self.catalog = LocaleCatalog(
+            locales_dir=locales_dir or DEFAULT_LOCALES_DIR,
+            default_locale=settings.default_locale or "en",
+        )
+        self.locales_dir = str(self.catalog.locales_dir)
+        self.translations: Dict[str, Dict[str, str]] = self.catalog.translations
 
-        for filename in os.listdir(self.locales_dir):
-            if filename.endswith(".json"):
-                lang = filename.split(".")[0].lower()
-                with open(os.path.join(self.locales_dir, filename), "r", encoding="utf-8") as f:
-                    self.translations[lang] = json.load(f)
-        logger.info(f"Loaded translations for: {list(self.translations.keys())}")
+    def load_translations(self) -> None:
+        self.catalog.reload()
+        self.translations = self.catalog.translations
 
-    def get_text(self, locale: Optional[str], key: str, /, **kwargs) -> str:
-        lang_str = str(locale or "en").lower()
-        if hasattr(locale, "value"):
-            lang_str = str(locale.value).lower()
+    def get_text(self, locale: Optional[str], key: str, /, **kwargs: Any) -> str:
+        return self.catalog.translate(locale, key, **kwargs)
 
-        # Match en or ru, default to en
-        if lang_str not in self.translations:
-            lang_str = "en"
 
-        lang_dict = self.translations.get(lang_str, {})
-        text = lang_dict.get(key)
-        
-        # Fallback to English, then Russian, then key
-        if text is None:
-            text = self.translations.get("en", {}).get(key)
-        if text is None:
-            text = self.translations.get("ru", {}).get(key, key)
-        
-        if kwargs:
-            try:
-                text = text.format(**kwargs)
-            except KeyError as e:
-                logger.error(f"Missing format key {e} in translation string for '{key}'")
-        return text
+i18n_instance = SimpleI18n()
 
-# Global instance initialized pointing to locales folder
-_locales_path = os.path.join(os.path.dirname(__file__), "locales")
-i18n_instance = SimpleI18n(_locales_path)
 
-def t(key: str, locale: Optional[str] = None, /, **kwargs) -> str:
-    """Helper for translating strings anywhere outside middlewares."""
-    loc = kwargs.pop("locale", None) or locale or "ru"
+def t(key: str, locale: Optional[str] = None, /, **kwargs: Any) -> str:
+    """Helper for translating strings outside aiogram middlewares (universal default: 'en')."""
+    loc = kwargs.pop("locale", None) or locale or settings.default_locale or "en"
     return i18n_instance.get_text(loc, key, **kwargs)
+
 
 class I18nMiddleware(BaseMiddleware):
     def __init__(self, i18n: SimpleI18n):
@@ -73,7 +56,7 @@ class I18nMiddleware(BaseMiddleware):
     ) -> Any:
         session = data.get("session")
         tenant = data.get("tenant")
-        
+
         tg_chat = None
         tg_user = None
 
@@ -85,38 +68,35 @@ class I18nMiddleware(BaseMiddleware):
                 tg_chat = event.message.chat
             tg_user = event.from_user
 
-        # Determine language:
-        # Default language is English ("en") per user requirement: "вообще изначальный язык пусть будет английский"
-        lang = "ru"
+        default_lang = normalize_locale_code(settings.default_locale, default="en")
+        lang = default_lang
 
         if tg_chat and tg_chat.type == "private":
-            # 1. Private chat: prioritize User.language setting
+            resolved = False
             if session and tg_user:
                 try:
                     user_obj = await session.get(User, tg_user.id)
                     if user_obj and getattr(user_obj, "language", None):
-                        lang = user_obj.language.value if hasattr(user_obj.language, "value") else str(user_obj.language)
-                    elif tg_user.language_code and not tg_user.language_code.startswith("ru"):
-                        lang = "en"
-                    else:
-                        lang = "ru"
-                except Exception as e:
-                    logger.debug(f"Could not load user language in middleware: {e}")
-            elif tg_user and tg_user.language_code and not tg_user.language_code.startswith("ru"):
-                lang = "en"
-            else:
-                lang = "ru"
+                        lang = self.i18n.catalog.resolve_supported(user_obj.language)
+                        resolved = True
+                except Exception as exc:
+                    logger.debug("Could not load user language in middleware: %s", exc)
+            if not resolved and tg_user and isinstance(getattr(tg_user, "language_code", None), str):
+                lang = self.i18n.catalog.resolve_supported(tg_user.language_code)
         else:
-            # 2. Group / Supergroup / Channel: prioritize Chat.language setting
             if tenant and getattr(tenant, "language", None):
-                lang = tenant.language.value if hasattr(tenant.language, "value") else str(tenant.language)
-            else:
-                lang = "ru" 
+                lang = self.i18n.catalog.resolve_supported(tenant.language)
+            elif session and tg_chat:
+                try:
+                    chat_obj = await session.get(Chat, tg_chat.id)
+                    if chat_obj and getattr(chat_obj, "language", None):
+                        lang = self.i18n.catalog.resolve_supported(chat_obj.language)
+                except Exception as exc:
+                    logger.debug("Could not load chat language in middleware: %s", exc)
 
-        def _(key: str, **kwargs):
+        def _(key: str, **kwargs: Any) -> str:
             return self.i18n.get_text(lang, key, **kwargs)
 
-        # Inject into handler data
         data["_"] = _
         data["lang"] = lang
         data["i18n"] = self.i18n

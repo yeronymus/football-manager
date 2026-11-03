@@ -152,10 +152,10 @@ async def test_send_voting_message_success(session):
         assert mock_bot.send_message.called
         call_kwargs = mock_bot.send_message.call_args[1]
         assert call_kwargs["chat_id"] == game.chat_id
-        assert "Голосование за MVP" in call_kwargs["text"]
+        assert "Voting for MVP is open!" in call_kwargs["text"]
         kb = call_kwargs["reply_markup"]
         all_btn_texts = [btn.text for row in kb.inline_keyboard for btn in row]
-        assert any("КОМАНДА С" in t for t in all_btn_texts)
+        assert any("TEAM C" in t for t in all_btn_texts)
         assert "Gamma Player" in all_btn_texts
 
         await session.refresh(game)

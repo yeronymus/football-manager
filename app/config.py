@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     run_consumer: bool = True
     run_bot: bool = True
 
+    # Platform Localization, Currency & Onboarding Defaults (ADR-01, ADR-02, ADR-04)
+    default_locale: str = "en"
+    default_timezone: str = "Europe/Prague"
+    default_currency: str = "CZK"
+    support_contact: str = ""
+    registration_mode: Literal["approval_required", "open_saas"] = "open_saas"
+
     # Bootstrap Seed Chats
     initial_chats: List[Dict[str, Any]] = []
 

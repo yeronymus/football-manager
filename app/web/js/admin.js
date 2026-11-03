@@ -34,8 +34,24 @@ function promptAlert(message) {
         alert(message);
     }
 }
+
+function escapeHtml(raw) {
+    return String(raw || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function showAdminToast(message) {
+    promptAlert(message);
+}
+
 let initData = "";
 let currentGroupId = null;
+let groupsCache = [];
+let pendingSettingSaves = [];
 
 function init() {
     if (window.Telegram && window.Telegram.WebApp) {
@@ -94,16 +110,25 @@ function showGroupsView() {
     switchView('view-groups');
 }
 
-// API Helper
-async function apiCall(endpoint, options = {}) {
+// API Helper (supports both apiCall(endpoint, options) and apiCall(endpoint, methodStr, bodyObj))
+async function apiCall(endpoint, optionsOrMethod = {}, maybeBody = undefined) {
     const headers = {
         'Authorization': `tma ${initData}`,
         'Content-Type': 'application/json'
     };
+    let fetchOptions = {};
+    if (typeof optionsOrMethod === 'string') {
+        fetchOptions.method = optionsOrMethod;
+        if (maybeBody !== undefined) {
+            fetchOptions.body = JSON.stringify(maybeBody);
+        }
+    } else {
+        fetchOptions = { ...(optionsOrMethod || {}) };
+    }
     
     const url = `/api/dashboard${endpoint}`;
     try {
-        const response = await fetch(url, { ...options, headers });
+        const response = await fetch(url, { ...fetchOptions, headers });
         if (!response.ok) {
             let detail = response.statusText;
             try {
@@ -121,6 +146,25 @@ async function apiCall(endpoint, options = {}) {
     }
 }
 
+function applyBillingModeSettingsUI(billingMode, currency) {
+    const isFree = billingMode === 'free_corporate';
+    const priceWrap = document.getElementById('group-setting-price-wrap');
+    const payWrap = document.getElementById('group-setting-payment-wrap');
+    if (priceWrap) priceWrap.style.opacity = isFree ? '0.45' : '1';
+    if (payWrap) payWrap.style.opacity = isFree ? '0.45' : '1';
+    const priceInput = document.getElementById('setting-price');
+    const payInput = document.getElementById('setting-payment-info');
+    if (priceInput) priceInput.disabled = isFree;
+    if (payInput) payInput.disabled = isFree;
+
+    const curr = currency || (document.getElementById('setting-currency') && document.getElementById('setting-currency').value) || 'CZK';
+    const priceLabel = document.getElementById('lbl-setting-price');
+    if (priceLabel) {
+        const tmpl = getAdminText('lbl_def_price');
+        priceLabel.textContent = tmpl.replaceAll('{currency}', curr);
+    }
+}
+
 // Load Data
 async function loadGroups() {
     const listEl = document.getElementById('groups-list');
@@ -128,47 +172,49 @@ async function loadGroups() {
     
     // Wait for initData if missing
     let retryCount = 0;
-    while (!window.Telegram.WebApp.initData && retryCount < 5) {
+    while (window.Telegram && window.Telegram.WebApp && !window.Telegram.WebApp.initData && retryCount < 5) {
         console.warn(`initData missing, retry ${retryCount}...`);
         await new Promise(r => setTimeout(r, 200));
         retryCount++;
     }
-    initData = window.Telegram.WebApp.initData || initData;
+    initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || initData;
 
     try {
         const groups = await apiCall('/groups');
+        groupsCache = Array.isArray(groups) ? groups : [];
         listEl.innerHTML = '';
         
-        if (groups.length === 0) {
+        if (groupsCache.length === 0) {
             listEl.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px">No groups found.</p>';
             return;
         }
 
-        groups.forEach(g => {
+        groupsCache.forEach(g => {
             const el = document.createElement('div');
             el.className = 'group-item';
             el.id = `group-item-${g.chat_id}`;
             el.innerHTML = `
-                <h3>${g.title}</h3>
+                <h3>${escapeHtml(g.title)}</h3>
                 <p>ID: ${g.chat_id}</p>
             `;
             el.onclick = () => {
                 document.querySelectorAll('.group-item').forEach(i => i.classList.remove('active'));
                 el.classList.add('active');
-                loadGroupGames(g);
+                const latestGroup = groupsCache.find(item => String(item.chat_id) === String(g.chat_id)) || g;
+                loadGroupGames(latestGroup);
             };
             listEl.appendChild(el);
         });
 
         // Auto-select if only 1 group
-        if (groups.length === 1) {
-            const firstEl = document.getElementById(`group-item-${groups[0].chat_id}`);
+        if (groupsCache.length === 1) {
+            const firstEl = document.getElementById(`group-item-${groupsCache[0].chat_id}`);
             if (firstEl) firstEl.click();
         }
         
     } catch (e) {
         listEl.innerHTML = `
-            <p style="color:var(--danger)">Failed to load groups: ${e.message}</p>
+            <p style="color:var(--danger)">Failed to load groups: ${escapeHtml(e.message)}</p>
             <button class="btn" style="margin-top:10px" onclick="loadGroups()">Retry</button>
         `;
     }
@@ -181,8 +227,24 @@ async function loadGroupGames(group) {
     document.getElementById('group-title').textContent = group.title;
     switchGroupTab('games');
     
+    // Normalize language ('cz' -> 'cs', universal default 'en')
+    const rawLang = String(group.language || 'en').toLowerCase();
+    const normLang = rawLang === 'cz' ? 'cs' : (['en', 'ru', 'cs'].includes(rawLang) ? rawLang : 'en');
+    const currency = group.currency || 'CZK';
+    const billingMode = group.billing_mode || 'manual';
+    const sportType = group.sport_type || 'football';
+    const cancelHours = (group.policy && group.policy.free_cancellation_hours !== undefined && group.policy.free_cancellation_hours !== null)
+        ? group.policy.free_cancellation_hours
+        : 24;
+
     // Setup Settings
-    document.getElementById('setting-lang').value = group.language || 'ru';
+    document.getElementById('setting-lang').value = normLang;
+    const sportEl = document.getElementById('setting-sport-type');
+    if (sportEl) sportEl.value = sportType;
+    const billEl = document.getElementById('setting-billing-mode');
+    if (billEl) billEl.value = billingMode;
+    const currEl = document.getElementById('setting-currency');
+    if (currEl) currEl.value = currency;
     document.getElementById('setting-price').value = (group.default_price !== undefined && group.default_price !== null) ? group.default_price : 100;
     document.getElementById('setting-payment-info').value = group.payment_info || '';
     document.getElementById('setting-location').value = group.default_location || '';
@@ -193,6 +255,10 @@ async function loadGroupGames(group) {
     document.getElementById('setting-gk-hours').value = (group.default_gk_hours !== undefined && group.default_gk_hours !== null) ? group.default_gk_hours : 0;
     document.getElementById('setting-registration-hours').value = (group.default_registration_hours !== undefined && group.default_registration_hours !== null) ? group.default_registration_hours : 24;
     document.getElementById('setting-signup-limit').value = (group.default_signup_limit !== undefined && group.default_signup_limit !== null) ? group.default_signup_limit : 40;
+    const cancelEl = document.getElementById('setting-cancel-hours');
+    if (cancelEl) cancelEl.value = cancelHours;
+
+    applyBillingModeSettingsUI(billingMode, currency);
     
     const listEl = document.getElementById('games-list');
     listEl.innerHTML = '<div class="loading-spinner"></div>';
@@ -268,10 +334,15 @@ async function loadGameDetails(gameId) {
         
         currentGameData = game;
 
+        const activeGroupObj = groupsCache.find(g => String(g.chat_id) === String(currentGroupId));
+        const isFreeCorporate = (activeGroupObj && activeGroupObj.billing_mode === 'free_corporate') || (game.price === 0 && !game.payment_info && activeGroupObj?.billing_mode === 'free_corporate');
+
         const paidCount = game.players.filter(p => p.is_paid).length;
-        document.getElementById('roster-paid-info').textContent = `Paid: ${paidCount}/${game.players.length}`;
+        document.getElementById('roster-paid-info').textContent = isFreeCorporate
+            ? `✨ ${getAdminText('free_corporate_paid_label')}`
+            : `Paid: ${paidCount}/${game.players.length}`;
         
-        const activeUnpaidCount = game.players.filter(p => p.status === 'active' && !p.is_paid).length;
+        const activeUnpaidCount = isFreeCorporate ? 0 : game.players.filter(p => p.status === 'active' && !p.is_paid).length;
         const allPmNotifyBtn = document.getElementById('btn-notify-all-pm');
         if (allPmNotifyBtn) {
             allPmNotifyBtn.style.display = activeUnpaidCount > 0 ? 'inline-flex' : 'none';
@@ -341,12 +412,15 @@ async function loadGameDetails(gameId) {
                 }
                 
                 let notifyBtn = '';
-                if (!p.is_paid) {
+                if (!p.is_paid && !isFreeCorporate) {
                     const safeName = (p.full_name || '').replace(/'/g, "\\'");
                     notifyBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 6px;" onclick="notifyPayment(${p.user_id}, ${gameId}, this, '${safeName}')" title="${getAdminText('Notify payment in DM', 'Напомнить об оплате в ЛС')}">🔔</button>`;
                 }
                 
                 let removeBtn = `<button class="action-btn outline" style="padding: 4px 8px; font-size: 0.8rem; margin-left: 6px; border-color: rgba(239, 68, 68, 0.3); color: var(--danger);" onclick="kickPlayer(${p.signup_id}, ${gameId}, this)" title="${getAdminText('Remove player', 'Убрать игрока')}">❌</button>`;
+                const payToggleBtn = isFreeCorporate
+                    ? ''
+                    : `<button class="payment-toggle ${btnClass}" onclick="togglePayment(${p.signup_id}, this, ${gameId})">${btnText}</button>`;
                 
                 el.innerHTML = `
                     <div class="player-info">
@@ -355,9 +429,7 @@ async function loadGameDetails(gameId) {
                     </div>
                     <div class="player-actions" style="display: flex; align-items: center;">
                         ${notifyBtn}
-                        <button class="payment-toggle ${btnClass}" onclick="togglePayment(${p.signup_id}, this, ${gameId})">
-                            ${btnText}
-                        </button>
+                        ${payToggleBtn}
                         ${removeBtn}
                     </div>
                 `;
@@ -648,7 +720,15 @@ async function notifyGroupDebtClick() {
 }
 
 // Sub-Apps SPA Iframe Handling
-function openApp(appType) {
+async function openApp(appType) {
+    // Ensure any focused input triggers onblur and finishes saving before opening sub-app
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+    }
+    if (pendingSettingSaves.length > 0) {
+        await Promise.allSettled([...pendingSettingSaves]);
+    }
+
     const modal = document.getElementById('iframe-modal');
     const iframe = document.getElementById('app-iframe');
     const title = document.getElementById('iframe-title');
@@ -679,7 +759,6 @@ function openApp(appType) {
     }
 
     if (url) {
-        // Appending timestamp to bust iframe cache slightly if needed, but usually query params are enough
         iframe.src = url;
         modal.classList.add('show');
     }
@@ -693,12 +772,10 @@ function closeApp() {
     // Clear iframe src after transition
     setTimeout(() => {
         iframe.src = 'about:blank';
-        // Refresh underlying data just in case the app changed it
         if (currentGameId) loadGameDetails(currentGameId);
         else if (currentGroupId) {
-            // Need to reload group games without losing context
-            // We can just call it via active group
-            document.querySelector('.group-item.active').click();
+            const activeItem = document.querySelector('.group-item.active');
+            if (activeItem) activeItem.click();
         }
     }, 300);
 }
@@ -710,42 +787,76 @@ window.addEventListener('message', (event) => {
 });
 
 // Group Settings
-async function updateGroupSetting(key, value) {
+function resolveSettingInputElement(key, explicitEl) {
+    if (explicitEl) return explicitEl;
+    if (key === 'language') return document.getElementById('setting-lang');
+    const inputId = `setting-${key.replace('default_', '').replaceAll('_', '-')}`;
+    return document.getElementById(inputId);
+}
+
+function onBillingModeSettingChange(selectEl) {
+    const mode = selectEl.value;
+    applyBillingModeSettingsUI(mode);
+    updateGroupSetting('billing_mode', mode, selectEl);
+}
+
+function onCurrencySettingChange(selectEl) {
+    const curr = selectEl.value;
+    applyBillingModeSettingsUI(
+        (document.getElementById('setting-billing-mode') && document.getElementById('setting-billing-mode').value) || 'manual',
+        curr
+    );
+    updateGroupSetting('currency', curr, selectEl);
+}
+
+async function updatePolicySetting(policyKey, policyValue, inputEl) {
+    if (!currentGroupId) return;
+    const cached = groupsCache.find(g => String(g.chat_id) === String(currentGroupId));
+    const mergedPolicy = { ...((cached && cached.policy) || {}), [policyKey]: policyValue };
+    return updateGroupSetting('policy', mergedPolicy, inputEl);
+}
+
+async function updateGroupSetting(key, value, explicitInputEl) {
     if (!currentGroupId) return;
     
-    // Find the input element to show feedback
-    const inputId = key === 'language' ? 'setting-lang' : `setting-${key.replace('default_', '').replaceAll('_', '-')}`;
-    const input = document.getElementById(inputId);
-    let originalBorder = "";
+    const input = resolveSettingInputElement(key, explicitInputEl);
     if (input) {
-        originalBorder = input.style.borderColor;
         input.style.borderColor = "var(--accent-color)";
     }
     
     const data = {};
     data[key] = value;
-    
-    try {
-        await apiCall(`/groups/${currentGroupId}`, {
-            method: 'PATCH',
-            body: JSON.stringify(data)
-        });
-        
-        // Update local cache
-        const gIdx = groups.findIndex(g => g.id == currentGroupId);
-        if (gIdx > -1) {
-            groups[gIdx] = { ...groups[gIdx], ...data };
-        }
 
-        if (input) {
-            input.style.borderColor = "#4caf50"; // Success Green
-            setTimeout(() => {
-                input.style.borderColor = ""; 
-            }, 1500);
+    const saveTask = (async () => {
+        try {
+            const res = await apiCall(`/groups/${currentGroupId}`, {
+                method: 'PATCH',
+                body: JSON.stringify(data)
+            });
+            
+            // Update local cache using chat_id (fixes ReferenceError: groups is not defined & g.id mismatch)
+            const gIdx = groupsCache.findIndex(g => String(g.chat_id) === String(currentGroupId));
+            if (gIdx > -1) {
+                groupsCache[gIdx] = (res && res.group) ? res.group : { ...groupsCache[gIdx], ...data };
+            }
+
+            if (input) {
+                input.style.borderColor = "#4caf50"; // Success Green
+                setTimeout(() => {
+                    input.style.borderColor = ""; 
+                }, 1500);
+            }
+        } catch (e) {
+            console.error("Failed to update setting:", e);
+            if (input) input.style.borderColor = "#f44336"; // Error Red
         }
-    } catch (e) {
-        console.error("Failed to update setting:", e);
-        if (input) input.style.borderColor = "#f44336"; // Error Red
+    })();
+
+    pendingSettingSaves.push(saveTask);
+    try {
+        await saveTask;
+    } finally {
+        pendingSettingSaves = pendingSettingSaves.filter(p => p !== saveTask);
     }
 }
 

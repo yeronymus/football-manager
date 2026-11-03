@@ -1,12 +1,13 @@
 import logging
-from typing import Callable, Any
+from typing import Any, Callable
 
-from aiogram import Router, F, types
+from aiogram import F, Router, types
 
 from app.bot.i18n import t
 from app.config import settings
 from app.core.events import event_bus
-from app.core.services.roster import RosterService, PlayerJoinedEvent, PlayerLeftEvent
+from app.core.i18n import normalize_locale_code
+from app.core.services.roster import PlayerJoinedEvent, PlayerLeftEvent, RosterService
 from app.core.uow import UnitOfWork
 
 router = Router()
@@ -21,26 +22,25 @@ async def process_join(callback: types.CallbackQuery, _: Callable[..., str] = t)
     event_payload = None
 
     try:
-        # TRANSACTION START
         async with UnitOfWork() as uow:
-            # 1. Get user (via repository, NO raw SQL)
             user = await uow.user_repo.get_by_id(tg_id)
 
             if not user:
                 bot_user = await callback.bot.get_me()
-                await callback.answer(_("need_registration_alert"), url=f"https://t.me/{bot_user.username}?start=reg")
+                await callback.answer(
+                    _("need_registration_alert"),
+                    url=f"https://t.me/{bot_user.username}?start=reg",
+                )
                 return
 
-            # 2. Invoke the service
             service = RosterService(uow)
             is_admin = tg_id in settings.admin_ids or tg_id == settings.system_owner_id
             result = await service.join_player(game_id, user, ignore_limit=is_admin)
 
             if not result.success:
                 await callback.answer(result.message, show_alert=True)
-                return  # Exit without commit (auto-rollback)
+                return
 
-            # Override messages with translation
             if result.success and not result.is_reserve:
                 alert_msg = _("user_joined_success")
             elif result.success and result.is_reserve:
@@ -57,10 +57,8 @@ async def process_join(callback: types.CallbackQuery, _: Callable[..., str] = t)
                     message=alert_msg,
                 )
 
-            # 4. COMMIT CHANGES
             await uow.commit()
 
-        # --- OUTSIDE TRANSACTION ---
         if event_payload:
             await event_bus.publish(event_payload)
 
@@ -78,7 +76,7 @@ async def process_leave(callback: types.CallbackQuery, _: Callable[..., str] = t
     is_admin = tg_id in settings.admin_ids or tg_id == settings.system_owner_id
 
     try:
-        promoted_lang = "ru"
+        promoted_lang = "en"
         async with UnitOfWork() as uow:
             service = RosterService(uow)
             success, msg, promoted = await service.leave_player(game_id, tg_id, is_admin)
@@ -92,17 +90,14 @@ async def process_leave(callback: types.CallbackQuery, _: Callable[..., str] = t
                     res: Any = uow.user_repo.get_by_id(promoted.user_id)
                     promoted_user = await res if hasattr(res, "__await__") else res
                     if promoted_user and hasattr(promoted_user, "language"):
-                        lang_attr = getattr(promoted_user, "language")
-                        if hasattr(lang_attr, "value") and isinstance(lang_attr.value, str):
-                            promoted_lang = lang_attr.value
-                        elif isinstance(lang_attr, str):
-                            promoted_lang = lang_attr
+                        promoted_lang = normalize_locale_code(
+                            getattr(promoted_user, "language", None), default="en"
+                        )
                 except Exception:
                     pass
 
             await uow.commit()
 
-        # Side Effects
         if promoted:
             try:
                 await callback.bot.send_message(

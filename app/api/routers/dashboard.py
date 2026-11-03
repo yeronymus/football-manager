@@ -13,6 +13,9 @@ from app.db.database import get_session
 from app.db.models import Chat, ChatAdmin, User, Game, Signup, SignupStatus, Language
 from app.api.auth import get_user_from_header, check_admin_rights
 from app.config import settings
+from app.core.domain.sport_presets import get_sport_preset
+from app.core.domain.tenant_policy import BillingMode, resolve_billing_mode, resolve_tenant_policy
+from app.core.i18n import normalize_locale_code
 from app.core.services.cache import cache_service
 
 logger = logging.getLogger(__name__)
@@ -27,7 +30,12 @@ class GroupOut(BaseModel):
     chat_id: int
     title: str
     is_active: Optional[bool] = True
-    language: Optional[Language] = Language.ru
+    language: Optional[str] = "en"
+    currency: Optional[str] = "CZK"
+    timezone: Optional[str] = "Europe/Prague"
+    sport_type: Optional[str] = "football"
+    billing_mode: Optional[str] = "manual"
+    policy: Optional[dict] = None
     payment_info: Optional[str] = None
     default_location: Optional[str] = None
     default_price: Optional[int] = None
@@ -88,7 +96,12 @@ async def get_dashboard_groups(
             chat_id=chat.chat_id,
             title=chat.title,
             is_active=chat.is_active,
-            language=chat.language,
+            language=normalize_locale_code(chat.language, default="en"),
+            currency=getattr(chat, "currency", None) or "CZK",
+            timezone=getattr(chat, "timezone", None) or "Europe/Prague",
+            sport_type=getattr(chat, "sport_type", None) or "football",
+            billing_mode=resolve_billing_mode(getattr(chat, "billing_mode", None)).value,
+            policy=resolve_tenant_policy(chat).model_dump(),
             payment_info=chat.payment_info,
             default_location=chat.default_location,
             default_price=chat.default_price,
@@ -104,7 +117,12 @@ async def get_dashboard_groups(
 
 class GroupUpdate(BaseModel):
     is_active: Optional[bool] = None
-    language: Optional[Language] = None
+    language: Optional[str] = None
+    currency: Optional[str] = None
+    timezone: Optional[str] = None
+    sport_type: Optional[str] = None
+    billing_mode: Optional[str] = None
+    policy: Optional[dict] = None
     payment_info: Optional[str] = None
     default_location: Optional[str] = None
     default_price: Optional[int] = None
@@ -130,10 +148,48 @@ async def update_group_settings(
         
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        setattr(chat, field, value)
+        if field == "language" and value is not None:
+            norm = normalize_locale_code(value, default="en")
+            try:
+                chat.language = Language(norm)
+            except ValueError:
+                chat.language = Language.en
+        elif field == "billing_mode" and value is not None:
+            chat.billing_mode = resolve_billing_mode(value).value
+        elif field == "currency" and value is not None:
+            chat.currency = (value or "CZK").strip().upper()[:8]
+        elif field == "sport_type" and value is not None:
+            chat.sport_type = get_sport_preset(value).code
+        elif field == "policy" and isinstance(value, dict):
+            merged = dict(chat.policy or {})
+            merged.update(value)
+            chat.policy = resolve_tenant_policy(merged).model_dump()
+        else:
+            setattr(chat, field, value)
         
     await session.commit()
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "group": {
+            "chat_id": chat.chat_id,
+            "language": normalize_locale_code(chat.language, default="en"),
+            "currency": getattr(chat, "currency", None) or "CZK",
+            "timezone": getattr(chat, "timezone", None) or "Europe/Prague",
+            "sport_type": getattr(chat, "sport_type", None) or "football",
+            "billing_mode": resolve_billing_mode(getattr(chat, "billing_mode", None)).value,
+            "policy": resolve_tenant_policy(chat).model_dump(),
+            "payment_info": chat.payment_info,
+            "default_location": chat.default_location,
+            "default_price": chat.default_price,
+            "default_team_count": chat.default_team_count,
+            "default_max_players": chat.default_max_players,
+            "default_main_players_count": chat.default_main_players_count,
+            "default_duration": chat.default_duration,
+            "default_gk_hours": chat.default_gk_hours,
+            "default_registration_hours": chat.default_registration_hours,
+            "default_signup_limit": chat.default_signup_limit,
+        },
+    }
 
 @router.get("/groups/{chat_id}/games", response_model=List[GameSummaryOut])
 async def get_group_games(
@@ -566,9 +622,7 @@ async def issue_player_card(
         group_title = chat.title or "Football Group"
         is_red = (card_type == "RED")
         
-        target_lang = "ru"
-        if getattr(target_user, "language", None):
-            target_lang = target_user.language.value if hasattr(target_user.language, "value") else str(target_user.language)
+        target_lang = normalize_locale_code(getattr(target_user, "language", None), default="en")
 
         from app.bot.i18n import t
 
@@ -640,9 +694,10 @@ async def revoke_player_card(
         try:
             from app.bot.instance import bot
             target_user = await session.get(User, target_user_id)
-            target_lang = "ru"
-            if target_user and getattr(target_user, "language", None):
-                target_lang = target_user.language.value if hasattr(target_user.language, "value") else str(target_user.language)
+            target_lang = normalize_locale_code(
+                getattr(target_user, "language", None) if target_user else None,
+                default="en",
+            )
             from app.bot.i18n import t
             group_title = chat.title or "Football Group"
             msg = t("card_dm_revoked", locale=target_lang, group_title=html.escape(group_title))
@@ -1044,8 +1099,16 @@ async def notify_player_payment(
     from app.core.timezone import format_prague_dt
     from app.bot.i18n import t
 
+    chat = await session.get(Chat, game.chat_id)
+    if chat and resolve_billing_mode(getattr(chat, "billing_mode", None)) == BillingMode.FREE_CORPORATE:
+        raise HTTPException(
+            status_code=400,
+            detail="Payment reminders are disabled in Free / Corporate billing mode.",
+        )
+
     chat_lang = await resolve_chat_language(session, game.chat_id)
-    notif_lang = chat_lang or "ru"
+    notif_lang = chat_lang or "en"
+    currency = (getattr(chat, "currency", None) if chat else None) or "CZK"
 
     game_num = await get_group_game_number(session, game)
     date_str = format_prague_dt(game.date_time)
@@ -1060,6 +1123,7 @@ async def notify_player_payment(
         location=html.escape(game.location),
         date=date_str,
         price=game.price,
+        currency=currency,
         payment=pay_display
     )
 
@@ -1123,8 +1187,16 @@ async def notify_all_unpaid_pm(
     from app.bot.i18n import t
     from app.core.timezone import format_prague_dt
     
+    chat = await session.get(Chat, game.chat_id)
+    if chat and resolve_billing_mode(getattr(chat, "billing_mode", None)) == BillingMode.FREE_CORPORATE:
+        raise HTTPException(
+            status_code=400,
+            detail="Payment reminders are disabled in Free / Corporate billing mode.",
+        )
+
     chat_lang = await resolve_chat_language(session, game.chat_id)
-    notif_lang = chat_lang or "ru"
+    notif_lang = chat_lang or "en"
+    currency = (getattr(chat, "currency", None) if chat else None) or "CZK"
 
     game_num = await get_group_game_number(session, game)
     date_str = format_prague_dt(game.date_time)
@@ -1137,7 +1209,7 @@ async def notify_all_unpaid_pm(
     for signup, user in unpaid_rows:
         target_uid = user.user_id
         if target_uid < 0:
-            log_entry = {"status": "guest", "time": now_str, "detail": "Гость (нет Telegram)"}
+            log_entry = {"status": "guest", "time": now_str, "detail": "Guest (no Telegram)"}
             await cache_service.set(f"notify_log:{game_id}:{target_uid}", log_entry, ttl=86400 * 30)
             results[str(target_uid)] = log_entry
             counts["guests"] += 1
@@ -1152,6 +1224,7 @@ async def notify_all_unpaid_pm(
             location=html.escape(game.location),
             date=date_str,
             price=game.price,
+            currency=currency,
             payment=pay_display
         )
         
@@ -1210,6 +1283,14 @@ async def notify_group_unpaid(
     if not unpaid_rows:
         return {"status": "ok", "unpaid_count": 0, "message": "all_paid"}
 
+    chat = await session.get(Chat, game.chat_id)
+    if chat and resolve_billing_mode(getattr(chat, "billing_mode", None)) == BillingMode.FREE_CORPORATE:
+        raise HTTPException(
+            status_code=400,
+            detail="Payment reminders are disabled in Free / Corporate billing mode.",
+        )
+    currency = (getattr(chat, "currency", None) if chat else None) or "CZK"
+
     # Determine chat language
     from app.bot.utils import resolve_chat_language
     chat_lang = await resolve_chat_language(session, game.chat_id)
@@ -1243,6 +1324,7 @@ async def notify_group_unpaid(
         location=html.escape(game.location),
         date=date_str,
         price=game.price,
+        currency=currency,
         payment=pay_display,
         count=len(unpaid_rows),
         debtors=debtors_text
