@@ -116,60 +116,91 @@
                         <div class="settings-grid">
                             <div class="form-group">
                                 <label data-i18n="lbl_group_lang">Group Language</label>
-                                <select id="setting-lang" onchange="updateGroupSetting('language', this.value)">
+                                <select id="setting-lang" onchange="updateGroupSetting('language', this.value, this)">
                                     <option value="en" selected>English</option>
                                     <option value="ru">Русский</option>
-                                    <option value="cz">Čeština</option>
+                                    <option value="cs">Čeština</option>
                                 </select>
                                 <small data-i18n="help_group_lang" style="color: var(--text-muted); display: block; margin-top: 4px;">Group match posts will use this language.</small>
                             </div>
                             <div class="form-group">
-                                <label data-i18n="lbl_def_price">Default Price (CZK)</label>
-                                <input type="number" id="setting-price" onblur="updateGroupSetting('default_price', parseInt(this.value) || 0)">
+                                <label data-i18n="lbl_sport_type">Sport Preset</label>
+                                <select id="setting-sport-type" onchange="updateGroupSetting('sport_type', this.value, this)">
+                                    <option value="football" selected>⚽ Football</option>
+                                    <option value="futsal">🥅 Futsal (5v5)</option>
+                                    <option value="volleyball">🏐 Volleyball (6v6)</option>
+                                    <option value="basketball">🏀 Basketball (5v5)</option>
+                                    <option value="generic">🏅 Generic Team Sport</option>
+                                </select>
                             </div>
                             <div class="form-group">
+                                <label data-i18n="lbl_billing_mode">Billing Mode</label>
+                                <select id="setting-billing-mode" onchange="onBillingModeSettingChange(this)">
+                                    <option value="manual" data-i18n="opt_bill_manual">Manual Bank / Cash</option>
+                                    <option value="spayd_qr" data-i18n="opt_bill_spayd">Czech QR Platba (SPAYD 1.0)</option>
+                                    <option value="free_corporate" data-i18n="opt_bill_free">Corporate Free (Covered by Org)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label data-i18n="lbl_currency">Currency</label>
+                                <select id="setting-currency" onchange="onCurrencySettingChange(this)">
+                                    <option value="CZK" selected>CZK</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="USD">USD</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="group-setting-price-wrap">
+                                <label id="lbl-setting-price" data-i18n="lbl_def_price">Default Match Fee (CZK)</label>
+                                <input type="number" id="setting-price" min="0" onblur="updateGroupSetting('default_price', parseInt(this.value, 10) || 0, this)">
+                            </div>
+                            <div class="form-group" id="group-setting-payment-wrap">
                                 <label data-i18n="lbl_pay_account">Payment Account</label>
-                                <input type="text" id="setting-payment-info" placeholder="Enter bank account..." data-i18n-ph="ph_pay_account" onblur="updateGroupSetting('payment_info', this.value)">
+                                <input type="text" id="setting-payment-info" placeholder="Enter bank account (e.g. 123456789/0800 or CZ...)" data-i18n-ph="ph_pay_account" onblur="updateGroupSetting('payment_info', this.value, this)">
                             </div>
                             <div class="form-group">
                                 <label data-i18n="lbl_def_location">Default Location</label>
-                                <input type="text" id="setting-location" placeholder="Enter venue name..." data-i18n-ph="ph_def_location" onblur="updateGroupSetting('default_location', this.value)">
+                                <input type="text" id="setting-location" placeholder="Enter venue name..." data-i18n-ph="ph_def_location" onblur="updateGroupSetting('default_location', this.value, this)">
                             </div>
                             <div class="form-group">
                                 <label data-i18n="lbl_def_max_players">Total Playing Spots (with subs)</label>
-                                <input type="number" id="setting-max-players" onblur="updateGroupSetting('default_max_players', parseInt(this.value) || 0)" placeholder="26">
+                                <input type="number" id="setting-max-players" min="2" onblur="updateGroupSetting('default_max_players', parseInt(this.value, 10) || 0, this)" placeholder="26">
                                 <small data-i18n="help_def_max_players" style="color: var(--text-muted); display: block; margin-top: 4px;">Total who show up. Anyone beyond goes to Reserve.</small>
                             </div>
                             <div class="form-group">
                                 <label data-i18n="lbl_def_main_players">Players on pitch (X vs X)</label>
-                                <input type="number" id="setting-main-players-count" onblur="updateGroupSetting('default_main_players_count', parseInt(this.value) || 0)" placeholder="22">
+                                <input type="number" id="setting-main-players-count" min="2" onblur="updateGroupSetting('default_main_players_count', parseInt(this.value, 10) || 0, this)" placeholder="22">
                                 <small data-i18n="help_def_main_players" style="color: var(--text-muted); display: block; margin-top: 4px;">Simultaneously on field (e.g. 22 for 11v11, 16 for 8v8).</small>
                             </div>
                             <div class="form-group">
                                 <label data-i18n="lbl_def_teams">Team Count</label>
-                                <select id="setting-team-count" onchange="updateGroupSetting('default_team_count', parseInt(this.value) || 2)">
+                                <select id="setting-team-count" onchange="updateGroupSetting('default_team_count', parseInt(this.value, 10) || 2, this)">
                                     <option value="2">2 Teams</option>
                                     <option value="3">3 Teams</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label data-i18n="lbl_def_duration">Duration (Hours)</label>
-                                <input type="number" id="setting-duration" step="0.5" min="0.5" max="24" inputmode="decimal" onblur="updateGroupSetting('default_duration', parseFloat(this.value) || 0)" placeholder="2">
+                                <input type="number" id="setting-duration" step="0.5" min="0.5" max="24" inputmode="decimal" onblur="updateGroupSetting('default_duration', parseFloat(this.value) || 0.5, this)" placeholder="2">
                             </div>
                             <div class="form-group">
                                 <label data-i18n="lbl_def_gk">Goalkeeper Priority (Hours)</label>
-                                <input type="number" id="setting-gk-hours" onblur="updateGroupSetting('default_gk_hours', parseInt(this.value) || 0)" placeholder="0">
+                                <input type="number" id="setting-gk-hours" min="0" onblur="updateGroupSetting('default_gk_hours', parseInt(this.value, 10) || 0, this)" placeholder="0">
                                 <small data-i18n="help_def_gk" style="color: var(--text-muted); display: block; margin-top: 4px;">0 = disabled (everyone signs up equally).</small>
                             </div>
                             <div class="form-group">
                                 <label data-i18n="lbl_def_reg">Registration Duration (Hours)</label>
-                                <input type="number" id="setting-registration-hours" onblur="updateGroupSetting('default_registration_hours', parseInt(this.value) || 0)" placeholder="0">
+                                <input type="number" id="setting-registration-hours" min="0" onblur="updateGroupSetting('default_registration_hours', parseInt(this.value, 10) || 0, this)" placeholder="0">
                                 <small data-i18n="help_def_reg" style="color: var(--text-muted); display: block; margin-top: 4px;">0 = open continuously until kickoff.</small>
                             </div>
                             <div class="form-group">
                                 <label data-i18n="lbl_def_limit">Signup Limit (all-inclusive)</label>
-                                <input type="number" id="setting-signup-limit" onblur="updateGroupSetting('default_signup_limit', parseInt(this.value) || 0)" placeholder="40">
+                                <input type="number" id="setting-signup-limit" min="0" onblur="updateGroupSetting('default_signup_limit', parseInt(this.value, 10) || 0, this)" placeholder="40">
                                 <small data-i18n="help_def_limit" style="color: var(--text-muted); display: block; margin-top: 4px;">Maximum with reserve. 0 = unlimited.</small>
+                            </div>
+                            <div class="form-group">
+                                <label data-i18n="lbl_cancel_hours">Free Cancellation Window (Hours)</label>
+                                <input type="number" id="setting-cancel-hours" min="0" max="168" onblur="updatePolicySetting('free_cancellation_hours', parseInt(this.value, 10) || 0, this)" placeholder="24">
+                                <small data-i18n="help_cancel_hours" style="color: var(--text-muted); display: block; margin-top: 4px;">Minimum hours before kick-off for penalty-free cancellation.</small>
                             </div>
                         </div>
                     </div>
@@ -310,9 +341,15 @@
             group_settings_desc: "These values will be pre-filled when creating new games for this group.",
             lbl_group_lang: "Group Language",
             help_group_lang: "Group match posts will use this language.",
-            lbl_def_price: "Default Match Fee (CZK)",
+            lbl_sport_type: "Sport Preset",
+            lbl_billing_mode: "Billing Mode",
+            opt_bill_manual: "Manual Bank / Cash",
+            opt_bill_spayd: "Czech QR Platba (SPAYD 1.0)",
+            opt_bill_free: "Corporate Free (Covered by Org)",
+            lbl_currency: "Currency",
+            lbl_def_price: "Default Match Fee ({currency})",
             lbl_pay_account: "Payment Account",
-            ph_pay_account: "Enter bank account...",
+            ph_pay_account: "Enter bank account or IBAN...",
             lbl_def_location: "Default Location",
             ph_def_location: "Enter venue name...",
             lbl_def_max_players: "Total Playing Spots (with subs)",
@@ -327,6 +364,8 @@
             help_def_reg: "0 = open continuously until kickoff.",
             lbl_def_limit: "Signup Limit (all-inclusive)",
             help_def_limit: "Maximum with reserve. 0 = unlimited.",
+            lbl_cancel_hours: "Free Cancellation Window (Hours)",
+            help_cancel_hours: "Minimum hours before kick-off for penalty-free cancellation.",
             btn_start_voting: "Open MVP Voting",
             btn_notify_all_pm: "Remind all in DM",
             btn_notify_group: "Tag in Group",
@@ -380,7 +419,8 @@
             loading_dots: "Loading...",
             stat_in_4w: "in 4w",
             stat_days_ago: "{days} days ago",
-            stat_never_played: "Never played"
+            stat_never_played: "Never played",
+            free_corporate_paid_label: "Corporate Free"
         },
         ru: {
             admin_hub: "Панель управления",
@@ -390,9 +430,15 @@
             group_settings_desc: "Эти значения будут подставляться автоматически при создании новых игр для этой группы.",
             lbl_group_lang: "Язык группы",
             help_group_lang: "Карточки и посты группы в Telegram будут на этом языке.",
-            lbl_def_price: "Взнос по умолчанию (крон)",
+            lbl_sport_type: "Вид спорта (пресет)",
+            lbl_billing_mode: "Режим оплаты",
+            opt_bill_manual: "Обычный перевод / Наличные",
+            opt_bill_spayd: "Чешская QR Platba (SPAYD 1.0)",
+            opt_bill_free: "Бесплатный корпоратив (за счёт компании)",
+            lbl_currency: "Валюта",
+            lbl_def_price: "Взнос по умолчанию ({currency})",
             lbl_pay_account: "Номер счета",
-            ph_pay_account: "Введите номер счета / карты...",
+            ph_pay_account: "Введите номер счета / IBAN...",
             lbl_def_location: "Локация по умолчанию",
             ph_def_location: "Введите адрес площадки...",
             lbl_def_max_players: "Всего мест (для замен)",
@@ -407,6 +453,8 @@
             help_def_reg: "0 — запись открыта вплоть до игры.",
             lbl_def_limit: "Лимит записи (всё вкл.)",
             help_def_limit: "Максимум с резервом. 0 — без ограничений.",
+            lbl_cancel_hours: "Бесплатная отмена за (часов)",
+            help_cancel_hours: "Минимум часов до игры для отмены без предупреждения.",
             btn_start_voting: "Открыть MVP голосование",
             btn_notify_all_pm: "Напомнить всем в ЛС",
             btn_notify_group: "Тегнуть в группе",
@@ -460,25 +508,125 @@
             loading_dots: "Загрузка...",
             stat_in_4w: "за 4нед",
             stat_days_ago: "{days} дн. назад",
-            stat_never_played: "Не играл"
+            stat_never_played: "Не играл",
+            free_corporate_paid_label: "Бесплатно (Корпоратив)"
+        },
+        cs: {
+            admin_hub: "Správa skupin",
+            select_group_hint: "Vyberte skupinu ke správě",
+            admin_lang_banner: "Jazyk osobního rozhraní. Příspěvky ve skupině používají jazyk nastavený správcem skupiny.",
+            group_settings_title: "Výchozí nastavení skupiny",
+            group_settings_desc: "Tyto hodnoty se automaticky předvyplní při vytváření nových zápasů.",
+            lbl_group_lang: "Jazyk skupiny",
+            help_group_lang: "Oznámení zápasů na Telegramu budou v tomto jazyce.",
+            lbl_sport_type: "Sportovní preset",
+            lbl_billing_mode: "Režim plateb",
+            opt_bill_manual: "Bankovní převod / Hotově",
+            opt_bill_spayd: "Česká QR Platba (SPAYD 1.0)",
+            opt_bill_free: "Firemní zdarma (hrazeno organizací)",
+            lbl_currency: "Měna",
+            lbl_def_price: "Výchozí startovné ({currency})",
+            lbl_pay_account: "Číslo účtu / IBAN",
+            ph_pay_account: "Zadejte číslo účtu (např. 123456789/0800) nebo IBAN...",
+            lbl_def_location: "Výchozí místo",
+            ph_def_location: "Zadejte název hřiště...",
+            lbl_def_max_players: "Celkem míst (včetně střídání)",
+            help_def_max_players: "Celkový počet hráčů na zápas. Ostatní jdou mezi náhradníky.",
+            lbl_def_main_players: "Hráčů na hřišti (X vs X)",
+            help_def_main_players: "Současně na hřišti (např. 22 pro 11v11, 16 pro 8v8).",
+            lbl_def_teams: "Počet týmů",
+            lbl_def_duration: "Délka zápasu (hodiny)",
+            lbl_def_gk: "Priorita brankářů (hodiny)",
+            help_def_gk: "0 = vypnuto (všichni se hlásí stejně).",
+            lbl_def_reg: "Délka registrace (hodiny)",
+            help_def_reg: "0 = otevřeno až do výkopu.",
+            lbl_def_limit: "Limit přihlášek (celkem)",
+            help_def_limit: "Maximum včetně náhradníků. 0 = bez omezení.",
+            lbl_cancel_hours: "Bezplatné odhlášení (hodiny předem)",
+            help_cancel_hours: "Minimální počet hodin před výkopem pro odhlášení bez postihu.",
+            btn_start_voting: "Spustit hlasování MVP",
+            btn_notify_all_pm: "Připomenout všem do SZ",
+            btn_notify_group: "Označit ve skupině",
+            tab_group_games: "Zápasy",
+            tab_group_community: "Kádr a aktivita",
+            tab_group_settings: "Nastavení",
+            kpi_total_label: "Celkem hráčů",
+            kpi_total_sub: "v kádru skupiny",
+            kpi_core_label: "Jádro",
+            kpi_core_sub: "≥2 za 4 týdny",
+            kpi_dormant_label: "Neaktivní",
+            kpi_dormant_sub: ">30 dní pauza",
+            ph_search_player: "Hledat podle jména nebo @username...",
+            chip_all: "Všichni hráči",
+            chip_core: "Jádro týmu",
+            chip_dormant: "Neaktivní (30d+)",
+            btn_message_tg: "Napsat na Telegramu",
+            btn_view_profile: "Profil ›",
+            modal_stat_rating: "Rating",
+            modal_stat_games: "Zápasy",
+            modal_stat_goals: "Góly",
+            modal_stat_mvp: "MVP",
+            modal_recent_matches: "Poslední zápasy ve skupině",
+            discipline_title: "Disciplína a karty",
+            card_yellow_title: "Žlutá karta",
+            card_red_title: "Červená karta (Stopka)",
+            card_yellow_short: "Žlutá",
+            card_red_short: "Červená (Ban)",
+            btn_issue_card: "Udělit kartu",
+            btn_revoke_card: "Zrušit",
+            lbl_duration: "Doba:",
+            lbl_reason: "Důvod:",
+            lbl_until: "do",
+            lbl_weeks: "týd.",
+            lbl_days_left: "dní zbývá",
+            msg_red_blocked: "Registrace na zápasy je pro tohoto hráče zablokována.",
+            ph_card_reason: "Důvod (např. neomluvená neúčast, nesportovní chování)...",
+            hint_yellow_warning: "Žlutá je oficiální napomenutí.",
+            hint_red_block: "Červená blokuje přihlašování na zápasy!",
+            btn_confirm_issue_dm: "Potvrdit a poslat SZ",
+            confirm_issue_prompt: "Udělit kartu ({type}) hráči {name} na {weeks} týd.? Bot ho upozorní v soukromé zprávě.",
+            confirm_revoke_prompt: "Zrušit aktivní kartu hráči {name}? Hráč dostane upozornění do SZ.",
+            toast_card_issued: "Karta byla udělena!",
+            toast_card_revoked: "Karta byla zrušena!",
+            opt_1_week: "1 týden",
+            opt_2_weeks: "2 týdny",
+            opt_4_weeks: "4 týdny (1 měs.)",
+            opt_8_weeks: "8 týdnů (2 měs.)",
+            opt_12_weeks: "12 týdnů (3 měs.)",
+            modal_no_matches: "Žádné odehrané zápasy v této skupině.",
+            loading_dots: "Načítání...",
+            stat_in_4w: "za 4t",
+            stat_days_ago: "před {days} dny",
+            stat_never_played: "Nehrál",
+            free_corporate_paid_label: "Zdarma (Firemní)"
         }
     };
     window.ADMIN_I18N = ADMIN_I18N;
 
+    function normalizeAdminLang(raw) {
+        if (!raw) return 'en';
+        const clean = String(raw).trim().toLowerCase().split(/[-_]/)[0];
+        if (clean === 'cz') return 'cs';
+        return ADMIN_I18N[clean] ? clean : 'en';
+    }
+
     const paramLang = (new URLSearchParams(window.location.search)).get('lang');
-    let adminCurrentLang = (paramLang === 'en' || paramLang === 'ru') ? paramLang : (localStorage.getItem('webapp_lang') || 'en');
+    let adminCurrentLang = paramLang ? normalizeAdminLang(paramLang) : normalizeAdminLang(localStorage.getItem('webapp_lang') || 'en');
 
     function setAdminLang(lang) {
-        adminCurrentLang = lang;
-        localStorage.setItem('webapp_lang', lang);
-        const t = ADMIN_I18N[lang] || ADMIN_I18N.en;
+        adminCurrentLang = normalizeAdminLang(lang);
+        localStorage.setItem('webapp_lang', adminCurrentLang);
+        const t = ADMIN_I18N[adminCurrentLang] || ADMIN_I18N.en;
+        const curr = (document.getElementById('setting-currency') && document.getElementById('setting-currency').value) || 'CZK';
         
         const codeEl = document.getElementById('admin-lang-code');
-        if (codeEl) codeEl.innerText = lang.toUpperCase();
+        if (codeEl) codeEl.innerText = adminCurrentLang.toUpperCase();
         
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const k = el.getAttribute('data-i18n');
-            if (t[k]) el.innerText = t[k];
+            if (t[k]) {
+                el.innerText = t[k].replaceAll('{currency}', curr);
+            }
         });
         document.querySelectorAll('[data-i18n-ph]').forEach(el => {
             const k = el.getAttribute('data-i18n-ph');
@@ -487,12 +635,14 @@
     }
 
     function toggleAdminLang() {
-        setAdminLang(adminCurrentLang === 'en' ? 'ru' : 'en');
+        const order = ['en', 'ru', 'cs'];
+        const next = order[(order.indexOf(adminCurrentLang) + 1) % order.length] || 'en';
+        setAdminLang(next);
     }
 
     setAdminLang(adminCurrentLang);
 </script>
 
-<script src="js/admin.js?v=2.2.0"></script>
+<script src="js/admin.js?v=3.0.0"></script>
 </body>
 </html>

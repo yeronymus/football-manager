@@ -1,663 +1,282 @@
 <div align="center">
 
-# Prague Football Manager (PFM)
+# Enterprise Sports Logistics & Team Engagement Platform
 
-### An asynchronous, high-concurrency Telegram Bot, WebApp, and Event Orchestration Platform for sports communities
+### Multi-Tenant Event Orchestration, Concurrency-Safe Roster Engine & Telegram Mini Apps for Corporate Clubs, Universities, and Sports Communities
 
-[![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.14-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Aiogram](https://img.shields.io/badge/Aiogram-3.x-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://docs.aiogram.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7.x-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![GitLab CI](https://img.shields.io/badge/GitLab_CI-Production_Ready-FC6D26?style=for-the-badge&logo=gitlab&logoColor=white)](./.gitlab-ci.yml)
-[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-Passing-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](./.github/workflows/deploy.yml)
+[![Docker](https://img.shields.io/badge/Docker-Rootless-2496ED?style=for-the-badge&logo=docker&logoColor=white)](./Dockerfile)
+[![GitHub Actions](https://img.shields.io/badge/CI%2FCD-Hardened-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](./.github/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
-[![Tests Passing](https://img.shields.io/badge/Tests-115%20Passing-brightgreen.svg?style=for-the-badge)](./tests)
 
-**A production-grade sports management system featuring automated Telegram group orchestrations, Telegram Mini Apps (WebApps), atomic concurrency-safe roster allocation, ELO skill balancing, automated MVP voting, and multi-tenant SaaS group management.**
+**Eliminate spreadsheet chaos and chat-scroll friction.** Deliver native 1-tap match registration, pessimistic-locked waitlists, algorithmic team balancing, post-match MVP voting, and multi-tenant SaaS administration directly inside Telegram Groups, Channels, and Mobile Mini Apps.
+
+[System Overview](#-why-this-platform) • [Architecture](#-architecture--event-flows) • [Security & Resiliency](#-enterprise-security--resiliency) • [Quickstart](#-quickstart) • [Documentation](#-documentation-index)
 
 </div>
 
 ---
 
-## Table of Contents
+## Why This Platform?
 
-- [System Overview](#system-overview)
-- [Architecture & Request Flows](#architecture--request-flows)
-  - [System Architecture](#system-architecture)
-  - [Match Lifecycle & Event Flow](#match-lifecycle--event-flow)
-  - [Concurrency-Safe Roster Allocation](#concurrency-safe-roster-allocation)
-- [CI/CD, DevOps & Production Infrastructure](#cicd-devops--production-infrastructure)
-  - [Dual CI/CD Pipeline Architecture](#dual-cicd-pipeline-architecture)
-  - [GitLab CI/CD Pipeline (Battle-Tested)](#gitlab-cicd-pipeline-battle-tested)
-  - [GitHub Actions Pipeline](#github-actions-pipeline)
-  - [Rootless Multi-Stage Containerization](#rootless-multi-stage-containerization)
-  - [Network Isolation & Zero-Downtime CD](#network-isolation--zero-downtime-cd)
-  - [Monitoring & Observability](#monitoring--observability)
-- [Tech Stack](#tech-stack)
-- [Core Features](#core-features)
-  - [Telegram Bot & Group Automation](#telegram-bot--group-automation)
-  - [Telegram Mini Apps (WebApps)](#telegram-mini-apps-webapps)
-  - [Dynamic Roster & Goalkeeper Priority Engine](#dynamic-roster--goalkeeper-priority-engine)
-  - [Algorithmic Team Balancer & Auto-Draft](#algorithmic-team-balancer--auto-draft)
-  - [Automated APScheduler & MVP Voting](#automated-apscheduler--mvp-voting)
-  - [Multi-Tenant SaaS Architecture](#multi-tenant-saas-architecture)
-- [Project Structure](#project-structure)
-- [Setup & Installation](#setup--installation)
-  - [Prerequisites](#prerequisites)
-  - [Local Development Setup](#local-development-setup)
-  - [Docker Compose Deployment](#docker-compose-deployment)
-- [API & Telegram WebApp Route Reference](#api--telegram-webapp-route-reference)
-  - [Authentication & Security](#authentication--security)
-  - [Match Management Endpoints](#match-management-endpoints)
-  - [Admin & Settings Endpoints](#admin--settings-endpoints)
-  - [Roster & Draft Endpoints](#roster--draft-endpoints)
-  - [Voting Endpoints](#voting-endpoints)
-- [Database Design](#database-design)
-- [Testing & Verification](#testing--verification)
-- [Environment Variables Reference](#environment-variables-reference)
-- [License](#license)
+Organizing recurring team sports inside corporate HR clubs, university leagues, or multi-venue communities breaks down when coordinated manually in group chats: concurrent signups overwrite each other, last-minute dropouts stall waitlists, teams are drafted unevenly, and fee collection becomes a manual chore.
+
+Instead of forcing participants to install yet another standalone mobile app, this platform embeds a **full-featured event and roster engine natively inside Telegram**:
+
+- **Corporate & Enterprise Clubs**: Run HR-sponsored employee wellness leagues across multiple offices or departments with isolated tenant settings, zero-friction onboarding, and engagement analytics.
+- **Sports Venues & Amateur Leagues**: Automate recurring pitch bookings, priority goalkeeper/role reservation windows, automated reserve-to-active promotions, payment tracking, and seasonal leaderboards.
+- **Engineering Rigor**: Built on asynchronous Python 3.12 (`FastAPI` + `Aiogram 3` + `SQLAlchemy 2.0` + `Redis 7` Streams), featuring row-level pessimistic locking (`SELECT ... FOR UPDATE`), logically isolated Redis namespaces, fail-closed HMAC-SHA256 WebApp authentication, and automated 3-2-1 encrypted backups.
 
 ---
 
-## System Overview
+## Architecture & Event Flows
 
-Prague Football Manager (PFM) coordinates amateur football communities, handling end-to-end match logistics. The platform automates announcement generation, signup queue management with goalkeeper reservation windows, balanced team drafting based on player ELO ratings, match score recording, and post-match MVP voting.
-
-The platform provides a dual-interface architecture:
-1. **Interactive Telegram Bot**: Responds in real-time to group chat and announcement channel interactions via webhooks or long-polling.
-2. **Telegram WebApps (Mini Apps)**: Responsive HTML5/Vanilla JS interfaces loaded inside Telegram for complex actions (game creation, roster editing, team drafts, match finishing, and voting).
-
----
-
-## Architecture & Request Flows
-
-### System Architecture
+### High-Level System Topology
 
 ```mermaid
 graph TB
-    Client(["Telegram Client<br/>(Group / Channel / DM / WebApp)"])
+    Client(["Telegram Client<br/>(Group / Channel / DM / Mini App)"])
 
-    subgraph Ingress["Ingress & Edge Proxy"]
-        Nginx["Nginx / Caddy<br/>(Reverse Proxy & SSL)<br/>:80 / :443"]
+    subgraph Edge["Ingress & TLS Termination"]
+        Proxy["Reverse Proxy / Ingress<br/>(TLS 1.3 • Rate Limiting)<br/>:443"]
     end
 
-    subgraph AppStack["Application Cluster (Docker / Podman)"]
-        FastAPI["FastAPI Hub<br/>(Webhook & REST API)<br/>:8000"]
-        Aiogram["Aiogram 3 Bot Service<br/>(Telegram Handlers)"]
-        Scheduler["APScheduler Service<br/>(Async Cron & Reminders)"]
-        Worker["Background Event Worker<br/>(Async Events & Evictions)"]
+    subgraph Compute["Stateless Application Tier (Rootless Containers)"]
+        API["FastAPI Web & API Hub<br/>(REST API • TMA Static • Health Probes)<br/>:8000"]
+        Worker["Async Event & Bot Worker<br/>(Aiogram 3 • APScheduler • Stream Consumer)"]
     end
 
-    subgraph DataStack["Storage & Caching Layer"]
-        Postgres[("PostgreSQL 15+<br/>(Persistent Relational Store)<br/>:5432")]
-        Redis[("Redis 7.x<br/>(Cache, Rate-Limiting & Streams)<br/>:6379")]
+    subgraph State["Data & Messaging Tier (Internal Bridge Network)"]
+        Postgres[("PostgreSQL 15+<br/>(ACID Relational Store)<br/>:5432")]
+        Redis0[("Redis DB 0<br/>(FSM & Job Store)")]
+        Redis1[("Redis DB 1<br/>(TTL Read Cache)")]
+        Redis2[("Redis DB 2<br/>(Durable Event Streams)")]
     end
 
-    Client <-->|"HTTPS / WSS"| Nginx
-    Nginx <-->|"Proxy /api & /web"| FastAPI
-    FastAPI <-->|"Async Handlers"| Aiogram
-    FastAPI <-->|"SQLAlchemy 2.0 (asyncpg)"| Postgres
-    FastAPI <-->|"Redis Client"| Redis
-    Scheduler <-->|"Trigger Tasks"| FastAPI
-    Worker <-->|"Event Bus"| FastAPI
-    Worker <-->|"Read/Write"| Postgres
+    Client <-->|"HTTPS / TMA initData"| Proxy
+    Proxy <-->|"HTTP /api & /web"| API
+    API <-->|"SQLAlchemy 2.0 (asyncpg)"| Postgres
+    API <-->|"Cache Reads/Invalidation"| Redis1
+    API -->|"XADD Domain Events"| Redis2
+    Worker <-->|"XREADGROUP Consumer"| Redis2
+    Worker <-->|"FSM & Cron Jobs"| Redis0
+    Worker <-->|"Cache Eviction"| Redis1
+    Worker <-->|"Unit of Work"| Postgres
+    Worker <-->|"Bot API"| Client
 ```
 
-### Match Lifecycle & Event Flow
+### Match Lifecycle Sequence
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Admin as Group Admin
-    actor Player as Football Player
+    actor Admin as Tenant Admin
+    actor Player as Participant
     participant WebApp as Telegram Mini App
     participant API as FastAPI Backend
     participant DB as PostgreSQL
-    participant Bot as Aiogram Bot
-    participant Channel as TG Group / Channel
+    participant Stream as Redis Streams (DB 2)
+    participant Worker as Bot & Scheduler Worker
+    participant Chat as Telegram Group / Channel
 
-    Admin->>WebApp: Create Match (Date, Max Players, GK Window)
-    WebApp->>API: POST /api/admin/create_game (tma initData)
-    API->>DB: Insert Game Record (Status: OPEN)
-    API->>Bot: Dispatch GameCreatedEvent
-    Bot->>Channel: Post Game Announcement Message
-    
-    Player->>Channel: Click "Записаться" (Sign Up)
-    Bot->>API: RosterService.join_game(user_id, game_id)
-    API->>DB: SELECT FOR UPDATE (Atomic Slot Check)
-    alt Slots Available (or GK in window)
-        API->>DB: Insert Signup (status: ACTIVE)
-    else Roster Full
-        API->>DB: Insert Signup (status: RESERVE)
+    Admin->>WebApp: Configure Match (Schedule, Capacity, Role Window, Policy)
+    WebApp->>API: POST /api/admin/create_game (Authorization: tma <HMAC>)
+    API->>DB: Persist Game (Status: OPEN)
+    API->>Stream: Publish GameCreatedEvent
+    Stream-->>Worker: Consume Event
+    Worker->>Chat: Publish Interactive Match Card
+
+    Player->>Chat: Tap "Join Match"
+    Worker->>DB: SELECT ... FOR UPDATE (Pessimistic Lock on Game)
+    alt Active Slot Available
+        Worker->>DB: Insert Signup (ACTIVE)
+    else Capacity Reached or Role-Reserved
+        Worker->>DB: Insert Signup (RESERVE Waitlist)
     end
-    API->>Bot: Dispatch GameStateChangedEvent
-    Bot->>Channel: Update Game Announcement Message
+    Worker->>Chat: Live-Render Updated Roster & Waitlist
 
-    Note over API,Bot: Match Scheduled Time Arrives
-    API->>Channel: Update Status: ACTIVE (Team Rosters Locked)
-    
-    Note over Admin,API: Match Finished
-    Admin->>WebApp: Submit Scores, Scorers, & MVPs
+    Admin->>WebApp: Balance Teams & Finalize Score
     WebApp->>API: POST /api/admin/finish_game
-    API->>DB: Update ELO Ratings & Player Stats
-    API->>Bot: Schedule / Send MVP Voting Message
-    Bot->>Channel: Post Voting Poll / WebApp Deep Link
+    API->>DB: Atomic Stats, Rating & Match History Update
+    API->>Stream: Trigger Post-Match MVP Poll
+    Worker->>Chat: Post Interactive MVP Voting Card
 ```
 
 ### Concurrency-Safe Roster Allocation
 
 ```mermaid
 flowchart TD
-    Start([User clicks 'Записаться']) --> Lock[Acquire Row-Level Lock on Game]
-    Lock --> CheckRegistrationWindow{Registration Window Open?}
-    CheckRegistrationWindow -- No --> RejectWindow[Reject: Registration closed]
-    CheckRegistrationWindow -- Yes --> CheckMaxLimit{Signups >= signup_limit?}
-    CheckMaxLimit -- Yes --> RejectLimit[Reject: Hard limit reached]
-    CheckMaxLimit -- No --> CheckActiveCount{Active Players < max_players?}
-    CheckActiveCount -- No --> PutReserve[Place in RESERVE list]
-    CheckActiveCount -- Yes --> CheckGKWindow{In GK Priority Window?}
-    CheckGKWindow -- No --> PutActive[Place in ACTIVE main roster]
-    CheckGKWindow -- Yes --> CalcNeededGK["Calculate remaining needed GKs:<br/>needed_gks = max(0, 2 - active_gk_count)"]
-    CalcNeededGK --> CheckSlotsLeft{slots_left <= needed_gks?}
-    CheckSlotsLeft -- No --> PutActive
-    CheckSlotsLeft -- Yes --> IsPlayerGK{Is Player a GK?}
-    IsPlayerGK -- Yes --> PutActive
-    IsPlayerGK -- No --> PutReserve
-    PutActive --> SaveDB[Persist Signup in DB]
-    PutReserve --> SaveDB
-    SaveDB --> Commit[Commit Transaction & Evict Cache]
-    Commit --> UpdateMsg[Trigger Bot Message Update]
+    Start(["Participant Taps 'Join'"]) --> Lock["Acquire Row-Level Lock (SELECT FOR UPDATE)"]
+    Lock --> Window{"Registration Window Open?"}
+    Window -- No --> RejectWindow["Reject: Registration Closed"]
+    Window -- Yes --> HardCap{"Total Signups >= signup_limit?"}
+    HardCap -- Yes --> RejectCap["Reject: Waitlist Full"]
+    HardCap -- No --> ActiveCap{"Active Roster < max_players?"}
+    ActiveCap -- No --> Reserve["Assign to RESERVE Queue"]
+    ActiveCap -- Yes --> RoleWindow{"Inside Role Priority Window?"}
+    RoleWindow -- No --> Active["Assign to ACTIVE Roster"]
+    RoleWindow -- Yes --> CalcNeeded["Compute Remaining Reserved Role Slots"]
+    CalcNeeded --> SlotsCheck{"Remaining Free Slots <= Reserved Needed?"}
+    SlotsCheck -- No --> Active
+    SlotsCheck -- Yes --> HasRole{"Participant Matches Priority Role?"}
+    HasRole -- Yes --> Active
+    HasRole -- No --> Reserve
+    Active --> Commit["Commit UoW & Evict Redis Cache (DB 1)"]
+    Reserve --> Commit
+    Commit --> Notify["Publish Roster Update Event (DB 2)"]
 ```
 
 ---
 
-## CI/CD, DevOps & Production Infrastructure
+## Enterprise Security & Resiliency
 
-Prague Football Manager treats operational reliability, security, and continuous deployment as first-class architectural requirements. The project incorporates an automated, hardened DevOps foundation supporting both enterprise **GitLab CI/CD** environments and **GitHub Actions**.
-
-```mermaid
-flowchart LR
-    subgraph CI["Automated CI/CD Pipeline (GitLab CI & GitHub Actions)"]
-        direction TB
-        Lint["Stage 1: Linting<br/>• Ruff static analysis<br/>• Zero warning tolerance"]
-        Test["Stage 2: Live Integration<br/>• PostgreSQL 15 Container<br/>• Async DDL Migrations<br/>• 115 Pytest Test Suite<br/>• Architecture Health Check"]
-        Security["Security Audit<br/>• Trivy Config Scanning<br/>• Secret leakage prevention"]
-        Build["Stage 3: Containerization<br/>• Multi-Stage Rootless Docker<br/>• uv Package Cache Mount<br/>• Dual Tagging (:sha, :latest)"]
-        Deploy["Stage 4: CD & Orchestration<br/>• Automated Staging Delivery<br/>• Watchtower Zero-Downtime Rollout<br/>• Manual Production Approval"]
-        
-        Lint --> Test
-        Lint --> Security
-        Test --> Build
-        Security --> Build
-        Build --> Deploy
-    end
-```
-
-### Dual CI/CD Pipeline Architecture
-
-The platform features pre-configured, tested configurations for both major continuous integration platforms:
-- **GitLab CI/CD** ([`.gitlab-ci.yml`](./.gitlab-ci.yml)): Designed for self-hosted or cloud GitLab instances with native service containers, live PostgreSQL integration, and multi-environment orchestration.
-- **GitHub Actions** ([`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml)): Optimized for GitHub Enterprise/Cloud with GitHub Container Registry (GHCR) and GitHub Actions cache backends.
+| Pillar | Implementation |
+|:---|:---|
+| **Cryptographic WebApp Auth** | Constant-time `hmac.compare_digest` verification of Telegram Mini App `initData` (`HMAC-SHA256`) with replay-window enforcement (`auth_date` TTL) and per-tenant RBAC (`require_system_owner`, `ChatAdmin`). |
+| **Fail-Closed Sandbox Guard** | Local browser authentication bypass (`DEV_AUTH_BYPASS`) is fenced by a Pydantic `@model_validator`: enabling it outside `APP_ENV=local_dev` aborts process startup immediately. |
+| **Logical Redis Isolation** | Single Redis instance partitioned across isolated logical databases: **DB 0** (FSM & APScheduler jobs), **DB 1** (volatile read cache — safe to flush without dropping jobs), and **DB 2** (Redis Streams event bus with dynamic `hostname-pid` consumer identities). |
+| **Rootless Containers & Live Probes** | Multi-stage Python 3.12 slim image running strictly as non-root `appuser`, paired with mode-aware liveness/readiness probes (`/health/live`, `/health/ready`, and worker heartbeat verification via `scripts/container_probe.py`). |
+| **3-2-1 Encrypted Disaster Recovery** | Automated `pg_dump -Fc` + Redis RDB snapshots encrypted via `age`/`gpg`, replicated off-site to S3 / Cloudflare R2, guarded by pre-migration snapshot hooks and ephemeral-container restore drills. |
+| **Network Segmentation** | PostgreSQL, Redis, and Prometheus bind strictly to internal Docker bridge networks or `127.0.0.1` — zero direct WAN exposure of data stores or telemetry ports. |
 
 ---
 
-### GitLab CI/CD Pipeline (Battle-Tested)
+## Core Capabilities
 
-The repository provides a complete, working GitLab CI pipeline configured across four automated stages:
-
-| Stage | Job | Environment / Image | Key Actions |
-|:---|:---|:---|:---|
-| **`lint`** | `linting` | `python:3.12-slim` | Executes `ruff check .` across all application modules and test files. |
-| **`test`** | `integration_tests` | `python:3.12-slim` + `postgres:15-alpine` | • Launches ephemeral PostgreSQL service container.<br/>• Uses socket polling loop waiting for port 5432 readiness.<br/>• Runs live async database table creation via SQLAlchemy & asyncpg.<br/>• Stamps schema version via `alembic stamp head`.<br/>• Validates architecture layer boundaries via `scripts/health_check.py`.<br/>• Runs full test suite (**115 passing tests**). |
-| **`build`** | `docker_build` | `docker:24.0.5` + `docker:dind` | Builds production runner image and pushes to GitLab Container Registry (`$CI_REGISTRY_IMAGE`) with both commit SHA and `:latest` tags. |
-| **`deploy`** | `deploy_staging`<br/>`deploy_production` | `alpine:latest` | • **Staging**: Automatically triggered on commits to `develop`.<br/>• **Production**: Protected, manual-trigger deployment (`when: manual`) for `main` and `release` branches. |
-
----
-
-### GitHub Actions Pipeline
-
-Complementing GitLab CI, the GitHub Actions workflow executes on pull requests and pushes to `main` and `develop`:
-- **Fast uv Synchronization**: Installs Python dependencies in seconds using `uv sync --all-extras`.
-- **Trivy Vulnerability Audit**: Scans infrastructure configurations against `CRITICAL` and `HIGH` CVEs.
-- **Architecture Integrity**: Runs `scripts/health_check.py` to prevent circular dependencies between bot, API, and core domains.
-- **GHCR Integration**: Authenticates and uploads production images to GitHub Container Registry (`ghcr.io`) utilizing Docker Buildx with GitHub Actions layer cache (`cache-from: type=gha`).
-
----
-
-### Rootless Multi-Stage Containerization
-
-The production [`Dockerfile`](./Dockerfile) is engineered with strict container security best practices:
-- **Two-Stage Build**:
-  - `builder` stage: Compiles binary extensions (`libpq-dev`, `gcc`), mounting `uv` package caches (`--mount=type=cache,target=/root/.cache/uv`).
-  - `runner` stage: Ships an ultra-slim runtime image containing only runtime dynamic libraries (`postgresql-client`) and the pre-built virtual environment (`/app/.venv`).
-- **Non-Root Execution**: Runs strictly under a non-privileged system user (`appuser`, group `appuser`). Root execution is explicitly disabled before container entrypoint execution.
-- **Dynamic Container Healthcheck**: Includes a Docker `HEALTHCHECK` running `scripts/health_check.py` to verify AST syntax validity, layer boundaries, and file integrity every 30 seconds.
-
----
-
-### Network Isolation & Zero-Downtime CD
-
-Configured in [`docker-compose.yml`](./docker-compose.yml):
-- **Bridge Network Segmentation**: The PostgreSQL database (`db`) and Redis broker (`redis`) reside strictly on internal bridge networks with zero direct internet or WAN port exposure.
-- **Password-Hardened Cache**: Redis enforces authentication via `--requirepass` and restricts local host bindings to `127.0.0.1`.
-- **Automated Rolling Updates**: Integrated **Watchtower** service polls the container registry every 300 seconds, pulls updated images, and executes zero-downtime container swaps with automatic dangling image cleanup (`--cleanup`).
-
----
-
-### Monitoring & Observability
-
-- **Prometheus Telemetry**: The application exposes operational metrics (`/metrics`) using `prometheus-fastapi-instrumentator`.
-- **Pre-Configured Scraper**: The repository includes [`monitoring/prometheus.yml`](./monitoring/prometheus.yml) for Prometheus integration, tracking request latencies, HTTP response codes, active bot connections, and DB pool utilization.
+- **Multi-Tenant Group & Channel Orchestration**: Manage multiple independent clubs or corporate departments from a single deployment; each tenant maintains isolated configuration defaults, schedules, rosters, and leaderboards, with `REGISTRATION_MODE` supporting both instant self-service (`open_saas`) and gated enterprise onboarding (`approval_required`).
+- **JSON-Catalog Localization (`EN` / `RU` / `CS`)**: Unified zero-code-change `LocaleCatalog` (`app/locales/*.json`) defaulting universally to English with automatic locale discovery and CI placeholder-parity enforcement across Bot, Services, Scheduler, and Mini Apps.
+- **Sport Presets & Tenant Policy Engine**: Built-in `SportPresets` (`football`, `futsal`, `volleyball`, `basketball`, `generic`) and per-tenant JSONB `TenantPolicy` governing free cancellation windows, rating deltas, and dynamic organizer contacts.
+- **3-Mode Billing & Czech QR Platba (`SPAYD 1.0`)**: Supports `manual` transfers, `spayd_qr` (ČNB Mod-11 IBAN conversion + offline pure-Python SVG QR generation), and `free_corporate` zero-cost company events.
+- **Mobile-First Telegram Mini Apps**:
+  - **Match Creator & Editor** (`index.html`, `edit_game.html`): Date/time scheduling, pitch capacity, role windows, and fee configuration.
+  - **Interactive Team Balancer & Draft** (`draft.html`): Algorithmic rating + position optimizer across 2 or 3 teams with manual drag/swap overrides.
+  - **Match Finalizer & Scoreboard** (`finish.html`): Multi-team score recording, goal/assist tracking, and automatic rating recalculation with lossless rollback support.
+  - **Post-Match MVP Voting** (`vote.html`): Adaptive group callback polls and channel deep-link voting (`?start=vote_<id>`) with HTML-sanitized announcements and idempotent award settlement.
+  - **SaaS Tenant Dashboard** (`admin.html`): Centralized group configuration, attendance tracking, payment status toggles, and disciplinary card management.
 
 ---
 
 ## Tech Stack
 
-| Category | Technology | Version | Purpose in Prague Football Manager |
-|:---|:---|:---|:---|
-| **Runtime & Language** | Python | `3.11` – `3.14` | Core asynchronous application runtime |
-| **Web Framework** | FastAPI | `0.115+` | High-throughput asynchronous REST API & WebApp hub |
-| **Bot Framework** | Aiogram | `3.x` | Asynchronous Telegram Bot API wrapper with FSM |
-| **Database** | PostgreSQL | `15+` | Relational storage for users, games, signups, and stats |
-| **Async DB Driver** | asyncpg | `0.30+` | High-performance PostgreSQL async driver |
-| **ORM & Migrations** | SQLAlchemy & Alembic | `2.0+` | Unit of work, declarative models, schema revisions |
-| **Cache & Message Broker** | Redis | `7.x` | In-memory query caching, rate limiting, and event queues |
-| **Task Scheduling** | APScheduler | `3.10+` | Async scheduled jobs (voting reminders, match closures) |
-| **Containerization** | Docker & Compose | `20+` | Multi-stage, non-root microservice orchestration |
-| **Linting & Code Quality**| Ruff | `Latest` | High-speed static analysis, formatting, and linting |
-| **Test Suite** | Pytest & pytest-asyncio | `8.x` | Unit, integration, concurrency, and E2E smoke tests |
-| **Metrics & Monitoring** | Prometheus & Watchtower | `Latest` | Telemetry scraping and automated container deployment |
+| Layer | Technology | Role |
+|:---|:---|:---|
+| **Language & Runtime** | Python `3.12+` | Asyncio-native application runtime |
+| **HTTP & WebApp Hub** | FastAPI `0.115+` & Uvicorn | REST API, OpenAPI (non-prod), static Mini App hosting, health probes |
+| **Telegram Integration** | Aiogram `3.x` | Webhook & long-polling handlers, inline keyboards, FSM |
+| **Persistence & Migrations** | PostgreSQL `15+`, SQLAlchemy `2.0`, Alembic | Async `asyncpg` Unit-of-Work repositories & schema migrations |
+| **Cache, Streams & Cron** | Redis `7.x` & APScheduler `3.10+` | Cache (`DB 1`), Streams (`DB 2`), FSM & scheduled jobs (`DB 0`) |
+| **Packaging & Quality** | `uv`, Ruff, Pytest, Trivy | Deterministic lockfiles, linting, unit/integration/E2E tests, config scanning |
+| **Observability** | Prometheus (`prometheus-fastapi-instrumentator`) | Latency histograms, HTTP status counters, readiness telemetry |
 
 ---
 
-## Core Features
+## Quickstart
 
-### Telegram Bot & Group Automation
-- **Announcement Rendering**: Dynamic match announcements featuring match format (e.g. `11x11`, `8x8`), participant counts, date/time in Prague local timezone, pricing, payment details, and player rosters categorized by field positions (`GK`, `DEF`, `MID`, `FWD`).
-- **One-Click Actions**: Inline buttons allow players to sign up, withdraw, toggle goalkeeper status, or open the WebApp directly from group chats and announcement channels.
-- **Auto-Promotion Queue**: When an active player leaves a match, the top reserve player is automatically promoted to the main roster with a direct Telegram notification.
+### 1. Isolated Local Developer Sandbox (Recommended for Development)
 
-### Telegram Mini Apps (WebApps)
-- **Game Creator & Editor (`index.html`, `edit_game.html`)**: Mobile-first WebApps utilizing Telegram theme parameters, Flatpickr datepickers, and real-time validation.
-- **Match Finisher (`finish.html`)**: Interactive score recorder with team scoreboards, goalscorer inputs, and MVP designations.
-- **Team Draft & Balancer (`draft.html`)**: Visual drag-and-drop or one-click team assignment interface with real-time team balance metrics.
-- **MVP Voting Interface (`vote.html`)**: Candidate selection UI for players to cast MVP votes post-match.
-
-### Dynamic Roster & Goalkeeper Priority Engine
-- **Configurable GK Reservation Window**: Matches allow reserving goalkeeper spots (e.g., 2 spots for 2 teams) during a specified time window (`gk_hours`) prior to kickoff.
-- **Smart Quota Allocation**: Evaluates active goalkeeper counts in real-time, preventing field players from occupying the final reserved slots only when goalkeepers are still required.
-- **Registration Time Windows**: Optional `registration_hours` window restricts premature signups before announcement periods.
-
-### Algorithmic Team Balancer & Auto-Draft
-- **Position & Rating Balancer**: Distributes players across teams (2 or 3 teams) optimizing for equal aggregate ELO rating while maintaining position balance (equal GKs and defenders per team).
-- **Manual Adjustments**: Administrators can override auto-generated teams directly in the WebApp or Telegram inline keyboards before publishing.
-
-### Automated APScheduler & MVP Voting
-- **Match Closure Detection**: Schedules automated status transitions from `OPEN` to `ACTIVE` when the match starts, and prompts admins to finalize scores upon match conclusion.
-- **Channel & Group Adaptive Voting**: Delivers interactive callback buttons in group chats, while automatically using URL deep links (`https://t.me/<bot>?start=vote_<id>`) when posting to Telegram Channels to comply with Telegram Bot API constraints.
-
-### Multi-Tenant SaaS Architecture
-- **Per-Chat Isolation**: Distinct Telegram groups maintain their own configuration profiles (currency, pricing, default rosters, match duration, language, and admin permissions).
-- **Group-Specific Player Profiles**: Tracks player statistics, match participation counts, and ELO ratings partitioned by group context.
-
----
-
-## Project Structure
-
-```
-footballManagerBot/
-├── alembic/                       # Database schema migrations
-│   ├── versions/                  # Revision scripts
-│   └── env.py                     # Async migration runner
-├── app/
-│   ├── api/                       # REST API & WebApp Hub
-│   │   ├── auth.py                # TMA initData validation & admin auth
-│   │   ├── main.py                # FastAPI factory & lifespan
-│   │   ├── schemas.py             # Pydantic v2 request/response schemas
-│   │   └── routers/               # Endpoint routers
-│   │       ├── admin.py           # Game creation, finish, player management
-│   │       ├── dashboard.py       # SaaS group admin dashboard
-│   │       ├── games.py           # Match details, history, open games
-│   │       ├── users.py           # User profiles & leaderboards
-│   │       └── voting.py          # MVP voting submission & queries
-│   ├── bot/                       # Telegram Bot Layer (Aiogram 3)
-│   │   ├── handlers/              # Command, callback & FSM handlers
-│   │   ├── instance.py            # Bot & Dispatcher singleton
-│   │   ├── keyboards.py           # Inline & Reply keyboard factories
-│   │   ├── listeners.py           # Domain event subscribers & message publishers
-│   │   └── utils.py               # Announcement formatters & sequential numbering
-│   ├── core/                      # Domain & Business Logic
-│   │   ├── domain/                # DTOs & team balancing algorithms
-│   │   ├── events.py              # In-process asynchronous Event Bus
-│   │   ├── repositories/          # DB access repositories (Game, User, Signup)
-│   │   ├── services/              # GameLifecycle, RosterService, StatsService
-│   │   └── uow.py                 # Async Unit of Work pattern
-│   ├── db/                        # Database Layer
-│   │   ├── database.py            # Async engine & sessionmaker
-│   │   └── models.py              # Declarative SQLAlchemy models
-│   ├── infrastructure/            # Scheduling & External Services
-│   │   └── scheduler/             # APScheduler service wrappers
-│   ├── web/                       # Telegram WebApps (Static HTML/JS/CSS)
-│   │   ├── admin.html             # SaaS multi-group admin panel
-│   │   ├── draft.html             # Visual team drafting tool
-│   │   ├── edit_game.html         # Match parameter editor
-│   │   ├── finish.html            # Score submission & MVP selector
-│   │   ├── index.html             # Match creation WebApp
-│   │   └── vote.html              # Post-match MVP voting WebApp
-│   ├── config.py                  # Pydantic settings & environment validation
-│   └── worker.py                  # Standalone background consumer entrypoint
-├── monitoring/                    # Prometheus scrapers & monitoring configs
-├── scripts/                       # DevOps & maintenance scripts
-├── tests/                         # Pytest Automated Test Suite
-│   ├── conftest.py                # Async SQLite DB fixtures & mock factories
-│   ├── e2e/                       # Smoke tests
-│   ├── integration/               # Database migrations & scheduler tasks
-│   └── unit/                      # Unit tests (API, Bot, Core, Balancer)
-├── docker-compose.yml             # Production & staging service orchestration
-├── Dockerfile                     # Multi-stage hardened runner image
-├── pyproject.toml                 # Dependencies & tool configurations
-└── README.md                      # Comprehensive documentation
-```
-
----
-
-## Setup & Installation
-
-### Prerequisites
-
-- **Python**: Version `3.11+` (tested through `3.14`)
-- **Database**: PostgreSQL `15+`
-- **Cache**: Redis `7+`
-- **Telegram Bot Token**: Obtained from [@BotFather](https://t.me/BotFather)
-
----
-
-### Local Development Setup
-
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/yeronymus/football-manager.git
-   cd football-manager
-   ```
-
-2. **Create and Activate a Virtual Environment**:
-   ```bash
-   # Linux / macOS
-   python3 -m venv .venv
-   source .venv/bin/activate
-
-   # Windows (PowerShell)
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   ```
-
-3. **Install Dependencies**:
-   ```bash
-   pip install -e .
-   # Or using uv (recommended for ultra-fast installs):
-   uv pip install -e .
-   ```
-
-4. **Configure Environment Variables**:
-   ```bash
-   cp .env.example .env
-   ```
-   *Edit `.env` and provide your `BOT_TOKEN`, `POSTGRES_*` credentials, and `REDIS_PASSWORD`.*
-
-5. **Apply Database Migrations**:
-   ```bash
-   alembic upgrade head
-   ```
-
-6. **Run the Application**:
-   ```bash
-   # Run the FastAPI server (handles Webhooks and Mini Apps)
-   uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
-
-   # In a separate terminal, run the Telegram Bot polling (for local testing without public IP)
-   python manage.py runbot
-   ```
-
----
-
-### Docker Compose Deployment & Server Setup
-
-The repository includes a production-hardened `docker-compose.yml` supporting isolated internal networking, healthchecks, and non-root execution:
-
-1. **Pre-flight Server Setup (Automatic)**:
-   ```bash
-   chmod +x scripts/setup_server.sh
-   ./scripts/setup_server.sh
-   ```
-   *Or manually create the isolated persistent volumes*:
-   ```bash
-   docker volume create --name=football-prod_postgres_data
-   docker volume create --name=football-prod_redis_data
-   ```
-
-2. **Configure Environment Variables**:
-   Copy `.env.example` to `.env` and specify your credentials (`BOT_TOKEN`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, etc.).
-
-3. **Launch the Core Production Stack**:
-   ```bash
-   docker compose up -d --build
-   ```
-
-4. **Verify Services Health**:
-   ```bash
-   docker compose ps
-   ```
-
-5. **Deploy Staging Profile (Optional)**:
-   ```bash
-   docker compose --profile staging up -d
-   ```
-
----
-
-## API & Telegram WebApp Route Reference
-
-All WebApp and administrative endpoints authenticate requests via the Telegram Mini App `initData` signature.
-
-### Authentication & Security
-
-Client requests transmit the Telegram WebApp initData string either via query parameters or using the `Authorization` header:
-
-```http
-Authorization: tma query_id=...&user=...&auth_date=...&hash=...
-```
-
-The backend parses the string, computes an HMAC-SHA256 signature using the secret key derived from `BOT_TOKEN`, and performs constant-time validation (`hmac.compare_digest`) to prevent timing attacks.
-
----
-
-### Match Management Endpoints
-
-| Method | Endpoint | Access | Description |
-|:---|:---|:---|:---|
-| `GET` | `/api/games/game/{game_id}` | Public / Auth | Retrieves match metadata, team rosters, reserve queue, and sequential game number. |
-| `GET` | `/api/games/history/{chat_id}` | Authenticated | Retrieves the last 100 finished matches for a specific chat group. |
-| `GET` | `/api/games/games/open` | Admin | Lists upcoming and editable matches for the authenticated admin. |
-| `POST` | `/api/admin/create_game` | Admin | Creates a new match, schedules reminders, and dispatches the announcement. |
-| `POST` | `/api/admin/update_game` | Admin | Updates match parameters (location, limits, pricing, registration windows). |
-| `POST` | `/api/admin/finish_game` | Admin | Records scores, player goals, awards MVPs, updates ELO, and launches voting. |
-
----
-
-### Admin & Settings Endpoints
-
-| Method | Endpoint | Access | Description |
-|:---|:---|:---|:---|
-| `GET` | `/api/dashboard/groups` | Admin / Superadmin | Returns all groups where the user has administrative privileges. |
-| `GET` | `/api/dashboard/groups/{chat_id}/games` | Admin | Retrieves paginated match summaries with payment and attendance statistics. |
-| `PATCH` | `/api/dashboard/groups/{chat_id}` | Admin | Updates tenant-specific settings (pricing, default duration, GK hours). |
-| `POST` | `/api/dashboard/signups/{signup_id}/toggle_pay` | Admin | Toggles payment status for a specific player signup. |
-
----
-
-### Roster & Draft Endpoints
-
-| Method | Endpoint | Access | Description |
-|:---|:---|:---|:---|
-| `POST` | `/api/admin/balance_teams` | Admin | Generates balanced team rosters using the ELO and position optimization algorithm. |
-| `POST` | `/api/admin/update_teams` | Admin | Persists manual team roster changes made in the WebApp draft editor. |
-| `POST` | `/api/admin/add_player` | Admin | Manually inserts a registered player into a match's active roster. |
-| `POST` | `/api/admin/add_guest` | Admin | Adds a guest player (without a Telegram account) to the roster. |
-
----
-
-### Voting Endpoints
-
-| Method | Endpoint | Access | Description |
-|:---|:---|:---|:---|
-| `GET` | `/api/voting/game/{game_id}/candidates` | Authenticated | Fetches eligible players eligible for post-match MVP selection. |
-| `POST` | `/api/voting/vote` | Authenticated | Casts a vote for Team A, Team B, and/or Team C MVPs. |
-| `GET` | `/api/voting/game/{game_id}/results` | Authenticated | Fetches aggregated vote counts for a match. |
-
----
-
-## Database Design
-
-```mermaid
-erDiagram
-    CHATS ||--o{ GAMES : hosts
-    CHATS ||--o{ PLAYER_PROFILES : scopes
-    CHATS ||--o{ CHAT_ADMINS : authorizes
-    USERS ||--o{ GAMES : creates
-    USERS ||--o{ SIGNUPS : registers
-    USERS ||--o{ GAME_STATS : records
-    USERS ||--o{ VOTES : casts
-    USERS ||--o{ PLAYER_PROFILES : has
-    GAMES ||--o{ SIGNUPS : contains
-    GAMES ||--o{ GAME_STATS : details
-    GAMES ||--o{ VOTES : collects
-
-    CHATS {
-        bigint chat_id PK
-        string title
-        bigint channel_id
-        enum language
-        string default_location
-        int default_price
-        int default_max_players
-        int default_gk_hours
-    }
-
-    USERS {
-        bigint user_id PK
-        string username
-        string full_name
-        enum player_position
-        int rating
-        int stats_matches
-        int stats_mvp
-        boolean is_superadmin
-    }
-
-    GAMES {
-        int id PK
-        bigint chat_id FK
-        bigint created_by FK
-        timestamp date_time
-        string location
-        int max_players
-        int price
-        enum status
-        enum winner_team
-        int score_a
-        int score_b
-        bigint message_id
-        bigint voting_message_id
-    }
-
-    SIGNUPS {
-        int id PK
-        int game_id FK
-        bigint user_id FK
-        enum status
-        enum team
-        enum position
-        boolean is_paid
-        timestamp created_at
-    }
-
-    GAME_STATS {
-        int id PK
-        int game_id FK
-        bigint user_id FK
-        int goals
-        boolean is_mvp
-    }
-
-    VOTES {
-        int id PK
-        int game_id FK
-        bigint voter_id FK
-        bigint target_id FK
-        enum team
-    }
-```
-
----
-
-## Testing & Verification
-
-The project includes an automated test suite with **115 passing tests** across unit, integration, and E2E tiers.
+Spin up a completely isolated local stack (`PostgreSQL :5433`, `Redis :6380`, `FastAPI :8000`, `Worker`, and optional `Cloudflare Tunnel`) without touching any staging or production environment:
 
 ```bash
-# Execute the full test suite
-pytest
+# 1. Copy the developer sandbox template
+cp .env.dev.example .env.dev
+# Edit .env.dev and insert a dedicated test BOT_TOKEN from @BotFather
 
-# Run tests with verbose output
-pytest -v
+# 2. Launch the isolated local stack with live code reload
+docker compose -f docker-compose.dev.yml --env-file .env.dev up --build
 
-# Run specific domain test modules
-pytest tests/unit/core/services/test_roster_limits.py
-pytest tests/integration/test_scheduler_tasks.py
-pytest tests/unit/bot/test_utils.py
-
-# Run static analysis & style enforcement
-ruff check .
+# 3. Optional: Expose Mini Apps over HTTPS for real mobile Telegram testing
+docker compose -f docker-compose.dev.yml --env-file .env.dev --profile tunnel up --build
 ```
 
-### Test Suite Summary
+Verify readiness at `http://localhost:8000/health/ready`. See **[docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md)** for full browser bypass (`DEV_AUTH_BYPASS`) and tunnel instructions.
 
-```
-====================== 115 passed, 3 warnings in 30.57s =======================
+### 2. Production Docker Compose Deployment
+
+```bash
+# 1. Initialize persistent volumes, monitoring config, and .env template
+chmod +x scripts/setup_server.sh
+./scripts/setup_server.sh
+
+# 2. Edit .env with production secrets (APP_ENV=production, DEV_AUTH_BYPASS=False)
+nano .env
+
+# 3. Take a pre-migration backup snapshot (for upgrades on existing deployments)
+./scripts/backup/pre_migrate_snapshot.sh
+
+# 4. Start the production stack
+docker compose up -d --build
 ```
 
-- **Roster Limits & GK Priority**: Verifies active GK limits, window boundaries, reserve transitions, and slot availability up to 18 players.
-- **Scheduler & Voting**: Verifies automated voting message dispatch, group callback keyboard delivery, and channel URL button fallbacks.
-- **Sequential Game Numbering**: Verifies sequential counting, skipping cancelled games (18 -> 19 despite IDs 19-43 being cancelled), and fallback safety.
-- **Team Balancer**: Verifies position allocation, rating differential minimization, and 3-team balance calculations.
-- **Authentication & Security**: Verifies TMA initData parsing, expired signatures, invalid hashes, and admin privilege verification.
+---
+
+## Health & Operational Probes
+
+| Endpoint / Script | Purpose | Success | Failure |
+|:---|:---|:---:|:---:|
+| `GET /health/live` | Liveness probe — confirms ASGI event loop responsiveness | `200 OK` | Timeout |
+| `GET /health/ready` | Readiness probe — verifies PostgreSQL (`SELECT 1`) and Redis (`PING`) | `200 OK` | `503 Service Unavailable` |
+| `scripts/container_probe.py` | Docker `HEALTHCHECK` supporting both `PROBE_MODE=api` and `PROBE_MODE=worker` | `exit 0` | `exit 1` |
+| `scripts/health_check.py` | Static AST & clean-architecture layer-boundary verifier (CI gate) | `exit 0` | `exit 1` |
+
+---
+
+## Testing & Quality Gates
+
+```bash
+# Install dependencies via uv
+uv sync --all-extras
+
+# 1. Static lint & import hygiene
+uv run ruff check .
+
+# 2. Clean-architecture boundary check
+uv run python scripts/health_check.py
+
+# 3. Full automated test suite (Unit + Integration + E2E)
+PYTHONPATH=. uv run pytest
+```
 
 ---
 
 ## Environment Variables Reference
 
-| Variable | Type | Required | Default | Description |
-|:---|:---:|:---:|:---:|:---|
-| `BOT_TOKEN` | String | **Yes** | — | Telegram Bot API Token obtained from [@BotFather](https://t.me/BotFather) |
-| `BOT_USERNAME` | String | No | — | Username of the Telegram bot (without `@`) |
-| `POSTGRES_USER` | String | **Yes** | `postgres` | PostgreSQL database user |
-| `POSTGRES_PASSWORD` | String | **Yes** | — | PostgreSQL database password |
-| `POSTGRES_DB` | String | **Yes** | `football_manager` | PostgreSQL database name |
-| `POSTGRES_HOST` | String | **Yes** | `db` | Database hostname or container service name |
-| `POSTGRES_PORT` | Integer | No | `5432` | PostgreSQL port |
-| `REDIS_HOST` | String | No | `redis` | Redis service hostname |
-| `REDIS_PORT` | Integer | No | `6379` | Redis port |
-| `REDIS_PASSWORD` | String | **Yes** | — | Authentication password for Redis server |
-| `WEBAPP_URL` | String | **Yes** | — | Public HTTPS URL where the WebApps are hosted |
-| `SYSTEM_OWNER_ID` | Integer | **Yes** | — | Telegram User ID of the primary platform superadmin |
-| `ADMIN_IDS` | List[int] | No | `[]` | Comma-separated list of global superadmin Telegram IDs |
-| `APP_PORT` | Integer | No | `8000` | Host port mapped to FastAPI web application |
-| `RUN_BOT` | Boolean | No | `True` | Whether the application container should start bot polling |
+| Variable | Required | Default | Description |
+|:---|:---:|:---:|:---|
+| `APP_ENV` | No | `production` | Runtime profile: `production`, `staging`, or `local_dev` |
+| `DEV_AUTH_BYPASS` | No | `False` | Enables local browser header `Authorization: dev <id>` (**strictly blocked unless `APP_ENV=local_dev`**) |
+| `BOT_TOKEN` | **Yes** | — | Telegram Bot API token from [@BotFather](https://t.me/BotFather) |
+| `BOT_USERNAME` | No | `sports_manager_bot` | Telegram bot username (without `@`) |
+| `WEBAPP_URL` | **Yes** | — | Public HTTPS origin serving `/web/*` Mini Apps |
+| `SYSTEM_OWNER_ID` | **Yes** | — | Primary platform owner Telegram User ID |
+| `ADMIN_IDS` | No | `[]` | JSON/comma-separated list of global superadmin Telegram IDs |
+| `POSTGRES_HOST` | **Yes** | `db` | PostgreSQL hostname |
+| `POSTGRES_PORT` | No | `5432` | PostgreSQL port |
+| `POSTGRES_DB` | **Yes** | `sports_platform` | PostgreSQL database name |
+| `POSTGRES_USER` | **Yes** | `postgres` | PostgreSQL user |
+| `POSTGRES_PASSWORD` | **Yes** | — | PostgreSQL password |
+| `DB_POOL_SIZE` | No | `8` | SQLAlchemy async pool size per worker process |
+| `DB_MAX_OVERFLOW` | No | `8` | Maximum overflow connections per worker process |
+| `REDIS_HOST` | No | `redis` | Redis server hostname |
+| `REDIS_PORT` | No | `6379` | Redis server port |
+| `REDIS_PASSWORD` | **Yes** | — | Redis authentication password |
+| `REDIS_FSM_DB` | No | `0` | Logical Redis DB index for Aiogram FSM & APScheduler jobs |
+| `REDIS_CACHE_DB` | No | `1` | Logical Redis DB index for application TTL cache |
+| `REDIS_STREAM_DB` | No | `2` | Logical Redis DB index for Redis Streams event bus |
+
+---
+
+## Documentation Index
+
+- **[Configuration, Tenant Policy & Localization Guide](./docs/CONFIGURATION_AND_I18N.md)** — `EN/RU/CS` JSON locale catalog, `SportPresets`, `TenantPolicy` schema, Czech `SPAYD 1.0` QR Platba, and `free_corporate` billing mode.
+- **[Developer Sandbox & Workflow Guide](./docs/DEVELOPMENT.md)** — Local Docker Compose sandbox, `DEV_AUTH_BYPASS` browser testing, Cloudflare HTTPS tunnel for mobile WebApps, and CI gates.
+- **[Backup & Disaster Recovery Runbook](./docs/BACKUP_AND_DR.md)** — 3-2-1 backup strategy, `age`/`gpg` encryption, S3/R2 off-site sync, pre-migration hooks, and automated restore drills.
 
 ---
 
 ## License
 
-This project is open-source software licensed under the [MIT License](./LICENSE).
+Released under the [MIT License](./LICENSE).

@@ -9,11 +9,46 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN || '123456789:AABBCCDDEEFFGgHHiijjkklLMMNNooppQQ' }} # Decoupled fallback token for config validation
+  BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN || '123456789:AABBCCDDEEFFGgHHiijjkklLMMNNooppQQ' }}
 
 jobs:
   test-and-lint:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U test_user -d test_db"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: test_db
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      APP_ENV: staging
+
     steps:
       - uses: actions/checkout@v4
 
@@ -39,11 +74,11 @@ jobs:
         with:
           scan-type: 'config'
           format: 'table'
-          exit-code: '0' # Don't fail the build on security misconfigurations
+          exit-code: '1'
           severity: 'CRITICAL,HIGH'
 
-      - name: Run Pytest
-        run: PYTHONPATH=. uv run pytest tests/unit/
+      - name: Run Full Pytest Suite (Unit + Integration + E2E)
+        run: PYTHONPATH=. uv run pytest tests/
 
   build:
     needs: test-and-lint
@@ -73,7 +108,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
             type=sha,format=short
 
       - name: Build and push Docker image

@@ -1,26 +1,35 @@
-from fastapi import FastAPI, Request, Header, HTTPException
-from fastapi.responses import RedirectResponse
-from typing import Optional
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+import hmac
 import logging
+from typing import Optional
 
-from app.config import settings
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
+from sqlalchemy import text
+
+from app.api.routers import admin, ads, dashboard, games, inventory, nss, platform, users, voting
 from app.bot.instance import bot
 from app.bot.main import dp, start_bot, stop_bot
-from app.api.routers import games, admin, voting, users, ads, dashboard, nss
+from app.config import settings
 
-# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Football Manager Bot API")
+_enable_api_docs = settings.debug or settings.app_env != "production"
 
-from prometheus_fastapi_instrumentator import Instrumentator
-Instrumentator().instrument(app).expose(app)
+app = FastAPI(
+    title="Sports & Team Logistics Platform API",
+    docs_url="/docs" if _enable_api_docs else None,
+    redoc_url="/redoc" if _enable_api_docs else None,
+    openapi_url="/openapi.json" if _enable_api_docs else None,
+)
 
-# Middlewares
+Instrumentator().instrument(app).expose(app, include_in_schema=False)
+
+
 @app.middleware("http")
 async def add_no_cache_header_for_web(request: Request, call_next):
     response = await call_next(request)
@@ -29,91 +38,89 @@ async def add_no_cache_header_for_web(request: Request, call_next):
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
     return response
+
+
+_allowed_origins = ["https://t.me", "https://web.telegram.org", settings.webapp_url]
+if settings.app_env == "local_dev":
+    _allowed_origins.extend(["http://localhost:8000", "http://127.0.0.1:8000"])
+
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://t.me", "https://web.telegram.org", settings.webapp_url],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.on_event("startup")
 async def on_startup():
     try:
         if settings.run_migrations:
             from app.db.database import init_models
+
             await init_models()
-        
+
         from app.scheduler.main import start_scheduler
+
         if settings.run_scheduler:
             await start_scheduler(paused=False)
         else:
-            # Start scheduler in paused mode so jobstores (Redis) are active
-            # and add_job() persists to Redis, but this process won't execute jobs.
             await start_scheduler(paused=True)
-        
+
         if settings.run_consumer:
-            # Start persistent messaging consumer for volatile event safety
             from app.infrastructure.messaging import consumer as msg_consumer
+
             await msg_consumer.start()
-        
+
         if settings.run_bot:
-            # STARTUP LOGIC
-            # If Webhook: we await start_bot (critical path).
-            # If Polling: we run start_bot in background to avoid blocking startup (network logs).
-            
+            import asyncio
+
             async def safe_start_bot():
                 try:
                     await start_bot()
                 except Exception as e:
                     logger.error(f"Failed to set commands/webhook: {e}")
 
-            logger.info(f"Configuration: USE_POLLING={settings.use_polling}, WEBHOOK_URL={settings.webhook_url}")
+            logger.info(
+                f"Startup config: APP_ENV={settings.app_env}, USE_POLLING={settings.use_polling}"
+            )
 
-            import asyncio
             if not hasattr(app.state, "bg_tasks"):
                 app.state.bg_tasks = []
 
             if not settings.use_polling:
-                # Webhook mode: Background setup
-                logger.info("Starting in Webhook mode (Background setup)...")
+                logger.info("Starting Bot in Webhook mode...")
                 setup_task = asyncio.create_task(safe_start_bot())
                 app.state.bg_tasks.append(setup_task)
             else:
-                # Polling mode: Background
-                logger.info("Starting in Polling mode...")
-                # Start polling
-                logger.info("Deleting webhook before polling...")
+                logger.info("Starting Bot in Polling mode...")
                 await bot.delete_webhook(drop_pending_updates=True)
-                
-                logger.info("Launching start_polling task...")
                 polling_task = asyncio.create_task(dp.start_polling(bot))
                 app.state.bg_tasks.append(polling_task)
-                
-                # Start commands setup in background
-                logger.info("Launching safe_start_bot task...")
                 setup_task = asyncio.create_task(safe_start_bot())
                 app.state.bg_tasks.append(setup_task)
-                
-                logger.info("Bot started in Polling Mode (Background setup)")
-            
+
         logger.info("Application started successfully")
     except Exception as e:
         logger.error(f"Startup error: {e}", exc_info=True)
+
 
 @app.on_event("shutdown")
 async def on_shutdown():
     if settings.run_consumer:
         from app.infrastructure.messaging import consumer as msg_consumer
+
         try:
             await msg_consumer.stop()
         except Exception as e:
             logger.error(f"Failed to stop messaging consumer: {e}")
-            
+
     if settings.run_scheduler:
         try:
             from app.scheduler.main import stop_scheduler
+
             await stop_scheduler()
         except Exception as e:
             logger.error(f"Failed to stop scheduler: {e}")
@@ -121,7 +128,10 @@ async def on_shutdown():
     if settings.run_bot:
         await stop_bot()
 
+
 # Routers
+app.include_router(platform.router, prefix="/api/v1", tags=["Platform"])
+app.include_router(platform.router, prefix="/api", tags=["PlatformLegacy"])
 app.include_router(games.router, prefix="/api", tags=["Games"])
 app.include_router(admin.router, prefix="/api", tags=["Admin"])
 app.include_router(admin.router, prefix="/api/admin", tags=["AdminNew"])
@@ -129,36 +139,76 @@ app.include_router(voting.router, prefix="/api", tags=["Voting"])
 app.include_router(users.router, prefix="/api", tags=["Users"])
 app.include_router(ads.router, prefix="/api", tags=["Ads"])
 app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])
-app.include_router(nss.router, prefix="/api", tags=["NSS Verification"])
+app.include_router(inventory.router, prefix="/api", tags=["Inventory"])
+
+if _enable_api_docs:
+    app.include_router(nss.router, prefix="/api", tags=["Diagnostics"])
+
 
 @app.get("/web", include_in_schema=False)
 @app.get("/web/", include_in_schema=False)
 async def redirect_web_root():
     return RedirectResponse(url="/web/profile.html")
 
+
 app.mount("/web", StaticFiles(directory="app/web", html=True), name="web")
 
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
+
+@app.get("/health", tags=["Health"])
+@app.get("/health/live", tags=["Health"])
+async def health_live():
+    """Kubernetes liveness probe: verifies ASGI event-loop responsiveness."""
+    return {"status": "ok", "env": settings.app_env}
+
+
+@app.get("/health/ready", tags=["Health"])
+async def health_ready():
+    """Kubernetes readiness probe: verifies live PostgreSQL and Redis connectivity."""
+    from app.core.services.cache import cache_service
+    from app.db.database import async_session_maker
+
+    checks = {"postgres": "down", "redis": "down"}
+    healthy = True
+
+    try:
+        async with async_session_maker() as session:
+            await session.execute(text("SELECT 1"))
+            checks["postgres"] = "up"
+    except Exception as e:
+        healthy = False
+        logger.error(f"Readiness check PostgreSQL failure: {e}")
+
+    try:
+        if await cache_service.ping():
+            checks["redis"] = "up"
+    except Exception as e:
+        healthy = False
+        logger.error(f"Readiness check Redis failure: {e}")
+
+    status_code = 200 if healthy else 503
+    return JSONResponse(
+        status_code=status_code,
+        content={"status": "ready" if healthy else "degraded", "checks": checks},
+    )
+
 
 @app.post("/api/webhook")
 async def webhook(
     request: Request,
     x_telegram_bot_api_secret_token: Optional[str] = Header(None),
 ):
-    import hmac
-
     expected_token = settings.webhook_secret_token
     if not x_telegram_bot_api_secret_token or not hmac.compare_digest(
         x_telegram_bot_api_secret_token, expected_token
     ):
         raise HTTPException(status_code=401, detail="Unauthorized")
     from aiogram.types import Update
+
     update = Update.model_validate(await request.json(), context={"bot": bot})
     await dp.feed_update(bot, update)
     return {"ok": True}
 
+
 @app.get("/")
 async def root():
-    return {"message": "Football Manager Bot API is running"}
+    return {"message": "Sports & Team Logistics Platform API is running"}

@@ -9,6 +9,9 @@ production.env
 local.env
 remote.env
 *.pem
+*.key
+*.age
+*.gpg
 id_rsa
 secrets.json
 .pypirc
@@ -25,17 +28,21 @@ build/
 *.egg-info/
 .mypy_cache/
 .pytest_cache/
+.ruff_cache/
 .tox/
 .coverage
 htmlcov/
 
-# --- Database & Data ---
+# --- Database, Dumps & Persistent Data ---
 *.db
 *.sqlite3
+*.dump
+*.sql
+*.sql.gz
 postgres_data/
 redis_data/
 backups/
-*.sql
+server_backup/
 
 # --- Logs & Temp ---
 *.log
@@ -56,13 +63,16 @@ git_status.txt
 .agent/
 .agents/
 
-# --- Documentation & Internal ---
+# --- Documentation & Internal OPSEC ---
 /*.md
 !/README.md
+!docs/
+!docs/**/*.md
 scratch/
 temp/
 nss_docs/
-docs/
+ops/private/
+.local_ops/
 
 # --- OS Specific ---
 .DS_Store
@@ -75,4 +85,4 @@ docker-compose.override.yml
 !scripts/
 *.sh
 !scripts/*.sh
-server_backup/
+!scripts/**/*.sh

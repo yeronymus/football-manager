@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, BigInteger, UniqueConstraint, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, BigInteger, UniqueConstraint, Float, JSON
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -53,9 +53,22 @@ class Team(str, enum.Enum):
     C = "C"
 
 class Language(str, enum.Enum):
-    ru = "ru"
-    cz = "cz"
     en = "en"
+    ru = "ru"
+    cs = "cs"
+    cz = "cz"
+
+class InventoryCategory(str, enum.Enum):
+    BIBS = "BIBS"
+    BALLS = "BALLS"
+    MEDICAL = "MEDICAL"
+    EQUIPMENT = "EQUIPMENT"
+    OTHER = "OTHER"
+
+class InventoryStatus(str, enum.Enum):
+    IN_STOCK = "IN_STOCK"
+    REPLACE_SOON = "REPLACE_SOON"
+    URGENT_PURCHASE = "URGENT_PURCHASE"
 
 class User(Base):
     """
@@ -74,7 +87,7 @@ class User(Base):
     alt_positions = Column(ARRAY(String), default=[])
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     is_superadmin = Column(Boolean, default=False)
-    language = Column(Enum(Language, name="chat_language_enum", native_enum=False), default=Language.ru)
+    language = Column(Enum(Language, name="chat_language_enum", native_enum=False), default=Language.en)
 
     games_created = relationship("Game", back_populates="creator")
     signups = relationship("Signup", back_populates="user")
@@ -96,9 +109,14 @@ class Chat(Base):
     channel_id = Column(BigInteger, nullable=True)    # Linked Announcement Channel
 
     # SaaS / Group Settings
-    language = Column(Enum(Language, name="chat_language_enum", native_enum=False), default=Language.ru)
+    language = Column(Enum(Language, name="chat_language_enum", native_enum=False), default=Language.en)
     payment_info = Column(String, nullable=True)     # If null, uses global default
     is_active = Column(Boolean, default=True)
+    currency = Column(String(8), default="CZK")
+    timezone = Column(String(64), default="Europe/Prague")
+    sport_type = Column(String(32), default="football")
+    billing_mode = Column(String(32), default="manual")
+    policy = Column(JSON, default=dict)
 
     # Defaults for Game Creation
     default_location = Column(String, nullable=True)
@@ -115,6 +133,7 @@ class Chat(Base):
     players = relationship("PlayerProfile", back_populates="chat", cascade="all, delete-orphan")
     admins = relationship("ChatAdmin", back_populates="chat", cascade="all, delete-orphan")
     player_cards = relationship("PlayerCard", back_populates="chat", cascade="all, delete-orphan")
+    inventory_items = relationship("InventoryItem", back_populates="chat", cascade="all, delete-orphan")
 
 class PlayerProfile(Base):
     """
@@ -236,6 +255,7 @@ class Signup(Base):
     position = Column(Enum(Position, name="signup_position_enum", native_enum=False), nullable=True) # Per-match override
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     is_paid = Column(Boolean, default=False)
+    is_late = Column(Boolean, default=False, nullable=False)
 
     game = relationship("Game", back_populates="signups")
     user = relationship("User", back_populates="signups")
@@ -321,3 +341,27 @@ class PlayerCard(Base):
     user = relationship("User", foreign_keys=[user_id], back_populates="cards")
     issuer = relationship("User", foreign_keys=[issued_by])
     chat = relationship("Chat", back_populates="player_cards")
+
+
+class InventoryItem(Base):
+    """
+    Database model representing an equipment or inventory item managed for a group/tenant.
+    Tracks quantities, condition, lifespan countdown, and automated status alerts.
+    """
+    __tablename__ = "inventory_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(120), nullable=False)
+    category = Column(Enum(InventoryCategory, native_enum=False), default=InventoryCategory.OTHER, nullable=False)
+    quantity = Column(Integer, default=1, nullable=False)
+    status = Column(Enum(InventoryStatus, native_enum=False), default=InventoryStatus.IN_STOCK, nullable=False)
+    purchase_date = Column(DateTime(timezone=True), nullable=True)
+    lifespan_days = Column(Integer, nullable=True)
+    notes = Column(String, nullable=True)
+    alert_recipient_user_id = Column(BigInteger, nullable=True)
+    last_alert_sent_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    chat = relationship("Chat", back_populates="inventory_items")

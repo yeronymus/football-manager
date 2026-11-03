@@ -6,12 +6,12 @@ Create Date: 2026-03-07 10:00:00.000000
 
 """
 from alembic import op
-import sqlalchemy as sa
 
 revision = 'c3d4e5f6a7b8'
 down_revision = 'b2c3d4e5f6a7'
 branch_labels = None
 depends_on = None
+
 
 def upgrade() -> None:
     # Ensure games table exists
@@ -24,7 +24,7 @@ def upgrade() -> None:
             location VARCHAR NOT NULL,
             max_players INTEGER DEFAULT 18,
             price INTEGER DEFAULT 100,
-            payment_info VARCHAR DEFAULT '2924402033/0800',
+            payment_info VARCHAR DEFAULT '',
             team_count INTEGER DEFAULT 2,
             gk_hours INTEGER DEFAULT 48,
             duration FLOAT DEFAULT 2.0,
@@ -46,6 +46,7 @@ def upgrade() -> None:
         )
     """)
     op.create_index(op.f('ix_games_id'), 'games', ['id'], unique=False)
+
 
 def downgrade() -> None:
     op.drop_index(op.f('ix_games_id'), table_name='games')

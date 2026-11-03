@@ -1,0 +1,525 @@
+from datetime import datetime, timedelta
+import json
+from pathlib import Path
+import re
+from unittest.mock import MagicMock
+
+from fastapi import FastAPI
+import pytest
+
+from app.api.routers import platform
+from app.core.domain.dto import CreateGameDTO, FinishGameDTO
+from app.core.domain.sport_presets import get_sport_preset, list_sport_presets
+from app.core.domain.tenant_policy import OrganizerContact, resolve_tenant_policy
+from app.core.i18n import DEFAULT_LOCALES_DIR, LocaleCatalog, format_currency_unit, normalize_locale_code
+from app.core.services.billing import (
+    build_spayd_payload,
+    czech_account_to_iban,
+    resolve_game_billing,
+    validate_iban_checksum,
+)
+from app.core.services.game_lifecycle import GameLifecycleService
+from app.core.services.qr_svg import render_qr_svg
+from app.core.services.roster import RosterService
+from app.core.services.stats import StatsService
+from app.core.uow import UnitOfWork
+from app.db.database import get_session
+from app.db.models import (
+    Chat,
+    Game,
+    GameStatus,
+    Position,
+    Signup,
+    SignupStatus,
+    Team,
+    User,
+)
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PLACEHOLDER_RE = re.compile(r"\{([a-zA-Z0-9_]+)\}")
+
+
+async def _asgi_raw_request(
+    asgi_app,
+    method: str,
+    path: str,
+    query_string: str = "",
+) -> tuple[int, dict[str, str], bytes]:
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": method.upper(),
+        "scheme": "http",
+        "path": path,
+        "raw_path": path.encode("ascii"),
+        "query_string": query_string.encode("ascii"),
+        "headers": [],
+        "client": ("127.0.0.1", 50000),
+        "server": ("testserver", 80),
+    }
+    sent_events = []
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        sent_events.append(message)
+
+    await asgi_app(scope, receive, send)
+    start_evt = next(e for e in sent_events if e["type"] == "http.response.start")
+    headers = {
+        k.decode("latin-1").lower(): v.decode("latin-1")
+        for k, v in start_evt.get("headers", [])
+    }
+    body = b"".join(
+        e.get("body", b"") for e in sent_events if e["type"] == "http.response.body"
+    )
+    return start_evt["status"], headers, body
+
+
+# ==============================================================================
+# 1. CI Locale Key/Placeholder Parity & OPSEC Sanitization Gate (ADR-01)
+# ==============================================================================
+
+
+def test_locale_catalog_key_and_placeholder_parity_and_opsec():
+    locale_files = sorted(DEFAULT_LOCALES_DIR.glob("*.json"))
+    codes = [f.stem for f in locale_files]
+    assert {"en", "ru", "cs"}.issubset(set(codes))
+
+    parsed = {
+        f.stem: json.loads(f.read_text(encoding="utf-8")) for f in locale_files
+    }
+    en_keys = set(parsed["en"].keys())
+    assert len(en_keys) >= 340
+
+    for code, messages in parsed.items():
+        assert set(messages.keys()) == en_keys, (
+            f"Key mismatch in {code}.json: "
+            f"missing={en_keys - set(messages.keys())}, extra={set(messages.keys()) - en_keys}"
+        )
+        for key, en_val in parsed["en"].items():
+            en_ph = set(PLACEHOLDER_RE.findall(en_val))
+            loc_ph = set(PLACEHOLDER_RE.findall(messages[key]))
+            assert loc_ph == en_ph, (
+                f"Placeholder mismatch for key '{key}' in {code}.json: "
+                f"expected {en_ph}, got {loc_ph}"
+            )
+
+    # Full-Repo OPSEC Gate: Zero personal handles, private infrastructure hosts/IPs, or real bank accounts
+    # Stored as SHA-256 digests so even test files contain zero plaintext personal identifiers.
+    import hashlib
+    import subprocess
+
+    forbidden_sha256 = {
+        "16965dedff4d3bcf632bc6bca565b872c2bec0810ad3e7f1ec884696c133fd29",
+        "c10e7672fa1a7569360c3a89437a85bcbe32c7800921d1f2bdeedc463680a3c4",
+        "715544540e7db901e203e044ec91e9a3ca946d0c149d68675ead2142645d58b6",
+        "040e0f2afab838a1bb8917e50104daec7a677cf0d97d219b750052dcf1bbcecd",
+        "d20dbd6a870c25193970ab56921ac6c12c60f19b53ca5cf7d8d30e89adf83cda",
+        "8be0b5445fca6eb16d14c6f4eaff1cf1d1a3362ef660bfb2b66e74bf309b7e61",
+        "d433cd0524ab4b4c29df517cc423e0afb4bac91e704cb53a9a7f5dac6d11fa22",
+        "c67b4083adc0c8e394420fd1008eed8cc064bfaa889675938c0056a0ce581a6c",
+        "4c2514756d73f5e4a40235c2a4daaaaca6f1b9c267b27c3a3c76c2cb7f7148d5",
+        "d229398bf5cc231a53c64bccfefa5e5974897c6e750bfa51a542a69510ccb2c7",
+        "d2ec854df25934248ff4d7d251973ebc19082d21118f691a036a0bcd0ef1bb3f",
+        "824bcc1aca31b497d348d8aeadad9e55fe832b76d48b5fec4db437be370f598b",
+        "706ac9afb3008b321e4f1c08dc6779a9bcb924dc5cd60b001c836f6c044b7d2a",
+        "dcb7e522a79d164966982137875c416c6c095e9fe3144c18f81527090ab35583",
+        "370fbd990f49eddd21f472bf2efd758f55a8dfb26ec828e4e703783d65a8f0f3",
+        "6988cd7eaf858d72eca53e6a7634935c5a9ff346136601199bd5918eeeacf940",
+        "750ae0fa6e4252d9984d12de123a3c17352d3b8c34ca4b5a38d94ba2a2e8d5e7",
+    }
+    token_re = re.compile(r"(?:\d{1,3}(?:\.\d{1,3}){3})|[a-z0-9_]{4,}")
+    skip_suffixes = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".woff", ".woff2", ".lock"}
+
+    tracked_files = subprocess.check_output(
+        ["git", "ls-files"], cwd=REPO_ROOT, text=True
+    ).splitlines()
+    for rel_path in tracked_files:
+        path = REPO_ROOT / rel_path
+        if not path.is_file() or path.suffix.lower() in skip_suffixes:
+            continue
+        content_lower = path.read_text(encoding="utf-8", errors="ignore").lower()
+        for tok in set(token_re.findall(content_lower)):
+            digest = hashlib.sha256(tok.encode("utf-8")).hexdigest()
+            assert digest not in forbidden_sha256, (
+                f"OPSEC forbidden identifier detected in tracked file: {rel_path}"
+            )
+
+
+def test_zero_code_change_locale_autodiscovery_and_normalization(tmp_path: Path):
+    assert normalize_locale_code(None) == "en"
+    assert normalize_locale_code("cz") == "cs"
+    assert normalize_locale_code("cs-CZ") == "cs"
+    assert format_currency_unit("CZK", "en") == "CZK"
+    assert format_currency_unit("CZK", "ru") == "крон"
+    assert format_currency_unit("CZK", "cs") == "Kč"
+
+    (tmp_path / "en.json").write_text(
+        json.dumps(
+            {
+                "_locale_name": "English",
+                "_locale_flag": "🇬🇧",
+                "hello_player": "Hello, {name}!",
+                "only_in_en": "Fallback English text",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / "de.json").write_text(
+        json.dumps(
+            {
+                "_locale_name": "Deutsch",
+                "_locale_flag": "🇩🇪",
+                "hello_player": "Hallo, {name}!",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    custom_catalog = LocaleCatalog(locales_dir=tmp_path, default_locale="en")
+    assert "de" in custom_catalog.supported_codes()
+    assert custom_catalog.translate("de-DE", "hello_player", name="Lukas") == "Hallo, Lukas!"
+    assert custom_catalog.translate("de", "only_in_en") == "Fallback English text"
+    assert custom_catalog.translate("fr", "hello_player", name="Jean") == "Hello, Jean!"
+
+
+# ==============================================================================
+# 2. Czech QR Platba (SPAYD 1.0), ČNB Mod-11 IBAN, SVG QR & Billing Modes (ADR-05)
+# ==============================================================================
+
+
+def test_cnb_mod11_iban_spayd_and_offline_qr_svg():
+    # Official ČNB IBAN test vector: 19-2000145399/0800 -> CZ6508000000192000145399
+    iban = czech_account_to_iban("19-2000145399/0800")
+    assert iban == "CZ6508000000192000145399"
+    assert validate_iban_checksum(iban) is True
+
+    # Invalid Mod-11 check digit must be rejected
+    assert czech_account_to_iban("19-2000145398/0800") is None
+    assert czech_account_to_iban("Cash at pitch") is None
+
+    # SPAYD 1.0 payload strips Czech diacritics and formats amount/VS cleanly
+    spayd = build_spayd_payload(
+        iban_or_account="19-2000145399/0800",
+        amount=150,
+        currency="CZK",
+        variable_symbol=42,
+        message="Zápas #7 Pankrác *test*",
+    )
+    assert spayd == (
+        "SPD*1.0*ACC:CZ6508000000192000145399*AM:150.00*CC:CZK"
+        "*X-VS:42*MSG:Zapas #7 Pankrac test"
+    )
+
+    svg = render_qr_svg(spayd)
+    assert svg.startswith('<svg xmlns="http://www.w3.org/2000/svg"')
+    assert "<path " in svg and 'd="M' in svg
+    assert svg.endswith("</svg>")
+
+
+@pytest.mark.asyncio
+async def test_free_corporate_billing_mode_forces_zero_price(session):
+    corp_chat = Chat(
+        chat_id=-1009101,
+        title="ACME Corp Football",
+        billing_mode="free_corporate",
+        default_price=200,
+        payment_info="19-2000145399/0800",
+    )
+    creator = User(user_id=9101, full_name="HR Manager", player_position=Position.CM)
+    session.add_all([corp_chat, creator])
+    await session.commit()
+
+    mock_scheduler = MagicMock()
+    async with UnitOfWork(session=session) as uow:
+        lifecycle = GameLifecycleService(uow, mock_scheduler, StatsService(uow.session))
+        game = await lifecycle.create_game(
+            CreateGameDTO(
+                chat_id=-1009101,
+                date_time=datetime.now() + timedelta(days=2),
+                location="Corporate Arena",
+                price=250,
+                payment_info="19-2000145399/0800",
+            ),
+            creator_id=9101,
+        )
+        await uow.commit()
+
+    assert game.price == 0
+    assert game.payment_info is None
+    summary = resolve_game_billing(game, chat=corp_chat)
+    assert summary.is_free is True
+    assert summary.amount == 0
+    assert summary.spayd_payload is None
+
+
+# ==============================================================================
+# 3. TenantPolicy & SportPresets Parameterization (ADR-02 & ADR-03)
+# ==============================================================================
+
+
+def test_sport_presets_and_organizer_contact_resolution():
+    presets = {p.code: p for p in list_sport_presets()}
+    assert {"football", "futsal", "volleyball", "basketball", "generic"}.issubset(presets.keys())
+    assert get_sport_preset("futsal").default_main_players_count == 10
+    assert get_sport_preset("volleyball").has_goalkeeper is False
+    assert get_sport_preset("nonexistent").code == "football"
+
+    c_tg = OrganizerContact(role="Admin", name="Org", handle="@org_support")
+    assert c_tg.url == "https://t.me/org_support"
+    c_mail = OrganizerContact(role="HR", name="Desk", handle="sports@example.org")
+    assert c_mail.url == "mailto:sports@example.org"
+
+
+@pytest.mark.asyncio
+async def test_tenant_policy_custom_cancellation_window_and_rating_deltas(session):
+    chat = Chat(
+        chat_id=-1009201,
+        title="Custom Policy Club",
+        policy={
+            "free_cancellation_hours": 48,
+            "rating_win_points": 25,
+            "rating_draw_points": 5,
+            "rating_loss_points": -12,
+            "rating_mvp_bonus": 8,
+        },
+    )
+    u_win = User(user_id=9201, full_name="Winner", player_position=Position.ST, rating=100)
+    u_lose = User(user_id=9202, full_name="Loser", player_position=Position.CB, rating=100)
+    session.add_all([chat, u_win, u_lose])
+    await session.commit()
+
+    policy = resolve_tenant_policy(chat)
+    assert policy.free_cancellation_hours == 48
+    assert policy.rating_win_points == 25
+
+    # Match in 36 hours: blocked because tenant policy requires 48h notice!
+    game = Game(
+        chat_id=-1009201,
+        created_by=9201,
+        date_time=datetime.now() + timedelta(hours=36),
+        location="Policy Pitch",
+        max_players=10,
+        team_count=2,
+        status=GameStatus.OPEN,
+    )
+    session.add(game)
+    await session.commit()
+
+    session.add_all(
+        [
+            Signup(game_id=game.id, user_id=9201, status=SignupStatus.ACTIVE, team=Team.A),
+            Signup(game_id=game.id, user_id=9202, status=SignupStatus.ACTIVE, team=Team.B),
+        ]
+    )
+    await session.commit()
+
+    async with UnitOfWork(session=session) as uow:
+        roster = RosterService(uow)
+        ok, msg, _ = await roster.leave_player(game.id, 9201, is_admin=False, locale="en")
+        assert ok is False
+        assert "less than" in msg.lower() or "admin" in msg.lower()
+
+    # Finish match -> winner gets +25 +8 (MVP) = +33, loser gets -12
+    mock_scheduler = MagicMock()
+    async with UnitOfWork(session=session) as uow:
+        lifecycle = GameLifecycleService(uow, mock_scheduler, StatsService(uow.session))
+        await lifecycle.finish_game(
+            FinishGameDTO(
+                game_id=game.id,
+                score_a=5,
+                score_b=2,
+                winner_team=Team.A,
+                mvp_team_a=9201,
+            )
+        )
+        await uow.commit()
+
+    await session.refresh(u_win)
+    await session.refresh(u_lose)
+    assert u_win.rating == 133
+    assert u_lose.rating == 88
+
+
+# ==============================================================================
+# 4. Shared Platform API Endpoints (/api/v1/*)
+# ==============================================================================
+
+
+@pytest.mark.asyncio
+async def test_platform_api_locales_presets_rules_and_spayd_qr(session):
+    test_app = FastAPI()
+    test_app.include_router(platform.router, prefix="/api/v1")
+    test_app.dependency_overrides[get_session] = lambda: session
+
+    chat = Chat(
+        chat_id=-1009301,
+        title="Prague Tech League",
+        language="cs",
+        currency="CZK",
+        billing_mode="spayd_qr",
+        payment_info="19-2000145399/0800",
+        policy={
+            "free_cancellation_hours": 18,
+            "organizer_contacts": [
+                {"role": "League Ops", "name": "Coordinator", "handle": "@league_ops_example"}
+            ],
+        },
+    )
+    creator = User(user_id=9301, full_name="Organizer", player_position=Position.GK)
+    session.add_all([chat, creator])
+    await session.commit()
+
+    game = Game(
+        chat_id=-1009301,
+        created_by=9301,
+        date_time=datetime.now() + timedelta(days=3),
+        location="Letná Arena",
+        price=180,
+        payment_info="19-2000145399/0800",
+        status=GameStatus.OPEN,
+    )
+    session.add(game)
+    await session.commit()
+
+    # 1) /api/v1/locales
+    code_loc, _, raw_loc = await _asgi_raw_request(test_app, "GET", "/api/v1/locales")
+    assert code_loc == 200
+    body_loc = json.loads(raw_loc)
+    assert body_loc["default_locale"] == "en"
+    assert {"en", "ru", "cs"}.issubset({item["code"] for item in body_loc["locales"]})
+
+    # 2) /api/v1/locales/cz -> resolves alias to 'cs'
+    code_cs, _, raw_cs = await _asgi_raw_request(test_app, "GET", "/api/v1/locales/cz")
+    assert code_cs == 200
+    body_cs = json.loads(raw_cs)
+    assert body_cs["locale"] == "cs"
+    assert "Startovné" in body_cs["messages"]["lbl_price"] or len(body_cs["messages"]) >= 340
+
+    # 3) /api/v1/presets/sports
+    code_sp, _, raw_sp = await _asgi_raw_request(test_app, "GET", "/api/v1/presets/sports")
+    assert code_sp == 200
+    body_sp = json.loads(raw_sp)
+    assert body_sp["default_sport"] == "football"
+    assert len(body_sp["presets"]) >= 5
+
+    # 4) /api/v1/tenants/public-rules (must NEVER leak payment_info)
+    code_rules, _, raw_rules = await _asgi_raw_request(
+        test_app, "GET", "/api/v1/tenants/public-rules", query_string="chat_id=-1009301"
+    )
+    assert code_rules == 200
+    rules_text = raw_rules.decode("utf-8")
+    assert "2000145399" not in rules_text
+    body_rules = json.loads(rules_text)
+    assert body_rules["language"] == "cs"
+    assert body_rules["billing_mode"] == "spayd_qr"
+    assert body_rules["policy"]["free_cancellation_hours"] == 18
+    assert body_rules["contacts"][0]["url"] == "https://t.me/league_ops_example"
+
+    # 5) /api/v1/billing/games/{id}/spayd & /qr.svg
+    code_bill, _, raw_bill = await _asgi_raw_request(
+        test_app, "GET", f"/api/v1/billing/games/{game.id}/spayd"
+    )
+    assert code_bill == 200
+    body_bill = json.loads(raw_bill)
+    assert body_bill["iban"] == "CZ6508000000192000145399"
+    assert body_bill["spayd_payload"].startswith("SPD*1.0*ACC:CZ6508000000192000145399*AM:180.00")
+
+    code_qr, hdrs_qr, raw_qr = await _asgi_raw_request(
+        test_app, "GET", f"/api/v1/billing/games/{game.id}/qr.svg"
+    )
+    assert code_qr == 200
+    assert "image/svg+xml" in hdrs_qr.get("content-type", "")
+    assert raw_qr.startswith(b"<svg ")
+
+
+# ==============================================================================
+# 5. Architectural Quick-Wins: UoW Rollback, Custom PK Locking & Registration Mode
+# ==============================================================================
+
+
+@pytest.mark.asyncio
+async def test_uow_rolls_back_external_session_on_exception():
+    from unittest.mock import AsyncMock
+
+    ext_session = MagicMock()
+    ext_session.rollback = AsyncMock()
+    ext_session.close = AsyncMock()
+
+    with pytest.raises(RuntimeError, match="simulated failure"):
+        async with UnitOfWork(session=ext_session):
+            raise RuntimeError("simulated failure")
+
+    ext_session.rollback.assert_awaited_once()
+    ext_session.close.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_base_repository_get_with_lock_supports_custom_primary_keys(session):
+    from app.core.repositories.base import BaseRepository
+
+    chat = Chat(chat_id=-1009401, title="Lockable Tenant")
+    user = User(user_id=9401, full_name="Lockable Player", player_position=Position.CM)
+    session.add_all([chat, user])
+    await session.commit()
+
+    chat_repo = BaseRepository(session, Chat)
+    user_repo = BaseRepository(session, User)
+
+    locked_chat = await chat_repo.get_with_lock(-1009401)
+    locked_user = await user_repo.get_with_lock(9401)
+    assert locked_chat is not None and locked_chat.title == "Lockable Tenant"
+    assert locked_user is not None and locked_user.full_name == "Lockable Player"
+
+
+@pytest.mark.asyncio
+async def test_registration_mode_approval_required_blocks_unapproved_tenant(session, monkeypatch):
+    from app.bot.middlewares import is_auto_approved_tenant
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "registration_mode", "approval_required")
+    monkeypatch.setattr(settings, "system_owner_id", 777001)
+    monkeypatch.setattr(settings, "admin_ids", [777001])
+
+    assert is_auto_approved_tenant(9501) is False
+    assert is_auto_approved_tenant(777001) is True
+
+    creator = User(user_id=9501, full_name="Dept Organizer", player_position=Position.CM)
+    owner = User(user_id=777001, full_name="Platform Owner", player_position=Position.GK)
+    session.add_all([creator, owner])
+    await session.commit()
+
+    mock_scheduler = MagicMock()
+
+    # Non-superadmin creating game in an unknown group under approval_required -> blocked!
+    with pytest.raises(PermissionError, match="pending administrator approval"):
+        async with UnitOfWork(session=session) as uow:
+            lifecycle = GameLifecycleService(uow, mock_scheduler, StatsService(uow.session))
+            await lifecycle.create_game(
+                CreateGameDTO(
+                    chat_id=-1009501,
+                    date_time=datetime.now() + timedelta(days=2),
+                    location="Pending Pitch",
+                ),
+                creator_id=9501,
+            )
+
+    # Superadmin / system owner auto-approves new tenant and succeeds
+    async with UnitOfWork(session=session) as uow:
+        lifecycle = GameLifecycleService(uow, mock_scheduler, StatsService(uow.session))
+        game = await lifecycle.create_game(
+            CreateGameDTO(
+                chat_id=-1009502,
+                date_time=datetime.now() + timedelta(days=2),
+                location="Approved Pitch",
+            ),
+            creator_id=777001,
+        )
+        await uow.commit()
+
+    approved_chat = await session.get(Chat, -1009502)
+    assert approved_chat is not None and approved_chat.is_active is True
+    assert game.id is not None

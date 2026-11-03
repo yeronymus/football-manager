@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Community Rules & Match Guide</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="/web/css/style.css?v=2.3.0">
+    <link rel="stylesheet" href="/web/css/style.css?v=2.4.0">
     <style>
         .rules-wrapper {
             max-width: 620px;
@@ -52,7 +52,7 @@
             color: var(--hint-color);
             font-size: 11.5px;
             font-weight: 700;
-            padding: 5px 12px;
+            padding: 5px 10px;
             border-radius: 16px;
             cursor: pointer;
             transition: all 0.15s ease;
@@ -293,6 +293,7 @@
             padding: 10px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             font-size: 13px;
+            gap: 12px;
         }
 
         .contact-item:last-child {
@@ -303,6 +304,7 @@
             color: var(--accent-color);
             text-decoration: none;
             font-weight: 600;
+            white-space: nowrap;
         }
 
         /* Modal Lightbox */
@@ -329,11 +331,12 @@
 <body>
     <div class="top-bar">
         <div class="top-bar-title">
-            <span>⚽</span> <span>Football Manager</span>
+            <span>⚽</span> <span id="top-bar-org-title">Football Manager</span>
         </div>
         <div class="lang-switch-group">
             <button class="lang-btn active" id="btn-en" onclick="switchLang('en')">EN</button>
             <button class="lang-btn" id="btn-ru" onclick="switchLang('ru')">RU</button>
+            <button class="lang-btn" id="btn-cs" onclick="switchLang('cs')">CS</button>
         </div>
     </div>
 
@@ -346,164 +349,49 @@
         <!-- 1. How to Sign Up -->
         <div class="rule-card">
             <div class="rule-card-header" id="t-s1-title">1. How to Sign Up</div>
-            <div class="rule-body" id="t-s1-body">
-                <ul>
-                    <li>Tap <b>«⚽ Join Game»</b> under the match announcement in the group.</li>
-                    <li>The web interface opens directly inside Telegram.</li>
-                    <li><b>First time?</b> Complete the quick profile once (enter Latin name and select pitch positions).</li>
-                    <li>Tap <b>«Sign Up for Game»</b>. Open spots put you straight into the <b>Main Squad</b>. When full, you enter the <b>Reserve Queue</b>.</li>
-                </ul>
-                <div class="screens-strip">
-                    <div class="screen-thumb" onclick="openLightbox('/web/img/step1_post.png')">
-                        <img src="/web/img/step1_post.png" alt="Match announcement">
-                    </div>
-                    <div class="screen-thumb" onclick="openLightbox('/web/img/step2_profile.png')">
-                        <img src="/web/img/step2_profile.png" alt="Create profile">
-                    </div>
-                    <div class="screen-thumb" onclick="openLightbox('/web/img/step3_join.png')">
-                        <img src="/web/img/step3_join.png" alt="Sign up screen">
-                    </div>
-                </div>
-                <div class="screen-caption" id="t-screen-caption">Tap any screenshot to enlarge</div>
-            </div>
+            <div class="rule-body" id="t-s1-body"></div>
         </div>
 
         <!-- 2. Moving from Reserve to Main Squad -->
         <div class="rule-card">
             <div class="rule-card-header" id="t-s2-title">2. Moving from Reserve to Main Squad</div>
-            <div class="rule-body" id="t-s2-body">
-                <p>When a main squad player drops out, the bot automatically promotes the first reserve player into the main roster.</p>
-                <div class="callout-box">
-                    The bot sends a direct Telegram message notification. Keep bot notifications unmuted.
-                </div>
-            </div>
+            <div class="rule-body" id="t-s2-body"></div>
         </div>
 
         <!-- 3. Cancellation Policy -->
         <div class="rule-card">
             <div class="rule-card-header" id="t-s3-title">3. Cancellation Policy</div>
-            <div class="rule-body" id="t-s3-body">
-                <p>To cancel: open the match card in the bot and tap <b>«❌ Leave Game»</b>.</p>
-                <ul>
-                    <li><b>Free cancellation:</b> cancel at least <b>24 hours</b> before kick-off so reserve players have time to prepare.</li>
-                    <li><b>Late cancellation (< 24 hours):</b> no fee is charged for late cancellation, only a yellow card (🟨).</li>
-                </ul>
-            </div>
+            <div class="rule-body" id="t-s3-body"></div>
         </div>
 
         <!-- 4. Match Fee & Payment -->
         <div class="rule-card">
             <div class="rule-card-header" id="t-s4-title">4. Match Fee & Payment</div>
-            <div class="rule-body" id="t-s4-body">
-                <p>The fee and bank account details are shown on the match card. Please send the payment <b>before the match</b> via bank transfer to the provided account.</p>
-            </div>
+            <div class="rule-body" id="t-s4-body"></div>
         </div>
 
         <!-- 5. Pitch Conduct & Card System -->
         <div class="rule-card">
             <div class="rule-card-header" id="t-s5-title">5. Pitch Conduct & Disciplinary Cards</div>
-            <div class="rule-body" id="t-s5-body">
-                <ul>
-                    <li>Dangerous tackles, rough challenges, fights, and toxic insults are strictly prohibited.</li>
-                    <li>Arrive on time to avoid losing booked pitch time.</li>
-                    <li><b>Yellow Card (🟨):</b> warning issued for unsportsmanlike conduct, late arrival, or late cancellation (< 24h). Active for 2–4 weeks.</li>
-                    <li><b>Red Card (🟥):</b> issued for 2 yellow cards, gross misconduct, or unexcused no-shows. Temporarily suspends match registration.</li>
-                    <li><b>Card Reason:</b> the specific reason is always stated in the card notification and in your profile. If you have questions or want to discuss a card, you can always contact the <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">organizers below</a>.</li>
-                </ul>
-            </div>
+            <div class="rule-body" id="t-s5-body"></div>
         </div>
 
         <!-- 6. Post-Match & MVP Voting -->
         <div class="rule-card">
             <div class="rule-card-header" id="t-s6-title">6. Post-Match & MVP Voting</div>
-            <div class="rule-body" id="t-s6-body">
-                <p>The MVP poll opens in the group chat after full-time. <b>Vote for 1 player from EACH team</b> (1 from Green + 1 from Orange = 2 votes total). Do not vote for only 1 player overall.</p>
-                
-                <div class="mvp-mockup">
-                    <div class="mvp-mockup-title" id="t-mvp-sample-title">Sample Ballot: 2 votes required</div>
-                    <div class="mvp-grid">
-                        <div class="mvp-col">
-                            <div class="mvp-col-head" style="color:#4ade80;" id="t-mvp-team-a">Green (Team A)</div>
-                            <div class="mvp-item"><span>Zidane</span> <span>⚪</span></div>
-                            <div class="mvp-item checked"><span>Modrić</span> <span>✓ Vote #1</span></div>
-                            <div class="mvp-item"><span>Henry</span> <span>⚪</span></div>
-                        </div>
-                        <div class="mvp-col">
-                            <div class="mvp-col-head" style="color:#fb923c;" id="t-mvp-team-b">Orange (Team B)</div>
-                            <div class="mvp-item"><span>Iniesta</span> <span>⚪</span></div>
-                            <div class="mvp-item checked"><span>De Bruyne</span> <span>✓ Vote #2</span></div>
-                            <div class="mvp-item"><span>Beckham</span> <span>⚪</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="callout-box" id="t-mvp-note">
-                    You cannot vote for yourself. Both teams must receive your vote.
-                </div>
-
-                <p style="margin-top:10px; font-weight:600;" id="t-elo-header">ELO Rating (MMR):</p>
-                <table class="elo-table">
-                    <tr><td id="t-elo-win">Victory</td><td style="text-align:right; font-weight:700; color:#4ade80;">+10 MMR</td></tr>
-                    <tr><td id="t-elo-draw">Draw</td><td style="text-align:right; font-weight:700; color:var(--hint-color);">0 MMR</td></tr>
-                    <tr><td id="t-elo-loss">Defeat</td><td style="text-align:right; font-weight:700; color:#f87171;">-5 MMR</td></tr>
-                    <tr><td id="t-elo-mvp">Match MVP Bonus</td><td style="text-align:right; font-weight:700; color:#f59e0b;">+5 MMR</td></tr>
-                </table>
-            </div>
+            <div class="rule-body" id="t-s6-body"></div>
         </div>
 
         <!-- 7. Profile, Stats & Direct Links -->
         <div class="rule-card">
             <div class="rule-card-header" id="t-s7-title">7. Profile, Stats & Active Cards</div>
-            <div class="rule-body" id="t-s7-body">
-                <p>Personal statistics, match history, and MMR rating are available anytime via <code>/profile</code> in private chat with the bot. <b>Your active cards, the reason they were issued, and the exact expiration date / remaining days</b> are also displayed directly on your profile card.</p>
-
-                <!-- Direct Links right under profile -->
-                <a href="https://t.me/fm_metabot" class="btn-link" id="t-link-bot">
-                    <span>⚽</span> <span id="t-link-bot-text">Open Football Manager Bot</span>
-                </a>
-                <div class="btn-row">
-                    <a href="/web/profile.html" class="btn-sub" id="t-link-prof">👤 My Profile</a>
-                    <a href="/web/leaderboard.html" class="btn-sub" id="t-link-lead">🏆 Leaderboard</a>
-                    <a href="/web/history.html" class="btn-sub" id="t-link-hist">📅 History</a>
-                </div>
-            </div>
+            <div class="rule-body" id="t-s7-body"></div>
         </div>
 
         <!-- 8. Organizers & Contacts -->
         <div class="rule-card" id="contacts">
             <div class="rule-card-header" id="t-s8-title">8. Contacts & Questions</div>
-            <div class="rule-body">
-                <div class="contact-item">
-                    <div>
-                        <div style="font-weight:600;" id="t-c1-role">Matches, pitch, squads, balls & partnership:</div>
-                        <div style="font-size:12px; color:var(--hint-color);" id="t-c1-names">Ali / Yeldos</div>
-                    </div>
-                    <div style="display:flex; gap:8px;">
-                        <a href="https://t.me/mukhvmmed" class="contact-link" target="_blank">@mukhvmmed</a>
-                        <a href="https://t.me/qaddafi_1" class="contact-link" target="_blank">@qaddafi_1</a>
-                    </div>
-                </div>
-
-                <div class="contact-item">
-                    <div>
-                        <div style="font-weight:600;" id="t-c2-role">Match fees, payments & partnership:</div>
-                        <div style="font-size:12px; color:var(--hint-color);" id="t-c2-name">Yernar</div>
-                    </div>
-                    <div>
-                        <a href="https://t.me/napovorotenapravo" class="contact-link" target="_blank">@napovorotenapravo</a>
-                    </div>
-                </div>
-
-                <div class="contact-item">
-                    <div>
-                        <div style="font-weight:600;" id="t-c3-role">Bot & technical questions:</div>
-                        <div style="font-size:12px; color:var(--hint-color);" id="t-c3-name">Yernur</div>
-                    </div>
-                    <div>
-                        <a href="https://t.me/yeronym" class="contact-link" target="_blank">@yeronym</a>
-                    </div>
-                </div>
-            </div>
+            <div class="rule-body" id="t-s8-body"></div>
         </div>
     </div>
 
@@ -513,6 +401,23 @@
     </div>
 
     <script>
+        let tenantConfig = {
+            title: "Football Manager",
+            bot_username: "",
+            billing_mode: "manual",
+            currency: "CZK",
+            support_contact: "",
+            policy: {
+                free_cancellation_hours: 24,
+                rating_win_points: 10,
+                rating_draw_points: 0,
+                rating_loss_points: -5,
+                rating_mvp_bonus: 5,
+                contacts: [],
+                custom_rules_notes: null
+            }
+        };
+
         const TRANSLATIONS = {
             en: {
                 hero_title: "Community Rules & Match Guide",
@@ -521,7 +426,7 @@
                 s1_body: `<ul>
                     <li>Tap <b>«⚽ Join Game»</b> under the match announcement in the group.</li>
                     <li>The web interface opens directly inside Telegram.</li>
-                    <li><b>First time?</b> Complete the quick profile once (enter Latin name and select pitch positions).</li>
+                    <li><b>First time?</b> Complete the quick profile once (enter your name and select preferred positions).</li>
                     <li>Tap <b>«Sign Up for Game»</b>. Open spots put you straight into the <b>Main Squad</b>. When full, you enter the <b>Reserve Queue</b>.</li>
                 </ul>`,
                 screen_caption: "Tap any screenshot to enlarge",
@@ -531,45 +436,43 @@
                         The bot sends a direct Telegram message notification. Keep bot notifications unmuted.
                     </div>`,
                 s3_title: "3. Cancellation Policy",
-                s3_body: `<p>To cancel: open the match card in the bot and tap <b>«❌ Leave Game»</b>.</p>
+                s3_body: `<p>To cancel: open the match card in the bot and tap <b>«❌ Leave Match»</b>.</p>
                     <ul>
-                        <li><b>Free cancellation:</b> cancel at least <b>24 hours</b> before kick-off so reserve players have time to prepare.</li>
-                        <li><b>Late cancellation (< 24 hours):</b> no fee is charged for late cancellation, only a yellow card (🟨).</li>
+                        <li><b>Free cancellation:</b> cancel at least <b>{cancel_hours} hours</b> before kick-off so reserve players have time to prepare.</li>
+                        <li><b>Late cancellation (&lt; {cancel_hours} hours):</b> repeated late withdrawals may result in an automatic disciplinary warning (🟨).</li>
                     </ul>`,
                 s4_title: "4. Match Fee & Payment",
-                s4_body: `<p>The fee and bank account details are shown on the match card. Please send the payment <b>before the match</b> via bank transfer to the provided account.</p>`,
+                s4_manual: `<p>The fee and payment details are shown on each match card. Please complete payment <b>before kick-off</b> via bank transfer or as specified by your group organizer.</p>`,
+                s4_spayd_qr: `<p>The match fee, IBAN, Variable Symbol (VS), and an instant <b>QR Platba (SPAYD 1.0)</b> code are displayed directly inside the match Mini App. Scan the QR code in your banking app before kick-off.</p>`,
+                s4_free_corporate: `<p>✨ <b>Corporate / Sponsored Mode:</b> Matches in this group are covered by the organization — no player match fee is required.</p>`,
                 s5_title: "5. Pitch Conduct & Disciplinary Cards",
                 s5_body: `<ul>
-                    <li>Dangerous tackles, rough challenges, fights, and toxic insults are strictly prohibited.</li>
-                    <li>Arrive on time to avoid losing booked pitch time.</li>
-                    <li><b>Yellow Card (🟨):</b> warning issued for unsportsmanlike conduct, late arrival, or late cancellation (< 24h). Active for 2–4 weeks.</li>
+                    <li>Dangerous tackles, rough challenges, fights, and unsportsmanlike insults are strictly prohibited.</li>
+                    <li>Arrive on time to avoid losing booked venue time.</li>
+                    <li><b>Yellow Card (🟨):</b> warning issued for unsportsmanlike conduct, late arrival, or late cancellation (&lt; {cancel_hours}h). Active for 2–4 weeks.</li>
                     <li><b>Red Card (🟥):</b> issued for 2 yellow cards, gross misconduct, or unexcused no-shows. Temporarily suspends match registration.</li>
-                    <li><b>Card Reason:</b> the specific reason is always stated in the card notification and in your profile. If you have questions or want to discuss a card, you can always contact the <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">organizers below</a>.</li>
+                    <li><b>Card Reason:</b> the specific reason is always stated in the card notification and in your profile. Questions can be addressed to <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">group administrators below</a>.</li>
                 </ul>`,
                 s6_title: "6. Post-Match & MVP Voting",
-                s6_body: `<p>The MVP poll opens in the group chat after full-time. <b>Vote for 1 player from EACH team</b> (1 from Green + 1 from Orange = 2 votes total). Do not vote for only 1 player overall.</p>`,
-                mvp_sample_title: "Sample Ballot: 2 votes required",
+                s6_body: `<p>The MVP poll opens in the group chat after full-time. <b>Vote for 1 player from EACH team</b> (e.g. 1 from Green + 1 from Orange). Do not vote for only 1 player overall.</p>`,
+                mvp_sample_title: "Sample Ballot: 1 vote per team",
                 mvp_team_a: "Green (Team A)",
                 mvp_team_b: "Orange (Team B)",
-                mvp_note: "You cannot vote for yourself. Both teams must receive your vote.",
-                elo_header: "ELO Rating (MMR):",
+                mvp_note: "You cannot vote for yourself. Every participating team receives one vote.",
+                elo_header: "Skill Rating (MMR):",
                 elo_win: "Victory",
                 elo_draw: "Draw",
                 elo_loss: "Defeat",
                 elo_mvp: "Match MVP Bonus",
                 s7_title: "7. Profile, Stats & Active Cards",
-                s7_body: `<p>Personal statistics, match history, and MMR rating are available anytime via <code>/profile</code> in private chat with the bot. <b>Your active cards, the reason they were issued, and the exact expiration date / remaining days</b> are also displayed directly on your profile card.</p>`,
-                link_bot_text: "Open Football Manager Bot",
+                s7_body: `<p>Personal statistics, match history, and MMR rating are available anytime via <code>/profile</code> in private chat with the bot. <b>Your active cards, reason, and remaining duration</b> are also displayed directly on your profile card.</p>`,
+                link_bot_text: "Open Telegram Bot",
                 link_prof: "👤 My Profile",
                 link_lead: "🏆 Leaderboard",
                 link_hist: "📅 History",
                 s8_title: "8. Contacts & Questions",
-                c1_role: "Matches, pitch, squads, balls & partnership:",
-                c1_names: "Ali / Yeldos",
-                c2_role: "Match fees, payments & partnership:",
-                c2_name: "Yernar",
-                c3_role: "Bot & technical questions:",
-                c3_name: "Yernur"
+                contacts_default_hint: "Have questions about scheduling, payments, or rules? Reach out to your group administrators directly in the Telegram group chat.",
+                support_role_label: "Platform & Technical Support:"
             },
             ru: {
                 hero_title: "Правила сообщества и матчей",
@@ -578,8 +481,8 @@
                 s1_body: `<ul>
                     <li>Нажмите <b>«⚽ Join Game»</b> под сообщением с анонсом в группе.</li>
                     <li>Веб-окно откроется прямо в Telegram.</li>
-                    <li><b>Впервые?</b> Заполните короткий профиль один раз (имя латиницей и позиции).</li>
-                    <li>Нажмите <b>«Sign Up for Game»</b>. При наличии мест вы попадаете в <b>Основной состав</b>. Если лимит исчерпан — в <b>Список резерва</b>.</li>
+                    <li><b>Впервые?</b> Заполните короткий профиль один раз (имя и предпочитаемые позиции).</li>
+                    <li>Нажмите <b>«Записаться на игру»</b>. При наличии мест вы попадаете в <b>Основной состав</b>. Если лимит исчерпан — в <b>Список резерва</b>.</li>
                 </ul>`,
                 screen_caption: "Нажмите на скриншот, чтобы увеличить",
                 s2_title: "2. Переход из Резерва в Основу",
@@ -588,53 +491,179 @@
                         Бот присылает уведомление в личные сообщения Telegram. Не отключайте уведомления бота.
                     </div>`,
                 s3_title: "3. Правила отмены записи",
-                s3_body: `<p>Для отмены откройте карточку матча в боте и нажмите <b>«❌ Leave Game»</b>.</p>
+                s3_body: `<p>Для отмены откройте карточку матча в боте и нажмите <b>«❌ Выписаться с игры»</b>.</p>
                     <ul>
-                        <li><b>Бесплатная отмена:</b> не позднее чем за <b>24 часа</b> до свистка, чтобы игроки из резерва успели собраться.</li>
-                        <li><b>Поздняя отмена (< 24 часов):</b> взнос не взимается, выдаётся только жёлтая карточка (🟨).</li>
+                        <li><b>Бесплатная отмена:</b> не позднее чем за <b>{cancel_hours} ч.</b> до начала, чтобы игроки из резерва успели собраться.</li>
+                        <li><b>Поздняя отмена (&lt; {cancel_hours} ч.):</b> за поздний выход может быть вынесено предупреждение — жёлтая карточка (🟨).</li>
                     </ul>`,
                 s4_title: "4. Взнос и оплата",
-                s4_body: `<p>Сумма взноса и банковские реквизиты указаны в карточке матча. Пожалуйста, переводите взнос <b>до начала матча</b> на указанный банковский счёт.</p>`,
-                s5_title: "5. Поведение на поле и система карточек",
+                s4_manual: `<p>Сумма взноса и реквизиты указаны в карточке матча. Пожалуйста, переводите взнос <b>до начала матча</b> по указанным реквизитам организатора.</p>`,
+                s4_spayd_qr: `<p>Сумма взноса, IBAN, вариабельный символ (VS) и мгновенный код <b>QR Platba (SPAYD 1.0)</b> доступны прямо внутри карточки матча. Отсканируйте QR-код в банковском приложении до начала игры.</p>`,
+                s4_free_corporate: `<p>✨ <b>Корпоративный режим:</b> Матчи в этой группе оплачиваются организацией — взнос с игроков не взимается.</p>`,
+                s5_title: "5. Поведение на площадке и карточки",
                 s5_body: `<ul>
-                    <li>Опасные подкаты сзади, грубость, драки и токсичное поведение запрещены.</li>
-                    <li>Приходите вовремя, чтобы не терять оплаченное время поля.</li>
-                    <li><b>Жёлтая карточка (🟨):</b> предупреждение за грубую игру, опоздание или позднюю отмену записи (< 24ч). Действует 2–4 недели.</li>
-                    <li><b>Красная карточка (🟥):</b> за 2 жёлтые карточки, драку или грубое нарушение. Временно блокирует запись на матчи.</li>
-                    <li><b>Причина карточки:</b> точная причина всегда пишется в уведомлении от бота и в вашем профиле. Если у вас есть вопросы или вы хотите оспорить карточку — всегда можете написать <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">администраторам ниже</a>.</li>
+                    <li>Опасные подкаты, грубость, драки и токсичное поведение строго запрещены.</li>
+                    <li>Приходите вовремя, чтобы не терять арендованное время площадки.</li>
+                    <li><b>Жёлтая карточка (🟨):</b> предупреждение за грубую игру, опоздание или позднюю отмену записи (&lt; {cancel_hours}ч). Действует 2–4 недели.</li>
+                    <li><b>Красная карточка (🟥):</b> за 2 жёлтые карточки, драку или неявку без предупреждения. Временно блокирует запись на матчи.</li>
+                    <li><b>Причина карточки:</b> точная причина всегда пишется в уведомлении от бота и в профиле. По вопросам можно обратиться к <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">администраторам группы ниже</a>.</li>
                 </ul>`,
                 s6_title: "6. Голосование за MVP после матча",
-                s6_body: `<p>После матча в чате запускается опрос за лучшего игрока. <b>Голосовать нужно за 1 игрока из КАЖДОЙ команды</b> (1 из Зелёных + 1 из Оранжевых = всего 2 голоса). Не отдавайте голос только за одну команду.</p>`,
-                mvp_sample_title: "Образец бюллетеня: 2 обязательных голоса",
+                s6_body: `<p>После матча в чате запускается опрос за лучшего игрока. <b>Голосовать нужно за 1 игрока из КАЖДОЙ команды</b> (например, 1 из Зелёных + 1 из Оранжевых). Не отдавайте голос только за одну команду.</p>`,
+                mvp_sample_title: "Образец бюллетеня: по 1 голосу на команду",
                 mvp_team_a: "Зелёные (Команда А)",
                 mvp_team_b: "Оранжевые (Команда B)",
                 mvp_note: "За себя голосовать нельзя. Поддержите лучшего игрока в каждой команде.",
-                elo_header: "Рейтинг ELO (MMR):",
+                elo_header: "Рейтинг (MMR):",
                 elo_win: "Победа",
                 elo_draw: "Ничья",
                 elo_loss: "Поражение",
                 elo_mvp: "Бонус MVP матча",
                 s7_title: "7. Профиль, статистика и карточки",
-                s7_body: `<p>Личная статистика, история матчей и рейтинг MMR доступны в любой момент через <code>/profile</code> в ЛС с ботом. <b>Все ваши активные карточки, причина их выдачи и точный срок действия (сколько дней осталось)</b> отображаются прямо в вашем профиле.</p>`,
-                link_bot_text: "Открыть бота Football Manager",
+                s7_body: `<p>Личная статистика, история матчей и рейтинг MMR доступны в любой момент через <code>/profile</code> в ЛС с ботом. <b>Все активные карточки, причина и оставшийся срок</b> отображаются прямо в вашем профиле.</p>`,
+                link_bot_text: "Открыть Telegram-бота",
                 link_prof: "👤 Мой профиль",
                 link_lead: "🏆 Лидерборд",
                 link_hist: "📅 История",
                 s8_title: "8. Контакты и вопросы",
-                c1_role: "Игры, поле, составы, мяч и сотрудничество:",
-                c1_names: "Али / Елдос",
-                c2_role: "Взносы, оплата и сотрудничество:",
-                c2_name: "Ернар",
-                c3_role: "Бот и технические вопросы:",
-                c3_name: "Ернур"
+                contacts_default_hint: "Вопросы по расписанию, оплате или правилам? Обратитесь к администраторам вашей группы напрямую в групповом чате Telegram.",
+                support_role_label: "Техническая поддержка платформы:"
+            },
+            cs: {
+                hero_title: "Pravidla komunity a průvodce zápasy",
+                hero_subtitle: "Jak funguje přihlašování na zápasy, náhradníci, platby a hlasování o MVP.",
+                s1_title: "1. Jak se přihlásit na zápas",
+                s1_body: `<ul>
+                    <li>Klepněte na <b>«⚽ Join Game»</b> pod oznámením zápasu ve skupině.</li>
+                    <li>Webová miniaplikace se otevře přímo v Telegramu.</li>
+                    <li><b>Poprvé?</b> Jednorázově vyplňte krátký profil (jméno a preferované pozice na hřišti).</li>
+                    <li>Klepněte na <b>«Přihlásit se na zápas»</b>. Volná místa vás zařadí do <b>Hlavní sestavy</b>, po naplnění kapacity jdete mezi <b>Náhradníky</b>.</li>
+                </ul>`,
+                screen_caption: "Klepnutím na snímek obrazovky jej zvětšíte",
+                s2_title: "2. Přesun z náhradníků do hlavní sestavy",
+                s2_body: `<p>Když se hráč z hlavní sestavy odhlásí, bot automaticky přesune prvního náhradníka v pořadí do hlavní sestavy.</p>
+                    <div class="callout-box">
+                        Bot vám pošle okamžité upozornění do soukromé zprávy na Telegramu. Nechte si zapnutá oznámení od bota.
+                    </div>`,
+                s3_title: "3. Pravidla odhlášení ze zápasu",
+                s3_body: `<p>Pro odhlášení otevřete kartu zápasu v botovi a klepněte na <b>«❌ Odhlásit se ze zápasu»</b>.</p>
+                    <ul>
+                        <li><b>Bezplatné odhlášení:</b> nejpozději <b>{cancel_hours} hodin</b> před výkopem, aby se náhradníci stihli připravit.</li>
+                        <li><b>Pozdní odhlášení (&lt; {cancel_hours} hodin):</b> za pozdní odhlášení může být uděleno napomenutí — žlutá karta (🟨).</li>
+                    </ul>`,
+                s4_title: "4. Startovné a platba",
+                s4_manual: `<p>Výše startovného a platební údaje jsou uvedeny na kartě zápasu. Platbu prosím odešlete <b>před začátkem zápasu</b> převodem na uvedený účet nebo dle pokynů organizátora.</p>`,
+                s4_spayd_qr: `<p>Částka, IBAN, variabilní symbol (VS) i okamžitý kód <b>QR Platba (SPAYD 1.0)</b> jsou zobrazeny přímo v detailu zápasu. Před výkopem jednoduše naskenujte QR kód ve své bankovní aplikaci.</p>`,
+                s4_free_corporate: `<p>✨ <b>Firemní / sponzorovaný režim:</b> Zápasy v této skupině hradí organizace — hráči neplatí žádné startovné.</p>`,
+                s5_title: "5. Chování na hřišti a systém karet",
+                s5_body: `<ul>
+                    <li>Nebezpečné zákroky, hrubá hra, potyčky a urážky jsou přísně zakázány.</li>
+                    <li>Choďte včas, abyste nepřicházeli o rezervovaný čas hřiště.</li>
+                    <li><b>Žlutá karta (🟨):</b> napomenutí za nesportovní chování, pozdní příchod nebo pozdní odhlášení (&lt; {cancel_hours}h). Platí 2–4 týdny.</li>
+                    <li><b>Červená karta (🟥):</b> za 2 žluté karty, hrubé porušení pravidel nebo neomluvenou neúčast. Dočasně blokuje přihlašování na zápasy.</li>
+                    <li><b>Důvod karty:</b> konkrétní důvod vždy najdete v oznámení bota i ve svém profilu. V případě dotazů kontaktujte <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">správce skupiny níže</a>.</li>
+                </ul>`,
+                s6_title: "6. Pozápasové hlasování o MVP",
+                s6_body: `<p>Po skončení zápasu se ve skupině otevře hlasování o nejlepšího hráče. <b>Hlasujte pro 1 hráče z KAŽDÉHO týmu</b> (např. 1 ze Zelených + 1 z Oranžových). Nehlasujte jen pro jeden tým.</p>`,
+                mvp_sample_title: "Ukázka hlasování: 1 hlas pro každý tým",
+                mvp_team_a: "Zelení (Tým A)",
+                mvp_team_b: "Oranžoví (Tým B)",
+                mvp_note: "Nemůžete hlasovat sami pro sebe. Každý tým musí dostat váš hlas.",
+                elo_header: "Hodnocení (MMR):",
+                elo_win: "Výhra",
+                elo_draw: "Remíza",
+                elo_loss: "Prohra",
+                elo_mvp: "Bonus za MVP zápasu",
+                s7_title: "7. Profil, statistiky a aktivní karty",
+                s7_body: `<p>Osobní statistiky, historie zápasů a MMR rating jsou kdykoli dostupné přes příkaz <code>/profile</code> v soukromém chatu s botem. <b>Aktivní karty, důvod udělení a zbývající dny platnosti</b> vidíte přímo na kartě profilu.</p>`,
+                link_bot_text: "Otevřít Telegram bota",
+                link_prof: "👤 Můj profil",
+                link_lead: "🏆 Žebříček",
+                link_hist: "📅 Historie",
+                s8_title: "8. Kontakty a dotazy",
+                contacts_default_hint: "Máte dotazy k rozpisu, platbám nebo pravidlům? Obraťte se přímo na správce své skupiny ve skupinovém chatu na Telegramu.",
+                support_role_label: "Technická podpora platformy:"
             }
         };
 
-        function switchLang(lang) {
-            if (!TRANSLATIONS[lang]) lang = 'en';
-            localStorage.setItem('webapp_lang', lang);
+        let activeLang = 'en';
 
-            const d = TRANSLATIONS[lang];
+        function escapeHtml(raw) {
+            return String(raw || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatSignedMmr(val) {
+            const n = Number(val || 0);
+            return n > 0 ? `+${n} MMR` : `${n} MMR`;
+        }
+
+        function normalizeLang(raw) {
+            if (!raw) return 'en';
+            const clean = String(raw).trim().toLowerCase().split(/[-_]/)[0];
+            if (clean === 'cz') return 'cs';
+            return TRANSLATIONS[clean] ? clean : 'en';
+        }
+
+        function renderContactsHtml(d) {
+            const pol = (tenantConfig && tenantConfig.policy) || {};
+            const rawContacts = Array.isArray(tenantConfig.contacts) && tenantConfig.contacts.length > 0
+                ? tenantConfig.contacts
+                : (Array.isArray(pol.organizer_contacts) ? pol.organizer_contacts : []);
+            const contacts = rawContacts.slice();
+            const support = String(tenantConfig.support_contact || '').trim();
+            if (support && contacts.length === 0) {
+                const handle = support.startsWith('http') ? support : (support.startsWith('@') ? support : `@${support}`);
+                const url = support.startsWith('http') ? support : `https://t.me/${support.replace(/^@/, '')}`;
+                contacts.push({
+                    role: d.support_role_label,
+                    name: "",
+                    handle: handle,
+                    url: url
+                });
+            }
+
+            if (contacts.length === 0) {
+                return `<p style="color:var(--hint-color);">${escapeHtml(d.contacts_default_hint)}</p>`;
+            }
+
+            return contacts.map(c => {
+                const role = escapeHtml(c.role || '');
+                const name = escapeHtml(c.name || '');
+                const handle = escapeHtml(c.handle || c.url || '');
+                const href = escapeHtml(c.url || (c.handle ? `https://t.me/${String(c.handle).replace(/^@/, '')}` : '#'));
+                return `
+                    <div class="contact-item">
+                        <div>
+                            ${role ? `<div style="font-weight:600;">${role}</div>` : ''}
+                            ${name ? `<div style="font-size:12px; color:var(--hint-color);">${name}</div>` : ''}
+                        </div>
+                        ${handle ? `<div><a href="${href}" class="contact-link" target="_blank" rel="noopener noreferrer">${handle}</a></div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function switchLang(lang) {
+            activeLang = normalizeLang(lang);
+            localStorage.setItem('webapp_lang', activeLang);
+
+            const d = TRANSLATIONS[activeLang] || TRANSLATIONS.en;
+            const pol = (tenantConfig && tenantConfig.policy) || {};
+            const cancelHours = (pol.free_cancellation_hours !== undefined && pol.free_cancellation_hours !== null) ? pol.free_cancellation_hours : 24;
+            const winPts = (pol.rating_win_points !== undefined && pol.rating_win_points !== null) ? pol.rating_win_points : 10;
+            const drawPts = (pol.rating_draw_points !== undefined && pol.rating_draw_points !== null) ? pol.rating_draw_points : 0;
+            const lossPts = (pol.rating_loss_points !== undefined && pol.rating_loss_points !== null) ? pol.rating_loss_points : -5;
+            const mvpPts = (pol.rating_mvp_bonus !== undefined && pol.rating_mvp_bonus !== null) ? pol.rating_mvp_bonus : 5;
+
+            if (tenantConfig && tenantConfig.title) {
+                document.getElementById('top-bar-org-title').innerText = tenantConfig.title;
+            }
+
             document.getElementById('t-hero-title').innerText = d.hero_title;
             document.getElementById('t-hero-subtitle').innerText = d.hero_subtitle;
 
@@ -658,13 +687,21 @@
             document.getElementById('t-s2-body').innerHTML = d.s2_body;
 
             document.getElementById('t-s3-title').innerText = d.s3_title;
-            document.getElementById('t-s3-body').innerHTML = d.s3_body;
+            document.getElementById('t-s3-body').innerHTML = d.s3_body.replaceAll('{cancel_hours}', String(cancelHours));
 
             document.getElementById('t-s4-title').innerText = d.s4_title;
-            document.getElementById('t-s4-body').innerHTML = d.s4_body;
+            const billMode = tenantConfig.billing_mode || 'manual';
+            const paymentHtml = billMode === 'free_corporate'
+                ? d.s4_free_corporate
+                : (billMode === 'spayd_qr' ? d.s4_spayd_qr : d.s4_manual);
+            document.getElementById('t-s4-body').innerHTML = paymentHtml;
 
             document.getElementById('t-s5-title').innerText = d.s5_title;
-            document.getElementById('t-s5-body').innerHTML = d.s5_body;
+            let s5Html = d.s5_body.replaceAll('{cancel_hours}', String(cancelHours));
+            if (pol.custom_rules_notes) {
+                s5Html += `<div class="callout-box" style="margin-top:10px;">${escapeHtml(pol.custom_rules_notes)}</div>`;
+            }
+            document.getElementById('t-s5-body').innerHTML = s5Html;
 
             document.getElementById('t-s6-title').innerText = d.s6_title;
             document.getElementById('t-s6-body').innerHTML = d.s6_body + `
@@ -688,18 +725,20 @@
                 <div class="callout-box">${d.mvp_note}</div>
                 <p style="margin-top:10px; font-weight:600;">${d.elo_header}</p>
                 <table class="elo-table">
-                    <tr><td>${d.elo_win}</td><td style="text-align:right; font-weight:700; color:#4ade80;">+10 MMR</td></tr>
-                    <tr><td>${d.elo_draw}</td><td style="text-align:right; font-weight:700; color:var(--hint-color);">0 MMR</td></tr>
-                    <tr><td>${d.elo_loss}</td><td style="text-align:right; font-weight:700; color:#f87171;">-5 MMR</td></tr>
-                    <tr><td>${d.elo_mvp}</td><td style="text-align:right; font-weight:700; color:#f59e0b;">+5 MMR</td></tr>
+                    <tr><td>${d.elo_win}</td><td style="text-align:right; font-weight:700; color:#4ade80;">${formatSignedMmr(winPts)}</td></tr>
+                    <tr><td>${d.elo_draw}</td><td style="text-align:right; font-weight:700; color:var(--hint-color);">${formatSignedMmr(drawPts)}</td></tr>
+                    <tr><td>${d.elo_loss}</td><td style="text-align:right; font-weight:700; color:#f87171;">${formatSignedMmr(lossPts)}</td></tr>
+                    <tr><td>${d.elo_mvp}</td><td style="text-align:right; font-weight:700; color:#f59e0b;">${formatSignedMmr(mvpPts)}</td></tr>
                 </table>
             `;
 
+            const botUsername = String(tenantConfig.bot_username || '').replace(/^@/, '').trim();
+            const botBtnHtml = botUsername
+                ? `<a href="https://t.me/${encodeURIComponent(botUsername)}" class="btn-link"><span>⚽</span> <span>${d.link_bot_text}</span></a>`
+                : '';
+
             document.getElementById('t-s7-title').innerText = d.s7_title;
-            document.getElementById('t-s7-body').innerHTML = d.s7_body + `
-                <a href="https://t.me/fm_metabot" class="btn-link">
-                    <span>⚽</span> <span>${d.link_bot_text}</span>
-                </a>
+            document.getElementById('t-s7-body').innerHTML = d.s7_body + botBtnHtml + `
                 <div class="btn-row">
                     <a href="/web/profile.html" class="btn-sub">${d.link_prof}</a>
                     <a href="/web/leaderboard.html" class="btn-sub">${d.link_lead}</a>
@@ -708,17 +747,12 @@
             `;
 
             document.getElementById('t-s8-title').innerText = d.s8_title;
-            document.getElementById('t-c1-role').innerText = d.c1_role;
-            document.getElementById('t-c1-names').innerText = d.c1_names;
-            document.getElementById('t-c2-role').innerText = d.c2_role;
-            document.getElementById('t-c2-name').innerText = d.c2_name;
-            document.getElementById('t-c3-role').innerText = d.c3_role;
-            document.getElementById('t-c3-name').innerText = d.c3_name;
+            document.getElementById('t-s8-body').innerHTML = renderContactsHtml(d);
 
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-            const activeBtn = document.getElementById(`btn-${lang}`);
+            const activeBtn = document.getElementById(`btn-${activeLang}`);
             if (activeBtn) activeBtn.classList.add('active');
-            document.documentElement.lang = lang;
+            document.documentElement.lang = activeLang;
         }
 
         function openLightbox(src) {
@@ -732,25 +766,52 @@
             document.getElementById('img-lightbox').style.display = 'none';
         }
 
-        // Initialize: default is ALWAYS 'en' unless already explicitly chosen with bot / saved
+        async function loadDynamicRulesConfig(chatId, explicitLangProvided) {
+            try {
+                const q = chatId ? `?chat_id=${encodeURIComponent(chatId)}` : '';
+                const res = await fetch(`/api/v1/tenants/public-rules${q}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data && typeof data === 'object') {
+                    tenantConfig = {
+                        ...tenantConfig,
+                        ...data,
+                        policy: { ...tenantConfig.policy, ...(data.policy || {}) }
+                    };
+                    if (!explicitLangProvided && data.language) {
+                        activeLang = normalizeLang(data.language);
+                    }
+                    switchLang(activeLang);
+                }
+            } catch (e) {
+                // Static defaults remain rendered cleanly
+            }
+        }
+
+        // Initialize: default is ALWAYS 'en' per ADR-01 unless explicitly chosen or saved
         (function() {
             const urlParams = new URLSearchParams(window.location.search);
             const urlLang = urlParams.get('lang');
-            let initialLang = 'en'; // Default English
+            const chatId = urlParams.get('chat_id');
+            let initialLang = 'en';
+            let explicitLangProvided = false;
 
-            if (urlLang && TRANSLATIONS[urlLang]) {
-                initialLang = urlLang;
+            if (urlLang) {
+                initialLang = normalizeLang(urlLang);
+                explicitLangProvided = true;
             } else {
                 const saved = localStorage.getItem('webapp_lang');
-                if (saved && TRANSLATIONS[saved]) {
-                    initialLang = saved;
+                if (saved) {
+                    initialLang = normalizeLang(saved);
+                    explicitLangProvided = true;
                 } else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
-                    const code = (window.Telegram.WebApp.initDataUnsafe.user.language_code || '').toLowerCase();
-                    if (code.startsWith('ru')) initialLang = 'ru';
+                    const code = window.Telegram.WebApp.initDataUnsafe.user.language_code || '';
+                    initialLang = normalizeLang(code);
                 }
             }
 
             switchLang(initialLang);
+            loadDynamicRulesConfig(chatId, explicitLangProvided);
 
             if (window.Telegram && window.Telegram.WebApp) {
                 window.Telegram.WebApp.expand();

@@ -1,21 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Response
-from sqlalchemy.ext.asyncio import AsyncSession
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from sqlalchemy import select
-from app.db.database import get_session
-from app.db.models import Game, User, Signup, SignupStatus, Team, GameStatus
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.auth import get_user_from_header
 from app.config import settings
-
+from app.core.services.billing import resolve_game_billing
 from app.core.services.cache import cache_service
+from app.db.database import get_session
+from app.db.models import Chat, Game, GameStats, GameStatus, Signup, SignupStatus, Team, User
 
 router = APIRouter()
 
+
 @router.get("/game/{game_id}")
 async def get_game_details(
-    game_id: int, 
+    game_id: int,
     response: Response,
-    user_id: int = Depends(get_user_from_header), 
-    session: AsyncSession = Depends(get_session)
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session),
 ):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
@@ -30,23 +34,29 @@ async def get_game_details(
     game = result.scalar_one_or_none()
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
-        
-    # Fetch players with Signup data and GameStats
-    from app.db.models import GameStats
+
+    chat = None
+    if getattr(game, "chat_id", None):
+        maybe_chat = await session.get(Chat, game.chat_id)
+        if isinstance(maybe_chat, Chat):
+            chat = maybe_chat
+
     result = await session.execute(
         select(User, Signup, GameStats)
         .join(Signup, User.user_id == Signup.user_id)
-        .outerjoin(GameStats, (GameStats.game_id == game_id) & (GameStats.user_id == User.user_id))
+        .outerjoin(
+            GameStats, (GameStats.game_id == game_id) & (GameStats.user_id == User.user_id)
+        )
         .where(Signup.game_id == game_id)
         .where(Signup.status.in_([SignupStatus.ACTIVE, SignupStatus.RESERVE]))
         .order_by(Signup.created_at)
     )
     players_data = result.all()
-    
+
     def serialize_player(p_tuple):
         user, signup, stats = p_tuple
         eff_pos = signup.position if signup.position else user.player_position
-        
+
         return {
             "id": user.user_id,
             "signup_id": signup.id,
@@ -57,18 +67,29 @@ async def get_game_details(
             "alt_positions": user.alt_positions or [],
             "status": signup.status.value,
             "is_paid": signup.is_paid,
+            "is_late": getattr(signup, "is_late", False),
             "goals": stats.goals if stats else 0,
-            "is_mvp": stats.is_mvp if stats else False
+            "is_mvp": stats.is_mvp if stats else False,
         }
-    
+
     team_a = [serialize_player(p) for p in players_data if p[1].team == Team.A]
     team_b = [serialize_player(p) for p in players_data if p[1].team == Team.B]
     team_c = [serialize_player(p) for p in players_data if p[1].team == Team.C]
-    unassigned = [serialize_player(p) for p in players_data if not p[1].team and p[1].status == SignupStatus.ACTIVE]
-    reserve = [serialize_player(p) for p in players_data if not p[1].team and p[1].status == SignupStatus.RESERVE]
-    
+    unassigned = [
+        serialize_player(p)
+        for p in players_data
+        if not p[1].team and p[1].status == SignupStatus.ACTIVE
+    ]
+    reserve = [
+        serialize_player(p)
+        for p in players_data
+        if not p[1].team and p[1].status == SignupStatus.RESERVE
+    ]
+
     from app.bot.utils import get_group_game_number
+
     game_number = await get_group_game_number(session, game)
+    billing = resolve_game_billing(game, chat=chat, game_number=game_number)
 
     response_data = {
         "id": game.id,
@@ -76,41 +97,49 @@ async def get_game_details(
         "location": game.location,
         "date": game.date_time.isoformat(),
         "max_players": game.max_players,
-        "price": game.price,
-        "payment_info": game.payment_info,
+        "price": billing.amount,
+        "payment_info": billing.payment_info,
+        "currency": billing.currency,
+        "billing_mode": billing.billing_mode,
+        "is_free": billing.is_free,
+        "iban": billing.iban,
+        "variable_symbol": billing.variable_symbol,
+        "spayd_payload": billing.spayd_payload,
+        "sport_type": (getattr(chat, "sport_type", None) if chat else None) or "football",
         "team_count": game.team_count,
         "gk_hours": game.gk_hours,
-        "registration_hours": getattr(game, 'registration_hours', 0),
-        "main_players_count": getattr(game, 'main_players_count', 22),
-        "signup_limit": getattr(game, 'signup_limit', 999),
-        "duration": getattr(game, 'duration', 2.0),
+        "registration_hours": getattr(game, "registration_hours", 0),
+        "main_players_count": getattr(game, "main_players_count", 22),
+        "signup_limit": getattr(game, "signup_limit", 999),
+        "duration": getattr(game, "duration", 2.0),
         "chat_id": game.chat_id,
         "team_a": team_a,
         "team_b": team_b,
         "team_c": team_c,
         "unassigned": unassigned,
-        "reserve": reserve, # Added separate reserve list
+        "reserve": reserve,
         "score_a": game.score_a,
         "score_b": game.score_b,
         "score_c": game.score_c,
         "status": game.status.value,
         "has_active_gk_a": game.has_active_gk_a,
         "has_active_gk_b": game.has_active_gk_b,
-        "has_active_gk_c": getattr(game, 'has_active_gk_c', True)
+        "has_active_gk_c": getattr(game, "has_active_gk_c", True),
     }
-    
+
     await cache_service.set(cache_key, response_data, ttl=300)
     return response_data
 
 
 @router.get("/history/{chat_id}")
 async def get_chat_history(
-    chat_id: int, 
-    user_id: int = Depends(get_user_from_header), 
-    session: AsyncSession = Depends(get_session)
+    chat_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session),
 ):
     from app.api.routers.users import _resolve_chat_ids
     from app.bot.utils import get_group_game_number
+
     chat_ids = _resolve_chat_ids(chat_id)
 
     result = await session.execute(
@@ -120,102 +149,108 @@ async def get_chat_history(
         .limit(100)
     )
     games = result.scalars().all()
-    
+
     history = []
     for game in games:
         g_num = await get_group_game_number(session, game)
-        history.append({
-            "game_id": game.id,
-            "game_number": g_num,
-            "date": game.date_time.isoformat(),
-            "location": game.location,
-            "score_a": game.score_a if game.score_a is not None else 0,
-            "score_b": game.score_b if game.score_b is not None else 0,
-            "score_c": game.score_c if game.score_c is not None else 0,
-            "team_count": game.team_count,
-            "winner_team": game.winner_team.value if game.winner_team else None
-        })
-        
+        history.append(
+            {
+                "game_id": game.id,
+                "game_number": g_num,
+                "date": game.date_time.isoformat(),
+                "location": game.location,
+                "score_a": game.score_a if game.score_a is not None else 0,
+                "score_b": game.score_b if game.score_b is not None else 0,
+                "score_c": game.score_c if game.score_c is not None else 0,
+                "team_count": game.team_count,
+                "winner_team": game.winner_team.value if game.winner_team else None,
+            }
+        )
+
     return history
+
 
 @router.get("/games/open")
 @router.get("/games/editable")
 async def get_editable_games(
-    user_id: int = Depends(get_user_from_header), 
-    session: AsyncSession = Depends(get_session)
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session),
 ):
     from app.api.auth import build_admin_games_query
+    from app.bot.utils import get_group_game_number
 
     base_query = await build_admin_games_query(user_id, session)
     stmt = base_query.order_by(Game.date_time.desc()).limit(20)
 
     result = await session.execute(stmt)
     games = result.scalars().all()
-    
-    from app.bot.utils import get_group_game_number
+
     res_list = []
     for g in games:
         g_num = await get_group_game_number(session, g)
-        res_list.append({
-            "id": g.id,
-            "game_number": g_num,
-            "location": g.location,
-            "date_time": g.date_time.isoformat(),
-            "status": g.status.value
-        })
+        res_list.append(
+            {
+                "id": g.id,
+                "game_number": g_num,
+                "location": g.location,
+                "date_time": g.date_time.isoformat(),
+                "status": g.status.value,
+            }
+        )
     return res_list
-
-
-
 
 
 @router.post("/game/{game_id}/join")
 async def join_game(
     game_id: int,
     background_tasks: BackgroundTasks,
-    user_id: int = Depends(get_user_from_header)
+    user_id: int = Depends(get_user_from_header),
 ):
-    from app.core.uow import UnitOfWork
-    from app.core.services.roster import RosterService, PlayerJoinedEvent
     from app.core.events import event_bus
-    import logging
+    from app.core.services.roster import PlayerJoinedEvent, RosterService
+    from app.core.uow import UnitOfWork
 
     try:
         async with UnitOfWork() as uow:
             user = await uow.user_repo.get_by_id(user_id)
             if not user:
-                raise HTTPException(status_code=404, detail="User not found. Please register first.")
-            
+                raise HTTPException(
+                    status_code=404, detail="User not found. Please register first."
+                )
+
             service = RosterService(uow)
             is_admin = user_id in settings.admin_ids or user_id == settings.system_owner_id
-            
-            # Check group membership
+
             if not is_admin:
                 game = await uow.game_repo.get_game(game_id)
-                if game and getattr(game, 'chat_id', None):
+                if game and getattr(game, "chat_id", None):
                     from app.bot.instance import bot
+
                     try:
                         cm = await bot.get_chat_member(game.chat_id, user_id)
-                        if cm and hasattr(cm, 'status') and cm.status in ["left", "kicked"]:
+                        if cm and hasattr(cm, "status") and cm.status in ["left", "kicked"]:
                             raise HTTPException(
-                                status_code=403, 
-                                detail="You must be a member of the group to sign up / Для записи необходимо состоять в группе"
+                                status_code=403,
+                                detail="You must be a member of the group to sign up",
                             )
                     except HTTPException:
                         raise
                     except Exception as e:
                         err_str = str(e).lower()
-                        if any(x in err_str for x in ["user not found", "participant", "chat not found"]):
+                        if any(
+                            x in err_str
+                            for x in ["user not found", "participant", "chat not found"]
+                        ):
                             raise HTTPException(
-                                status_code=403, 
-                                detail="You must be a member of the group to sign up / Для записи необходимо состоять в группе"
+                                status_code=403,
+                                detail="You must be a member of the group to sign up",
                             )
-            
+
             result = await service.join_player(game_id, user, ignore_limit=is_admin)
-            
+
             if not result.success:
                 raise HTTPException(status_code=400, detail=result.message)
-            
+
             alert_msg = result.message
             event_payload = None
             if result.signup:
@@ -224,17 +259,17 @@ async def join_game(
                     user_id=user_id,
                     signup=result.signup,
                     is_reserve=result.is_reserve,
-                    message=alert_msg
+                    message=alert_msg,
                 )
-            
+
             await uow.commit()
 
         from app.core.services.cache import cache_service
         await cache_service.evict(f"game_details:{game_id}")
-            
+
         if event_payload:
             background_tasks.add_task(event_bus.publish, event_payload)
-            
+
         return {"success": True, "message": alert_msg, "is_reserve": result.is_reserve}
     except HTTPException:
         raise
@@ -247,32 +282,32 @@ async def join_game(
 async def leave_game(
     game_id: int,
     background_tasks: BackgroundTasks,
-    user_id: int = Depends(get_user_from_header)
+    user_id: int = Depends(get_user_from_header),
 ):
-    from app.core.uow import UnitOfWork
-    from app.core.services.roster import RosterService, PlayerLeftEvent
     from app.core.events import event_bus
-    import logging
+    from app.core.services.roster import PlayerLeftEvent, RosterService
+    from app.core.uow import UnitOfWork
 
     try:
         async with UnitOfWork() as uow:
             service = RosterService(uow)
             is_admin = user_id in settings.admin_ids or user_id == settings.system_owner_id
             success, msg, promoted = await service.leave_player(game_id, user_id, is_admin)
-            
+
             if not success:
                 raise HTTPException(status_code=400, detail=msg)
-                
+
             await uow.commit()
 
         from app.core.services.cache import cache_service
         await cache_service.evict(f"game_details:{game_id}")
-            
-        background_tasks.add_task(event_bus.publish, PlayerLeftEvent(game_id, user_id, msg, promoted))
+
+        background_tasks.add_task(
+            event_bus.publish, PlayerLeftEvent(game_id, user_id, msg, promoted)
+        )
         return {"success": True, "message": msg}
     except HTTPException:
         raise
     except Exception as e:
         logging.error(f"API Leave Error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
-

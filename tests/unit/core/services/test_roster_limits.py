@@ -50,7 +50,7 @@ async def _run_async_tests():
     
     res = await service.join_player(1, user)
     assert res.success is True
-    assert "записаны" in res.message.lower()
+    assert "signed up" in res.message.lower()
 
     # Case 2: 24h Window - EXPIRED
     g2 = Game(id=2, status=GameStatus.OPEN, max_players=10, registration_hours=24, gk_hours=48)
@@ -60,7 +60,7 @@ async def _run_async_tests():
     
     res = await service.join_player(2, user)
     assert res.success is False
-    assert "запись закрыта" in res.message.lower()
+    assert "registration closed" in res.message.lower()
     
     # Case 3: 24h Window - VALID
     g3 = Game(id=3, status=GameStatus.OPEN, max_players=10, registration_hours=24, gk_hours=48)
@@ -98,7 +98,7 @@ async def _run_async_tests():
     assert res.success is True
     assert res.is_reserve is False
 
-    # Case 6: 18 Players, 16 active, 0 GKs -> non-GK should be reserve (held for GKs)
+    # Case 6: 18 Players, 16 active, 0 GKs -> GK priority is removed, so non-GK is ACTIVE
     g6 = Game(id=6, status=GameStatus.OPEN, max_players=18, registration_hours=0, gk_hours=48)
     g6.date_time = datetime.now() + timedelta(hours=10)
     g6.created_at = datetime.now()

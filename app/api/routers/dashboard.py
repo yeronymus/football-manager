@@ -13,6 +13,9 @@ from app.db.database import get_session
 from app.db.models import Chat, ChatAdmin, User, Game, Signup, SignupStatus, Language
 from app.api.auth import get_user_from_header, check_admin_rights
 from app.config import settings
+from app.core.domain.sport_presets import get_sport_preset
+from app.core.domain.tenant_policy import BillingMode, resolve_billing_mode, resolve_tenant_policy
+from app.core.i18n import normalize_locale_code
 from app.core.services.cache import cache_service
 
 logger = logging.getLogger(__name__)
@@ -27,7 +30,12 @@ class GroupOut(BaseModel):
     chat_id: int
     title: str
     is_active: Optional[bool] = True
-    language: Optional[Language] = Language.ru
+    language: Optional[str] = "en"
+    currency: Optional[str] = "CZK"
+    timezone: Optional[str] = "Europe/Prague"
+    sport_type: Optional[str] = "football"
+    billing_mode: Optional[str] = "manual"
+    policy: Optional[dict] = None
     payment_info: Optional[str] = None
     default_location: Optional[str] = None
     default_price: Optional[int] = None
@@ -88,7 +96,12 @@ async def get_dashboard_groups(
             chat_id=chat.chat_id,
             title=chat.title,
             is_active=chat.is_active,
-            language=chat.language,
+            language=normalize_locale_code(chat.language, default="en"),
+            currency=getattr(chat, "currency", None) or "CZK",
+            timezone=getattr(chat, "timezone", None) or "Europe/Prague",
+            sport_type=getattr(chat, "sport_type", None) or "football",
+            billing_mode=resolve_billing_mode(getattr(chat, "billing_mode", None)).value,
+            policy=resolve_tenant_policy(chat).model_dump(),
             payment_info=chat.payment_info,
             default_location=chat.default_location,
             default_price=chat.default_price,
@@ -104,7 +117,12 @@ async def get_dashboard_groups(
 
 class GroupUpdate(BaseModel):
     is_active: Optional[bool] = None
-    language: Optional[Language] = None
+    language: Optional[str] = None
+    currency: Optional[str] = None
+    timezone: Optional[str] = None
+    sport_type: Optional[str] = None
+    billing_mode: Optional[str] = None
+    policy: Optional[dict] = None
     payment_info: Optional[str] = None
     default_location: Optional[str] = None
     default_price: Optional[int] = None
@@ -130,10 +148,48 @@ async def update_group_settings(
         
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        setattr(chat, field, value)
+        if field == "language" and value is not None:
+            norm = normalize_locale_code(value, default="en")
+            try:
+                chat.language = Language(norm)
+            except ValueError:
+                chat.language = Language.en
+        elif field == "billing_mode" and value is not None:
+            chat.billing_mode = resolve_billing_mode(value).value
+        elif field == "currency" and value is not None:
+            chat.currency = (value or "CZK").strip().upper()[:8]
+        elif field == "sport_type" and value is not None:
+            chat.sport_type = get_sport_preset(value).code
+        elif field == "policy" and isinstance(value, dict):
+            merged = dict(chat.policy or {})
+            merged.update(value)
+            chat.policy = resolve_tenant_policy(merged).model_dump()
+        else:
+            setattr(chat, field, value)
         
     await session.commit()
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "group": {
+            "chat_id": chat.chat_id,
+            "language": normalize_locale_code(chat.language, default="en"),
+            "currency": getattr(chat, "currency", None) or "CZK",
+            "timezone": getattr(chat, "timezone", None) or "Europe/Prague",
+            "sport_type": getattr(chat, "sport_type", None) or "football",
+            "billing_mode": resolve_billing_mode(getattr(chat, "billing_mode", None)).value,
+            "policy": resolve_tenant_policy(chat).model_dump(),
+            "payment_info": chat.payment_info,
+            "default_location": chat.default_location,
+            "default_price": chat.default_price,
+            "default_team_count": chat.default_team_count,
+            "default_max_players": chat.default_max_players,
+            "default_main_players_count": chat.default_main_players_count,
+            "default_duration": chat.default_duration,
+            "default_gk_hours": chat.default_gk_hours,
+            "default_registration_hours": chat.default_registration_hours,
+            "default_signup_limit": chat.default_signup_limit,
+        },
+    }
 
 @router.get("/groups/{chat_id}/games", response_model=List[GameSummaryOut])
 async def get_group_games(
@@ -202,6 +258,8 @@ class PlayerActivityOut(BaseModel):
     games_last_4_weeks: int = 0
     last_game_date: Optional[str] = None
     days_since_last_game: Optional[int] = None
+    total_lates: int = 0
+    late_percentage: float = 0.0
     is_core: bool = False
     is_dormant: bool = False
     active_card_type: Optional[str] = None
@@ -221,6 +279,7 @@ class PlayerHistoryGameOut(BaseModel):
     status: str
     goals: int = 0
     is_mvp: bool = False
+    is_late: bool = False
 
 class PlayerCardOut(BaseModel):
     id: int
@@ -246,6 +305,8 @@ class PlayerProfileDetailOut(BaseModel):
     total_games: int = 0
     total_goals: int = 0
     total_mvps: int = 0
+    total_lates: int = 0
+    late_percentage: float = 0.0
     active_card: Optional[PlayerCardOut] = None
     recent_matches: List[PlayerHistoryGameOut]
 
@@ -307,6 +368,22 @@ async def get_group_analytics(
         .subquery()
     )
 
+    # Subquery: Total late arrivals in this chat
+    lates_subq = (
+        select(
+            Signup.user_id,
+            func.count(Signup.id).label("group_lates")
+        )
+        .join(Game, Game.id == Signup.game_id)
+        .where(
+            Game.chat_id == chat_id,
+            Signup.status == SignupStatus.ACTIVE,
+            Signup.is_late == True
+        )
+        .group_by(Signup.user_id)
+        .subquery()
+    )
+
     # Main query
     stmt = (
         select(
@@ -318,6 +395,7 @@ async def get_group_analytics(
             func.coalesce(PlayerProfile.games_played, 0).label("games_played"),
             func.coalesce(PlayerProfile.stats_mvp, 0).label("stats_mvp"),
             func.coalesce(goals_subq.c.group_goals, 0).label("goals"),
+            func.coalesce(lates_subq.c.group_lates, 0).label("group_lates"),
             last_game_subq.c.last_game_date,
             func.coalesce(recent_games_subq.c.games_last_4w, 0).label("games_last_4w"),
             User.created_at
@@ -326,6 +404,7 @@ async def get_group_analytics(
         .outerjoin(last_game_subq, last_game_subq.c.user_id == User.user_id)
         .outerjoin(recent_games_subq, recent_games_subq.c.user_id == User.user_id)
         .outerjoin(goals_subq, goals_subq.c.user_id == User.user_id)
+        .outerjoin(lates_subq, lates_subq.c.user_id == User.user_id)
         .where(
             User.user_id > 0,  # Exclude guest pseudo-IDs
             or_(
@@ -379,6 +458,9 @@ async def get_group_analytics(
             dormant_count += 1
 
         pos_str = r.player_position.value if hasattr(r.player_position, "value") else str(r.player_position or "")
+        tot_lates = int(getattr(r, "group_lates", 0) or 0)
+        late_pct = round((tot_lates / total_g) * 100.0, 1) if total_g > 0 else 0.0
+
         players_out.append(
             PlayerActivityOut(
                 user_id=uid,
@@ -389,6 +471,8 @@ async def get_group_analytics(
                 total_games=total_g,
                 total_goals=int(r.goals or 0),
                 total_mvps=int(r.stats_mvp or 0),
+                total_lates=tot_lates,
+                late_percentage=late_pct,
                 games_last_4_weeks=recent_4w,
                 last_game_date=format_prague_dt(last_dt, "%d.%m.%Y") if last_dt else None,
                 days_since_last_game=days_ago,
@@ -433,7 +517,7 @@ async def get_group_player_detail(
 
     # Fetch last 10 games
     stmt = (
-        select(Game, GameStats)
+        select(Game, GameStats, Signup)
         .join(Signup, (Signup.game_id == Game.id) & (Signup.user_id == target_user_id))
         .outerjoin(GameStats, (GameStats.game_id == Game.id) & (GameStats.user_id == target_user_id))
         .where(Game.chat_id == chat_id, Signup.status == SignupStatus.ACTIVE)
@@ -444,7 +528,7 @@ async def get_group_player_detail(
     history_rows = res.all()
 
     recent_matches = []
-    for g, gs in history_rows:
+    for g, gs, s in history_rows:
         g_num = await get_group_game_number(session, g)
         recent_matches.append(
             PlayerHistoryGameOut(
@@ -454,9 +538,25 @@ async def get_group_player_detail(
                 location=clean_location(g.location),
                 status=g.status.value,
                 goals=gs.goals if gs else 0,
-                is_mvp=gs.is_mvp if gs else False
+                is_mvp=gs.is_mvp if gs else False,
+                is_late=bool(getattr(s, "is_late", False)) if s else False,
             )
         )
+
+    # Compute total lates in this chat
+    lates_res = await session.scalar(
+        select(func.count(Signup.id))
+        .join(Game, Game.id == Signup.game_id)
+        .where(
+            Game.chat_id == chat_id,
+            Signup.user_id == target_user_id,
+            Signup.status == SignupStatus.ACTIVE,
+            Signup.is_late == True,
+        )
+    )
+    total_lates = int(lates_res or 0)
+    total_games_played = prof.games_played if prof else len(history_rows)
+    late_pct = round((total_lates / total_games_played) * 100.0, 1) if total_games_played > 0 else 0.0
 
     # Fetch active disciplinary card
     from app.db.models import PlayerCard
@@ -497,6 +597,8 @@ async def get_group_player_detail(
         total_games=prof.games_played if prof else 0,
         total_goals=int(goals_res or 0),
         total_mvps=prof.stats_mvp if prof else 0,
+        total_lates=total_lates,
+        late_percentage=late_pct,
         active_card=active_card_out,
         recent_matches=recent_matches
     )
@@ -566,9 +668,7 @@ async def issue_player_card(
         group_title = chat.title or "Football Group"
         is_red = (card_type == "RED")
         
-        target_lang = "ru"
-        if getattr(target_user, "language", None):
-            target_lang = target_user.language.value if hasattr(target_user.language, "value") else str(target_user.language)
+        target_lang = normalize_locale_code(getattr(target_user, "language", None), default="en")
 
         from app.bot.i18n import t
 
@@ -640,9 +740,10 @@ async def revoke_player_card(
         try:
             from app.bot.instance import bot
             target_user = await session.get(User, target_user_id)
-            target_lang = "ru"
-            if target_user and getattr(target_user, "language", None):
-                target_lang = target_user.language.value if hasattr(target_user.language, "value") else str(target_user.language)
+            target_lang = normalize_locale_code(
+                getattr(target_user, "language", None) if target_user else None,
+                default="en",
+            )
             from app.bot.i18n import t
             group_title = chat.title or "Football Group"
             msg = t("card_dm_revoked", locale=target_lang, group_title=html.escape(group_title))
@@ -658,6 +759,7 @@ class PlayerDetailOut(BaseModel):
     full_name: str
     status: str
     is_paid: bool
+    is_late: bool = False
     position: Optional[str]
     team: Optional[str] = None
     goals: int = 0
@@ -703,6 +805,7 @@ def _format_game_players(rows, votes_map, notify_logs=None) -> List[PlayerDetail
             full_name=user.full_name,
             status=signup.status.value,
             is_paid=signup.is_paid,
+            is_late=bool(getattr(signup, "is_late", False)),
             position=signup.position.value if signup.position else (user.player_position.value if user.player_position else None),
             team=signup.team.value if signup.team else None,
             goals=u_stats.goals if u_stats else 0,
@@ -790,6 +893,33 @@ async def toggle_payment(
     signup.is_paid = not signup.is_paid
     await session.commit()
     return {"status": "ok", "is_paid": signup.is_paid}
+
+@router.post("/signups/{signup_id}/toggle_late")
+async def toggle_signup_late(
+    signup_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Toggles the late arrival status of a player in a game.
+    """
+    signup = await session.get(Signup, signup_id)
+    if not signup:
+        raise HTTPException(status_code=404, detail="Signup not found")
+        
+    game = await session.get(Game, signup.game_id)
+    await check_admin_rights(game.chat_id, user_id)
+    
+    signup.is_late = not signup.is_late
+    await session.commit()
+
+    # Invalidate cache
+    from app.core.services.cache import cache_service
+    await cache_service.evict(f"game_details:{game.id}")
+    from app.bot.utils import evict_game_signups_cache
+    evict_game_signups_cache(game.id)
+
+    return {"status": "ok", "signup_id": signup.id, "is_late": signup.is_late}
 
 class GuestCreate(BaseModel):
     name: str
@@ -1044,8 +1174,16 @@ async def notify_player_payment(
     from app.core.timezone import format_prague_dt
     from app.bot.i18n import t
 
+    chat = await session.get(Chat, game.chat_id)
+    if chat and resolve_billing_mode(getattr(chat, "billing_mode", None)) == BillingMode.FREE_CORPORATE:
+        raise HTTPException(
+            status_code=400,
+            detail="Payment reminders are disabled in Free / Corporate billing mode.",
+        )
+
     chat_lang = await resolve_chat_language(session, game.chat_id)
-    notif_lang = chat_lang or "ru"
+    notif_lang = chat_lang or "en"
+    currency = (getattr(chat, "currency", None) if chat else None) or "CZK"
 
     game_num = await get_group_game_number(session, game)
     date_str = format_prague_dt(game.date_time)
@@ -1060,6 +1198,7 @@ async def notify_player_payment(
         location=html.escape(game.location),
         date=date_str,
         price=game.price,
+        currency=currency,
         payment=pay_display
     )
 
@@ -1123,8 +1262,16 @@ async def notify_all_unpaid_pm(
     from app.bot.i18n import t
     from app.core.timezone import format_prague_dt
     
+    chat = await session.get(Chat, game.chat_id)
+    if chat and resolve_billing_mode(getattr(chat, "billing_mode", None)) == BillingMode.FREE_CORPORATE:
+        raise HTTPException(
+            status_code=400,
+            detail="Payment reminders are disabled in Free / Corporate billing mode.",
+        )
+
     chat_lang = await resolve_chat_language(session, game.chat_id)
-    notif_lang = chat_lang or "ru"
+    notif_lang = chat_lang or "en"
+    currency = (getattr(chat, "currency", None) if chat else None) or "CZK"
 
     game_num = await get_group_game_number(session, game)
     date_str = format_prague_dt(game.date_time)
@@ -1137,7 +1284,7 @@ async def notify_all_unpaid_pm(
     for signup, user in unpaid_rows:
         target_uid = user.user_id
         if target_uid < 0:
-            log_entry = {"status": "guest", "time": now_str, "detail": "Гость (нет Telegram)"}
+            log_entry = {"status": "guest", "time": now_str, "detail": "Guest (no Telegram)"}
             await cache_service.set(f"notify_log:{game_id}:{target_uid}", log_entry, ttl=86400 * 30)
             results[str(target_uid)] = log_entry
             counts["guests"] += 1
@@ -1152,6 +1299,7 @@ async def notify_all_unpaid_pm(
             location=html.escape(game.location),
             date=date_str,
             price=game.price,
+            currency=currency,
             payment=pay_display
         )
         
@@ -1210,6 +1358,14 @@ async def notify_group_unpaid(
     if not unpaid_rows:
         return {"status": "ok", "unpaid_count": 0, "message": "all_paid"}
 
+    chat = await session.get(Chat, game.chat_id)
+    if chat and resolve_billing_mode(getattr(chat, "billing_mode", None)) == BillingMode.FREE_CORPORATE:
+        raise HTTPException(
+            status_code=400,
+            detail="Payment reminders are disabled in Free / Corporate billing mode.",
+        )
+    currency = (getattr(chat, "currency", None) if chat else None) or "CZK"
+
     # Determine chat language
     from app.bot.utils import resolve_chat_language
     chat_lang = await resolve_chat_language(session, game.chat_id)
@@ -1243,6 +1399,7 @@ async def notify_group_unpaid(
         location=html.escape(game.location),
         date=date_str,
         price=game.price,
+        currency=currency,
         payment=pay_display,
         count=len(unpaid_rows),
         debtors=debtors_text

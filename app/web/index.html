@@ -108,17 +108,21 @@
 
     <div class="form-group">
         <label for="duration" data-i18n="lbl_duration">Duration (hours)</label>
-        <input type="number" id="duration" value="2" min="0.5" max="5" step="0.5" inputmode="decimal">
+        <input type="number" id="duration" value="2" min="0.5" max="24" step="0.5" inputmode="decimal">
     </div>
 
-    <div class="form-group">
-        <label for="price" data-i18n="lbl_price">Match Fee (CZK)</label>
+    <div id="free-corporate-banner" style="display:none; padding: 10px 12px; margin-bottom: 15px; border-radius: 8px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #10b981; font-size: 13px; font-weight: 600;" data-i18n="free_corporate_notice">
+        ✨ Corporate Free Mode — match fee is covered by the organization.
+    </div>
+
+    <div class="form-group" id="price-group">
+        <label id="lbl-price" for="price" data-i18n="lbl_price">Match Fee (CZK)</label>
         <input type="number" id="price" value="100" min="0" step="1" inputmode="numeric">
     </div>
 
-    <div class="form-group">
+    <div class="form-group" id="payment-info-group">
         <label for="payment_info" data-i18n="lbl_payment_info">Payment Account</label>
-        <input type="text" id="payment_info" value="" placeholder="Bank account / card" data-i18n-ph="ph_payment_info">
+        <input type="text" id="payment_info" value="" placeholder="Bank account / IBAN" data-i18n-ph="ph_payment_info">
     </div>
 
     <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0; opacity: 0.1;">
@@ -209,6 +213,24 @@
         const adminWrapper = document.getElementById('admin_wrapper');
         const adminList = document.getElementById('admin_list');
         const publishAtInput = document.getElementById('publish_at');
+        let activeCurrency = 'CZK';
+        let fpGameDate = null;
+        let fpPublishAt = null;
+
+        function tr(key) {
+            const dict = (window.CREATE_GAME_I18N && window.CREATE_GAME_I18N[window.currentCreateLang || 'en'])
+                || (window.CREATE_GAME_I18N && window.CREATE_GAME_I18N.en)
+                || {};
+            return dict[key] || key;
+        }
+
+        function matchChatId(a, b) {
+            if (!a || !b) return false;
+            const sa = String(a).trim();
+            const sb = String(b).trim();
+            if (sa === sb) return true;
+            return sa.replace(/^-100/, '') === sb.replace(/^-100/, '');
+        }
 
         // 1. Fetch Chats
         async function loadChats() {
@@ -237,50 +259,72 @@
                 let chatData = {};
                 chats.forEach(chat => {
                     const option = document.createElement('option');
-                    option.value = chat.id;
+                    option.value = String(chat.id);
                     option.text = chat.title;
                     chatSelect.add(option);
-                    chatData[chat.id] = chat;
+                    chatData[String(chat.id)] = chat;
                 });
 
                 // Function to apply defaults
                 window.applyChatDefaults = function(chatId) {
-                    const chat = chatData[chatId];
+                    let chat = chatData[String(chatId)];
+                    if (!chat) {
+                        const foundKey = Object.keys(chatData).find(k => matchChatId(k, chatId));
+                        if (foundKey) chat = chatData[foundKey];
+                    }
                     if (!chat) return;
                     
+                    activeCurrency = chat.currency || 'CZK';
+                    const isFree = chat.billing_mode === 'free_corporate';
+
                     document.getElementById('location').value = chat.default_location || '';
-                    document.getElementById('payment_info').value = chat.payment_info || '';
-                    document.getElementById('price').value = (chat.default_price !== undefined && chat.default_price !== null) ? chat.default_price : 100;
-                    document.getElementById('max_players').value = chat.default_max_players || 26;
-                    document.getElementById('main_players_count').value = chat.default_main_players_count || 22;
+                    document.getElementById('payment_info').value = isFree ? '' : (chat.payment_info || '');
+                    document.getElementById('price').value = isFree
+                        ? 0
+                        : ((chat.default_price !== undefined && chat.default_price !== null) ? chat.default_price : 100);
+                    document.getElementById('max_players').value = (chat.default_max_players !== undefined && chat.default_max_players !== null) ? chat.default_max_players : 26;
+                    document.getElementById('main_players_count').value = (chat.default_main_players_count !== undefined && chat.default_main_players_count !== null) ? chat.default_main_players_count : 22;
                     document.getElementById('signup_limit').value = (chat.default_signup_limit !== undefined && chat.default_signup_limit !== null) ? chat.default_signup_limit : 40;
-                    document.getElementById('team_count').value = chat.default_team_count || 2;
-                    document.getElementById('duration').value = chat.default_duration || 2;
+                    document.getElementById('team_count').value = (chat.default_team_count !== undefined && chat.default_team_count !== null) ? chat.default_team_count : 2;
+                    document.getElementById('duration').value = (chat.default_duration !== undefined && chat.default_duration !== null) ? chat.default_duration : 2;
                     document.getElementById('gk_hours').value = (chat.default_gk_hours !== undefined && chat.default_gk_hours !== null) ? chat.default_gk_hours : 0;
                     document.getElementById('registration_hours').value = (chat.default_registration_hours !== undefined && chat.default_registration_hours !== null) ? chat.default_registration_hours : 0;
+
+                    const priceGroup = document.getElementById('price-group');
+                    const payGroup = document.getElementById('payment-info-group');
+                    const freeBanner = document.getElementById('free-corporate-banner');
+                    if (priceGroup) priceGroup.style.display = isFree ? 'none' : 'block';
+                    if (payGroup) payGroup.style.display = isFree ? 'none' : 'block';
+                    if (freeBanner) freeBanner.style.display = isFree ? 'block' : 'none';
+
+                    const priceLbl = document.getElementById('lbl-price');
+                    if (priceLbl) {
+                        priceLbl.innerText = tr('lbl_price').replaceAll('{currency}', activeCurrency);
+                    }
                 };
 
                 // If targetChatId is provided, ensure it exists in options and is selected
                 if (targetChatId) {
-                    let optionExists = false;
+                    let matchedValue = null;
                     for (let i = 0; i < chatSelect.options.length; i++) {
-                        if (chatSelect.options[i].value === targetChatId) {
-                            optionExists = true;
+                        if (matchChatId(chatSelect.options[i].value, targetChatId)) {
+                            matchedValue = chatSelect.options[i].value;
                             break;
                         }
                     }
-                    if (!optionExists) {
+                    if (!matchedValue) {
                         const option = document.createElement('option');
                         option.value = targetChatId;
-                        option.text = `Текущий чат (${targetChatId})`;
+                        option.text = `${tr('current_chat')} (${targetChatId})`;
                         chatSelect.add(option);
+                        matchedValue = targetChatId;
                     }
-                    chatSelect.value = targetChatId;
-                    applyChatDefaults(targetChatId);
+                    chatSelect.value = matchedValue;
+                    applyChatDefaults(matchedValue);
                     chatSelect.dispatchEvent(new Event('change'));
                 } else if (chats.length === 0) {
                     const option = document.createElement('option');
-                    option.text = "Нет доступных чатов";
+                    option.text = tr('no_chats');
                     option.disabled = true;
                     option.selected = true;
                     chatSelect.add(option);
@@ -297,13 +341,13 @@
                 if (targetChatId) {
                     const option = document.createElement('option');
                     option.value = targetChatId;
-                    option.text = `Текущий чат (${targetChatId})`;
+                    option.text = `${tr('current_chat')} (${targetChatId})`;
                     chatSelect.add(option);
                     chatSelect.value = targetChatId;
                     chatSelect.dispatchEvent(new Event('change'));
                 } else {
                     const option = document.createElement('option');
-                    option.text = `Ошибка загрузки: ${e.message}`;
+                    option.text = `${tr('err_prefix')}: ${e.message}`;
                     option.disabled = true;
                     chatSelect.add(option);
                 }
@@ -320,7 +364,7 @@
             }
 
             // Clear current admins
-            adminList.innerHTML = 'Загрузка...';
+            adminList.innerHTML = tr('loading');
             adminWrapper.style.display = 'block';
 
             try {
@@ -340,7 +384,7 @@
                             checkbox.type = 'checkbox';
                             checkbox.value = admin.id;
                             checkbox.id = `admin_${admin.id}`;
-                            checkbox.style.width = 'auto'; // Reset global width: 100%
+                            checkbox.style.width = 'auto';
                             checkbox.style.marginRight = '10px';
 
                             const label = document.createElement('label');
@@ -354,49 +398,53 @@
                             adminList.appendChild(div);
                         });
                     } else {
-                        adminList.innerHTML = 'Админы не найдены.';
+                        adminList.innerHTML = tr('admins_not_found');
                     }
                 } else {
-                    adminList.innerHTML = 'Ошибка загрузки админов.';
+                    adminList.innerHTML = tr('admins_load_err');
                 }
             } catch (e) {
-                adminList.innerHTML = 'Ошибка сети.';
+                adminList.innerHTML = tr('err_network');
             }
         });
 
         // 2. Set Default Time and Init Flatpickr
-        function initDatePicker() {
+        function resolveFlatpickrLocale(lang) {
+            if (lang === 'ru' && window.flatpickr && window.flatpickr.l10ns && window.flatpickr.l10ns.ru) return 'ru';
+            if (lang === 'cs' && window.flatpickr && window.flatpickr.l10ns && window.flatpickr.l10ns.cs) return 'cs';
+            return 'default';
+        }
+
+        function initDatePicker(lang) {
             const now = new Date();
             now.setHours(now.getHours() + 1);
             now.setMinutes(0);
+            const fpLoc = resolveFlatpickrLocale(lang || window.currentCreateLang || 'en');
 
-            // Game Date
-            flatpickr("#date_time", {
+            if (fpGameDate) fpGameDate.destroy();
+            if (fpPublishAt) fpPublishAt.destroy();
+
+            fpGameDate = flatpickr("#date_time", {
                 enableTime: true,
                 dateFormat: "Y-m-dTH:i",
                 altInput: true,
                 altFormat: "d.m.Y H:i",
-                defaultDate: now,
+                defaultDate: dateTimeInput.value || now,
                 time_24hr: true,
-                locale: "ru"
-                // minDate removed for retroactive games
+                locale: fpLoc
             });
 
-            // Publish At (Optional)
-            flatpickr("#publish_at", {
+            fpPublishAt = flatpickr("#publish_at", {
                 enableTime: true,
                 dateFormat: "Y-m-dTH:i",
                 altInput: true,
                 altFormat: "d.m.Y H:i",
+                defaultDate: publishAtInput.value || null,
                 time_24hr: true,
-                locale: "ru",
+                locale: fpLoc,
                 minDate: "today"
             });
         }
-
-        // Initialize
-        loadChats();
-        initDatePicker();
 
         // 3. Create Game
         async function createGame() {
@@ -409,41 +457,36 @@
             const checkedAdmins = [];
             const checkboxes = adminList.querySelectorAll('input[type="checkbox"]');
             checkboxes.forEach(cb => {
-                if (cb.checked) checkedAdmins.push(parseInt(cb.value));
+                if (cb.checked) checkedAdmins.push(parseInt(cb.value, 10));
             });
 
             if (!chatId || !dateTime || !location) {
-                tg.showAlert("Заполните все поля!");
+                tg.showAlert(tr('fill_all_fields'));
                 return;
             }
 
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
-            btn.innerText = "Публикация...";
+            btn.innerText = tr('publishing');
 
             try {
-                // Force interpret as Prague time (Europe/Prague)
                 function toPragueISO(localDateStr) {
-                    // localDateStr is like "2026-04-04T12:00" from flatpickr
-                    // We send it to the server as a string, and let the server handle it
-                    // Or we can convert it to UTC if we know Prague's offset for THAT date.
-                    // But simpler: just return the string with a 'T' and we'll handle it on server.
-                    return localDateStr; 
+                    return localDateStr;
                 }
 
                 const payload = {
-                    chat_id: parseInt(chatId),
+                    chat_id: parseInt(chatId, 10),
                     date_time: toPragueISO(dateTime),
                     location: location,
-                    max_players: parseInt(maxPlayers),
-                    main_players_count: parseInt(document.getElementById('main_players_count').value) || 22,
-                    signup_limit: parseInt(document.getElementById('signup_limit').value) || 999,
-                    price: parseInt(document.getElementById('price').value) || 0,
+                    max_players: parseInt(maxPlayers, 10),
+                    main_players_count: parseInt(document.getElementById('main_players_count').value, 10) || 22,
+                    signup_limit: parseInt(document.getElementById('signup_limit').value, 10) || 999,
+                    price: parseInt(document.getElementById('price').value, 10) || 0,
                     payment_info: document.getElementById('payment_info').value || "",
-                    team_count: parseInt(document.getElementById('team_count').value) || 2,
+                    team_count: parseInt(document.getElementById('team_count').value, 10) || 2,
                     game_type: document.getElementById('game_type').value || "regular",
-                    gk_hours: isNaN(parseInt(document.getElementById('gk_hours').value)) ? 0 : parseInt(document.getElementById('gk_hours').value),
-                    registration_hours: parseInt(document.getElementById('registration_hours').value) || 0,
+                    gk_hours: isNaN(parseInt(document.getElementById('gk_hours').value, 10)) ? 0 : parseInt(document.getElementById('gk_hours').value, 10),
+                    registration_hours: parseInt(document.getElementById('registration_hours').value, 10) || 0,
                     duration: parseFloat(document.getElementById('duration').value) || 2,
                     auto_join_ids: checkedAdmins,
                     initData: initData
@@ -460,17 +503,21 @@
                 });
 
                 if (response.ok) {
-                    tg.showAlert("Игра создана!" + (payload.publish_at ? " (Отложка)" : ""));
-                    tg.close();
+                    tg.showAlert(payload.publish_at ? tr('game_created_scheduled') : tr('game_created'));
+                    if (window.parent && window.parent !== window) {
+                        window.parent.postMessage('closeIframe', '*');
+                    } else {
+                        tg.close();
+                    }
                 } else {
                     const error = await response.json();
-                    tg.showAlert("Ошибка: " + (error.detail || "Unknown error"));
+                    tg.showAlert(`${tr('err_prefix')}: ` + (error.detail || "Unknown error"));
                 }
             } catch (e) {
-                tg.showAlert("Ошибка сети: " + e.message);
+                tg.showAlert(`${tr('err_network')}: ` + e.message);
             } finally {
                 btn.disabled = false;
-                btn.innerText = "Опубликовать";
+                btn.innerText = tr('btn_submit');
             }
         }
     </script>
@@ -492,9 +539,10 @@
                 opt_2teams: "2 Teams",
                 opt_3teams: "3 Teams (Tournament)",
                 lbl_duration: "Duration (hours)",
-                lbl_price: "Match Fee (CZK)",
+                lbl_price: "Match Fee ({currency})",
                 lbl_payment_info: "Payment Account",
-                ph_payment_info: "Bank account / card",
+                ph_payment_info: "Bank account / IBAN",
+                free_corporate_notice: "✨ Corporate Free Mode — match fee is covered by the organization.",
                 lbl_max_players: "Total Playing Spots (with subs)",
                 help_max_players: "Total players who show up (squads + bench). Beyond this — reserve.",
                 lbl_main_players: "Players on pitch (X vs X)",
@@ -511,8 +559,17 @@
                 help_publish_at: "Empty = publish immediately",
                 lbl_admin_auto: "Admin Auto-signup:",
                 btn_submit: "Publish Game",
+                publishing: "Publishing...",
                 loading: "Loading...",
-                no_chats: "No available groups"
+                no_chats: "No available groups",
+                current_chat: "Current group",
+                admins_not_found: "No group admins found.",
+                admins_load_err: "Failed to load admins.",
+                fill_all_fields: "Please fill in all required fields!",
+                game_created: "Match created!",
+                game_created_scheduled: "Match scheduled!",
+                err_prefix: "Error",
+                err_network: "Network error"
             },
             ru: {
                 page_title: "Создать игру",
@@ -529,9 +586,10 @@
                 opt_2teams: "2 Команды",
                 opt_3teams: "3 Команды (Турнир)",
                 lbl_duration: "Длительность (часов)",
-                lbl_price: "Взнос (CZK)",
+                lbl_price: "Взнос ({currency})",
                 lbl_payment_info: "Номер счета",
-                ph_payment_info: "Номер счета / карты",
+                ph_payment_info: "Номер счета / IBAN",
+                free_corporate_notice: "✨ Бесплатный корпоративный режим — взнос оплачен организацией.",
                 lbl_max_players: "Всего мест (для замен)",
                 help_max_players: "Сколько человек зовёте (составы + запасные). Сверх этого — в резерв.",
                 lbl_main_players: "Игроков на поле (Х на Х)",
@@ -548,21 +606,87 @@
                 help_publish_at: "Пусто — опубликовать сразу",
                 lbl_admin_auto: "Авто-запись админов:",
                 btn_submit: "Опубликовать",
+                publishing: "Публикация...",
                 loading: "Загрузка...",
-                no_chats: "Нет доступных чатов"
+                no_chats: "Нет доступных чатов",
+                current_chat: "Текущий чат",
+                admins_not_found: "Админы не найдены.",
+                admins_load_err: "Ошибка загрузки админов.",
+                fill_all_fields: "Заполните все обязательные поля!",
+                game_created: "Игра создана!",
+                game_created_scheduled: "Игра создана! (Отложка)",
+                err_prefix: "Ошибка",
+                err_network: "Ошибка сети"
+            },
+            cs: {
+                page_title: "Vytvořit zápas",
+                lang_banner: "Jazyk osobního rozhraní. Příspěvky ve skupině používají jazyk nastavený správcem skupiny.",
+                lbl_chat: "Skupina / Chat",
+                lbl_location: "Místo konání",
+                ph_location: "např. Pankrác",
+                lbl_datetime: "Datum a čas",
+                ph_datetime: "Vyberte datum a čas",
+                lbl_game_type: "Typ zápasu",
+                opt_regular: "Běžný zápas",
+                opt_draft: "Draft",
+                lbl_team_count: "Počet týmů",
+                opt_2teams: "2 Týmy",
+                opt_3teams: "3 Týmy (Turnaj)",
+                lbl_duration: "Délka zápasu (hodiny)",
+                lbl_price: "Startovné ({currency})",
+                lbl_payment_info: "Číslo účtu / IBAN",
+                ph_payment_info: "Číslo účtu / IBAN",
+                free_corporate_notice: "✨ Firemní režim zdarma — startovné hradí organizace.",
+                lbl_max_players: "Celkem míst (včetně střídání)",
+                help_max_players: "Celkem hráčů na zápas (sestavy + lavička). Ostatní — náhradníci.",
+                lbl_main_players: "Hráčů na hřišti (X vs X)",
+                help_main_players: "Současně na hřišti (např. 22 pro 11v11, 16 pro 8v8).",
+                lbl_signup_limit: "Limit přihlášek (celkem)",
+                help_signup_limit: "Maximum včetně náhradníků. 0 = bez omezení.",
+                sec_settings: "Nastavení",
+                lbl_reg_hours: "Délka registrace (hodiny)",
+                help_reg_hours: "0 = otevřeno až do výkopu",
+                lbl_gk_hours: "Priorita brankářů (hodiny)",
+                help_gk_hours: "0 = vypnuto (všichni se hlásí stejně)",
+                lbl_publish_at: "Naplánovat zveřejnění (volitelné)",
+                ph_publish_at: "Ihned",
+                help_publish_at: "Prázdné = zveřejnit ihned",
+                lbl_admin_auto: "Automaticky přihlásit správce:",
+                btn_submit: "Zveřejnit zápas",
+                publishing: "Zveřejňování...",
+                loading: "Načítání...",
+                no_chats: "Žádné dostupné skupiny",
+                current_chat: "Aktuální skupina",
+                admins_not_found: "Správci nenalezeni.",
+                admins_load_err: "Chyba při načítání správců.",
+                fill_all_fields: "Vyplňte prosím všechna povinná pole!",
+                game_created: "Zápas byl vytvořen!",
+                game_created_scheduled: "Zápas byl naplánován!",
+                err_prefix: "Chyba",
+                err_network: "Chyba sítě"
             }
         };
+        window.CREATE_GAME_I18N = I18N;
+
+        function normalizeCreateLang(raw) {
+            if (!raw) return 'en';
+            const clean = String(raw).trim().toLowerCase().split(/[-_]/)[0];
+            if (clean === 'cz') return 'cs';
+            return I18N[clean] ? clean : 'en';
+        }
 
         const paramLang = (new URLSearchParams(window.location.search)).get('lang');
-        let currentLang = (paramLang === 'en' || paramLang === 'ru') ? paramLang : (localStorage.getItem('webapp_lang') || 'en');
+        let currentLang = paramLang ? normalizeCreateLang(paramLang) : normalizeCreateLang(localStorage.getItem('webapp_lang') || 'en');
+        window.currentCreateLang = currentLang;
 
         function setAppLanguage(lang) {
-            currentLang = lang;
-            localStorage.setItem('webapp_lang', lang);
-            const t = I18N[lang] || I18N.en;
+            currentLang = normalizeCreateLang(lang);
+            window.currentCreateLang = currentLang;
+            localStorage.setItem('webapp_lang', currentLang);
+            const t = I18N[currentLang] || I18N.en;
             
             const globeBtn = document.getElementById('lang-globe-btn');
-            if (globeBtn) globeBtn.innerText = lang === 'en' ? '🌐 EN' : '🌐 RU';
+            if (globeBtn) globeBtn.innerText = `🌐 ${currentLang.toUpperCase()}`;
             const pt = document.getElementById('page-title');
             if (pt) pt.innerText = t.page_title;
             const banner = document.getElementById('lang-info-banner');
@@ -570,20 +694,25 @@
             
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const k = el.getAttribute('data-i18n');
-                if (t[k]) el.innerText = t[k];
+                if (t[k]) el.innerText = t[k].replaceAll('{currency}', activeCurrency || 'CZK');
             });
             document.querySelectorAll('[data-i18n-ph]').forEach(el => {
                 const k = el.getAttribute('data-i18n-ph');
                 if (t[k]) el.setAttribute('placeholder', t[k]);
             });
+
+            initDatePicker(currentLang);
         }
 
         function toggleLanguage() {
-            setAppLanguage(currentLang === 'en' ? 'ru' : 'en');
+            const order = ['en', 'ru', 'cs'];
+            const next = order[(order.indexOf(currentLang) + 1) % order.length] || 'en';
+            setAppLanguage(next);
         }
 
-        // Initialize i18n
+        // Initialize i18n & load chats
         setAppLanguage(currentLang);
+        loadChats();
     </script>
 
 </body>

@@ -12,6 +12,15 @@
             lbl_price: "Match fee",
             lbl_payment: "Payment info",
             payment_cash: "Cash on site",
+            payment_free_corporate: "FREE (Corporate)",
+            payment_covered_org: "Covered by organization — no match fee required",
+            btn_show_qr: "📱 Show QR Platba",
+            btn_hide_qr: "🔼 Hide QR Platba",
+            qr_scan_hint: "Scan in your banking app (SPAYD 1.0)",
+            qr_iban_label: "IBAN",
+            qr_vs_label: "VS",
+            btn_copy_iban: "📋 Copy IBAN",
+            iban_copied: "IBAN copied!",
             booking_status: "Booking Status",
             sec_achievements: "Personal Achievements",
             ach_veteran_title: "Veteran",
@@ -113,6 +122,15 @@
             lbl_price: "Взнос",
             lbl_payment: "Реквизиты",
             payment_cash: "Оплата наличными на месте",
+            payment_free_corporate: "БЕСПЛАТНО (Корпоратив)",
+            payment_covered_org: "Оплачено организацией — взнос не требуется",
+            btn_show_qr: "📱 Показать QR Platba",
+            btn_hide_qr: "🔼 Скрыть QR Platba",
+            qr_scan_hint: "Отсканируйте в банковском приложении (SPAYD 1.0)",
+            qr_iban_label: "IBAN",
+            qr_vs_label: "VS",
+            btn_copy_iban: "📋 Скопировать IBAN",
+            iban_copied: "IBAN скопирован!",
             booking_status: "Статус бронирования",
             sec_achievements: "Личные Достижения",
             ach_veteran_title: "Ветеран",
@@ -202,30 +220,154 @@
             lbl_ad: "Реклама",
             error_loading_title: "Ошибка загрузки",
             error_no_connection: "Нет связи с сервером. Проверьте интернет или VPN."
+        },
+        cs: {
+            app_title: "Football Manager",
+            match_num: "Zápas #{num}",
+            status_open: "OTEVŘENO",
+            status_active: "AKTIVNÍ",
+            status_finished: "ODEHRÁNO",
+            loading: "Načítání...",
+            lbl_format: "Formát",
+            lbl_price: "Startovné",
+            lbl_payment: "Platební údaje",
+            payment_cash: "Hotově na místě",
+            payment_free_corporate: "ZDARMA (Firemní)",
+            payment_covered_org: "Hrazeno organizací — startovné se neplatí",
+            btn_show_qr: "📱 Zobrazit QR Platbu",
+            btn_hide_qr: "🔼 Skrýt QR Platbu",
+            qr_scan_hint: "Naskenujte v bankovní aplikaci (SPAYD 1.0)",
+            qr_iban_label: "IBAN",
+            qr_vs_label: "VS",
+            btn_copy_iban: "📋 Kopírovat IBAN",
+            iban_copied: "IBAN zkopírován!",
+            booking_status: "Stav registrace",
+            sec_achievements: "Osobní úspěchy",
+            ach_veteran_title: "Veterán",
+            ach_veteran_legend: "Klubová legenda",
+            ach_veteran_exp: "Zkušený hráč",
+            ach_veteran_default: "Veterán",
+            ach_veteran_desc_0: "Odehraj 1. zápas",
+            ach_veteran_desc_n: "{count} odehraných zápasů",
+            ach_striker_title: "Střelec",
+            ach_striker_golden: "Zlatá kopačka",
+            ach_striker_super: "Super střelec",
+            ach_striker_first: "První trefa",
+            ach_striker_desc_0: "Vstřel 1. gól",
+            ach_striker_desc_n: "{count} vstřelených gólů",
+            ach_mvp_title: "MVP zápasu",
+            ach_mvp_star: "Superhvězda",
+            ach_mvp_top: "Hráč zápasu",
+            ach_mvp_desc_0: "Staň se MVP zápasu",
+            ach_mvp_desc_n: "{count} ocenění MVP",
+            ach_rating_title: "MMR hodnocení",
+            ach_rating_supersonic: "Nadzvukový",
+            ach_rating_authority: "Postrach favoritů",
+            ach_rating_master: "Mistr",
+            ach_rating_private: "Nováček",
+            ach_rating_desc: "Rating: {rating} MMR",
+            ach_rating_desc_default: "Sbírej zkušenosti",
+            sec_main_roster: "Hlavní sestava",
+            sec_reserve_roster: "Náhradníci",
+            roster_empty: "Zatím se nikdo nepřihlásil. Buď první!",
+            player_you: "(Ty)",
+            player_paid: "✅ Zaplaceno",
+            btn_join_game: "⚽ Přihlásit se na zápas",
+            btn_join_reserve: "🧤 Přihlásit se mezi náhradníky",
+            btn_in_active: "✅ Jsi v hlavní sestavě!",
+            btn_in_reserve: "🧤 Jsi na seznamu náhradníků!",
+            btn_leave_game: "❌ Odhlásit se ze zápasu",
+            btn_back_to_chat: "🔙 Zpět do skupinového chatu",
+            btn_match_finished: "Zápas ukončen",
+            confirm_leave: "Opravdu se chcete odhlásit ze zápasu?",
+            join_success: "Úspěšně jste se přihlásili!",
+            leave_success: "Odhlásili jste se ze zápasu.",
+            gk_priority_notice: "🧤 Pozor! Prvních {hours} hod. (zbývá {left} hod.) jsou místa v sestavě vyhrazena brankářům (GK).",
+            match_finished_notice: "Tento zápas již skončil. Konečné skóre: {score_a} : {score_b}.",
+            profile_default_name: "Hráč",
+            profile_primary_role: "Hlavní",
+            profile_matches: "Zápasy",
+            profile_goals: "Celkem gólů",
+            profile_primary_pos: "Hlavní pozice",
+            profile_alt_pos: "Vedlejší pozice",
+            profile_edit: "Upravit",
+            profile_not_set: "Neuvedeno",
+            card_yellow: "Žlutá karta",
+            card_red: "Červená karta",
+            card_days_left: "zbývá {days} d.",
+            card_reason_prefix: "Důvod: ",
+            card_suspended_warning: "Registrace na zápasy je pozastavena.",
+            card_tooltip: "{title}: na {weeks} týd. (do {date}, {days}){reason}{suspended}",
+            btn_change_group: "Změnit",
+            title_select_group: "Vyberte skupinu",
+            select_group_desc: "Vyberte ligu pro zobrazení statistik",
+            nav_profile: "Profil",
+            nav_history: "Historie",
+            nav_leaderboard: "Žebříček",
+            btn_cancel: "Zrušit",
+            btn_save: "Uložit",
+            pos_primary_title: "Hlavní pozice",
+            pos_primary_desc: "Vyberte svou hlavní roli na hřišti",
+            pos_alt_title: "Vedlejší pozice",
+            pos_alt_desc: "Vyberte pozice, na kterých také hrajete",
+            history_my_games: "Moje zápasy",
+            history_all_games: "Všechny zápasy skupiny",
+            history_no_games: "Zatím žádné zápasy.",
+            history_game_prefix: "ZÁPAS #{num}",
+            history_draw: "Remíza",
+            history_win: "Výhra",
+            history_defeat: "Prohra",
+            history_win_team: "Výhra týmu {team}",
+            team_green: "Zelení",
+            team_orange: "Oranžoví",
+            team_blue: "Modří",
+            team_white: "Bílí",
+            team_unknown: "Neznámý",
+            leaderboard_title: "Žebříček skupiny",
+            leaderboard_games_goals: "{games} zápasů • {goals} gólů",
+            btn_close_popup: "Zavřít",
+            btn_try_again: "Zkusit znovu",
+            lbl_ad: "Sponzorováno",
+            error_loading_title: "Chyba načítání",
+            error_no_connection: "Žádné spojení se serverem. Zkontrolujte internet nebo VPN."
         }
     };
 
+    const SUPPORTED_ORDER = ['en', 'ru', 'cs'];
+    let availableLocales = [...SUPPORTED_ORDER];
     let currentLang = 'en';
     const listeners = [];
+    const loadedRemoteLocales = new Set();
+
+    function normalizeLang(code) {
+        if (!code) return 'en';
+        const clean = String(code).trim().toLowerCase().split(/[-_]/)[0];
+        if (clean === 'cz') return 'cs';
+        return clean || 'en';
+    }
 
     function detectLanguage() {
         try {
             const urlParams = new URLSearchParams(window.location.search);
-            const urlLang = urlParams.get('lang');
-            if (urlLang && (urlLang === 'en' || urlLang === 'ru')) {
-                localStorage.setItem('webapp_lang', urlLang);
-                return urlLang;
+            const rawUrlLang = urlParams.get('lang');
+            if (rawUrlLang) {
+                const norm = normalizeLang(rawUrlLang);
+                localStorage.setItem('webapp_lang', norm);
+                return norm;
             }
         } catch (e) {}
 
         const saved = localStorage.getItem('webapp_lang');
-        if (saved && (saved === 'en' || saved === 'ru')) return saved;
+        if (saved) {
+            return normalizeLang(saved);
+        }
 
         try {
             const tg = window.Telegram && window.Telegram.WebApp;
             const code = tg?.initDataUnsafe?.user?.language_code;
             if (code) {
-                if (code.toLowerCase().startsWith('ru')) return 'ru';
+                const norm = normalizeLang(code);
+                if (DICTIONARY[norm]) return norm;
                 return 'en';
             }
         } catch (e) {}
@@ -233,9 +375,55 @@
         return 'en';
     }
 
+    async function syncRemoteCatalog(lang) {
+        const norm = normalizeLang(lang);
+        if (loadedRemoteLocales.has(norm)) return;
+        loadedRemoteLocales.add(norm);
+        try {
+            const res = await fetch(`/api/v1/locales/${encodeURIComponent(norm)}`);
+            if (!res.ok) return;
+            const payload = await res.json();
+            if (payload && payload.messages && typeof payload.messages === 'object') {
+                const resolvedCode = normalizeLang(payload.locale || norm);
+                if (!DICTIONARY[resolvedCode]) {
+                    DICTIONARY[resolvedCode] = {};
+                }
+                Object.keys(payload.messages).forEach(k => {
+                    if (DICTIONARY[resolvedCode][k] === undefined) {
+                        DICTIONARY[resolvedCode][k] = payload.messages[k];
+                    }
+                });
+                if (!availableLocales.includes(resolvedCode)) {
+                    availableLocales.push(resolvedCode);
+                }
+                if (currentLang === resolvedCode) {
+                    applyDOM();
+                }
+            }
+        } catch (e) {
+            // Offline or test environment without backend — built-in DICTIONARY remains active
+        }
+    }
+
+    async function discoverServerLocales() {
+        try {
+            const res = await fetch('/api/v1/locales');
+            if (!res.ok) return;
+            const payload = await res.json();
+            if (payload && Array.isArray(payload.locales)) {
+                payload.locales.forEach(item => {
+                    const code = normalizeLang(item.code);
+                    if (code && !availableLocales.includes(code)) {
+                        availableLocales.push(code);
+                    }
+                });
+            }
+        } catch (e) {}
+    }
+
     function t(key, params) {
         const dict = DICTIONARY[currentLang] || DICTIONARY.en;
-        let val = dict[key] || (DICTIONARY.en && DICTIONARY.en[key]) || key;
+        let val = dict[key] !== undefined ? dict[key] : ((DICTIONARY.en && DICTIONARY.en[key]) || key);
         if (params && typeof params === 'object') {
             Object.keys(params).forEach(p => {
                 val = val.replaceAll(`{${p}}`, params[p]);
@@ -249,22 +437,26 @@
 
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const k = el.getAttribute('data-i18n');
-            if (dict[k] !== undefined) {
-                el.innerText = dict[k];
+            const msg = dict[k] !== undefined ? dict[k] : (DICTIONARY.en ? DICTIONARY.en[k] : undefined);
+            if (msg !== undefined) {
+                el.innerText = msg;
             }
         });
 
         document.querySelectorAll('[data-i18n-ph]').forEach(el => {
             const k = el.getAttribute('data-i18n-ph');
-            if (dict[k] !== undefined) {
-                el.setAttribute('placeholder', dict[k]);
+            const msg = dict[k] !== undefined ? dict[k] : (DICTIONARY.en ? DICTIONARY.en[k] : undefined);
+            if (msg !== undefined) {
+                el.setAttribute('placeholder', msg);
             }
         });
 
         const toggleBtn = document.getElementById('lang-toggle-btn') || document.getElementById('lang-globe-btn');
         if (toggleBtn) {
-            toggleBtn.innerText = currentLang === 'en' ? '🌐 EN' : '🌐 RU';
+            toggleBtn.innerText = `🌐 ${currentLang.toUpperCase()}`;
         }
+
+        document.documentElement.lang = currentLang;
 
         listeners.forEach(fn => {
             try { fn(currentLang); } catch (err) { console.error('i18n listener error:', err); }
@@ -272,26 +464,37 @@
     }
 
     function setLanguage(lang) {
-        if (lang !== 'en' && lang !== 'ru') lang = 'en';
-        currentLang = lang;
-        localStorage.setItem('webapp_lang', lang);
+        const norm = normalizeLang(lang);
+        currentLang = DICTIONARY[norm] ? norm : (availableLocales.includes(norm) ? norm : 'en');
+        localStorage.setItem('webapp_lang', currentLang);
         applyDOM();
+        syncRemoteCatalog(currentLang);
     }
 
     function toggleLanguage() {
-        setLanguage(currentLang === 'en' ? 'ru' : 'en');
+        const idx = availableLocales.indexOf(currentLang);
+        const nextLang = availableLocales[(idx + 1) % availableLocales.length] || 'en';
+        setLanguage(nextLang);
     }
 
     function onLanguageChange(fn) {
         if (typeof fn === 'function') listeners.push(fn);
     }
 
-    // Auto-detect on load
+    // Auto-detect on load (defaulting universally to English per ADR-01)
     currentLang = detectLanguage();
+    if (!DICTIONARY[currentLang]) {
+        syncRemoteCatalog(currentLang);
+    } else {
+        syncRemoteCatalog(currentLang);
+    }
+    discoverServerLocales();
 
     global.i18n = {
         t,
+        normalizeLang,
         get currentLang() { return currentLang; },
+        get availableLocales() { return [...availableLocales]; },
         setLanguage,
         toggleLanguage,
         onLanguageChange,
