@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy import text
 
-from app.api.routers import admin, ads, dashboard, games, nss, platform, users, voting
+from app.api.routers import admin, ads, dashboard, games, inventory, nss, platform, users, voting
 from app.bot.instance import bot
 from app.bot.main import dp, start_bot, stop_bot
 from app.config import settings
@@ -139,6 +139,7 @@ app.include_router(voting.router, prefix="/api", tags=["Voting"])
 app.include_router(users.router, prefix="/api", tags=["Users"])
 app.include_router(ads.router, prefix="/api", tags=["Ads"])
 app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])
+app.include_router(inventory.router, prefix="/api", tags=["Inventory"])
 
 if _enable_api_docs:
     app.include_router(nss.router, prefix="/api", tags=["Diagnostics"])

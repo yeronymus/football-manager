@@ -258,6 +258,8 @@ class PlayerActivityOut(BaseModel):
     games_last_4_weeks: int = 0
     last_game_date: Optional[str] = None
     days_since_last_game: Optional[int] = None
+    total_lates: int = 0
+    late_percentage: float = 0.0
     is_core: bool = False
     is_dormant: bool = False
     active_card_type: Optional[str] = None
@@ -277,6 +279,7 @@ class PlayerHistoryGameOut(BaseModel):
     status: str
     goals: int = 0
     is_mvp: bool = False
+    is_late: bool = False
 
 class PlayerCardOut(BaseModel):
     id: int
@@ -302,6 +305,8 @@ class PlayerProfileDetailOut(BaseModel):
     total_games: int = 0
     total_goals: int = 0
     total_mvps: int = 0
+    total_lates: int = 0
+    late_percentage: float = 0.0
     active_card: Optional[PlayerCardOut] = None
     recent_matches: List[PlayerHistoryGameOut]
 
@@ -363,6 +368,22 @@ async def get_group_analytics(
         .subquery()
     )
 
+    # Subquery: Total late arrivals in this chat
+    lates_subq = (
+        select(
+            Signup.user_id,
+            func.count(Signup.id).label("group_lates")
+        )
+        .join(Game, Game.id == Signup.game_id)
+        .where(
+            Game.chat_id == chat_id,
+            Signup.status == SignupStatus.ACTIVE,
+            Signup.is_late == True
+        )
+        .group_by(Signup.user_id)
+        .subquery()
+    )
+
     # Main query
     stmt = (
         select(
@@ -374,6 +395,7 @@ async def get_group_analytics(
             func.coalesce(PlayerProfile.games_played, 0).label("games_played"),
             func.coalesce(PlayerProfile.stats_mvp, 0).label("stats_mvp"),
             func.coalesce(goals_subq.c.group_goals, 0).label("goals"),
+            func.coalesce(lates_subq.c.group_lates, 0).label("group_lates"),
             last_game_subq.c.last_game_date,
             func.coalesce(recent_games_subq.c.games_last_4w, 0).label("games_last_4w"),
             User.created_at
@@ -382,6 +404,7 @@ async def get_group_analytics(
         .outerjoin(last_game_subq, last_game_subq.c.user_id == User.user_id)
         .outerjoin(recent_games_subq, recent_games_subq.c.user_id == User.user_id)
         .outerjoin(goals_subq, goals_subq.c.user_id == User.user_id)
+        .outerjoin(lates_subq, lates_subq.c.user_id == User.user_id)
         .where(
             User.user_id > 0,  # Exclude guest pseudo-IDs
             or_(
@@ -435,6 +458,9 @@ async def get_group_analytics(
             dormant_count += 1
 
         pos_str = r.player_position.value if hasattr(r.player_position, "value") else str(r.player_position or "")
+        tot_lates = int(getattr(r, "group_lates", 0) or 0)
+        late_pct = round((tot_lates / total_g) * 100.0, 1) if total_g > 0 else 0.0
+
         players_out.append(
             PlayerActivityOut(
                 user_id=uid,
@@ -445,6 +471,8 @@ async def get_group_analytics(
                 total_games=total_g,
                 total_goals=int(r.goals or 0),
                 total_mvps=int(r.stats_mvp or 0),
+                total_lates=tot_lates,
+                late_percentage=late_pct,
                 games_last_4_weeks=recent_4w,
                 last_game_date=format_prague_dt(last_dt, "%d.%m.%Y") if last_dt else None,
                 days_since_last_game=days_ago,
@@ -489,7 +517,7 @@ async def get_group_player_detail(
 
     # Fetch last 10 games
     stmt = (
-        select(Game, GameStats)
+        select(Game, GameStats, Signup)
         .join(Signup, (Signup.game_id == Game.id) & (Signup.user_id == target_user_id))
         .outerjoin(GameStats, (GameStats.game_id == Game.id) & (GameStats.user_id == target_user_id))
         .where(Game.chat_id == chat_id, Signup.status == SignupStatus.ACTIVE)
@@ -500,7 +528,7 @@ async def get_group_player_detail(
     history_rows = res.all()
 
     recent_matches = []
-    for g, gs in history_rows:
+    for g, gs, s in history_rows:
         g_num = await get_group_game_number(session, g)
         recent_matches.append(
             PlayerHistoryGameOut(
@@ -510,9 +538,25 @@ async def get_group_player_detail(
                 location=clean_location(g.location),
                 status=g.status.value,
                 goals=gs.goals if gs else 0,
-                is_mvp=gs.is_mvp if gs else False
+                is_mvp=gs.is_mvp if gs else False,
+                is_late=bool(getattr(s, "is_late", False)) if s else False,
             )
         )
+
+    # Compute total lates in this chat
+    lates_res = await session.scalar(
+        select(func.count(Signup.id))
+        .join(Game, Game.id == Signup.game_id)
+        .where(
+            Game.chat_id == chat_id,
+            Signup.user_id == target_user_id,
+            Signup.status == SignupStatus.ACTIVE,
+            Signup.is_late == True,
+        )
+    )
+    total_lates = int(lates_res or 0)
+    total_games_played = prof.games_played if prof else len(history_rows)
+    late_pct = round((total_lates / total_games_played) * 100.0, 1) if total_games_played > 0 else 0.0
 
     # Fetch active disciplinary card
     from app.db.models import PlayerCard
@@ -553,6 +597,8 @@ async def get_group_player_detail(
         total_games=prof.games_played if prof else 0,
         total_goals=int(goals_res or 0),
         total_mvps=prof.stats_mvp if prof else 0,
+        total_lates=total_lates,
+        late_percentage=late_pct,
         active_card=active_card_out,
         recent_matches=recent_matches
     )
@@ -713,6 +759,7 @@ class PlayerDetailOut(BaseModel):
     full_name: str
     status: str
     is_paid: bool
+    is_late: bool = False
     position: Optional[str]
     team: Optional[str] = None
     goals: int = 0
@@ -758,6 +805,7 @@ def _format_game_players(rows, votes_map, notify_logs=None) -> List[PlayerDetail
             full_name=user.full_name,
             status=signup.status.value,
             is_paid=signup.is_paid,
+            is_late=bool(getattr(signup, "is_late", False)),
             position=signup.position.value if signup.position else (user.player_position.value if user.player_position else None),
             team=signup.team.value if signup.team else None,
             goals=u_stats.goals if u_stats else 0,
@@ -845,6 +893,33 @@ async def toggle_payment(
     signup.is_paid = not signup.is_paid
     await session.commit()
     return {"status": "ok", "is_paid": signup.is_paid}
+
+@router.post("/signups/{signup_id}/toggle_late")
+async def toggle_signup_late(
+    signup_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Toggles the late arrival status of a player in a game.
+    """
+    signup = await session.get(Signup, signup_id)
+    if not signup:
+        raise HTTPException(status_code=404, detail="Signup not found")
+        
+    game = await session.get(Game, signup.game_id)
+    await check_admin_rights(game.chat_id, user_id)
+    
+    signup.is_late = not signup.is_late
+    await session.commit()
+
+    # Invalidate cache
+    from app.core.services.cache import cache_service
+    await cache_service.evict(f"game_details:{game.id}")
+    from app.bot.utils import evict_game_signups_cache
+    evict_game_signups_cache(game.id)
+
+    return {"status": "ok", "signup_id": signup.id, "is_late": signup.is_late}
 
 class GuestCreate(BaseModel):
     name: str

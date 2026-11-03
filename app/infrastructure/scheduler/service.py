@@ -4,7 +4,9 @@ from app.scheduler.tasks import (
     send_voting_message, 
     release_gk_slots, 
     publish_game_task,
-    calculate_mvp
+    calculate_mvp,
+    send_pre_game_reminder_task,
+    check_inventory_alerts_task
 )
 from app.db.models import Game
 import logging
@@ -25,6 +27,23 @@ class SchedulerService:
         duration = getattr(game, 'duration', 2.0) or 2.0
         self.schedule_voting(game.id, game.date_time, duration=duration)
         self.schedule_gk_release(game)
+        self.schedule_pre_game_reminder(game.id, game.date_time)
+
+    def schedule_pre_game_reminder(self, game_id: int, date_time: datetime):
+        """Schedules pre-match reminder 3 hours before kickoff."""
+        run_date = date_time - timedelta(hours=3)
+        now_tz = datetime.now(date_time.tzinfo) if date_time.tzinfo else datetime.now()
+        if run_date > now_tz:
+            job_id = f"reminder_t3h_{game_id}"
+            scheduler.add_job(
+                send_pre_game_reminder_task,
+                'date',
+                run_date=run_date,
+                args=[game_id],
+                id=job_id,
+                replace_existing=True
+            )
+            logger.info(f"Scheduled T-3h pre-match reminder for game {game_id} at {run_date}")
 
     def schedule_voting(self, game_id: int, date_time: datetime, duration: float = 2.0):
         """Schedules voting task based on match duration, and MVP resolution 24h later."""
@@ -115,7 +134,8 @@ class SchedulerService:
             f"voting_{game_id}",
             f"gk_release_{game_id}",
             f"publish_{game_id}",
-            f"mvp_calc_{game_id}"
+            f"mvp_calc_{game_id}",
+            f"reminder_t3h_{game_id}"
         ]
         
         for job_id in job_ids:

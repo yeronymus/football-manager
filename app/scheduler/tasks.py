@@ -501,3 +501,91 @@ async def publish_game_task(game_id: int):
 
         except Exception as e:
             logger.error(f"Failed to publish game task {game.id} to chat: {e}")
+
+
+async def send_pre_game_reminder_task(game_id: int):
+    """
+    Sends a matchday reminder to the group chat T-3 hours before kickoff.
+    Tags active roster players and reminds them to arrive 20 minutes early for warm-up.
+    """
+    async with async_session_maker() as session:
+        game = await session.get(Game, game_id)
+        if not game or game.status != GameStatus.OPEN:
+            return
+
+        from app.bot.utils import resolve_chat_language
+        from app.core.timezone import format_prague_dt
+        from app.bot.i18n import t
+        from app.db.models import Signup, User, SignupStatus
+        from app.api.routers.dashboard import clean_location
+        import html
+
+        chat_lang = await resolve_chat_language(session, game.chat_id)
+
+        # Fetch active players
+        stmt = (
+            select(Signup, User)
+            .join(User, User.user_id == Signup.user_id)
+            .where(
+                Signup.game_id == game_id,
+                Signup.status == SignupStatus.ACTIVE
+            )
+            .order_by(Signup.created_at)
+        )
+        res = await session.execute(stmt)
+        active_signups = res.all()
+
+        if not active_signups:
+            return
+
+        mentions = []
+        guest_label = t("debtor_guest_label", locale=chat_lang)
+        for idx, (s, u) in enumerate(active_signups, 1):
+            if u.user_id < 0:
+                mentions.append(f"{idx}. {html.escape(u.full_name)} ({guest_label})")
+            elif u.username:
+                mentions.append(f"{idx}. @{u.username}")
+            else:
+                mentions.append(f'{idx}. <a href="tg://user?id={u.user_id}">{html.escape(u.full_name)}</a>')
+
+        mentions_text = "\n".join(mentions)
+
+        kickoff_time = format_prague_dt(game.date_time, "%H:%M")
+        warmup_dt = game.date_time - timedelta(minutes=20)
+        warmup_time = format_prague_dt(warmup_dt, "%H:%M")
+
+        reminder_text = t(
+            "pre_game_reminder_t3h",
+            locale=chat_lang,
+            count=len(active_signups),
+            mentions=mentions_text,
+            location=html.escape(clean_location(game.location)),
+            kickoff_time=kickoff_time,
+            warmup_time=warmup_time,
+        )
+
+        try:
+            await bot.send_message(
+                chat_id=game.chat_id,
+                text=reminder_text,
+                parse_mode="HTML"
+            )
+            logger.info(f"Sent T-3h match reminder for game {game_id} to chat {game.chat_id}")
+        except Exception as e:
+            logger.error(f"Failed to send T-3h match reminder for game {game_id}: {e}")
+
+
+async def check_inventory_alerts_task():
+    """
+    Scheduled task scanning all tenant inventory items and notifying admins
+    of approaching wear limits or depleted gear.
+    """
+    from app.core.services.inventory import check_and_notify_inventory_alerts
+    async with async_session_maker() as session:
+        try:
+            results = await check_and_notify_inventory_alerts(bot=bot, session=session)
+            if results:
+                logger.info(f"Inventory automated alert check finished: {len(results)} alerts processed.")
+        except Exception as e:
+            logger.error(f"Failed to run automated inventory alert task: {e}")
+
