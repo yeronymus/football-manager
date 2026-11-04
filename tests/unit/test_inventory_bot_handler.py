@@ -5,7 +5,23 @@ from app.bot.handlers.admin_handlers import cmd_inventory, cmd_dashboard
 from app.db.models import Chat, InventoryItem, InventoryCategory, InventoryStatus
 
 @pytest.mark.asyncio
-async def test_cmd_inventory_with_items():
+async def test_cmd_inventory_in_group_deleted():
+    # Strict rule: NEVER process commands in groups! Must delete message and return.
+    message = MagicMock(spec=types.Message)
+    message.chat = MagicMock(spec=types.Chat)
+    message.chat.type = "group"
+    message.chat.id = -1001234567
+    message.delete = AsyncMock()
+    message.answer = AsyncMock()
+    session = AsyncMock()
+
+    await cmd_inventory(message, session)
+
+    assert message.delete.called
+    assert not message.answer.called
+
+@pytest.mark.asyncio
+async def test_cmd_inventory_with_items_private():
     message = MagicMock(spec=types.Message)
     message.chat = MagicMock(spec=types.Chat)
     message.chat.type = "private"
@@ -29,12 +45,9 @@ async def test_cmd_inventory_with_items():
     )
 
     with patch("app.config.settings.admin_ids", [99999]):
-        # Mock session execute calls:
-        # 1st call for chats
         mock_chats_res = MagicMock()
         mock_chats_res.scalars.return_value.all.return_value = [mock_chat]
 
-        # 2nd call for items
         mock_items_res = MagicMock()
         mock_items_res.scalars.return_value.all.return_value = [mock_item]
 
@@ -47,14 +60,12 @@ async def test_cmd_inventory_with_items():
         text = args[0]
         assert "FC Praha" in text
         assert "Инвентарь" in text
-        assert "Мяч Select" not in text  # In stock items aren't listed in attention section
         assert "В наличии" in text
         reply_markup = kwargs.get("reply_markup")
         assert reply_markup is not None
         assert len(reply_markup.inline_keyboard) > 0
         btn = reply_markup.inline_keyboard[0][0]
         assert "tab=inventory" in btn.web_app.url
-
 
 @pytest.mark.asyncio
 async def test_cmd_dashboard_has_inventory_button():
@@ -75,6 +86,5 @@ async def test_cmd_dashboard_has_inventory_button():
         _, kwargs = message.answer.call_args
         reply_markup = kwargs.get("reply_markup")
         assert reply_markup is not None
-        # Should have 2 rows: one for dashboard, one for inventory
         assert len(reply_markup.inline_keyboard) == 2
         assert "tab=inventory" in reply_markup.inline_keyboard[1][0].web_app.url

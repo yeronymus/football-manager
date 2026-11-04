@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     # Infrastructure Process Toggles
     use_polling: bool = False
     webapp_url: str = "https://app.example.com"
-    webapp_version: str = "3.0.0"
+    webapp_version: str = "3.1.0"
     run_migrations: bool = True
     run_scheduler: bool = True
     run_consumer: bool = True

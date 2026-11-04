@@ -122,19 +122,10 @@ async def start_bot():
         types.BotCommand(command="inventory", description="🎒 Vybavení a inventář"),
     ]
 
-    # Group commands
-    group_commands_en = [
-        types.BotCommand(command="rules", description="📋 How to Play & Rules"),
-        types.BotCommand(command="info", description="ℹ️ Game Info"),
-    ]
-    group_commands_ru = [
-        types.BotCommand(command="rules", description="📋 Как играть и правила"),
-        types.BotCommand(command="info", description="ℹ️ Информация об играх"),
-    ]
-    group_commands_cs = [
-        types.BotCommand(command="rules", description="📋 Pravidla a jak hrát"),
-        types.BotCommand(command="info", description="ℹ️ Informace o zápasech"),
-    ]
+    # Group commands (No commands in groups! Strict policy: never send commands to group)
+    group_commands_en: list[types.BotCommand] = []
+    group_commands_ru: list[types.BotCommand] = []
+    group_commands_cs: list[types.BotCommand] = []
 
     # Set Private Chats Scope (Default / English + Localized)
     await bot.set_my_commands(user_commands_en, scope=types.BotCommandScopeAllPrivateChats())

@@ -117,6 +117,13 @@ async def cmd_dashboard(message: types.Message, session: AsyncSession, _=t):
 
 @router.message(Command("inventory"))
 async def cmd_inventory(message: types.Message, session: AsyncSession):
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
+
     user_lang = _get_lang(message)
     user_id = message.from_user.id
 
@@ -126,38 +133,22 @@ async def cmd_inventory(message: types.Message, session: AsyncSession):
 
     # Check admin rights
     is_global_admin = (user_id in settings.admin_ids or user_id == settings.system_owner_id)
-    
-    target_chat = None
 
-    if message.chat.type in ["group", "supergroup"]:
-        # In a group chat
-        res = await session.execute(
-            select(ChatAdmin).where(ChatAdmin.chat_id == message.chat.id, ChatAdmin.user_id == user_id)
-        )
-        is_chat_admin = res.first() is not None
-        if not (is_global_admin or is_chat_admin):
-            return
-        target_chat = await session.get(Chat, message.chat.id)
-        if not target_chat:
-            target_chat = Chat(chat_id=message.chat.id, title=message.chat.title or "Unknown Chat")
-            session.add(target_chat)
-            await session.commit()
+    # In private chat: find groups managed by user
+    if is_global_admin:
+        res = await session.execute(select(Chat))
+        chats = res.scalars().all()
     else:
-        # In private chat: find groups managed by user
-        if is_global_admin:
-            res = await session.execute(select(Chat))
-            chats = res.scalars().all()
-        else:
-            res = await session.execute(
-                select(Chat).join(ChatAdmin, Chat.chat_id == ChatAdmin.chat_id).where(ChatAdmin.user_id == user_id)
-            )
-            chats = res.scalars().all()
+        res = await session.execute(
+            select(Chat).join(ChatAdmin, Chat.chat_id == ChatAdmin.chat_id).where(ChatAdmin.user_id == user_id)
+        )
+        chats = res.scalars().all()
 
-        if not chats:
-            await message.answer(t("no_managed_groups", locale=user_lang))
-            return
-        
-        target_chat = chats[0]
+    if not chats:
+        await message.answer(t("no_managed_groups", locale=user_lang))
+        return
+
+    target_chat = chats[0]
 
     # Load inventory items for target_chat
     res = await session.execute(
