@@ -8,12 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_user_from_header, check_admin_rights
 from app.db.database import get_session
-from app.db.models import InventoryItem, InventoryCategory, InventoryStatus, Chat
+from app.config import settings
+from app.db.models import InventoryItem, InventoryCategory, InventoryStatus, Chat, ChatAdmin, User
 from app.core.services.inventory import (
     calculate_item_status,
     get_item_metrics,
     mark_item_as_purchased,
     check_and_notify_inventory_alerts,
+    send_item_alert_now,
 )
 from app.bot.instance import bot
 
@@ -58,6 +60,12 @@ class InventoryItemOut(BaseModel):
     notes: Optional[str] = None
     alert_recipient_user_id: Optional[int] = None
     last_alert_sent_at: Optional[str] = None
+
+
+class InventoryAdminRecipientOut(BaseModel):
+    user_id: int
+    full_name: str
+    username: Optional[str] = None
 
 
 class InventoryListOut(BaseModel):
@@ -247,3 +255,71 @@ async def trigger_inventory_alerts(
         min_days_between_alerts=0,  # Manual trigger bypasses cooldown
     )
     return {"status": "ok", "alerts_sent": len(results), "details": results}
+
+
+@router.get("/admins", response_model=List[InventoryAdminRecipientOut])
+async def get_inventory_admins(
+    chat_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Returns list of administrators for this group chat who can be assigned as alert recipients.
+    """
+    await check_admin_rights(chat_id, user_id, session=session)
+
+    stmt = (
+        select(User)
+        .join(ChatAdmin, ChatAdmin.user_id == User.user_id)
+        .where(ChatAdmin.chat_id == chat_id)
+        .distinct()
+    )
+    res = await session.execute(stmt)
+    users = list(res.scalars().all())
+    existing_uids = {u.user_id for u in users}
+
+    extra_uids = []
+    if user_id not in existing_uids:
+        extra_uids.append(user_id)
+    if settings.system_owner_id and settings.system_owner_id not in existing_uids and settings.system_owner_id not in extra_uids:
+        extra_uids.append(settings.system_owner_id)
+
+    if extra_uids:
+        extra_stmt = select(User).where(User.user_id.in_(extra_uids))
+        extra_res = await session.execute(extra_stmt)
+        users.extend(extra_res.scalars().all())
+
+    out = []
+    seen = set()
+    for u in users:
+        if u.user_id in seen:
+            continue
+        seen.add(u.user_id)
+        out.append(
+            InventoryAdminRecipientOut(
+                user_id=u.user_id,
+                full_name=u.full_name or f"User {u.user_id}",
+                username=u.username,
+            )
+        )
+    return out
+
+
+@router.post("/{item_id}/send_alert")
+async def send_single_inventory_alert(
+    chat_id: int,
+    item_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Immediately sends an alert notification for this specific inventory item to its assigned recipient(s).
+    """
+    await check_admin_rights(chat_id, user_id, session=session)
+
+    item = await session.get(InventoryItem, item_id)
+    if not item or item.chat_id != chat_id:
+        raise HTTPException(status_code=404, detail="Inventory item not found")
+
+    results = await send_item_alert_now(bot=bot, session=session, item=item)
+    return {"status": "ok", "delivered_to": len(results), "details": results}

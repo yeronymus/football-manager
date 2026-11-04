@@ -1384,6 +1384,7 @@ async function toggleLate(signupId, btnEl, gameId) {
 let currentInventoryItems = [];
 let currentInventoryCategory = 'ALL';
 let currentInventoryStatusFilter = 'ALL';
+let cachedGroupAdmins = [];
 
 function getCategoryIcon(cat) {
     switch (cat) {
@@ -1395,13 +1396,32 @@ function getCategoryIcon(cat) {
     }
 }
 
+function formatAdminDate(isoStr) {
+    if (!isoStr) return '';
+    try {
+        const d = new Date(isoStr);
+        const localeMap = { ru: 'ru-RU', cs: 'cs-CZ', en: 'en-GB' };
+        return d.toLocaleDateString(localeMap[adminCurrentLang] || 'ru-RU', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    } catch (e) {
+        return isoStr.split('T')[0];
+    }
+}
+
 async function loadGroupInventory(chatId) {
     const listEl = document.getElementById('inventory-items-list');
     if (listEl) listEl.innerHTML = '<div class="loading-spinner"></div>';
     
     try {
-        const data = await apiCall(`/groups/${chatId}/inventory`);
+        const [data, admins] = await Promise.all([
+            apiCall(`/groups/${chatId}/inventory`),
+            apiCall(`/groups/${chatId}/inventory/admins`).catch(() => [])
+        ]);
         currentInventoryItems = (data && data.items) || [];
+        cachedGroupAdmins = admins || [];
         
         // Update KPI cards
         const totalEl = document.getElementById('kpi-inv-total-val');
@@ -1508,17 +1528,27 @@ function renderInventoryItems() {
         }
         
         // Purchase Date
-        const pDateStr = it.purchase_date ? new Date(it.purchase_date).toLocaleDateString() : '';
+        const pDateStr = it.purchase_date ? formatAdminDate(it.purchase_date) : '';
         const pDateHtml = pDateStr ? `<span>📅 ${getAdminText('lbl_purchased_date', 'Куплено')}: <b>${pDateStr}</b></span>` : '';
         
-        // Notes / Recipient
+        // Notes / Recipient Display
         let metaExtra = '';
         if (it.notes) {
-            metaExtra += `<span style="display:inline-block; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(it.notes)}">📝 ${escapeHtml(it.notes)}</span>`;
+            metaExtra += `<span style="display:inline-block; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(it.notes)}">📝 ${escapeHtml(it.notes)}</span>`;
         }
+        
+        let recipientDisplay = '';
         if (it.alert_recipient_user_id) {
-            metaExtra += `<span>👤 Alert ID: <code>${it.alert_recipient_user_id}</code></span>`;
+            const foundAdmin = cachedGroupAdmins.find(a => a.user_id === it.alert_recipient_user_id);
+            if (foundAdmin) {
+                recipientDisplay = `👤 ${escapeHtml(foundAdmin.full_name)}${foundAdmin.username ? ' (@' + escapeHtml(foundAdmin.username) + ')' : ''}`;
+            } else {
+                recipientDisplay = `👤 ID: <code>${it.alert_recipient_user_id}</code>`;
+            }
+        } else {
+            recipientDisplay = `👥 ${getAdminText('recipient_all_admins', 'Все админы группы')}`;
         }
+        metaExtra += `<span title="${escapeHtml(recipientDisplay)}" style="display:inline-block; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${recipientDisplay}</span>`;
         
         html += `
             <div class="inv-item-card" id="inv-item-${it.id}">
@@ -1537,6 +1567,9 @@ function renderInventoryItems() {
                     ${metaExtra}
                 </div>
                 <div class="inv-actions-row">
+                    <button class="action-btn outline" onclick="sendSingleItemAlert(${it.id})" style="padding: 4px 10px; font-size: 0.78rem; border-color: rgba(245, 158, 11, 0.4); color: #fbbf24;" title="${getAdminText('btn_send_alert', 'Отправить алерт')}">
+                        🔔 ${getAdminText('btn_send_alert', 'Алерт')}
+                    </button>
                     <button class="action-btn outline" onclick="markInventoryPurchased(${it.id})" style="padding: 4px 10px; font-size: 0.78rem; border-color: rgba(16, 185, 129, 0.4); color: #34d399;" title="Renew / mark purchased today">
                         🛒 ${getAdminText('btn_mark_purchased', 'Куплено / Обновить')}
                     </button>
@@ -1554,6 +1587,50 @@ function renderInventoryItems() {
     listEl.innerHTML = html;
 }
 
+function populateRecipientDropdown(selectedUserId) {
+    const sel = document.getElementById('inv-item-recipient-select');
+    const customInp = document.getElementById('inv-item-recipient-custom');
+    if (!sel) return;
+    
+    let optionsHtml = `<option value="">👥 ${getAdminText('opt_all_admins', 'Все админы группы')}</option>`;
+    
+    let isMatched = (selectedUserId === null || selectedUserId === undefined || selectedUserId === '');
+    
+    cachedGroupAdmins.forEach(admin => {
+        const uLabel = admin.username ? ` (@${escapeHtml(admin.username)})` : '';
+        const isSel = String(admin.user_id) === String(selectedUserId);
+        if (isSel) isMatched = true;
+        optionsHtml += `<option value="${admin.user_id}" ${isSel ? 'selected' : ''}>👤 ${escapeHtml(admin.full_name)}${uLabel}</option>`;
+    });
+    
+    optionsHtml += `<option value="__custom__" ${!isMatched && selectedUserId ? 'selected' : ''}>✏️ ${getAdminText('opt_custom_recipient', 'Другой Telegram ID...')}</option>`;
+    sel.innerHTML = optionsHtml;
+    
+    if (!isMatched && selectedUserId) {
+        if (customInp) {
+            customInp.value = selectedUserId;
+            customInp.classList.remove('hidden');
+        }
+    } else {
+        if (customInp) {
+            customInp.value = '';
+            customInp.classList.add('hidden');
+        }
+    }
+}
+
+function onRecipientSelectChange(selectEl) {
+    const customInp = document.getElementById('inv-item-recipient-custom');
+    if (!customInp) return;
+    if (selectEl.value === '__custom__') {
+        customInp.classList.remove('hidden');
+        customInp.focus();
+    } else {
+        customInp.classList.add('hidden');
+        customInp.value = '';
+    }
+}
+
 function openAddInventoryModal() {
     const modal = document.getElementById('inventory-modal');
     if (!modal) return;
@@ -1565,7 +1642,7 @@ function openAddInventoryModal() {
     document.getElementById('inv-item-purchase-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('inv-item-lifespan').value = 180;
     document.getElementById('inv-item-notes').value = '';
-    document.getElementById('inv-item-recipient').value = '';
+    populateRecipientDropdown(null);
     modal.classList.remove('hidden');
 }
 
@@ -1582,7 +1659,7 @@ function openEditInventoryModal(itemId) {
     document.getElementById('inv-item-purchase-date').value = item.purchase_date ? item.purchase_date.split('T')[0] : '';
     document.getElementById('inv-item-lifespan').value = item.lifespan_days || '';
     document.getElementById('inv-item-notes').value = item.notes || '';
-    document.getElementById('inv-item-recipient').value = item.alert_recipient_user_id || '';
+    populateRecipientDropdown(item.alert_recipient_user_id);
     modal.classList.remove('hidden');
 }
 
@@ -1613,7 +1690,17 @@ async function submitInventoryForm(e) {
     const pDate = document.getElementById('inv-item-purchase-date').value;
     const lifespan = document.getElementById('inv-item-lifespan').value ? parseInt(document.getElementById('inv-item-lifespan').value, 10) : null;
     const notes = document.getElementById('inv-item-notes').value.trim();
-    const recipient = document.getElementById('inv-item-recipient').value ? parseInt(document.getElementById('inv-item-recipient').value, 10) : null;
+    
+    const recipientSel = document.getElementById('inv-item-recipient-select');
+    let recipient = null;
+    if (recipientSel) {
+        if (recipientSel.value === '__custom__') {
+            const customVal = document.getElementById('inv-item-recipient-custom').value.trim();
+            recipient = customVal ? parseInt(customVal, 10) : null;
+        } else if (recipientSel.value) {
+            recipient = parseInt(recipientSel.value, 10);
+        }
+    }
     
     const payload = {
         name,
@@ -1641,6 +1728,17 @@ async function submitInventoryForm(e) {
         showAdminToast('Error: ' + err.message);
     } finally {
         if (saveBtn) saveBtn.disabled = false;
+    }
+}
+
+async function sendSingleItemAlert(itemId) {
+    if (!currentGroupId) return;
+    try {
+        const res = await apiCall(`/groups/${currentGroupId}/inventory/${itemId}/send_alert`, 'POST');
+        const count = (res && res.delivered_to) || 0;
+        showAdminToast(getAdminText('toast_single_alert_sent', { count }));
+    } catch (err) {
+        showAdminToast('Error: ' + err.message);
     }
 }
 

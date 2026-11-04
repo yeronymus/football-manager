@@ -105,27 +105,109 @@ async def resolve_alert_recipient(
     item: InventoryItem,
 ) -> Optional[int]:
     """
-    Determines the Telegram user ID to receive inventory alerts:
-    1. Item's explicit alert_recipient_user_id
-    2. Primary admin of the chat
-    3. Global system owner
+    Backward-compatible single recipient resolver.
+    """
+    recipients = await resolve_alert_recipients(session, item)
+    return recipients[0] if recipients else None
+
+
+async def resolve_alert_recipients(
+    session: AsyncSession,
+    item: InventoryItem,
+) -> List[int]:
+    """
+    Determines all Telegram user IDs who should receive alerts for this item:
+    1. If item.alert_recipient_user_id is set, returns [item.alert_recipient_user_id]
+    2. Otherwise, returns all admins registered for this chat in ChatAdmin
+    3. If no chat admins found, falls back to settings.system_owner_id or settings.admin_ids
     """
     if item.alert_recipient_user_id:
-        return item.alert_recipient_user_id
+        return [item.alert_recipient_user_id]
 
-    # Fallback to chat admin
     admin_stmt = (
         select(ChatAdmin.user_id)
         .where(ChatAdmin.chat_id == item.chat_id)
-        .order_by(ChatAdmin.id.asc())
-        .limit(1)
+        .distinct()
     )
     res = await session.execute(admin_stmt)
-    first_admin = res.scalar_one_or_none()
-    if first_admin:
-        return first_admin
+    admin_ids = [uid for uid in res.scalars().all() if uid]
+    if admin_ids:
+        return admin_ids
 
-    return settings.system_owner_id
+    fallback = []
+    if settings.system_owner_id:
+        fallback.append(settings.system_owner_id)
+    for aid in settings.admin_ids:
+        if aid not in fallback:
+            fallback.append(aid)
+    return fallback
+
+
+async def send_item_alert_now(
+    bot: Any,
+    session: AsyncSession,
+    item: InventoryItem,
+) -> List[Dict[str, Any]]:
+    """
+    Directly dispatches an inventory alert for a single item to all its assigned recipients.
+    Bypasses cooldowns and is triggered explicitly by admin action.
+    """
+    now = datetime.now(timezone.utc)
+    dynamic_status = calculate_item_status(item, now)
+    if item.status != dynamic_status:
+        item.status = dynamic_status
+
+    recipients = await resolve_alert_recipients(session, item)
+    if not recipients:
+        return []
+
+    # Fetch chat info for language and title
+    chat = await session.get(Chat, item.chat_id)
+    chat_lang = "en"
+    chat_title = f"Chat {item.chat_id}"
+    if chat:
+        chat_lang = chat.language.value if hasattr(chat.language, "value") else str(chat.language or "en")
+        chat_title = chat.title or chat_title
+
+    metrics = get_item_metrics(item, now)
+    is_urgent = (dynamic_status == InventoryStatus.URGENT_PURCHASE)
+    key = "inventory_alert_urgent" if is_urgent else "inventory_alert_soon"
+
+    category_label = t(f"inventory_cat_{item.category.value.lower()}", locale=chat_lang)
+    msg_text = t(
+        key,
+        locale=chat_lang,
+        item_name=item.name,
+        group_title=chat_title,
+        category=category_label,
+        quantity=item.quantity,
+        days_left=metrics["days_left"] if metrics["days_left"] is not None else 0,
+        notes=item.notes or "-",
+    )
+
+    dispatch_results = []
+    for recipient_uid in recipients:
+        try:
+            await bot.send_message(recipient_uid, msg_text, parse_mode="HTML")
+            dispatch_results.append({
+                "item_id": item.id,
+                "recipient": recipient_uid,
+                "status": "delivered",
+                "dynamic_status": dynamic_status.value,
+            })
+            logger.info(f"Explicitly delivered inventory alert for item {item.id} to user {recipient_uid}")
+        except Exception as e:
+            logger.warning(f"Failed to deliver inventory alert for item {item.id} to user {recipient_uid}: {e}")
+            dispatch_results.append({
+                "item_id": item.id,
+                "recipient": recipient_uid,
+                "status": "failed",
+                "error": str(e),
+            })
+
+    item.last_alert_sent_at = now
+    await session.commit()
+    return dispatch_results
 
 
 async def check_and_notify_inventory_alerts(
@@ -163,8 +245,8 @@ async def check_and_notify_inventory_alerts(
         if item.last_alert_sent_at and item.last_alert_sent_at > cutoff:
             continue
 
-        recipient_uid = await resolve_alert_recipient(session, item)
-        if not recipient_uid:
+        recipients = await resolve_alert_recipients(session, item)
+        if not recipients:
             continue
 
         # Fetch chat info for language and title
@@ -191,24 +273,29 @@ async def check_and_notify_inventory_alerts(
             notes=item.notes or "-",
         )
 
-        try:
-            await bot.send_message(recipient_uid, msg_text, parse_mode="HTML")
+        sent_any = False
+        for recipient_uid in recipients:
+            try:
+                await bot.send_message(recipient_uid, msg_text, parse_mode="HTML")
+                sent_any = True
+                alert_results.append({
+                    "item_id": item.id,
+                    "recipient": recipient_uid,
+                    "status": "delivered",
+                    "dynamic_status": dynamic_status.value,
+                })
+                logger.info(f"Delivered inventory alert for item {item.id} to user {recipient_uid}")
+            except Exception as e:
+                logger.warning(f"Failed to deliver inventory alert for item {item.id} to user {recipient_uid}: {e}")
+                alert_results.append({
+                    "item_id": item.id,
+                    "recipient": recipient_uid,
+                    "status": "failed",
+                    "error": str(e),
+                })
+
+        if sent_any:
             item.last_alert_sent_at = now
-            alert_results.append({
-                "item_id": item.id,
-                "recipient": recipient_uid,
-                "status": "delivered",
-                "dynamic_status": dynamic_status.value,
-            })
-            logger.info(f"Delivered inventory alert for item {item.id} to user {recipient_uid}")
-        except Exception as e:
-            logger.warning(f"Failed to deliver inventory alert for item {item.id} to user {recipient_uid}: {e}")
-            alert_results.append({
-                "item_id": item.id,
-                "recipient": recipient_uid,
-                "status": "failed",
-                "error": str(e),
-            })
 
     await session.commit()
     return alert_results

@@ -255,7 +255,7 @@ async def test_update_game_message_success(session: AsyncSession):
     await update_game_message(bot, game, session)
     
     # Verify both public message and channel message edit_message_text were called
-    assert bot.edit_message_text.call_count == 4
+    assert bot.edit_message_text.call_count == 2
     # Verify admin dashboard update triggered
     mock_dashboard_module.update_dashboard_message.assert_called_once_with(bot, game.id, session)
 
@@ -293,7 +293,7 @@ async def test_update_game_message_telegram_bad_request(session: AsyncSession):
     # This call should not raise an error as TelegramBadRequest is caught and logged
     await update_game_message(bot, game, session)
     
-    assert bot.edit_message_text.call_count == 4
+    assert bot.edit_message_text.call_count == 2
     mock_dashboard_module.update_dashboard_message.assert_called_once_with(bot, game.id, session)
 
 @pytest.mark.asyncio
@@ -327,6 +327,7 @@ async def test_update_game_message_telegram_generic_exception(session: AsyncSess
     # This call should not raise an error as general Exception is caught and logged
     await update_game_message(bot, game, session)
     
+    # 1 channel edit attempt + 3 retry attempts for chat message on generic exception = 4
     assert bot.edit_message_text.call_count == 4
     mock_dashboard_module.update_dashboard_message.assert_called_once_with(bot, game.id, session)
 

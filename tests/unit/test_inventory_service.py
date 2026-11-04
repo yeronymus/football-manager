@@ -156,3 +156,49 @@ async def test_check_and_notify_inventory_alerts_delivered():
     assert results[0]["recipient"] == 9990001
     assert bot.send_message.called
     assert item.last_alert_sent_at is not None
+
+
+@pytest.mark.asyncio
+async def test_resolve_alert_recipients_all_group_admins():
+    from app.core.services.inventory import resolve_alert_recipients
+    session = AsyncMock()
+    mock_res = MagicMock()
+    mock_res.scalars.return_value.all.return_value = [111, 222, 333]
+    session.execute.return_value = mock_res
+
+    item = InventoryItem(chat_id=-1001, name="Bibs", alert_recipient_user_id=None)
+    recipients = await resolve_alert_recipients(session, item)
+    assert recipients == [111, 222, 333]
+
+
+@pytest.mark.asyncio
+async def test_send_item_alert_now_broadcasts_to_recipients():
+    from app.core.services.inventory import send_item_alert_now
+    now = datetime(2026, 11, 3, 12, 0, tzinfo=timezone.utc)
+    bot = MagicMock()
+    bot.send_message = AsyncMock()
+
+    item = InventoryItem(
+        id=7,
+        chat_id=-1001,
+        name="Match Ball #5",
+        category=InventoryCategory.BALLS,
+        quantity=3,
+        purchase_date=now - timedelta(days=400),
+        lifespan_days=365,
+        status=InventoryStatus.URGENT_PURCHASE,
+        alert_recipient_user_id=None,
+        last_alert_sent_at=None,
+    )
+    chat = Chat(chat_id=-1001, title="Prague Ballers", language="ru")
+
+    session = AsyncMock()
+    admin_mock = MagicMock()
+    admin_mock.scalars.return_value.all.return_value = [555, 777]
+    session.execute.return_value = admin_mock
+    session.get.return_value = chat
+
+    res = await send_item_alert_now(bot, session, item)
+    assert len(res) == 2
+    assert bot.send_message.call_count == 2
+    assert item.last_alert_sent_at is not None

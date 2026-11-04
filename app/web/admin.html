@@ -417,18 +417,18 @@
             <input type="hidden" id="inv-edit-id" value="">
             <div class="form-group" style="margin-bottom: 12px;">
                 <label data-i18n="lbl_item_name">Item Name</label>
-                <input type="text" id="inv-item-name" required placeholder="e.g. Orange bibs, Select Ball #5" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
+                <input type="text" id="inv-item-name" required data-i18n-ph="ph_inv_name" placeholder="e.g. Orange bibs, Select Ball #5" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
             </div>
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 12px;">
                 <div class="form-group">
                     <label data-i18n="lbl_item_cat">Category</label>
                     <select id="inv-item-category" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
-                        <option value="BIBS">🎽 Bibs</option>
-                        <option value="BALLS">⚽ Balls</option>
-                        <option value="MEDICAL">🩹 Medical</option>
-                        <option value="EQUIPMENT">🎒 Equipment</option>
-                        <option value="OTHER">📦 Other</option>
+                        <option value="BIBS" data-i18n="cat_opt_bibs">🎽 Bibs</option>
+                        <option value="BALLS" data-i18n="cat_opt_balls">⚽ Balls</option>
+                        <option value="MEDICAL" data-i18n="cat_opt_medical">🩹 Medical / Cold Spray</option>
+                        <option value="EQUIPMENT" data-i18n="cat_opt_equipment">🎒 Equipment / Cones / Pump</option>
+                        <option value="OTHER" data-i18n="cat_opt_other">📦 Other</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -444,27 +444,30 @@
                 </div>
                 <div class="form-group">
                     <label data-i18n="lbl_item_lifespan">Lifespan (days)</label>
-                    <input type="number" id="inv-item-lifespan" min="1" placeholder="e.g. 180" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
+                    <input type="number" id="inv-item-lifespan" min="1" placeholder="180" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
                 </div>
             </div>
 
             <!-- Lifespan presets -->
             <div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">
-                <button type="button" class="community-chip" style="font-size:0.75rem; padding:3px 8px;" onclick="setLifespanPreset(180)">6 mo (Bibs)</button>
-                <button type="button" class="community-chip" style="font-size:0.75rem; padding:3px 8px;" onclick="setLifespanPreset(365)">1 yr (Balls)</button>
-                <button type="button" class="community-chip" style="font-size:0.75rem; padding:3px 8px;" onclick="setLifespanPreset(90)">3 mo (Medical)</button>
-                <button type="button" class="community-chip" style="font-size:0.75rem; padding:3px 8px;" onclick="setLifespanPreset(null)">No expiry</button>
+                <button type="button" class="community-chip" style="font-size:0.75rem; padding:3px 8px;" onclick="setLifespanPreset(180)" data-i18n="preset_6m_bibs">6 mo (Bibs)</button>
+                <button type="button" class="community-chip" style="font-size:0.75rem; padding:3px 8px;" onclick="setLifespanPreset(365)" data-i18n="preset_1y_balls">1 yr (Balls)</button>
+                <button type="button" class="community-chip" style="font-size:0.75rem; padding:3px 8px;" onclick="setLifespanPreset(90)" data-i18n="preset_3m_med">3 mo (Medical)</button>
+                <button type="button" class="community-chip" style="font-size:0.75rem; padding:3px 8px;" onclick="setLifespanPreset(null)" data-i18n="preset_no_expiry">No expiry</button>
             </div>
 
             <div class="form-group" style="margin-bottom: 12px;">
                 <label data-i18n="lbl_item_notes">Notes / Location</label>
-                <input type="text" id="inv-item-notes" placeholder="e.g. Kept in big black bag, size 5" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
+                <input type="text" id="inv-item-notes" data-i18n-ph="ph_inv_notes" placeholder="e.g. Kept in big black bag, size 5" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
             </div>
 
             <div class="form-group" style="margin-bottom: 16px;">
-                <label data-i18n="lbl_item_recipient">Alert Recipient (Telegram ID)</label>
-                <input type="number" id="inv-item-recipient" placeholder="Leave empty for default admin" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
-                <small style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:3px;" data-i18n="help_item_recipient">If empty, alerts go to group admins or chat owner.</small>
+                <label data-i18n="lbl_item_recipient">Alert Recipient</label>
+                <select id="inv-item-recipient-select" onchange="onRecipientSelectChange(this)" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main); margin-bottom: 6px;">
+                    <option value="" data-i18n="opt_all_admins">👥 All Group Admins</option>
+                </select>
+                <input type="number" id="inv-item-recipient-custom" class="hidden" data-i18n-ph="ph_inv_custom_recipient" placeholder="Enter custom Telegram ID..." style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main); margin-top:4px;">
+                <small style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:3px;" data-i18n="help_item_recipient">If 'All Group Admins' is selected, alerts are sent to all group admins.</small>
             </div>
 
             <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px;">
@@ -616,7 +619,26 @@
             late_toggle_late: "Late",
             late_toggle_ontime: "On Time",
             modal_stat_lates: "Lates",
-            no_inventory_items: "No inventory items found. Click '+ Add Item' to start tracking equipment."
+            no_inventory_items: "No inventory items found. Click '+ Add Item' to start tracking equipment.",
+            cat_opt_bibs: "🎽 Bibs",
+            cat_opt_balls: "⚽ Balls",
+            cat_opt_medical: "🩹 Medical / Cold Spray",
+            cat_opt_equipment: "🎒 Equipment / Cones / Pump",
+            cat_opt_other: "📦 Other",
+            preset_6m_bibs: "6 mo (Bibs)",
+            preset_1y_balls: "1 yr (Balls)",
+            preset_3m_med: "3 mo (Medical)",
+            preset_no_expiry: "No expiry",
+            ph_inv_name: "e.g. Orange bibs, Select Ball #5",
+            ph_inv_notes: "e.g. Kept in big black bag, size 5",
+            ph_inv_custom_recipient: "Enter custom Telegram ID...",
+            lbl_item_recipient: "Alert Recipient",
+            opt_all_admins: "👥 All Group Admins",
+            opt_custom_recipient: "✏️ Other Telegram ID...",
+            help_item_recipient: "If 'All Group Admins' is selected, alerts are sent to all group admins.",
+            btn_send_alert: "Send Alert",
+            recipient_all_admins: "All group admins",
+            toast_single_alert_sent: "Alert delivered to {count} admin(s)!"
         },
         ru: {
             admin_hub: "Панель управления",
@@ -757,7 +779,26 @@
             late_toggle_late: "Опоздал",
             late_toggle_ontime: "Вовремя",
             modal_stat_lates: "Опоздания",
-            no_inventory_items: "Инвентарь пуст. Нажмите '+ Добавить', чтобы завести манишки, мячи или экипировку."
+            no_inventory_items: "Инвентарь пуст. Нажмите '+ Добавить', чтобы завести манишки, мячи или экипировку.",
+            cat_opt_bibs: "🎽 Манишки",
+            cat_opt_balls: "⚽ Мячи",
+            cat_opt_medical: "🩹 Аптечка / Заморозка",
+            cat_opt_equipment: "🎒 Инвентарь / Насос / Конусы",
+            cat_opt_other: "📦 Другое",
+            preset_6m_bibs: "6 мес (Манишки)",
+            preset_1y_balls: "1 год (Мячи)",
+            preset_3m_med: "3 мес (Аптечка)",
+            preset_no_expiry: "Без срока",
+            ph_inv_name: "напр. Оранжевые манишки, Мяч Select #5",
+            ph_inv_notes: "напр. В большой черной сумке, размер 5",
+            ph_inv_custom_recipient: "Введите Telegram ID...",
+            lbl_item_recipient: "Получатель алертов",
+            opt_all_admins: "👥 Все админы группы",
+            opt_custom_recipient: "✏️ Другой Telegram ID...",
+            help_item_recipient: "Если выбрано «Все админы группы», алерты придут каждому админу.",
+            btn_send_alert: "Алерт",
+            recipient_all_admins: "Все админы группы",
+            toast_single_alert_sent: "Алерт отправлен ({count} адм.)!"
         },
         cs: {
             admin_hub: "Správa skupin",
@@ -898,7 +939,26 @@
             late_toggle_late: "Zpoždění",
             late_toggle_ontime: "Včas",
             modal_stat_lates: "Zpoždění",
-            no_inventory_items: "Inventář je prázdný. Klikněte na '+ Přidat' pro evidenci vybavení."
+            no_inventory_items: "Inventář je prázdný. Klikněte na '+ Přidat' pro evidenci vybavení.",
+            cat_opt_bibs: "🎽 Rozlišováky",
+            cat_opt_balls: "⚽ Míče",
+            cat_opt_medical: "🩹 Lékárnička / Chladicí sprej",
+            cat_opt_equipment: "🎒 Vybavení / Pumpička / Kužely",
+            cat_opt_other: "📦 Ostatní",
+            preset_6m_bibs: "6 měs (Rozlišováky)",
+            preset_1y_balls: "1 rok (Míče)",
+            preset_3m_med: "3 měs (Lékárnička)",
+            preset_no_expiry: "Bez expirace",
+            ph_inv_name: "např. Oranžové rozlišováky, Míč Select #5",
+            ph_inv_notes: "např. Ve velkém černém vaku, velikost 5",
+            ph_inv_custom_recipient: "Zadejte Telegram ID...",
+            lbl_item_recipient: "Příjemce upozornění",
+            opt_all_admins: "👥 Všichni správci skupiny",
+            opt_custom_recipient: "✏️ Jiné Telegram ID...",
+            help_item_recipient: "Při volbě «Všichni správci» dostanou zprávu všichni správci skupiny.",
+            btn_send_alert: "Upozornění",
+            recipient_all_admins: "Všichni správci skupiny",
+            toast_single_alert_sent: "Upozornění odesláno ({count} správcům)!"
         }
     };
     window.ADMIN_I18N = ADMIN_I18N;
@@ -943,6 +1003,6 @@
     setAdminLang(adminCurrentLang);
 </script>
 
-<script src="js/admin.js?v=3.1.0"></script>
+<script src="js/admin.js?v=3.2.0"></script>
 </body>
 </html>
