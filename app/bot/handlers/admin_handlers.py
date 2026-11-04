@@ -89,13 +89,21 @@ async def cmd_dashboard(message: types.Message, session: AsyncSession, _=t):
             return
 
     try:
+        user_lang = _get_lang(message)
         webapp_url = f"{settings.webapp_url.rstrip('/')}/web/admin.html?v={settings.webapp_version}"
+        inv_url = f"{settings.webapp_url.rstrip('/')}/web/admin.html?tab=inventory&v={settings.webapp_version}"
         kb = types.InlineKeyboardMarkup(
             inline_keyboard=[
                 [
                     types.InlineKeyboardButton(
                         text=_("btn_open_dashboard"),
                         web_app=types.WebAppInfo(url=webapp_url),
+                    )
+                ],
+                [
+                    types.InlineKeyboardButton(
+                        text=t("btn_open_inventory", locale=user_lang),
+                        web_app=types.WebAppInfo(url=inv_url),
                     )
                 ]
             ]
@@ -105,6 +113,100 @@ async def cmd_dashboard(message: types.Message, session: AsyncSession, _=t):
     except Exception as e:
         logger.error(f"Dashboard Command Error: {e}")
         await message.answer(f"Error: {e}")
+
+
+@router.message(Command("inventory"))
+async def cmd_inventory(message: types.Message, session: AsyncSession):
+    user_lang = _get_lang(message)
+    user_id = message.from_user.id
+
+    from app.db.models import Chat, ChatAdmin, InventoryItem, InventoryStatus
+    from app.core.services.inventory import get_item_metrics
+    import html
+
+    # Check admin rights
+    is_global_admin = (user_id in settings.admin_ids or user_id == settings.system_owner_id)
+    
+    target_chat = None
+
+    if message.chat.type in ["group", "supergroup"]:
+        # In a group chat
+        res = await session.execute(
+            select(ChatAdmin).where(ChatAdmin.chat_id == message.chat.id, ChatAdmin.user_id == user_id)
+        )
+        is_chat_admin = res.first() is not None
+        if not (is_global_admin or is_chat_admin):
+            return
+        target_chat = await session.get(Chat, message.chat.id)
+        if not target_chat:
+            target_chat = Chat(chat_id=message.chat.id, title=message.chat.title or "Unknown Chat")
+            session.add(target_chat)
+            await session.commit()
+    else:
+        # In private chat: find groups managed by user
+        if is_global_admin:
+            res = await session.execute(select(Chat))
+            chats = res.scalars().all()
+        else:
+            res = await session.execute(
+                select(Chat).join(ChatAdmin, Chat.chat_id == ChatAdmin.chat_id).where(ChatAdmin.user_id == user_id)
+            )
+            chats = res.scalars().all()
+
+        if not chats:
+            await message.answer(t("no_managed_groups", locale=user_lang))
+            return
+        
+        target_chat = chats[0]
+
+    # Load inventory items for target_chat
+    res = await session.execute(
+        select(InventoryItem).where(InventoryItem.chat_id == target_chat.chat_id).order_by(InventoryItem.id)
+    )
+    raw_items = res.scalars().all()
+
+    items = [get_item_metrics(item) for item in raw_items]
+    in_stock = [it for it in items if it["status"] == InventoryStatus.IN_STOCK.value]
+    replace_soon = [it for it in items if it["status"] == InventoryStatus.REPLACE_SOON.value]
+    urgent = [it for it in items if it["status"] == InventoryStatus.URGENT_PURCHASE.value]
+
+    group_title = html.escape(target_chat.title or "Group")
+    inv_title = t("inventory_title", locale=user_lang)
+
+    text = f"🎒 <b>{group_title} — {inv_title}</b>\n\n"
+    text += f"📊 <b>{t('inventory_summary', locale=user_lang)}:</b>\n"
+    text += f"🟢 {t('status_in_stock', locale=user_lang)}: <b>{len(in_stock)}</b>\n"
+    text += f"🟡 {t('status_replace_soon', locale=user_lang)}: <b>{len(replace_soon)}</b>\n"
+    text += f"🔴 {t('status_urgent_purchase', locale=user_lang)}: <b>{len(urgent)}</b>\n\n"
+
+    if urgent or replace_soon:
+        text += f"⚠️ <b>{t('inventory_needs_attention', locale=user_lang)}:</b>\n"
+        for it in urgent:
+            text += f"• 🔴 <b>{html.escape(it['name'])}</b> (x{it['quantity']}) — {t('status_urgent_purchase', locale=user_lang)}\n"
+        for it in replace_soon:
+            days = it.get('days_left', 0)
+            text += f"• 🟡 <b>{html.escape(it['name'])}</b> (x{it['quantity']}) — {days} {t('lbl_days_left', locale=user_lang, default='дн. осталось')}\n"
+        text += "\n"
+    elif not items:
+        text += f"<i>{t('no_inventory_items', locale=user_lang)}</i>\n\n"
+    else:
+        text += f"✨ <i>{t('all_equipment_ok', locale=user_lang)}</i>\n\n"
+
+    text += f"💡 <i>{t('manage_inventory_hint', locale=user_lang)}</i>"
+
+    webapp_url = f"{settings.webapp_url.rstrip('/')}/web/admin.html?tab=inventory&chat_id={target_chat.chat_id}&v={settings.webapp_version}"
+    kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text=t("btn_open_inventory", locale=user_lang),
+                    web_app=types.WebAppInfo(url=webapp_url),
+                )
+            ]
+        ]
+    )
+
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.message(Command("force_refresh"))

@@ -364,5 +364,16 @@
   "inventory_alert_soon": "⚠️ <b>Upozornění na vybavení — Blíží se výměna</b>\n\n📌 <b>Skupina:</b> {group_title}\n🎒 <b>Položka:</b> {item_name} ({category})\n📦 <b>Množství:</b> {quantity}\n⏳ <b>Zbývá dní:</b> {days_left}\n📝 <b>Poznámky:</b> {notes}\n\n👉 <i>Naplánujte nákup předem v administraci.</i>",
   "pre_game_reminder_t3h": "⏰ <b>Zápas za 3 hodiny!</b>\n\n👥 <b>Základní sestava ({count}):</b>\n{mentions}\n\n📍 <b>Místo:</b> {location}\n⏳ <b>Výkop:</b> {kickoff_time}\n\n⚠️ <b>Důležité informace:</b>\n• Sraz v <b>{warmup_time}</b> (20 minut před výkopem) na rozcvičku a losování týmů.\n• Naplánujte si prosím cestu včas. Respektujte svůj čas i čas ostatních.",
   "late_stat_label": "Zpoždění",
-  "late_toggle_label": "Označit zpoždění"
+  "late_toggle_label": "Označit zpoždění",
+  "btn_open_inventory": "🎒 Vybavení a inventář",
+  "inventory_title": "Vybavení a inventář",
+  "inventory_summary": "Stav vybavení",
+  "status_in_stock": "Skladem",
+  "status_replace_soon": "Brzy vyměnit",
+  "status_urgent_purchase": "Nutno koupit",
+  "inventory_needs_attention": "Vyžaduje pozornost",
+  "all_equipment_ok": "Veškeré vybavení je v dobrém stavu.",
+  "manage_inventory_hint": "Otevřete WebApp níže pro přidání, úpravu nebo obnovu položek.",
+  "no_inventory_items": "Zatím není zaevidováno žádné vybavení.",
+  "no_managed_groups": "Nebyly nalezeny žádné spravované skupiny."
 }

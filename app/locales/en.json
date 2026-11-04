@@ -364,5 +364,16 @@
   "inventory_alert_soon": "⚠️ <b>Inventory Notice — Replacement Approaching</b>\n\n📌 <b>Group:</b> {group_title}\n🎒 <b>Item:</b> {item_name} ({category})\n📦 <b>Quantity:</b> {quantity}\n⏳ <b>Days Remaining:</b> {days_left} days\n📝 <b>Notes:</b> {notes}\n\n👉 <i>Plan your equipment purchase ahead in the Admin Dashboard.</i>",
   "pre_game_reminder_t3h": "⏰ <b>Match in 3 hours!</b>\n\n👥 <b>Active Squad ({count}):</b>\n{mentions}\n\n📍 <b>Location:</b> {location}\n⏳ <b>Kickoff:</b> {kickoff_time}\n\n⚠️ <b>Important:</b>\n• Gathering at <b>{warmup_time}</b> (20 minutes before kickoff) for warm-up and team draw.\n• Please plan your route in advance. Respect your own and others' time.",
   "late_stat_label": "Late arrivals",
-  "late_toggle_label": "Mark as Late"
+  "late_toggle_label": "Mark as Late",
+  "btn_open_inventory": "🎒 Inventory & Equipment",
+  "inventory_title": "Inventory & Equipment",
+  "inventory_summary": "Equipment Status",
+  "status_in_stock": "In Stock",
+  "status_replace_soon": "Needs Replacement Soon",
+  "status_urgent_purchase": "Urgent Buy Needed",
+  "inventory_needs_attention": "Needs Attention",
+  "all_equipment_ok": "All equipment is in good condition.",
+  "manage_inventory_hint": "Open the WebApp below to add, edit or renew inventory.",
+  "no_inventory_items": "No equipment registered yet. Click below to add items.",
+  "no_managed_groups": "No managed groups found for your account."
 }

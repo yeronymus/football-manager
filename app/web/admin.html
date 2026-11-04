@@ -54,6 +54,9 @@
                         <button class="group-tab-btn" id="tab-group-community" onclick="switchGroupTab('community')">
                             👥 <span data-i18n="tab_group_community">Squad & Activity</span>
                         </button>
+                        <button class="group-tab-btn" id="tab-group-inventory" onclick="switchGroupTab('inventory')">
+                            🎒 <span data-i18n="tab_group_inventory">Inventory</span>
+                        </button>
                         <button class="group-tab-btn" id="tab-group-settings" onclick="switchGroupTab('settings')">
                             ⚙️ <span data-i18n="tab_group_settings">Settings</span>
                         </button>
@@ -105,6 +108,73 @@
 
                         <!-- Player List -->
                         <div id="community-players-list">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+
+                    <!-- Inventory & Equipment View -->
+                    <div id="group-inventory-container" class="hidden">
+                        <!-- Inventory Header / Actions -->
+                        <div class="inventory-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+                            <div>
+                                <h3 style="margin:0; font-size:1.15rem;" data-i18n="inventory_title">Equipment & Inventory</h3>
+                                <p style="margin:2px 0 0 0; font-size:0.8rem; color:var(--text-muted);" data-i18n="inventory_desc">Track equipment lifespans, wear, and restock alerts</p>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="action-btn outline" onclick="triggerInventoryAlerts()" style="padding:6px 12px; font-size:0.8rem;" title="Send alert notifications for expiring items">
+                                    🔔 <span data-i18n="btn_check_alerts">Check Alerts</span>
+                                </button>
+                                <button class="action-btn primary" onclick="openAddInventoryModal()" style="padding:6px 12px; font-size:0.8rem;">
+                                    ➕ <span data-i18n="btn_add_item">Add Item</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- KPI Cards -->
+                        <div class="kpi-grid">
+                            <div class="kpi-card active" id="kpi-inv-all" onclick="filterInventoryStatus('ALL')">
+                                <div class="kpi-value" id="kpi-inv-total-val">0</div>
+                                <div class="kpi-label" data-i18n="kpi_inv_total">Total Items</div>
+                                <div class="kpi-sub" data-i18n="kpi_inv_all_sub">in group registry</div>
+                            </div>
+                            <div class="kpi-card" id="kpi-inv-soon" onclick="filterInventoryStatus('REPLACE_SOON')">
+                                <div class="kpi-value" id="kpi-inv-soon-val" style="color: #facc15;">0</div>
+                                <div class="kpi-label" data-i18n="kpi_inv_soon">Replace Soon</div>
+                                <div class="kpi-sub" data-i18n="kpi_inv_soon_sub">&lt; 30 days left</div>
+                            </div>
+                            <div class="kpi-card" id="kpi-inv-urgent" onclick="filterInventoryStatus('URGENT_PURCHASE')">
+                                <div class="kpi-value" id="kpi-inv-urgent-val" style="color: #f87171;">0</div>
+                                <div class="kpi-label" data-i18n="kpi_inv_urgent">Urgent Buy</div>
+                                <div class="kpi-sub" data-i18n="kpi_inv_urgent_sub">expired / out</div>
+                            </div>
+                        </div>
+
+                        <!-- Category Filter Chips -->
+                        <div class="community-filter-bar" style="margin-top:14px;">
+                            <div class="community-chips" id="inventory-category-chips">
+                                <button class="community-chip active" id="chip-inv-ALL" onclick="filterInventoryCategory('ALL')">
+                                    <span data-i18n="chip_inv_all">All</span>
+                                </button>
+                                <button class="community-chip" id="chip-inv-BIBS" onclick="filterInventoryCategory('BIBS')">
+                                    🎽 <span data-i18n="cat_bibs">Bibs</span>
+                                </button>
+                                <button class="community-chip" id="chip-inv-BALLS" onclick="filterInventoryCategory('BALLS')">
+                                    ⚽ <span data-i18n="cat_balls">Balls</span>
+                                </button>
+                                <button class="community-chip" id="chip-inv-MEDICAL" onclick="filterInventoryCategory('MEDICAL')">
+                                    🩹 <span data-i18n="cat_medical">Medical</span>
+                                </button>
+                                <button class="community-chip" id="chip-inv-EQUIPMENT" onclick="filterInventoryCategory('EQUIPMENT')">
+                                    🎒 <span data-i18n="cat_equipment">Equipment</span>
+                                </button>
+                                <button class="community-chip" id="chip-inv-OTHER" onclick="filterInventoryCategory('OTHER')">
+                                    📦 <span data-i18n="cat_other">Other</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Items List -->
+                        <div id="inventory-items-list" style="margin-top:16px;">
                             <div class="loading-spinner"></div>
                         </div>
                     </div>
@@ -294,7 +364,7 @@
         </div>
 
         <!-- Stats Grid -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 18px; text-align: center;">
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 18px; text-align: center;">
             <div style="background: rgba(255,255,255,0.03); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color);">
                 <div id="modal-stat-rating" style="font-size: 1.1rem; font-weight: 700; color: #60a5fa;">100</div>
                 <div data-i18n="modal_stat_rating" style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Rating</div>
@@ -310,6 +380,10 @@
             <div style="background: rgba(255,255,255,0.03); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color);">
                 <div id="modal-stat-mvp" style="font-size: 1.1rem; font-weight: 700; color: #fbbf24;">0</div>
                 <div data-i18n="modal_stat_mvp" style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">MVP</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div id="modal-stat-lates" style="font-size: 1.1rem; font-weight: 700; color: #f87171;">0</div>
+                <div data-i18n="modal_stat_lates" style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Lates</div>
             </div>
         </div>
 
@@ -328,6 +402,76 @@
                 ✉️ <span data-i18n="btn_message_tg">Message in Telegram</span>
             </a>
         </div>
+    </div>
+</div>
+
+<!-- Inventory Item Modal (Add / Edit) -->
+<div id="inventory-modal" class="player-modal-backdrop hidden" onclick="closeInventoryModal(event)">
+    <div class="player-modal-content" onclick="event.stopPropagation()">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+            <h3 id="inv-modal-title" style="margin: 0; font-size: 1.2rem;" data-i18n="modal_add_item_title">Add Inventory Item</h3>
+            <button class="action-btn outline" onclick="closeInventoryModalDirect()" style="padding: 4px 8px; font-size: 0.9rem; line-height: 1;">✕</button>
+        </div>
+
+        <form id="inventory-item-form" onsubmit="submitInventoryForm(event)">
+            <input type="hidden" id="inv-edit-id" value="">
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label data-i18n="lbl_item_name">Item Name</label>
+                <input type="text" id="inv-item-name" required placeholder="e.g. Orange bibs, Select Ball #5" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 12px;">
+                <div class="form-group">
+                    <label data-i18n="lbl_item_cat">Category</label>
+                    <select id="inv-item-category" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
+                        <option value="BIBS">🎽 Bibs</option>
+                        <option value="BALLS">⚽ Balls</option>
+                        <option value="MEDICAL">🩹 Medical</option>
+                        <option value="EQUIPMENT">🎒 Equipment</option>
+                        <option value="OTHER">📦 Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="lbl_item_qty">Quantity</label>
+                    <input type="number" id="inv-item-quantity" min="1" value="1" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 12px;">
+                <div class="form-group">
+                    <label data-i18n="lbl_item_date">Purchase Date</label>
+                    <input type="date" id="inv-item-purchase-date" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="lbl_item_lifespan">Lifespan (days)</label>
+                    <input type="number" id="inv-item-lifespan" min="1" placeholder="e.g. 180" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
+                </div>
+            </div>
+
+            <!-- Lifespan presets -->
+            <div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">
+                <button type="button" class="community-chip" style="font-size:0.75rem; padding:3px 8px;" onclick="setLifespanPreset(180)">6 mo (Bibs)</button>
+                <button type="button" class="community-chip" style="font-size:0.75rem; padding:3px 8px;" onclick="setLifespanPreset(365)">1 yr (Balls)</button>
+                <button type="button" class="community-chip" style="font-size:0.75rem; padding:3px 8px;" onclick="setLifespanPreset(90)">3 mo (Medical)</button>
+                <button type="button" class="community-chip" style="font-size:0.75rem; padding:3px 8px;" onclick="setLifespanPreset(null)">No expiry</button>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label data-i18n="lbl_item_notes">Notes / Location</label>
+                <input type="text" id="inv-item-notes" placeholder="e.g. Kept in big black bag, size 5" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label data-i18n="lbl_item_recipient">Alert Recipient (Telegram ID)</label>
+                <input type="number" id="inv-item-recipient" placeholder="Leave empty for default admin" style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-main);">
+                <small style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:3px;" data-i18n="help_item_recipient">If empty, alerts go to group admins or chat owner.</small>
+            </div>
+
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px;">
+                <button type="button" class="action-btn outline" onclick="closeInventoryModalDirect()" data-i18n="btn_cancel">Cancel</button>
+                <button type="submit" class="action-btn primary" id="btn-save-inventory" data-i18n="btn_save">Save</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -420,7 +564,59 @@
             stat_in_4w: "in 4w",
             stat_days_ago: "{days} days ago",
             stat_never_played: "Never played",
-            free_corporate_paid_label: "Corporate Free"
+            free_corporate_paid_label: "Corporate Free",
+            tab_group_inventory: "Inventory",
+            inventory_title: "Equipment & Inventory",
+            inventory_desc: "Track equipment lifespans, wear, and restock alerts",
+            btn_check_alerts: "Check Alerts",
+            btn_add_item: "Add Item",
+            kpi_inv_total: "Total Items",
+            kpi_inv_all_sub: "in registry",
+            kpi_inv_soon: "Replace Soon",
+            kpi_inv_soon_sub: "< 30 days left",
+            kpi_inv_urgent: "Urgent Buy",
+            kpi_inv_urgent_sub: "expired / out",
+            chip_inv_all: "All",
+            cat_bibs: "Bibs",
+            cat_balls: "Balls",
+            cat_medical: "Medical",
+            cat_equipment: "Equipment",
+            cat_other: "Other",
+            status_in_stock: "In Stock",
+            status_replace_soon: "Replace Soon",
+            status_urgent_purchase: "Urgent Buy",
+            lbl_purchased_date: "Purchased",
+            lbl_lifespan: "Lifespan",
+            lbl_days_left: "days left",
+            lbl_expired: "expired {days}d ago",
+            lbl_no_lifespan: "Unlimited lifespan",
+            lbl_days_used: "{used} of {total} days",
+            btn_mark_purchased: "Restocked / Bought",
+            btn_edit_item: "Edit",
+            btn_delete_item: "Delete",
+            modal_add_item_title: "Add Inventory Item",
+            modal_edit_item_title: "Edit Inventory Item",
+            lbl_item_name: "Item Name",
+            lbl_item_cat: "Category",
+            lbl_item_qty: "Quantity",
+            lbl_item_date: "Purchase Date",
+            lbl_item_lifespan: "Lifespan (days)",
+            lbl_item_notes: "Notes / Storage",
+            lbl_item_recipient: "Alert Recipient (Telegram ID)",
+            help_item_recipient: "Leave empty to alert chat admins.",
+            btn_cancel: "Cancel",
+            btn_save: "Save",
+            toast_item_saved: "Item saved successfully!",
+            toast_item_deleted: "Item deleted!",
+            toast_item_purchased: "Item renewed & wear reset!",
+            toast_alerts_sent: "Alert check complete. {count} alerts sent.",
+            confirm_delete_item: "Are you sure you want to delete {name}?",
+            confirm_mark_purchased: "Mark {name} as newly purchased/renewed today?",
+            late_toggle_label: "Late Arrival Tracker",
+            late_toggle_late: "Late",
+            late_toggle_ontime: "On Time",
+            modal_stat_lates: "Lates",
+            no_inventory_items: "No inventory items found. Click '+ Add Item' to start tracking equipment."
         },
         ru: {
             admin_hub: "Панель управления",
@@ -509,7 +705,59 @@
             stat_in_4w: "за 4нед",
             stat_days_ago: "{days} дн. назад",
             stat_never_played: "Не играл",
-            free_corporate_paid_label: "Бесплатно (Корпоратив)"
+            free_corporate_paid_label: "Бесплатно (Корпоратив)",
+            tab_group_inventory: "Инвентарь",
+            inventory_title: "Инвентарь и экипировка",
+            inventory_desc: "Учет срока службы манишек, мячей, аптечки и алерты",
+            btn_check_alerts: "Проверить алерты",
+            btn_add_item: "Добавить",
+            kpi_inv_total: "Всего позиций",
+            kpi_inv_all_sub: "в реестре группы",
+            kpi_inv_soon: "Скоро купить",
+            kpi_inv_soon_sub: "< 30 дней осталось",
+            kpi_inv_urgent: "Срочно купить",
+            kpi_inv_urgent_sub: "истёк срок / нет",
+            chip_inv_all: "Все",
+            cat_bibs: "Манишки",
+            cat_balls: "Мячи",
+            cat_medical: "Аптечка",
+            cat_equipment: "Инвентарь",
+            cat_other: "Прочее",
+            status_in_stock: "В наличии",
+            status_replace_soon: "Скоро обновить",
+            status_urgent_purchase: "Срочно купить",
+            lbl_purchased_date: "Куплено",
+            lbl_lifespan: "Срок службы",
+            lbl_days_left: "дн. осталось",
+            lbl_expired: "истёк {days} дн. назад",
+            lbl_no_lifespan: "Без ограничения срока",
+            lbl_days_used: "{used} из {total} дн.",
+            btn_mark_purchased: "Куплено / Обновить",
+            btn_edit_item: "Изменить",
+            btn_delete_item: "Удалить",
+            modal_add_item_title: "Новый предмет инвентаря",
+            modal_edit_item_title: "Редактировать предмет",
+            lbl_item_name: "Название предмета",
+            lbl_item_cat: "Категория",
+            lbl_item_qty: "Количество",
+            lbl_item_date: "Дата покупки",
+            lbl_item_lifespan: "Срок службы (дней)",
+            lbl_item_notes: "Заметки / Где хранится",
+            lbl_item_recipient: "Получатель алертов (Telegram ID)",
+            help_item_recipient: "Оставьте пустым для отправки админам группы.",
+            btn_cancel: "Отмена",
+            btn_save: "Сохранить",
+            toast_item_saved: "Предмет успешно сохранён!",
+            toast_item_deleted: "Предмет удалён!",
+            toast_item_purchased: "Срок службы обновлён (куплено заново)!",
+            toast_alerts_sent: "Проверка завершена. Отправлено алертов: {count}",
+            confirm_delete_item: "Удалить предмет {name} из реестра?",
+            confirm_mark_purchased: "Отметить {name} как купленный заново сегодняшним днём?",
+            late_toggle_label: "Трекер опоздания",
+            late_toggle_late: "Опоздал",
+            late_toggle_ontime: "Вовремя",
+            modal_stat_lates: "Опоздания",
+            no_inventory_items: "Инвентарь пуст. Нажмите '+ Добавить', чтобы завести манишки, мячи или экипировку."
         },
         cs: {
             admin_hub: "Správa skupin",
@@ -598,7 +846,59 @@
             stat_in_4w: "za 4t",
             stat_days_ago: "před {days} dny",
             stat_never_played: "Nehrál",
-            free_corporate_paid_label: "Zdarma (Firemní)"
+            free_corporate_paid_label: "Zdarma (Firemní)",
+            tab_group_inventory: "Inventář",
+            inventory_title: "Vybavení a inventář",
+            inventory_desc: "Sledování životnosti dresů, míčů, lékárničky a nákupní upozornění",
+            btn_check_alerts: "Zkontrolovat",
+            btn_add_item: "Přidat",
+            kpi_inv_total: "Celkem položek",
+            kpi_inv_all_sub: "v evidenci skupiny",
+            kpi_inv_soon: "Brzy koupit",
+            kpi_inv_soon_sub: "< 30 dní zbývá",
+            kpi_inv_urgent: "Nutno koupit",
+            kpi_inv_urgent_sub: "vypršelo / chybí",
+            chip_inv_all: "Vše",
+            cat_bibs: "Rozlišováky",
+            cat_balls: "Míče",
+            cat_medical: "Lékárnička",
+            cat_equipment: "Vybavení",
+            cat_other: "Ostatní",
+            status_in_stock: "Skladem",
+            status_replace_soon: "Brzy vyměnit",
+            status_urgent_purchase: "Nutno koupit",
+            lbl_purchased_date: "Zakoupeno",
+            lbl_lifespan: "Životnost",
+            lbl_days_left: "dní zbývá",
+            lbl_expired: "vypršelo před {days} dny",
+            lbl_no_lifespan: "Bez omezení životnosti",
+            lbl_days_used: "{used} z {total} dní",
+            btn_mark_purchased: "Koupeno / Obnovit",
+            btn_edit_item: "Upravit",
+            btn_delete_item: "Smazat",
+            modal_add_item_title: "Nová položka inventáře",
+            modal_edit_item_title: "Upravit položku",
+            lbl_item_name: "Název položky",
+            lbl_item_cat: "Kategorie",
+            lbl_item_qty: "Množství",
+            lbl_item_date: "Datum zakoupení",
+            lbl_item_lifespan: "Životnost (dny)",
+            lbl_item_notes: "Poznámky / Umístění",
+            lbl_item_recipient: "Příjemce upozornění (Telegram ID)",
+            help_item_recipient: "Ponechte prázdné pro upozornění správců skupiny.",
+            btn_cancel: "Zrušit",
+            btn_save: "Uložit",
+            toast_item_saved: "Položka byla úspěšně uložena!",
+            toast_item_deleted: "Položka byla smazána!",
+            toast_item_purchased: "Životnost byla obnovena (znovu zakoupeno)!",
+            toast_alerts_sent: "Kontrola dokončena. Odesláno upozornění: {count}",
+            confirm_delete_item: "Opravdu chcete smazat {name}?",
+            confirm_mark_purchased: "Označit {name} jako nově zakoupené k dnešnímu dni?",
+            late_toggle_label: "Sledování pozdních příchodů",
+            late_toggle_late: "Zpoždění",
+            late_toggle_ontime: "Včas",
+            modal_stat_lates: "Zpoždění",
+            no_inventory_items: "Inventář je prázdný. Klikněte na '+ Přidat' pro evidenci vybavení."
         }
     };
     window.ADMIN_I18N = ADMIN_I18N;

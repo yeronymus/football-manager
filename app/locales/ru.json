@@ -364,5 +364,16 @@
   "inventory_alert_soon": "⚠️ <b>Напоминание по экипировке — Скоро нужно обновить</b>\n\n📌 <b>Группа:</b> {group_title}\n🎒 <b>Предмет:</b> {item_name} ({category})\n📦 <b>Количество:</b> {quantity}\n⏳ <b>Осталось дней:</b> {days_left}\n📝 <b>Заметки:</b> {notes}\n\n👉 <i>Запланируйте покупку заранее через панель администратора.</i>",
   "pre_game_reminder_t3h": "⏰ <b>Матч через 3 часа!</b>\n\n👥 <b>Основной состав ({count}):</b>\n{mentions}\n\n📍 <b>Локация:</b> {location}\n⏳ <b>Начало игры:</b> {kickoff_time}\n\n⚠️ <b>Важная информация:</b>\n• Сбор в <b>{warmup_time}</b> (за 20 минут до начала) для разминки и жеребьёвки.\n• Пожалуйста, спланируйте маршрут заранее. Уважайте своё и чужое время.",
   "late_stat_label": "Опоздания",
-  "late_toggle_label": "Отметить опоздание"
+  "late_toggle_label": "Отметить опоздание",
+  "btn_open_inventory": "🎒 Инвентарь и экипировка",
+  "inventory_title": "Инвентарь и экипировка",
+  "inventory_summary": "Статус экипировки",
+  "status_in_stock": "В наличии",
+  "status_replace_soon": "Скоро обновить",
+  "status_urgent_purchase": "Срочно купить",
+  "inventory_needs_attention": "Требуют внимания",
+  "all_equipment_ok": "Вся экипировка в хорошем состоянии.",
+  "manage_inventory_hint": "Откройте WebApp по кнопке ниже, чтобы добавить, изменить или обновить предметы.",
+  "no_inventory_items": "Инвентарь пока не заполнен. Нажмите кнопку ниже для добавления.",
+  "no_managed_groups": "У вас нет групп под управлением."
 }

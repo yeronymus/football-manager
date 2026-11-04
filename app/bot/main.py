@@ -111,12 +111,15 @@ async def start_bot():
     # Admin-only commands (appended to user commands)
     admin_commands_en = user_commands_en + [
         types.BotCommand(command="dashboard", description="🛠 Dashboard"),
+        types.BotCommand(command="inventory", description="🎒 Equipment & Inventory"),
     ]
     admin_commands_ru = user_commands_ru + [
         types.BotCommand(command="dashboard", description="🛠 Панель управления"),
+        types.BotCommand(command="inventory", description="🎒 Инвентарь и экипировка"),
     ]
     admin_commands_cs = user_commands_cs + [
         types.BotCommand(command="dashboard", description="🛠 Správa"),
+        types.BotCommand(command="inventory", description="🎒 Vybavení a inventář"),
     ]
 
     # Group commands

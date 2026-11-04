@@ -126,7 +126,7 @@ async function apiCall(endpoint, optionsOrMethod = {}, maybeBody = undefined) {
         fetchOptions = { ...(optionsOrMethod || {}) };
     }
     
-    const url = `/api/dashboard${endpoint}`;
+    let url = endpoint.startsWith('/api/') ? endpoint : `/api/dashboard${endpoint}`;
     try {
         const response = await fetch(url, { ...fetchOptions, headers });
         if (!response.ok) {
@@ -225,7 +225,12 @@ async function loadGroupGames(group) {
     switchView('view-group');
     
     document.getElementById('group-title').textContent = group.title;
-    switchGroupTab('games');
+    const urlTab = (new URLSearchParams(window.location.search)).get('tab');
+    if (urlTab === 'inventory') {
+        switchGroupTab('inventory');
+    } else {
+        switchGroupTab('games');
+    }
     
     // Normalize language ('cz' -> 'cs', universal default 'en')
     const rawLang = String(group.language || 'en').toLowerCase();
@@ -421,13 +426,19 @@ async function loadGameDetails(gameId) {
                 const payToggleBtn = isFreeCorporate
                     ? ''
                     : `<button class="payment-toggle ${btnClass}" onclick="togglePayment(${p.signup_id}, this, ${gameId})">${btnText}</button>`;
-                
+
+                const isLate = !!p.is_late;
+                const lateBtnClass = isLate ? 'late-active' : 'late-inactive';
+                const lateBtnText = isLate ? getAdminText('late_toggle_late', 'Опоздал') : getAdminText('late_toggle_ontime', 'Вовремя');
+                const lateToggleBtn = `<button class="action-btn outline late-btn ${lateBtnClass}" onclick="toggleLate(${p.signup_id}, this, ${gameId})" title="${getAdminText('late_toggle_label', 'Отметить опоздание')}">⏱️ <span>${lateBtnText}</span></button>`;
+
                 el.innerHTML = `
                     <div class="player-info">
                         <span class="player-name">${p.full_name} <div style="font-size:0.8rem; margin-left: 6px;">${statsHtml}</div></span>
                         <div class="player-meta" id="notify-meta-${p.user_id}">${notifyBadgeHtml}</div>
                     </div>
-                    <div class="player-actions" style="display: flex; align-items: center;">
+                    <div class="player-actions" style="display: flex; align-items: center; gap: 4px;">
+                        ${lateToggleBtn}
                         ${notifyBtn}
                         ${payToggleBtn}
                         ${removeBtn}
@@ -964,13 +975,17 @@ function switchGroupTab(tab) {
     const gamesEl = document.getElementById('games-list');
     const commEl = document.getElementById('group-community-container');
     const settEl = document.getElementById('group-settings-container');
+    const invEl = document.getElementById('group-inventory-container');
     
     if (gamesEl) gamesEl.classList.toggle('hidden', tab !== 'games');
     if (commEl) commEl.classList.toggle('hidden', tab !== 'community');
     if (settEl) settEl.classList.toggle('hidden', tab !== 'settings');
+    if (invEl) invEl.classList.toggle('hidden', tab !== 'inventory');
     
     if (tab === 'community' && currentGroupId) {
         loadGroupCommunity(currentGroupId);
+    } else if (tab === 'inventory' && currentGroupId) {
+        loadGroupInventory(currentGroupId);
     }
 }
 
@@ -1136,6 +1151,12 @@ async function openPlayerModal(userId) {
         document.getElementById('modal-stat-games').textContent = data.total_games;
         document.getElementById('modal-stat-goals').textContent = data.total_goals;
         document.getElementById('modal-stat-mvp').textContent = data.total_mvps;
+        const lateStatEl = document.getElementById('modal-stat-lates');
+        if (lateStatEl) {
+            const lates = data.total_lates || 0;
+            const pct = data.total_games > 0 ? Math.round(data.late_percentage || 0) : 0;
+            lateStatEl.textContent = data.total_games > 0 ? `${lates} (${pct}%)` : '0';
+        }
         
         const tgLink = document.getElementById('modal-tg-link');
         if (tgLink) {
@@ -1333,5 +1354,333 @@ function closePlayerModalDirect() {
 function closePlayerModal(e) {
     if (e.target && e.target.id === 'player-profile-modal') {
         closePlayerModalDirect();
+    }
+}
+
+// -------------------------------------------------------------
+// Late Arrival Tracking
+// -------------------------------------------------------------
+async function toggleLate(signupId, btnEl, gameId) {
+    try {
+        btnEl.disabled = true;
+        const res = await apiCall(`/signups/${signupId}/toggle_late`, 'POST');
+        const isLate = !!res.is_late;
+        btnEl.classList.toggle('late-active', isLate);
+        btnEl.classList.toggle('late-inactive', !isLate);
+        const span = btnEl.querySelector('span');
+        if (span) {
+            span.textContent = isLate ? getAdminText('late_toggle_late', 'Опоздал') : getAdminText('late_toggle_ontime', 'Вовремя');
+        }
+    } catch (err) {
+        showAdminToast('Failed to toggle late status: ' + err.message);
+    } finally {
+        btnEl.disabled = false;
+    }
+}
+
+// -------------------------------------------------------------
+// Inventory & Equipment Management
+// -------------------------------------------------------------
+let currentInventoryItems = [];
+let currentInventoryCategory = 'ALL';
+let currentInventoryStatusFilter = 'ALL';
+
+function getCategoryIcon(cat) {
+    switch (cat) {
+        case 'BIBS': return '🎽';
+        case 'BALLS': return '⚽';
+        case 'MEDICAL': return '🩹';
+        case 'EQUIPMENT': return '🎒';
+        default: return '📦';
+    }
+}
+
+async function loadGroupInventory(chatId) {
+    const listEl = document.getElementById('inventory-items-list');
+    if (listEl) listEl.innerHTML = '<div class="loading-spinner"></div>';
+    
+    try {
+        const data = await apiCall(`/groups/${chatId}/inventory`);
+        currentInventoryItems = (data && data.items) || [];
+        
+        // Update KPI cards
+        const totalEl = document.getElementById('kpi-inv-total-val');
+        const soonEl = document.getElementById('kpi-inv-soon-val');
+        const urgentEl = document.getElementById('kpi-inv-urgent-val');
+        if (totalEl) totalEl.textContent = data.total_count || 0;
+        if (soonEl) soonEl.textContent = data.warning_count || 0;
+        if (urgentEl) urgentEl.textContent = data.urgent_count || 0;
+        
+        renderInventoryItems();
+    } catch (e) {
+        if (listEl) {
+            listEl.innerHTML = `<p style="text-align:center;color:var(--danger);padding:30px">Failed to load inventory: ${escapeHtml(e.message)}</p>`;
+        }
+    }
+}
+
+function filterInventoryCategory(cat) {
+    currentInventoryCategory = cat;
+    document.querySelectorAll('#inventory-category-chips .community-chip').forEach(c => c.classList.remove('active'));
+    const chip = document.getElementById(`chip-inv-${cat}`);
+    if (chip) chip.classList.add('active');
+    renderInventoryItems();
+}
+
+function filterInventoryStatus(status) {
+    currentInventoryStatusFilter = (currentInventoryStatusFilter === status && status !== 'ALL') ? 'ALL' : status;
+    document.querySelectorAll('#group-inventory-container .kpi-card').forEach(c => c.classList.remove('active'));
+    if (currentInventoryStatusFilter === 'REPLACE_SOON') {
+        const c = document.getElementById('kpi-inv-soon');
+        if (c) c.classList.add('active');
+    } else if (currentInventoryStatusFilter === 'URGENT_PURCHASE') {
+        const c = document.getElementById('kpi-inv-urgent');
+        if (c) c.classList.add('active');
+    } else {
+        const c = document.getElementById('kpi-inv-all');
+        if (c) c.classList.add('active');
+    }
+    renderInventoryItems();
+}
+
+function renderInventoryItems() {
+    const listEl = document.getElementById('inventory-items-list');
+    if (!listEl) return;
+    
+    let items = [...currentInventoryItems];
+    
+    if (currentInventoryCategory !== 'ALL') {
+        items = items.filter(it => it.category === currentInventoryCategory);
+    }
+    if (currentInventoryStatusFilter !== 'ALL') {
+        items = items.filter(it => it.status === currentInventoryStatusFilter);
+    }
+    
+    if (items.length === 0) {
+        listEl.innerHTML = `<p style="text-align:center;color:var(--text-muted);padding:30px" data-i18n="no_inventory_items">${getAdminText('no_inventory_items')}</p>`;
+        return;
+    }
+    
+    let html = '';
+    items.forEach(it => {
+        const catIcon = getCategoryIcon(it.category);
+        const catLabel = getAdminText(`cat_${it.category.toLowerCase()}`, it.category);
+        
+        let statusClass = 'inv-status-in-stock';
+        let statusText = getAdminText('status_in_stock', 'В наличии');
+        if (it.status === 'REPLACE_SOON') {
+            statusClass = 'inv-status-replace-soon';
+            statusText = getAdminText('status_replace_soon', 'Скоро обновить');
+        } else if (it.status === 'URGENT_PURCHASE') {
+            statusClass = 'inv-status-urgent-purchase';
+            statusText = getAdminText('status_urgent_purchase', 'Срочно купить');
+        }
+        
+        // Lifespan & progress bar
+        let progressHtml = '';
+        if (it.lifespan_days) {
+            const pct = Math.min(100, Math.max(0, Math.round(it.percent_used || 0)));
+            let barColor = 'green';
+            if (pct >= 100) barColor = 'red';
+            else if (pct >= 75) barColor = 'yellow';
+            
+            let wearLabel = '';
+            if (it.days_left !== null && it.days_left < 0) {
+                wearLabel = getAdminText('lbl_expired', { days: Math.abs(it.days_left) });
+            } else if (it.days_left !== null) {
+                wearLabel = `${it.days_left} ${getAdminText('lbl_days_left', 'дн. осталось')}`;
+            }
+            const usageText = getAdminText('lbl_days_used', { used: it.days_used || 0, total: it.lifespan_days });
+            
+            progressHtml = `
+                <div style="margin-top: 4px;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+                        <span>${usageText}</span>
+                        <span style="font-weight:600; color:${barColor === 'red' ? '#f87171' : (barColor === 'yellow' ? '#facc15' : '#34d399')};">${wearLabel}</span>
+                    </div>
+                    <div class="inv-progress-track">
+                        <div class="inv-progress-fill ${barColor}" style="width: ${pct}%;"></div>
+                    </div>
+                </div>
+            `;
+        } else {
+            progressHtml = `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">⏳ ${getAdminText('lbl_no_lifespan', 'Без ограничения срока')}</div>`;
+        }
+        
+        // Purchase Date
+        const pDateStr = it.purchase_date ? new Date(it.purchase_date).toLocaleDateString() : '';
+        const pDateHtml = pDateStr ? `<span>📅 ${getAdminText('lbl_purchased_date', 'Куплено')}: <b>${pDateStr}</b></span>` : '';
+        
+        // Notes / Recipient
+        let metaExtra = '';
+        if (it.notes) {
+            metaExtra += `<span style="display:inline-block; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(it.notes)}">📝 ${escapeHtml(it.notes)}</span>`;
+        }
+        if (it.alert_recipient_user_id) {
+            metaExtra += `<span>👤 Alert ID: <code>${it.alert_recipient_user_id}</code></span>`;
+        }
+        
+        html += `
+            <div class="inv-item-card" id="inv-item-${it.id}">
+                <div class="inv-header-row">
+                    <div class="inv-title-area">
+                        <span style="font-size: 1.15rem;">${catIcon}</span>
+                        <span class="inv-name">${escapeHtml(it.name)}</span>
+                        <span class="inv-qty-badge">x${it.quantity}</span>
+                        <span style="font-size:0.75rem; color:var(--text-muted);">${catLabel}</span>
+                    </div>
+                    <span class="inv-status-badge ${statusClass}">${statusText}</span>
+                </div>
+                ${progressHtml}
+                <div class="inv-meta-row">
+                    ${pDateHtml}
+                    ${metaExtra}
+                </div>
+                <div class="inv-actions-row">
+                    <button class="action-btn outline" onclick="markInventoryPurchased(${it.id})" style="padding: 4px 10px; font-size: 0.78rem; border-color: rgba(16, 185, 129, 0.4); color: #34d399;" title="Renew / mark purchased today">
+                        🛒 ${getAdminText('btn_mark_purchased', 'Куплено / Обновить')}
+                    </button>
+                    <button class="action-btn outline" onclick="openEditInventoryModal(${it.id})" style="padding: 4px 10px; font-size: 0.78rem;">
+                        ✏️ ${getAdminText('btn_edit_item', 'Изменить')}
+                    </button>
+                    <button class="action-btn outline" onclick="deleteInventoryItem(${it.id})" style="padding: 4px 8px; font-size: 0.78rem; border-color: rgba(239, 68, 68, 0.3); color: var(--danger);" title="Delete item">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    listEl.innerHTML = html;
+}
+
+function openAddInventoryModal() {
+    const modal = document.getElementById('inventory-modal');
+    if (!modal) return;
+    document.getElementById('inv-edit-id').value = '';
+    document.getElementById('inv-modal-title').textContent = getAdminText('modal_add_item_title', 'Новый предмет инвентаря');
+    document.getElementById('inv-item-name').value = '';
+    document.getElementById('inv-item-category').value = 'BIBS';
+    document.getElementById('inv-item-quantity').value = 1;
+    document.getElementById('inv-item-purchase-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('inv-item-lifespan').value = 180;
+    document.getElementById('inv-item-notes').value = '';
+    document.getElementById('inv-item-recipient').value = '';
+    modal.classList.remove('hidden');
+}
+
+function openEditInventoryModal(itemId) {
+    const item = currentInventoryItems.find(it => it.id === itemId);
+    if (!item) return;
+    const modal = document.getElementById('inventory-modal');
+    if (!modal) return;
+    document.getElementById('inv-edit-id').value = item.id;
+    document.getElementById('inv-modal-title').textContent = getAdminText('modal_edit_item_title', 'Редактировать предмет');
+    document.getElementById('inv-item-name').value = item.name || '';
+    document.getElementById('inv-item-category').value = item.category || 'OTHER';
+    document.getElementById('inv-item-quantity').value = item.quantity || 1;
+    document.getElementById('inv-item-purchase-date').value = item.purchase_date ? item.purchase_date.split('T')[0] : '';
+    document.getElementById('inv-item-lifespan').value = item.lifespan_days || '';
+    document.getElementById('inv-item-notes').value = item.notes || '';
+    document.getElementById('inv-item-recipient').value = item.alert_recipient_user_id || '';
+    modal.classList.remove('hidden');
+}
+
+function closeInventoryModalDirect() {
+    const modal = document.getElementById('inventory-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function closeInventoryModal(event) {
+    if (event && event.target && event.target.id === 'inventory-modal') {
+        closeInventoryModalDirect();
+    }
+}
+
+function setLifespanPreset(days) {
+    const el = document.getElementById('inv-item-lifespan');
+    if (el) el.value = days !== null ? days : '';
+}
+
+async function submitInventoryForm(e) {
+    e.preventDefault();
+    if (!currentGroupId) return;
+    
+    const editId = document.getElementById('inv-edit-id').value;
+    const name = document.getElementById('inv-item-name').value.trim();
+    const category = document.getElementById('inv-item-category').value;
+    const quantity = parseInt(document.getElementById('inv-item-quantity').value, 10) || 1;
+    const pDate = document.getElementById('inv-item-purchase-date').value;
+    const lifespan = document.getElementById('inv-item-lifespan').value ? parseInt(document.getElementById('inv-item-lifespan').value, 10) : null;
+    const notes = document.getElementById('inv-item-notes').value.trim();
+    const recipient = document.getElementById('inv-item-recipient').value ? parseInt(document.getElementById('inv-item-recipient').value, 10) : null;
+    
+    const payload = {
+        name,
+        category,
+        quantity,
+        purchase_date: pDate ? new Date(pDate).toISOString() : null,
+        lifespan_days: lifespan,
+        notes: notes || null,
+        alert_recipient_user_id: recipient,
+    };
+    
+    const saveBtn = document.getElementById('btn-save-inventory');
+    if (saveBtn) saveBtn.disabled = true;
+    
+    try {
+        if (editId) {
+            await apiCall(`/groups/${currentGroupId}/inventory/${editId}`, 'PUT', payload);
+        } else {
+            await apiCall(`/groups/${currentGroupId}/inventory`, 'POST', payload);
+        }
+        closeInventoryModalDirect();
+        showAdminToast(getAdminText('toast_item_saved', 'Предмет сохранен!'));
+        await loadGroupInventory(currentGroupId);
+    } catch (err) {
+        showAdminToast('Error: ' + err.message);
+    } finally {
+        if (saveBtn) saveBtn.disabled = false;
+    }
+}
+
+async function markInventoryPurchased(itemId) {
+    const item = currentInventoryItems.find(it => it.id === itemId);
+    const name = item ? item.name : 'this item';
+    const confirmed = await promptConfirm(getAdminText('confirm_mark_purchased', { name }));
+    if (!confirmed) return;
+    
+    try {
+        await apiCall(`/groups/${currentGroupId}/inventory/${itemId}/purchased`, 'POST');
+        showAdminToast(getAdminText('toast_item_purchased', 'Срок службы обновлен!'));
+        await loadGroupInventory(currentGroupId);
+    } catch (err) {
+        showAdminToast('Error: ' + err.message);
+    }
+}
+
+async function deleteInventoryItem(itemId) {
+    const item = currentInventoryItems.find(it => it.id === itemId);
+    const name = item ? item.name : 'this item';
+    const confirmed = await promptConfirm(getAdminText('confirm_delete_item', { name }));
+    if (!confirmed) return;
+    
+    try {
+        await apiCall(`/groups/${currentGroupId}/inventory/${itemId}`, 'DELETE');
+        showAdminToast(getAdminText('toast_item_deleted', 'Предмет удален!'));
+        await loadGroupInventory(currentGroupId);
+    } catch (err) {
+        showAdminToast('Error: ' + err.message);
+    }
+}
+
+async function triggerInventoryAlerts() {
+    if (!currentGroupId) return;
+    try {
+        const res = await apiCall(`/groups/${currentGroupId}/inventory/trigger_alerts`, 'POST');
+        const count = (res && res.alerts_sent) || 0;
+        showAdminToast(getAdminText('toast_alerts_sent', { count }));
+    } catch (err) {
+        showAdminToast('Error checking alerts: ' + err.message);
     }
 }

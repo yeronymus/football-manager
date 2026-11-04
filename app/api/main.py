@@ -140,6 +140,7 @@ app.include_router(users.router, prefix="/api", tags=["Users"])
 app.include_router(ads.router, prefix="/api", tags=["Ads"])
 app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])
 app.include_router(inventory.router, prefix="/api", tags=["Inventory"])
+app.include_router(inventory.router, prefix="/api/dashboard", tags=["InventoryDashboard"])
 
 if _enable_api_docs:
     app.include_router(nss.router, prefix="/api", tags=["Diagnostics"])
