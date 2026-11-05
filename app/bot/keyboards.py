@@ -93,14 +93,18 @@ def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = ""
 
 def get_channel_game_keyboard(game_id: int, lang: str = "en") -> InlineKeyboardMarkup:
     from app.config import settings
-    bot_username = settings.bot_username.lstrip("@")
-    short_name = getattr(settings, "webapp_short_name", "game")
+    bot_username = (settings.bot_username or "fm_metabot").lstrip("@")
+    short_name = (getattr(settings, "webapp_short_name", "") or "").strip()
     if short_name:
         direct_link = f"https://t.me/{bot_username}/{short_name}?startapp=game_{game_id}"
         rules_link = f"https://t.me/{bot_username}/{short_name}?startapp=rules_{lang}"
     else:
         direct_link = f"https://t.me/{bot_username}?start=game_{game_id}"
-        rules_link = f"https://t.me/{bot_username}?start=rules_{lang}"
+        rules_link = (
+            f"{settings.webapp_url.rstrip('/')}/web/rules.html?lang={lang}"
+            if getattr(settings, "webapp_url", None)
+            else f"https://t.me/{bot_username}?start=rules_{lang}"
+        )
     
     btn_text = t("btn_channel_join", locale=lang)
     rules_text = t("btn_channel_rules", locale=lang)
