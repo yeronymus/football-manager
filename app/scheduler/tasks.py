@@ -37,6 +37,8 @@ async def send_voting_message(game_id: int):
         players_data = result.all()
 
         if not players_data:
+            game.voting_message_id = 0
+            await session.commit()
             return
 
         team_a = []
