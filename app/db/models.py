@@ -87,6 +87,7 @@ class User(Base):
     alt_positions = Column(ARRAY(String), default=[])
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     is_superadmin = Column(Boolean, default=False)
+    is_guest = Column(Boolean, default=False, nullable=False)
     language = Column(Enum(Language, name="chat_language_enum", native_enum=False), default=Language.en)
 
     games_created = relationship("Game", back_populates="creator")
@@ -302,6 +303,10 @@ class RatingHistory(Base):
     user = relationship("User", backref="rating_history")
     game = relationship("Game", back_populates="rating_history")
 
+    __table_args__ = (
+        UniqueConstraint('game_id', 'user_id', name='uq_rating_history_game_user'),
+    )
+
 class GameStats(Base):
     """
     Database model storing match statistics (goals, assists, MVP status) for a player in a game.
@@ -318,6 +323,10 @@ class GameStats(Base):
     
     game = relationship("Game", back_populates="stats")
     user = relationship("User", backref="match_stats")
+
+    __table_args__ = (
+        UniqueConstraint('game_id', 'user_id', name='uq_game_stats_game_user'),
+    )
 
 
 class PlayerCard(Base):

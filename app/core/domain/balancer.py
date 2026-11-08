@@ -1,29 +1,7 @@
 from abc import ABC, abstractmethod
 import enum
 import random
-from typing import List, Optional
-from app.db.models import Position, User
-
-
-class Player:
-    def __init__(self, user: User, rating_override: Optional[int] = None):
-        self.user = user
-        self.position = user.player_position
-        self.alt_positions = []
-        if user.alt_positions:
-            if isinstance(user.alt_positions, list):
-                self.alt_positions = user.alt_positions
-            elif isinstance(user.alt_positions, str):
-                self.alt_positions = [x.strip() for x in user.alt_positions.split(",")]
-
-        self.rating = (
-            rating_override if rating_override is not None else (user.rating or 100)
-        )
-        self.id = user.user_id
-        self.name = user.full_name
-
-    def __repr__(self):
-        return f"Player({self.name}, {self.position}, {self.rating})"
+from typing import Any, List, Optional
 
 
 class BalanceBucket(str, enum.Enum):
@@ -53,12 +31,119 @@ def get_bucket_for_position_str(pos_str: str) -> BalanceBucket:
         "ST": BalanceBucket.FWD,
         "CF": BalanceBucket.FWD,
     }
-    return mapping.get(pos_str, BalanceBucket.MID)
+    return mapping.get(str(pos_str or "").upper(), BalanceBucket.MID)
 
 
-def get_bucket_for_position(pos: Position) -> BalanceBucket:
+def get_bucket_for_position(pos: Any) -> BalanceBucket:
     val = pos.value if hasattr(pos, "value") else str(pos)
     return get_bucket_for_position_str(val)
+
+
+class Player:
+    """
+    Domain Player representation for team matchmaking.
+    Can be constructed either from an ORM `User` object or directly via pure domain keyword arguments.
+    """
+
+    def __init__(
+        self,
+        user: Any = None,
+        rating_override: Optional[int] = None,
+        *,
+        user_id: Optional[int] = None,
+        full_name: Optional[str] = None,
+        position: Any = "CM",
+        alt_positions: Optional[List[str]] = None,
+    ):
+        self.user = user
+        if user is not None:
+            self.position = getattr(user, "player_position", position)
+            raw_alts = getattr(user, "alt_positions", None)
+            self.alt_positions: List[str] = []
+            if raw_alts:
+                if isinstance(raw_alts, list):
+                    self.alt_positions = list(raw_alts)
+                elif isinstance(raw_alts, str):
+                    self.alt_positions = [x.strip() for x in raw_alts.split(",") if x.strip()]
+            self.rating = (
+                rating_override
+                if rating_override is not None
+                else (getattr(user, "rating", None) or 100)
+            )
+            self.id = getattr(user, "user_id", user_id or 0)
+            self.name = getattr(user, "full_name", full_name or f"Player {self.id}")
+        else:
+            self.position = position
+            self.alt_positions = list(alt_positions or [])
+            self.rating = rating_override if rating_override is not None else 100
+            self.id = user_id or 0
+            self.name = full_name or f"Player {self.id}"
+
+    def __repr__(self) -> str:
+        return f"Player({self.name}, {self.position}, {self.rating})"
+
+
+def _team_spread_sq(teams: List[List[Player]]) -> float:
+    """Computes sum of squared deviations of team rating sums from the mean."""
+    if not teams:
+        return 0.0
+    sums = [sum(p.rating for p in t) for t in teams]
+    mean = sum(sums) / len(sums)
+    return sum((s - mean) ** 2 for s in sums)
+
+
+def _optimize_same_bucket_2opt(
+    teams: List[List[Player]], locked_player_ids: set[int] | None = None
+) -> None:
+    """
+    Deterministic 2-opt local-search optimizer across N teams (ADR-06).
+    Swaps players belonging to the same positional BalanceBucket between teams i and j
+    whenever the swap strictly reduces the inter-team rating sum variance, keeping team
+    sizes and positional bucket counts 100% invariant.
+    """
+    team_count = len(teams)
+    if team_count < 2:
+        return
+    locked = locked_player_ids or set()
+
+    improved = True
+    max_iterations = 64
+    iteration = 0
+    while improved and iteration < max_iterations:
+        improved = False
+        iteration += 1
+        current_spread = _team_spread_sq(teams)
+
+        for t_a in range(team_count):
+            for t_b in range(t_a + 1, team_count):
+                for idx_a, p_a in enumerate(teams[t_a]):
+                    if p_a.id in locked:
+                        continue
+                    bucket_a = get_bucket_for_position(p_a.position)
+                    for idx_b, p_b in enumerate(teams[t_b]):
+                        if p_b.id in locked:
+                            continue
+                        if get_bucket_for_position(p_b.position) != bucket_a:
+                            continue
+                        if p_a.rating == p_b.rating:
+                            continue
+
+                        # Trial swap
+                        teams[t_a][idx_a], teams[t_b][idx_b] = p_b, p_a
+                        new_spread = _team_spread_sq(teams)
+                        if new_spread + 1e-6 < current_spread:
+                            current_spread = new_spread
+                            improved = True
+                            break
+                        else:
+                            # Revert swap
+                            teams[t_a][idx_a], teams[t_b][idx_b] = p_a, p_b
+                    if improved:
+                        break
+                if improved:
+                    break
+            if improved:
+                break
 
 
 class BalancingStrategy(ABC):
@@ -71,10 +156,11 @@ class BalancingStrategy(ABC):
 
 class RoleBasedBalancingStrategy(BalancingStrategy):
     """
-    Role-aware balancing strategy:
-    1. Satisfies GK requirements across teams.
-    2. Satisfies DEF requirements across teams.
-    3. Distributes remaining players by role & strength without mutating team slot indices.
+    Role-aware balancing strategy with weakest-first serpentine drafting and 2-opt local search:
+    1. Satisfies GK requirements across teams (locking primary GKs to their assigned team slots).
+    2. Satisfies DEF requirements across teams in weakest-first order.
+    3. Distributes remaining players by role & strength.
+    4. Runs within-bucket 2-opt pairwise optimization to minimize inter-team rating variance.
     """
 
     def balance(self, players: List[Player], team_count: int) -> List[List[Player]]:
@@ -82,6 +168,7 @@ class RoleBasedBalancingStrategy(BalancingStrategy):
             return [[] for _ in range(team_count)]
 
         teams: List[List[Player]] = [[] for _ in range(team_count)]
+        locked_gk_ids: set[int] = set()
 
         def fits_bucket(p: Player, bucket: BalanceBucket) -> bool:
             if get_bucket_for_position(p.position) == bucket:
@@ -107,13 +194,21 @@ class RoleBasedBalancingStrategy(BalancingStrategy):
             candidates.sort(key=lambda x: x.rating, reverse=True)
             best_gk = candidates[0]
             teams[gks_assigned].append(best_gk)
+            locked_gk_ids.add(best_gk.id)
             pool.remove(best_gk)
             gks_assigned += 1
 
-        # 2. DEF Phase
+        # 2. DEF Phase (weakest-team-first serpentine order per defender round)
         def_target_per_team = 3
         for _ in range(def_target_per_team):
-            for t_idx in range(team_count):
+            team_order = sorted(
+                range(team_count),
+                key=lambda idx: (
+                    len(teams[idx]),
+                    sum(x.rating for x in teams[idx]),
+                ),
+            )
+            for t_idx in team_order:
                 candidates = [
                     p
                     for p in pool
@@ -127,7 +222,7 @@ class RoleBasedBalancingStrategy(BalancingStrategy):
                     teams[t_idx].append(pick)
                     pool.remove(pick)
 
-        # 3. Distribute Remaining by Role & Strength (preserving team index order!)
+        # 3. Distribute Remaining by Role & Strength
         def distribute_list(subpool: List[Player]):
             subpool.sort(key=lambda x: x.rating, reverse=True)
             for p in subpool:
@@ -164,11 +259,14 @@ class RoleBasedBalancingStrategy(BalancingStrategy):
         leftovers = [p for p in pool if p.id in leftover_ids]
         distribute_list(leftovers)
 
+        # 4. Within-bucket 2-opt variance minimization (keeping primary GKs locked to their team slots)
+        _optimize_same_bucket_2opt(teams, locked_player_ids=locked_gk_ids)
+
         return teams
 
 
 class RatingSnakeBalancingStrategy(BalancingStrategy):
-    """Pure ELO-based serpentine snake draft."""
+    """Pure ELO-based serpentine snake draft with 2-opt refinement."""
 
     def balance(self, players: List[Player], team_count: int) -> List[List[Player]]:
         if not players:

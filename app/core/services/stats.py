@@ -2,7 +2,16 @@ import logging
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.domain.tenant_policy import TenantPolicy, resolve_tenant_policy
+from app.core.domain.ratings import (
+    ParticipantRatingInput,
+    SimplePointsRatingStrategy,
+    resolve_rating_strategy,
+)
+from app.core.domain.tenant_policy import (
+    RatingSystem,
+    TenantPolicy,
+    resolve_tenant_policy,
+)
 from app.db.models import (
     Chat,
     Game,
@@ -117,37 +126,27 @@ class StatsService:
                 delete(RatingHistory).where(RatingHistory.id.in_(history_ids))
             )
 
+    @staticmethod
+    def _extract_team_scores(game: Game) -> dict[Team, int]:
+        scores_map: dict[Team, int] = {}
+        if (game.team_count or 2) >= 2:
+            scores_map[Team.A] = game.score_a or 0
+            scores_map[Team.B] = game.score_b or 0
+        if (game.team_count or 2) >= 3:
+            scores_map[Team.C] = game.score_c or 0
+        return scores_map
+
     def _calculate_team_points(
         self, game: Game, policy: TenantPolicy | None = None
     ) -> dict[Team, int]:
         """Calculates point change for each team based on ranks, scores, and TenantPolicy."""
         active_policy = policy or TenantPolicy()
-        win_pts = active_policy.rating_win_points
-        draw_pts = active_policy.rating_draw_points
-        loss_pts = active_policy.rating_loss_points
-
-        team_points = {}
-        scores_map = {}
-        if game.team_count >= 2:
-            scores_map[Team.A] = game.score_a or 0
-            scores_map[Team.B] = game.score_b or 0
-        if game.team_count >= 3:
-            scores_map[Team.C] = game.score_c or 0
-
-        sorted_teams = sorted(
-            scores_map.items(), key=lambda item: item[1], reverse=True
+        scores_map = self._extract_team_scores(game)
+        str_scores = {t.value: sc for t, sc in scores_map.items()}
+        str_points = SimplePointsRatingStrategy().compute_team_base_points(
+            str_scores, active_policy
         )
-        unique_scores = sorted(list(set(scores_map.values())), reverse=True)
-
-        for team, score in sorted_teams:
-            if len(unique_scores) == 1:
-                team_points[team] = draw_pts
-            else:
-                rank = unique_scores.index(score)
-                max_rank = len(unique_scores) - 1
-                points = win_pts - ((win_pts - loss_pts) * rank / max_rank)
-                team_points[team] = round(points)
-        return team_points
+        return {Team(k): v for k, v in str_points.items()}
 
     def _update_single_player_stats(
         self,
@@ -158,6 +157,7 @@ class StatsService:
         team_points: dict,
         mvp_ids: set[int],
         policy: TenantPolicy | None = None,
+        explicit_delta: int | None = None,
     ):
         """Updates tenant PlayerProfile, User stats, and records RatingHistory delta."""
         active_policy = policy or TenantPolicy()
@@ -166,11 +166,14 @@ class StatsService:
             self.session.add(profile)
 
         old_rating = profile.rating or 100
-        change = team_points.get(team, active_policy.rating_loss_points)
-
         is_mvp = user.user_id in mvp_ids
-        if is_mvp:
-            change += active_policy.rating_mvp_bonus
+
+        if explicit_delta is not None:
+            change = explicit_delta
+        else:
+            change = team_points.get(team, active_policy.rating_loss_points)
+            if is_mvp:
+                change += active_policy.rating_mvp_bonus
 
         profile.rating = (profile.rating or 100) + change
         profile.games_played = (profile.games_played or 0) + 1
@@ -194,10 +197,20 @@ class StatsService:
             )
         )
 
-    async def apply_game_results(self, game: Game, mvp_ids: set[int]):
-        """Applies rating deltas and records RatingHistory for active match participants."""
-        policy = await self._resolve_policy(game.chat_id)
-        team_points = self._calculate_team_points(game, policy=policy)
+    async def apply_game_results(
+        self,
+        game: Game,
+        mvp_ids: set[int] | list[int],
+        policy: TenantPolicy | dict | None = None,
+    ):
+        """Applies rating deltas via configured IRatingStrategy and records RatingHistory."""
+        mvp_set = set(mvp_ids or [])
+        active_policy = (
+            resolve_tenant_policy(policy)
+            if policy is not None
+            else await self._resolve_policy(game.chat_id)
+        )
+        team_points = self._calculate_team_points(game, policy=active_policy)
 
         result = await self.session.execute(
             select(User, Signup.team, PlayerProfile)
@@ -211,7 +224,31 @@ class StatsService:
         )
         players_data = result.all()
 
+        explicit_deltas: dict[int, int] = {}
+        if active_policy.rating_system == RatingSystem.DYNAMIC_ELO.value:
+            strategy = resolve_rating_strategy(active_policy)
+            scores_map = {t.value: sc for t, sc in self._extract_team_scores(game).items()}
+            inputs = [
+                ParticipantRatingInput(
+                    user_id=user.user_id,
+                    team=team.value if hasattr(team, "value") else str(team or "A"),
+                    current_rating=(profile.rating if profile and profile.rating else (user.rating or 100)),
+                    games_played=(profile.games_played if profile and profile.games_played is not None else (user.games_played or 0)),
+                    is_mvp=(user.user_id in mvp_set),
+                )
+                for user, team, profile in players_data
+                if team is not None
+            ]
+            explicit_deltas = strategy.compute_player_deltas(inputs, scores_map, active_policy)
+
         for user, team, profile in players_data:
             self._update_single_player_stats(
-                game, user, team, profile, team_points, mvp_ids, policy=policy
+                game,
+                user,
+                team,
+                profile,
+                team_points,
+                mvp_set,
+                policy=active_policy,
+                explicit_delta=explicit_deltas.get(user.user_id),
             )

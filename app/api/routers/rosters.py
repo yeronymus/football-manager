@@ -198,6 +198,7 @@ async def add_guest(
         username=None,
         player_position=Position[pos_str],
         rating=100,
+        is_guest=True,
     )
     session.add(new_guest)
 

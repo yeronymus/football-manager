@@ -17,7 +17,6 @@ from app.core.services.inventory import (
     check_and_notify_inventory_alerts,
     send_item_alert_now,
 )
-from app.bot.instance import bot
 
 logger = logging.getLogger(__name__)
 
@@ -248,6 +247,8 @@ async def trigger_inventory_alerts(
     """
     await check_admin_rights(chat_id, user_id, session=session)
 
+    from app.bot.instance import bot
+
     results = await check_and_notify_inventory_alerts(
         bot=bot,
         session=session,
@@ -320,6 +321,8 @@ async def send_single_inventory_alert(
     item = await session.get(InventoryItem, item_id)
     if not item or item.chat_id != chat_id:
         raise HTTPException(status_code=404, detail="Inventory item not found")
+
+    from app.bot.instance import bot
 
     results = await send_item_alert_now(bot=bot, session=session, item=item)
     return {"status": "ok", "delivered_to": len(results), "details": results}

@@ -1,6 +1,6 @@
 import enum
 import re
-from typing import Any, List, Optional
+from typing import Any, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -9,6 +9,11 @@ class BillingMode(str, enum.Enum):
     SPAYD_QR = "spayd_qr"
     MANUAL = "manual"
     FREE_CORPORATE = "free_corporate"
+
+
+class RatingSystem(str, enum.Enum):
+    SIMPLE_POINTS = "simple_points"
+    DYNAMIC_ELO = "dynamic_elo"
 
 
 class OrganizerContact(BaseModel):
@@ -42,7 +47,7 @@ class OrganizerContact(BaseModel):
 class TenantPolicy(BaseModel):
     """
     3-tier parameterized policy configuration for a tenant (Telegram group / organization).
-    Eliminates magic timers, hardcoded rating deltas, and static organizer contacts (ADR-02).
+    Eliminates magic timers, hardcoded rating deltas, and static organizer contacts (ADR-02, ADR-06).
     """
 
     free_cancellation_hours: int = Field(default=24, ge=0, le=168)
@@ -51,10 +56,14 @@ class TenantPolicy(BaseModel):
     mvp_voting_window_hours: int = Field(default=24, ge=1, le=168)
     yellow_card_default_weeks: int = Field(default=2, ge=1, le=52)
     red_card_default_weeks: int = Field(default=4, ge=1, le=52)
+    rating_system: Literal["simple_points", "dynamic_elo"] = "simple_points"
     rating_win_points: int = Field(default=10, ge=-100, le=100)
     rating_draw_points: int = Field(default=0, ge=-100, le=100)
     rating_loss_points: int = Field(default=-5, ge=-100, le=100)
     rating_mvp_bonus: int = Field(default=5, ge=0, le=100)
+    elo_k_base: int = Field(default=24, ge=4, le=100)
+    elo_k_pro: int = Field(default=16, ge=4, le=100)
+    elo_pro_games_threshold: int = Field(default=10, ge=1, le=200)
     organizer_contacts: List[OrganizerContact] = Field(default_factory=list)
 
 
@@ -72,7 +81,11 @@ def resolve_tenant_policy(chat_or_policy: Any = None) -> TenantPolicy:
     """Safely hydrates TenantPolicy from either a `Chat` model or raw JSON `dict`."""
     if chat_or_policy is None:
         return TenantPolicy()
-    raw = chat_or_policy if isinstance(chat_or_policy, dict) else getattr(chat_or_policy, "policy", None)
+    raw = (
+        chat_or_policy
+        if isinstance(chat_or_policy, dict)
+        else getattr(chat_or_policy, "policy", None)
+    )
     if not isinstance(raw, dict) or not raw:
         return TenantPolicy()
     try:
