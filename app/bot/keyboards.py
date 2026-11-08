@@ -73,20 +73,25 @@ def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = ""
     base_url = webapp_url if webapp_url else settings.webapp_url
     lang_param = f"&lang={lang}" if lang else ""
     game_url = f"{base_url.rstrip('/')}/web/game.html?game_id={game_id}&v={timestamp}{lang_param}"
+    bot_username = (getattr(settings, "bot_username", "") or "").lstrip("@")
+    short_name = (getattr(settings, "webapp_short_name", "") or "").strip()
     
     join_btn_text = t("btn_join_game", locale=lang)
     
-    buttons = [
-        [
-            InlineKeyboardButton(text=join_btn_text, web_app=types.WebAppInfo(url=game_url))
-        ]
-    ]
+    # In group chats/channels, use direct Mini App link so it opens modal overlay instead of PM or failing with BUTTON_TYPE_INVALID
+    if short_name and bot_username:
+        direct_link = f"https://t.me/{bot_username}/{short_name}?startapp=game_{game_id}"
+        join_btn = InlineKeyboardButton(text=join_btn_text, url=direct_link)
+    else:
+        join_btn = InlineKeyboardButton(text=join_btn_text, web_app=types.WebAppInfo(url=game_url))
+
+    buttons = [[join_btn]]
     
     if include_rules:
         rules_url = f"{base_url.rstrip('/')}/web/rules.html?lang={lang}"
         rules_text = t("btn_channel_rules", locale=lang)
         buttons.append([
-            InlineKeyboardButton(text=rules_text, web_app=types.WebAppInfo(url=rules_url))
+            InlineKeyboardButton(text=rules_text, url=rules_url)
         ])
 
     if is_admin:
