@@ -14,6 +14,7 @@ from app.core.events import GameStateChangedEvent, event_bus
 from app.core.i18n import t
 from app.core.repositories.signup_repository import SignupRepository
 from app.core.repositories.vote_repository import VoteRepository
+from app.core.services.audit import record_audit_log
 from app.core.services.game_numbering import clean_location, get_group_game_number
 from app.core.services.roster import PlayerLeftEvent, RosterService
 from app.core.timezone import format_prague_dt
@@ -165,6 +166,15 @@ async def toggle_signup_late(
     await _dash().check_admin_rights(game.chat_id, user_id)
 
     signup.is_late = not signup.is_late
+    record_audit_log(
+        session,
+        action="ROSTER_LATE_TOGGLED",
+        actor_user_id=user_id,
+        chat_id=getattr(game, "chat_id", None),
+        target_type="signup",
+        target_id=signup.id,
+        payload={"is_late": signup.is_late, "user_id": getattr(signup, "user_id", None)},
+    )
     await session.commit()
 
     await _dash().cache_service.evict(f"game_details:{game.id}")
@@ -208,6 +218,15 @@ async def add_guest(
         status=SignupStatus.ACTIVE,
     )
     session.add(new_signup)
+    record_audit_log(
+        session,
+        action="ROSTER_GUEST_ADDED",
+        actor_user_id=user_id,
+        chat_id=getattr(game, "chat_id", None),
+        target_type="game",
+        target_id=game_id,
+        payload={"guest_id": guest_id, "name": data.name, "position": pos_str},
+    )
     await session.commit()
 
     await _dash().cache_service.evict(f"game_details:{game_id}")
@@ -236,6 +255,15 @@ async def kick_player(
             signup.game_id, signup.user_id, is_admin=True
         )
         if success:
+            record_audit_log(
+                session,
+                action="ROSTER_PLAYER_KICKED",
+                actor_user_id=user_id,
+                chat_id=getattr(game, "chat_id", None),
+                target_type="signup",
+                target_id=signup_id,
+                payload={"game_id": signup.game_id, "kicked_user_id": signup.user_id},
+            )
             await uow.commit()
         else:
             raise HTTPException(status_code=400, detail=msg)
@@ -275,6 +303,15 @@ async def update_player_status(
     prev_status = signup.status
     new_status = status_map[data.status.lower()]
     signup.status = new_status
+    record_audit_log(
+        session,
+        action="ROSTER_STATUS_UPDATED",
+        actor_user_id=user_id,
+        chat_id=getattr(game, "chat_id", None),
+        target_type="signup",
+        target_id=signup_id,
+        payload={"from": getattr(prev_status, "value", str(prev_status)), "to": new_status.value},
+    )
     await session.commit()
 
     if (

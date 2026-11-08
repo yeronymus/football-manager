@@ -139,7 +139,9 @@
         const urlParams = new URLSearchParams(window.location.search);
         const gameId = urlParams.get('game_id');
         const urlInitData = urlParams.get('initData');
-        const initData = tg.initData || urlInitData || "";
+        let storedInitData = "";
+        try { storedInitData = sessionStorage.getItem('tma_init_data') || ""; } catch (e) {}
+        const initData = tg.initData || storedInitData || urlInitData || "";
         
         if (!tg.initData && urlInitData) {
             console.log("Using initData from URL params");
@@ -177,7 +179,7 @@
             }
 
             try {
-                const url = `/api/game/${gameId}?initData=${encodeURIComponent(initData)}`;
+                const url = `/api/game/${gameId}`;
                 const res = await fetch(url, {
                     headers: { 'Authorization': `tma ${initData}` }
                 });
@@ -195,10 +197,10 @@
                     mainPlayersInput.value = game.main_players_count || 22;
                     signupLimitInput.value = game.signup_limit || 999;
 
-                    // Convert UTC date to Prague local string for flatpickr
-                    // This ensures correct time display regardless of browser timezone
-                    const pragueStr = new Date(game.date).toLocaleString('sv-SE', {timeZone: 'Europe/Prague'}).replace(' ', 'T').slice(0, 16);
-                    initDatePicker(pragueStr);
+                    // Convert UTC date to tenant local string for flatpickr
+                    const tenantTz = game.timezone || 'Europe/Prague';
+                    const localStr = new Date(game.date).toLocaleString('sv-SE', {timeZone: tenantTz}).replace(' ', 'T').slice(0, 16);
+                    initDatePicker(localStr);
 
                     document.getElementById('loader').style.display = 'none';
                     document.getElementById('form-content').style.display = 'block';

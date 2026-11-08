@@ -4,7 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import get_user_from_header
+from app.api.auth import get_user_from_header, verify_tenant_membership
 from app.config import settings
 from app.core.services.billing import resolve_game_billing
 from app.core.services.cache import cache_service
@@ -28,12 +28,17 @@ async def get_game_details(
     cache_key = f"game_details:{game_id}"
     cached_data = await cache_service.get(cache_key)
     if cached_data:
+        if cached_data.get("chat_id") and cached_data.get("status") != GameStatus.OPEN.value:
+            await verify_tenant_membership(cached_data["chat_id"], user_id, session)
         return cached_data
 
     result = await session.execute(select(Game).where(Game.id == game_id))
     game = result.scalar_one_or_none()
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
+
+    if getattr(game, "chat_id", None) and game.status != GameStatus.OPEN:
+        await verify_tenant_membership(game.chat_id, user_id, session)
 
     chat = None
     if getattr(game, "chat_id", None):
@@ -106,6 +111,7 @@ async def get_game_details(
         "variable_symbol": billing.variable_symbol,
         "spayd_payload": billing.spayd_payload,
         "sport_type": (getattr(chat, "sport_type", None) if chat else None) or "football",
+        "timezone": (getattr(chat, "timezone", None) if chat else None) or "Europe/Prague",
         "team_count": game.team_count,
         "gk_hours": game.gk_hours,
         "registration_hours": getattr(game, "registration_hours", 0),
@@ -140,6 +146,7 @@ async def get_chat_history(
     from app.api.routers.users import _resolve_chat_ids
     from app.bot.utils import get_group_game_number
 
+    await verify_tenant_membership(chat_id, user_id, session)
     chat_ids = _resolve_chat_ids(chat_id)
 
     result = await session.execute(

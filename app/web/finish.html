@@ -182,10 +182,21 @@
             console.warn("Parent window access blocked due to cross-origin restriction:", e);
         }
         
-        // Robust initData retrieval (handle iframe case)
+        // Robust initData retrieval (handle iframe case via sessionStorage)
         const urlParams = new URLSearchParams(window.location.search);
         const urlInitData = urlParams.get('initData');
-        const initData = tg.initData || urlInitData || "";
+        let storedInitData = "";
+        try { storedInitData = sessionStorage.getItem('tma_init_data') || ""; } catch (e) {}
+        const initData = tg.initData || storedInitData || urlInitData || "";
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
         
         if (!tg.initData && urlInitData) {
             console.log("Using initData from URL params");
@@ -206,18 +217,18 @@
         async function showGameSelector() {
             app.style.display = 'none';
             selector.style.display = 'flex';
-            list.innerHTML = '<div class="loading">Загрузка матчей...</div>';
+            list.innerHTML = '<div class="loading">Loading matches...</div>';
 
             try {
-                const response = await fetch(`/api/games/open?initData=${encodeURIComponent(tg.initData)}`, {
-                    headers: { 'Authorization': `tma ${tg.initData}` }
+                const response = await fetch(`/api/games/open`, {
+                    headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (!response.ok) throw new Error("Failed to fetch games");
                 const games = await response.json();
 
                 list.innerHTML = '';
                 if (games.length === 0) {
-                    list.innerHTML = '<div style="color:var(--tg-theme-hint-color); text-align:center;">Нет активных матчей.</div>';
+                    list.innerHTML = '<div style="color:var(--tg-theme-hint-color); text-align:center;">No active matches found.</div>';
                     return;
                 }
 
@@ -226,9 +237,10 @@
                     btn.className = 'game-card';
 
                     const d = new Date(g.date_time);
-                    const dateStr = d.toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague'});
+                    const gTz = g.timezone || 'Europe/Prague';
+                    const dateStr = d.toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: gTz});
 
-                    btn.innerHTML = `<b>${g.location}</b><br><span style="font-size:14px; color:var(--tg-theme-hint-color);">${dateStr}</span>`;
+                    btn.innerHTML = `<b>${escapeHtml(g.location)}</b><br><span style="font-size:14px; color:var(--tg-theme-hint-color);">${dateStr}</span>`;
 
                     btn.onclick = () => {
                         gameId = g.id;
@@ -272,14 +284,14 @@
             app.innerHTML = '<div class="loading">Loading game details...</div>';
 
             try {
-                const response = await fetch(`/api/game/${gameId}?initData=${encodeURIComponent(initData)}`, {
+                const response = await fetch(`/api/game/${gameId}`, {
                     headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (!response.ok) throw new Error('Failed to load game');
                 gameData = await response.json();
                 render();
             } catch (e) {
-                app.innerHTML = `<div class="loading">Error: ${e.message}</div>`;
+                app.innerHTML = `<div class="loading">Error: ${escapeHtml(e.message)}</div>`;
             }
         }
 
@@ -371,7 +383,7 @@
             if (!gameData) return;
 
             let html = `
-                <h1>${gameData.location}</h1>
+                <h1>${escapeHtml(gameData.location)}</h1>
                 <div class="score-board">
                     <div class="team-score">
                         <h3>🟠 Orange</h3>
@@ -388,30 +400,30 @@
             html += `<div class="players-list">`;
 
             // Team A
-            html += `<div class="team-header">🟠 Игроки (Orange)</div>`;
+            html += `<div class="team-header">🟠 Players (Orange)</div>`;
             gameData.team_a.forEach(p => {
                 html += `
                     <div class="player-row">
-                        <div class="player-name" style="color:#ff9800; font-weight:600;">${p.name}</div>
+                        <div class="player-name" style="color:#ff9800; font-weight:600;">${escapeHtml(p.name)}</div>
                         <div class="goal-controls">
-                            <button class="btn-circle" onclick="updateGoal(${p.id}, -1, 'A')">-</button>
-                            <span class="goal-count" id="goals-${p.id}">0</span>
-                            <button class="btn-circle" onclick="updateGoal(${p.id}, 1, 'A')">+</button>
+                            <button class="btn-circle" onclick="updateGoal(${Number(p.id)}, -1, 'A')">-</button>
+                            <span class="goal-count" id="goals-${Number(p.id)}">0</span>
+                            <button class="btn-circle" onclick="updateGoal(${Number(p.id)}, 1, 'A')">+</button>
                         </div>
                     </div>
                 `;
             });
  
             // Team B
-            html += `<div class="team-header" style="margin-top: 20px;">🟢 Игроки (Green)</div>`;
+            html += `<div class="team-header" style="margin-top: 20px;">🟢 Players (Green)</div>`;
             gameData.team_b.forEach(p => {
                 html += `
                     <div class="player-row">
-                        <div class="player-name" style="color:#4caf50; font-weight:600;">${p.name}</div>
+                        <div class="player-name" style="color:#4caf50; font-weight:600;">${escapeHtml(p.name)}</div>
                         <div class="goal-controls">
-                            <button class="btn-circle" onclick="updateGoal(${p.id}, -1, 'B')">-</button>
-                            <span class="goal-count" id="goals-${p.id}">0</span>
-                            <button class="btn-circle" onclick="updateGoal(${p.id}, 1, 'B')">+</button>
+                            <button class="btn-circle" onclick="updateGoal(${Number(p.id)}, -1, 'B')">-</button>
+                            <span class="goal-count" id="goals-${Number(p.id)}">0</span>
+                            <button class="btn-circle" onclick="updateGoal(${Number(p.id)}, 1, 'B')">+</button>
                         </div>
                     </div>
                 `;
@@ -422,15 +434,15 @@
             // MVP Voting Preview & Auto-Resolution notice
             html += `
                 <div style="background:var(--tg-theme-secondary-bg-color, #f5f5f5); padding:15px; border-radius:12px; margin-bottom:20px;">
-                    <h3 style="margin-top:0; margin-bottom:10px;">⭐ Результаты голосования MVP</h3>
-                    <div id="voting-preview" style="font-size:14px; color:var(--tg-theme-hint-color); margin-bottom:10px;">Загрузка голосов...</div>
+                    <h3 style="margin-top:0; margin-bottom:10px;">⭐ MVP Voting Summary</h3>
+                    <div id="voting-preview" style="font-size:14px; color:var(--tg-theme-hint-color); margin-bottom:10px;">Loading votes...</div>
                     <div style="font-size:13px; color:var(--tg-theme-hint-color); border-top:1px solid rgba(0,0,0,0.06); padding-top:10px; line-height:1.4;">
-                        🏆 <b>MVP матча</b> выбирается автоматически по результатам голосования игроков в чате через 24 часа после матча.
+                        🏆 <b>Match MVP</b> is resolved automatically based on group voting.
                     </div>
                 </div>
             `;
 
-            html += `<button class="submit-btn" onclick="submitResult()">Завершить матч</button>`;
+            html += `<button class="submit-btn" onclick="submitResult()">Finish Match</button>`;
 
             app.innerHTML = html;
             fetchVotes();
@@ -445,12 +457,12 @@
                     const votes = await response.json();
                     const preview = document.getElementById('voting-preview');
                     if (votes.length === 0) {
-                        preview.innerHTML = `Голосов пока нет. <button type="button" style="display:inline-block; margin-top: 6px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--tg-theme-button-color, #3390ec); background: transparent; color: var(--tg-theme-button-color, #3390ec); cursor: pointer; font-size: 0.85rem;" onclick="triggerVotingNow()">📢 Открыть голосование в группе</button>`;
+                        preview.innerHTML = `No votes yet. <button type="button" style="display:inline-block; margin-top: 6px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--tg-theme-button-color, #3390ec); background: transparent; color: var(--tg-theme-button-color, #3390ec); cursor: pointer; font-size: 0.85rem;" onclick="triggerVotingNow()">📢 Open Voting in Group</button>`;
                         return;
                     }
                     let voteHtml = '<ul style="margin:0; padding-left:20px;">';
                     votes.slice(0, 5).forEach(v => {
-                        voteHtml += `<li>${v.name}: <b>${v.count}</b> ⭐</li>`;
+                        voteHtml += `<li>${escapeHtml(v.name)}: <b>${Number(v.count)}</b> ⭐</li>`;
                     });
                     voteHtml += '</ul>';
                     preview.innerHTML = voteHtml;

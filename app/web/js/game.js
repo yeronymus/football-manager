@@ -643,12 +643,33 @@ function showError(msg) {
 
 
 let livePollingInterval = null;
+let liveEventSource = null;
 let isPollingActive = false;
+
+window.openPersonalCalendarFeed = async function () {
+    try {
+        const data = await fetchAPI('/v1/calendar/my-link');
+        if (data && data.ics_path) {
+            const fullUrl = window.location.origin + data.ics_path;
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
+                window.Telegram.WebApp.openLink(fullUrl);
+            } else {
+                window.open(fullUrl, '_blank');
+            }
+        }
+    } catch (e) {
+        console.error("Failed to open calendar feed:", e);
+    }
+};
 
 function startLivePolling() {
     if (livePollingInterval) {
         clearInterval(livePollingInterval);
         livePollingInterval = null;
+    }
+    if (liveEventSource) {
+        try { liveEventSource.close(); } catch (e) {}
+        liveEventSource = null;
     }
 
     const poll = async () => {
@@ -689,7 +710,27 @@ function startLivePolling() {
         }
     };
 
-    livePollingInterval = setInterval(poll, 3000);
+    // Primary real-time channel: Server-Sent Events (SSE) push stream (<50ms latency, zero DB polling storm)
+    if (typeof EventSource !== 'undefined' && gameId) {
+        try {
+            liveEventSource = new EventSource(`/api/v1/games/${gameId}/stream`);
+            liveEventSource.onmessage = (ev) => {
+                try {
+                    const msg = JSON.parse(ev.data || '{}');
+                    if (msg.type === 'update') {
+                        poll();
+                    }
+                } catch (err) {
+                    poll();
+                }
+            };
+        } catch (e) {
+            console.debug("SSE fallback to low-frequency polling:", e);
+        }
+    }
+
+    // Low-frequency 30s safety fallback only when SSE is disconnected or idle
+    livePollingInterval = setInterval(poll, 30000);
 
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {

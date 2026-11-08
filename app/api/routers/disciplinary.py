@@ -153,6 +153,15 @@ async def revoke_player_card(
 
     disc_repo = DisciplinaryRepository(session)
     revoked_count = await disc_repo.revoke_active_cards(target_user_id, chat_id)
+    record_audit_log(
+        session,
+        action="DISCIPLINARY_CARD_REVOKED",
+        actor_user_id=user_id,
+        chat_id=chat_id,
+        target_type="user",
+        target_id=target_user_id,
+        payload={"revoked_count": revoked_count},
+    )
     await session.commit()
 
     if revoked_count > 0:

@@ -72,18 +72,43 @@ async def get_chats(
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session),
 ):
-    """Returns active chats for the Mini-App ordered by activity."""
+    """Returns active chats for the Mini-App scoped to the caller's tenant memberships."""
+    from app.config import settings
+    from app.db.models import ChatAdmin
+
     games_sub = (
         select(Game.chat_id, func.count(Game.id).label("game_count")).group_by(Game.chat_id)
     ).subquery()
 
-    result = await session.execute(
+    stmt = (
         select(Chat)
         .outerjoin(games_sub, Chat.chat_id == games_sub.c.chat_id)
         .where(Chat.chat_id != -1000000000001)
         .where(~Chat.title.ilike("%unknown%"))
-        .order_by(desc(func.coalesce(games_sub.c.game_count, 0)), Chat.chat_id.desc())
     )
+
+    if user_id not in settings.admin_ids and user_id != settings.system_owner_id:
+        admin_chats_sq = select(ChatAdmin.chat_id).where(ChatAdmin.user_id == user_id)
+        profile_chats_sq = select(PlayerProfile.chat_id).where(PlayerProfile.user_id == user_id)
+        signup_chats_sq = (
+            select(Game.chat_id)
+            .join(Signup, Signup.game_id == Game.id)
+            .where(Signup.user_id == user_id)
+        )
+        superadmin_sq = select(User.user_id).where(
+            User.user_id == user_id, User.is_superadmin == True  # noqa: E712
+        )
+        stmt = stmt.where(
+            or_(
+                Chat.chat_id.in_(admin_chats_sq),
+                Chat.chat_id.in_(profile_chats_sq),
+                Chat.chat_id.in_(signup_chats_sq),
+                superadmin_sq.exists(),
+            )
+        )
+
+    stmt = stmt.order_by(desc(func.coalesce(games_sub.c.game_count, 0)), Chat.chat_id.desc())
+    result = await session.execute(stmt)
     chats = result.scalars().all()
 
     return [

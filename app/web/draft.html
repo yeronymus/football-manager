@@ -485,7 +485,18 @@
         console.log("[Draft] gameId:", gameId, "URL:", window.location.href);
         
         const urlInitData = urlParams.get('initData');
-        const initData = tg.initData || urlInitData || "";
+        let storedInitData = "";
+        try { storedInitData = sessionStorage.getItem('tma_init_data') || ""; } catch (e) {}
+        const initData = tg.initData || storedInitData || urlInitData || "";
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
         
         if (!tg.initData && urlInitData) {
             console.log("Using initData from URL params");
@@ -562,16 +573,16 @@
                 selectedPlayer = p;
             };
 
-            const alts = (p.alt_positions && p.alt_positions.length) ? ` <span style="color:#aaa; font-size:10px;">(${p.alt_positions.join(', ')})</span>` : '';
+            const alts = (p.alt_positions && p.alt_positions.length) ? ` <span style="color:#aaa; font-size:10px;">(${escapeHtml(p.alt_positions.join(', '))})</span>` : '';
 
             // Use original_position for color/badge if available
-            const dispPos = p.original_position || p.position;
+            const dispPos = escapeHtml(p.original_position || p.position);
 
             div.innerHTML = `
                 <div class="player-info" style="display: flex; align-items: center; gap: 4px; width: 100%;">
-                    <button class="remove-player-btn" onclick="kickPlayer(${p.signup_id}, event)" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 2px 6px; font-weight: bold; font-size: 14px; line-height: 1; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.15)'" onmouseout="this.style.background='none'" title="Убрать игрока">×</button>
+                    <button class="remove-player-btn" onclick="kickPlayer(${p.signup_id}, event)" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 2px 6px; font-weight: bold; font-size: 14px; line-height: 1; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.15)'" onmouseout="this.style.background='none'" title="Remove player">×</button>
                     <div class="player-pos pos-${dispPos}">${dispPos}</div>
-                    <div class="player-name" style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.name}${alts}</div>
+                    <div class="player-name" style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(p.name)}${alts}</div>
                 </div>
                 <div class="player-rating" style="margin-left: auto;">${p.rating || '-'}</div>
             `;
@@ -635,7 +646,7 @@
 
         async function loadGame(id) {
             try {
-                const response = await fetch(`/api/game/${id}?initData=${encodeURIComponent(initData)}`, {
+                const response = await fetch(`/api/game/${id}`, {
                     headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (!response.ok) throw new Error("Load failed");
@@ -1005,7 +1016,7 @@
         async function showGameSelector() {
             document.getElementById('gameSelector').style.display = 'flex';
             try {
-                const response = await fetch(`/api/games/editable?initData=${encodeURIComponent(initData)}`, {
+                const response = await fetch(`/api/games/editable`, {
                     headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (!response.ok) throw new Error("API Error");
@@ -1016,7 +1027,8 @@
                     const btn = document.createElement('div');
                     btn.className = 'game-option';
                     const d = new Date(g.date_time);
-                    btn.innerHTML = `${g.location} (${d.toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Prague'})})`;
+                    const gTz = g.timezone || 'Europe/Prague';
+                    btn.innerHTML = `${escapeHtml(g.location)} (${d.toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', timeZone: gTz})})`;
                     btn.onclick = () => {
                         gameId = g.id;
                         document.getElementById('gameSelector').style.display = 'none';
@@ -1049,7 +1061,7 @@
             if (q.length < 2) return;
             try {
                 const timestamp = new Date().getTime();
-                const response = await fetch(`/api/users/search?query=${encodeURIComponent(q)}&initData=${encodeURIComponent(initData)}&_v=${timestamp}`, {
+                const response = await fetch(`/api/users/search?query=${encodeURIComponent(q)}&_v=${timestamp}`, {
                     headers: { 'Authorization': `tma ${initData}` }
                 });
                 if (!response.ok) {
@@ -1060,22 +1072,21 @@
                 const res = document.getElementById('searchResults');
                 res.innerHTML = '';
                 if (users.length === 0) {
-                    res.innerHTML = '<div style="color: #aaa; text-align: center; padding: 10px;">Ничего не найдено</div>';
+                    res.innerHTML = '<div style="color: #aaa; text-align: center; padding: 10px;">No players found</div>';
                 }
                 users.forEach(u => {
                     const div = document.createElement('div');
                     div.className = 'search-result-item';
                     div.innerHTML = `
-                        <span>${u.name} (@${u.username || ''})</span>
-                        <button onclick="addPlayerToGame(${u.id})" style="width:auto; padding:5px 10px;">➕</button>
+                        <span>${escapeHtml(u.name)} (@${escapeHtml(u.username || '')})</span>
+                        <button onclick="addPlayerToGame(${Number(u.id)})" style="width:auto; padding:5px 10px;">➕</button>
                     `;
                     res.appendChild(div);
                 });
             } catch (e) {
                 console.error(e);
-                // Show error to user so we know why it's empty
                 const res = document.getElementById('searchResults');
-                res.innerHTML = `<div style="color: #f44336; padding: 10px;">Ошибка: ${e.message}</div>`;
+                res.innerHTML = `<div style="color: #f44336; padding: 10px;">Error: ${escapeHtml(e.message)}</div>`;
             }
         }
 

@@ -284,7 +284,107 @@ async def delete_game(
 
     await _dash().cache_service.evict(f"game_details:{game_id}")
 
+    record_audit_log(
+        session,
+        action="GAME_DELETED",
+        actor_user_id=user_id,
+        chat_id=getattr(game, "chat_id", None),
+        target_type="game",
+        target_id=game_id,
+        payload={"location": getattr(game, "location", None)},
+    )
     await session.delete(game)
     await session.commit()
 
     return {"status": "ok", "message": "Game deleted successfully"}
+
+
+@router.get("/groups/{chat_id}/attendance.csv")
+async def export_group_attendance_csv(
+    chat_id: int,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Exports a B2B HR / Cafeteria attendance & billing register in UTF-8 CSV format
+    for the specified tenant group.
+    """
+    import csv
+    import io
+    from fastapi.responses import Response
+    from app.db.models import GameStats, User
+
+    await _dash().check_admin_rights(chat_id, user_id, session=session)
+    chat = await session.get(Chat, chat_id)
+    currency = (getattr(chat, "currency", None) if chat else None) or "CZK"
+    billing_mode = resolve_billing_mode(getattr(chat, "billing_mode", None) if chat else None).value
+
+    stmt = (
+        select(Game, Signup, User, GameStats)
+        .join(Signup, Signup.game_id == Game.id)
+        .join(User, User.user_id == Signup.user_id)
+        .outerjoin(
+            GameStats,
+            (GameStats.game_id == Game.id) & (GameStats.user_id == User.user_id),
+        )
+        .where(Game.chat_id == chat_id)
+        .order_by(Game.date_time.desc(), Signup.id.asc())
+        .limit(2000)
+    )
+    res = await session.execute(stmt)
+    rows = res.all()
+
+    buf = io.StringIO()
+    buf.write("\ufeff")  # UTF-8 BOM for Excel / Google Sheets compatibility
+    writer = csv.writer(buf)
+    writer.writerow(
+        [
+            "game_id",
+            "sequence_number",
+            "date_utc",
+            "location",
+            "user_id",
+            "full_name",
+            "username",
+            "status",
+            "team",
+            "is_paid",
+            "is_late",
+            "goals",
+            "assists",
+            "is_mvp",
+            "match_fee",
+            "currency",
+            "billing_mode",
+        ]
+    )
+    for game, signup, user, stats in rows:
+        writer.writerow(
+            [
+                game.id,
+                getattr(game, "sequence_number", None) or game.id,
+                game.date_time.isoformat() if getattr(game, "date_time", None) else "",
+                clean_location(getattr(game, "location", "")) or "",
+                user.user_id,
+                user.full_name,
+                user.username or "",
+                signup.status.value if hasattr(signup.status, "value") else str(signup.status),
+                signup.team.value if getattr(signup, "team", None) and hasattr(signup.team, "value") else "",
+                bool(getattr(signup, "is_paid", False)),
+                bool(getattr(signup, "is_late", False)),
+                getattr(stats, "goals", 0) if stats else 0,
+                getattr(stats, "assists", 0) if stats else 0,
+                bool(getattr(stats, "is_mvp", False)) if stats else False,
+                getattr(game, "price", 0) or 0,
+                currency,
+                billing_mode,
+            ]
+        )
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="attendance_{abs(chat_id)}.csv"'
+        },
+    )

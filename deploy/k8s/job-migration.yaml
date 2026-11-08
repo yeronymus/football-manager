@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sports-manager-db-migration
+  namespace: sports-platform
+  labels:
+    app.kubernetes.io/name: sports-manager-migration
+    app.kubernetes.io/part-of: sports-manager
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-Delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sports-manager-migration
+        app.kubernetes.io/part-of: sports-manager
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: migrate
+          image: ghcr.io/example-org/sports-manager-platform:v3.0.0
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - secretRef:
+                name: sports-manager-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /tmp
+      volumes:
+        - name: tmp-dir
+          emptyDir:
+            sizeLimit: 32Mi

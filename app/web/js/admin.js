@@ -281,7 +281,8 @@ async function loadGroupGames(group) {
             const el = document.createElement('div');
             el.className = 'game-card';
             
-            const dateStr = new Date(g.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague'});
+            const groupTz = (typeof currentGroupData !== 'undefined' && currentGroupData && currentGroupData.timezone) || 'Europe/Prague';
+            const dateStr = new Date(g.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: groupTz});
             
             let scoreHtml = '';
             if (g.score_a !== null && g.score_b !== null) {
@@ -295,7 +296,7 @@ async function loadGroupGames(group) {
                 <div class="game-info" style="flex: 1;">
                     <h3 style="margin-bottom: 4px; font-size: 1.2rem;">Game #${g.game_number || g.id}</h3>
                     ${scoreHtml}
-                    <p style="color: var(--text-main); font-weight: 500; margin-bottom: 2px;">${g.location}</p>
+                    <p style="color: var(--text-main); font-weight: 500; margin-bottom: 2px;">${escapeHtml(g.location)}</p>
                     <p style="font-size: 0.85rem;">${dateStr} • Players: ${g.players_count}/${g.max_players} • Paid: ${g.paid_count}/${g.players_count}</p>
                 </div>
                 <div class="badge ${g.status}" style="margin-left: 12px;">${g.status}</div>
@@ -318,7 +319,8 @@ async function loadGameDetails(gameId) {
     try {
         const game = await apiCall(`/games/${gameId}`);
         
-        const dateStr = new Date(game.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague'});
+        const gameTz = game.timezone || (typeof currentGroupData !== 'undefined' && currentGroupData && currentGroupData.timezone) || 'Europe/Prague';
+        const dateStr = new Date(game.date_time).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: gameTz});
         document.getElementById('game-title').textContent = `Game #${game.game_number || game.id}`;
         document.getElementById('game-date-location').textContent = `${game.location} • ${dateStr}`;
         
@@ -434,7 +436,7 @@ async function loadGameDetails(gameId) {
 
                 el.innerHTML = `
                     <div class="player-info">
-                        <span class="player-name">${p.full_name} <div style="font-size:0.8rem; margin-left: 6px;">${statsHtml}</div></span>
+                        <span class="player-name">${escapeHtml(p.full_name)} <div style="font-size:0.8rem; margin-left: 6px;">${statsHtml}</div></span>
                         <div class="player-meta" id="notify-meta-${p.user_id}">${notifyBadgeHtml}</div>
                     </div>
                     <div class="player-actions" style="display: flex; align-items: center; gap: 4px;">
@@ -745,7 +747,8 @@ async function openApp(appType) {
     const title = document.getElementById('iframe-title');
     
     const v = Date.now();
-    const auth = `&initData=${encodeURIComponent(initData)}&v=${v}`;
+    try { sessionStorage.setItem('tma_init_data', initData); } catch (e) {}
+    const auth = `&v=${v}`;
     let url = '';
     
     if (appType === 'create') {

@@ -1,6 +1,15 @@
 
 const t = (key, params) => (window.i18n ? window.i18n.t(key, params) : key);
 
+function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 let currentChatId = null;
 let historyMode = 'mine'; // 'mine' or 'all'
 let currentTab = 'profile';
@@ -515,7 +524,7 @@ window.renderHistory = async function(mode = null) {
                 </div>
                 <div style="text-align:right">
                     <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color:${statusColor}">${statusText}</div>
-                    <span class="subtitle" style="font-weight: 600; font-size:12px;">${new Date(g.date).toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Prague'})}</span>
+                    <span class="subtitle" style="font-weight: 600; font-size:12px;">${new Date(g.date).toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', timeZone: g.timezone || 'Europe/Prague'})}</span>
                 </div>
             </div>
 
@@ -558,8 +567,8 @@ window.showGameDetails = async function(gameId) {
         let html = `
             <div style="text-align:center; margin-bottom:30px;">
                 <h1 style="font-size:48px; margin:10px 0; font-weight:900; letter-spacing:-1px;">${scoreHtml}</h1>
-                <div class="subtitle" style="font-size:16px; margin-bottom:4px;">📍 ${game.location}</div>
-                <div class="subtitle" style="font-size:14px;">📅 ${new Date(game.date).toLocaleString('ru-RU', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague'})}</div>
+                <div class="subtitle" style="font-size:16px; margin-bottom:4px;">📍 ${escapeHtml(game.location)}</div>
+                <div class="subtitle" style="font-size:14px;">📅 ${new Date(game.date).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: game.timezone || 'Europe/Prague'})}</div>
             </div>
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
@@ -567,7 +576,7 @@ window.showGameDetails = async function(gameId) {
                     <h4 style="color:#4caf50; margin-bottom:12px; border-bottom:1px solid rgba(76,175,80,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">${t('team_green')} (A)</h4>
                     ${game.team_a.map(p => `
                         <div style="font-size:15px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center">
-                            <span style="font-weight:500">${p.name}</span>
+                            <span style="font-weight:500">${escapeHtml(p.name)}</span>
                             <span style="display:flex; align-items:center; gap:4px">
                                 ${p.goals > 0 ? `<span style="font-size:12px">⚽${p.goals}</span>` : ''} 
                                 ${p.is_mvp ? '<span style="font-size:12px">🌟</span>' : ''}
@@ -579,7 +588,7 @@ window.showGameDetails = async function(gameId) {
                     <h4 style="color:#ff9800; margin-bottom:12px; border-bottom:1px solid rgba(255,152,0,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">${t('team_orange')} (B)</h4>
                     ${game.team_b.map(p => `
                         <div style="font-size:15px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center">
-                            <span style="font-weight:500">${p.name}</span>
+                            <span style="font-weight:500">${escapeHtml(p.name)}</span>
                             <span style="display:flex; align-items:center; gap:4px">
                                 ${p.goals > 0 ? `<span style="font-size:12px">⚽${p.goals}</span>` : ''} 
                                 ${p.is_mvp ? '<span style="font-size:12px">🌟</span>' : ''}
@@ -595,7 +604,7 @@ window.showGameDetails = async function(gameId) {
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                     ${game.team_c.map(p => `
                         <div style="font-size:14px; display:flex; justify-content:space-between">
-                            <span>${p.name}</span>
+                            <span>${escapeHtml(p.name)}</span>
                             <span>${p.goals > 0 ? `⚽${p.goals}` : ''} ${p.is_mvp ? '🌟' : ''}</span>
                         </div>
                     `).join('')}

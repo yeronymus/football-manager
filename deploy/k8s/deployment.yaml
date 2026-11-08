@@ -41,6 +41,8 @@ spec:
           env:
             - name: APP_ENV
               value: "production"
+            - name: PROBE_MODE
+              value: "api"
             - name: RUN_MIGRATIONS
               value: "false"
             - name: RUN_BOT
@@ -58,6 +60,9 @@ spec:
             capabilities:
               drop:
                 - ALL
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /tmp
           resources:
             requests:
               cpu: "250m"
@@ -67,7 +72,7 @@ spec:
               memory: "512Mi"
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
@@ -75,12 +80,16 @@ spec:
             failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/live
               port: http
             initialDelaySeconds: 15
             periodSeconds: 20
             timeoutSeconds: 3
             failureThreshold: 3
+      volumes:
+        - name: tmp-dir
+          emptyDir:
+            sizeLimit: 64Mi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -117,8 +126,10 @@ spec:
           env:
             - name: APP_ENV
               value: "production"
+            - name: PROBE_MODE
+              value: "worker"
             - name: RUN_MIGRATIONS
-              value: "true"
+              value: "false"
             - name: RUN_BOT
               value: "true"
             - name: RUN_SCHEDULER
@@ -134,6 +145,9 @@ spec:
             capabilities:
               drop:
                 - ALL
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /tmp
           resources:
             requests:
               cpu: "200m"
@@ -141,3 +155,25 @@ spec:
             limits:
               cpu: "500m"
               memory: "512Mi"
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - scripts/container_probe.py
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - scripts/container_probe.py
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: tmp-dir
+          emptyDir:
+            sizeLimit: 64Mi

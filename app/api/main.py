@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy import text
 
-from app.api.routers import admin, ads, dashboard, games, inventory, nss, platform, users, voting
+from app.api.routers import admin, ads, dashboard, games, inventory, live, nss, platform, users, voting
 from app.bot.instance import bot
 from app.bot.main import dp, start_bot, stop_bot
 from app.config import settings
@@ -142,6 +142,7 @@ async def on_shutdown():
 
 
 # Routers
+app.include_router(live.router, prefix="/api", tags=["LiveStreamAndCalendar"])
 app.include_router(platform.router, prefix="/api/v1", tags=["Platform"])
 app.include_router(platform.router, prefix="/api", tags=["PlatformLegacy"])
 app.include_router(games.router, prefix="/api", tags=["Games"])

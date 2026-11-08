@@ -194,7 +194,9 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const urlInitData = urlParams.get('initData');
-        const initData = tg.initData || urlInitData || "";
+        let storedInitData = "";
+        try { storedInitData = sessionStorage.getItem('tma_init_data') || ""; } catch (e) {}
+        const initData = tg.initData || storedInitData || urlInitData || "";
         
         if (!tg.initData && urlInitData) {
             console.log("Using initData from URL params");
@@ -243,7 +245,7 @@
             }
 
             try {
-                const response = await fetch('/api/chats?initData=' + encodeURIComponent(initData), {
+                const response = await fetch('/api/chats', {
                     headers: { 'Authorization': `tma ${initData}` }
                 });
                 let chats = [];
@@ -368,7 +370,7 @@
             adminWrapper.style.display = 'block';
 
             try {
-                const url = `/api/chat/${chatId}/admins?initData=${encodeURIComponent(initData)}`;
+                const url = `/api/chat/${chatId}/admins`;
                 const res = await fetch(url, {
                     headers: { 'Authorization': `tma ${initData}` }
                 });

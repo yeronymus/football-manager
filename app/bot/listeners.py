@@ -332,13 +332,32 @@ class TelegramRenderDebouncer:
         self,
         render_fn: Callable[[int], Awaitable[None]],
         cooldown_seconds: float = 3.2,
+        redis_client: object = None,
     ):
         self._render_fn = render_fn
         self.cooldown_seconds = cooldown_seconds
+        self._redis_client = redis_client
         self._last_run: Dict[int, float] = {}
         self._pending_tasks: Dict[int, asyncio.Task] = {}
         self._dirty: set[int] = set()
         self.coalesced_drops: int = 0
+
+    async def _try_acquire_distributed_slot(self, game_id: int) -> bool:
+        """
+        Attempts to acquire a distributed Redis rate-limit token (`SET render_lock:game:{id} 1 PX ... NX`)
+        so multiple worker processes or Kubernetes replicas never exceed the per-chat edit budget.
+        Falls back gracefully to in-memory tracking when Redis is not attached.
+        """
+        if self._redis_client is None:
+            return True
+        try:
+            px = max(100, int(self.cooldown_seconds * 1000))
+            acquired = await self._redis_client.set(
+                f"render_lock:game:{game_id}", "1", px=px, nx=True
+            )
+            return bool(acquired)
+        except Exception:
+            return True
 
     async def trigger(self, game_id: int) -> None:
         if self.cooldown_seconds <= 0:
@@ -347,15 +366,24 @@ class TelegramRenderDebouncer:
 
         now = time.monotonic()
         last = self._last_run.get(game_id)
+        in_local_window = last is not None and (now - last) < self.cooldown_seconds
 
-        # If a trailing task is already scheduled or we are inside the cooldown window, coalesce
-        if game_id in self._pending_tasks or (
-            last is not None and (now - last) < self.cooldown_seconds
+        # If a trailing task is already scheduled, we are inside the local cooldown window,
+        # or another worker replica holds the distributed Redis slot, coalesce into trailing flush
+        if (
+            game_id in self._pending_tasks
+            or in_local_window
+            or not await self._try_acquire_distributed_slot(game_id)
         ):
             self._dirty.add(game_id)
             self.coalesced_drops += 1
             if game_id not in self._pending_tasks:
-                delay = max(0.01, self.cooldown_seconds - (now - (last or now)))
+                delay = max(
+                    0.01,
+                    self.cooldown_seconds - (now - last)
+                    if in_local_window and last is not None
+                    else self.cooldown_seconds,
+                )
                 self._pending_tasks[game_id] = asyncio.create_task(
                     self._delayed_flush(game_id, delay)
                 )
