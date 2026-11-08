@@ -54,5 +54,17 @@ async def init_models():
     except Exception as e:
         logger.error(f"Failed to run database migrations via Alembic: {e}", exc_info=True)
         logger.warning("Attempting safe fallback to Base.metadata.create_all...")
+        import app.db.models  # noqa: F401
+
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+        stamp_proc = await asyncio.create_subprocess_exec(
+            sys.executable,
+            "-m",
+            "alembic",
+            "stamp",
+            "head",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await stamp_proc.communicate()

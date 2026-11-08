@@ -25,17 +25,37 @@ from app.db.models import (
 async def seed_chats_command(args=None):
     """Seed configured initial chats into the database via Upsert."""
     from app.config import settings
-
-    if not settings.initial_chats:
-        print("No initial_chats configured in environment.")
-        return
+    from app.db.models import Position
 
     async with async_session_maker() as db:
+        if settings.is_local_dev_bypass_enabled:
+            dev_user = await db.get(User, settings.dev_user_id)
+            if not dev_user:
+                db.add(
+                    User(
+                        user_id=settings.dev_user_id,
+                        username="dev_organizer",
+                        full_name="Dev Organizer",
+                        player_position=Position.MID,
+                        rating=120,
+                        is_superadmin=True,
+                    )
+                )
+
+        if not settings.initial_chats:
+            await db.commit()
+            print("No initial_chats configured in environment.")
+            return
+
         print(f"Upserting {len(settings.initial_chats)} defined chats...")
 
         chats_to_upsert = []
         for chat_data in settings.initial_chats:
-            chat_id = chat_data.get("id")
+            chat_id = (
+                chat_data.get("id")
+                if chat_data.get("id") is not None
+                else chat_data.get("chat_id")
+            )
             title = chat_data.get("title", "")
             if chat_id is not None:
                 chats_to_upsert.append({"chat_id": chat_id, "title": title})
