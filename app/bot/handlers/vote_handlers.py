@@ -13,9 +13,9 @@ async def process_vote(
     session: AsyncSession,
     _: Callable[..., str] = t,
 ):
-    _, game_id, target_id = callback.data.split("_")
-    game_id = int(game_id)
-    target_id = int(target_id)
+    parts = callback.data.split("_")
+    game_id = int(parts[1])
+    target_id = int(parts[2])
     voter_id = callback.from_user.id
     
     # 0. Check for self-voting
