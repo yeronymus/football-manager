@@ -102,6 +102,10 @@ async def on_startup():
                 setup_task = asyncio.create_task(safe_start_bot())
                 app.state.bg_tasks.append(setup_task)
         elif not settings.bot_username or settings.bot_username == "sports_manager_bot":
+            from app.core.events import event_bus
+            from app.infrastructure.messaging import producer
+
+            event_bus.set_stream_forwarder(producer.publish_message)
             try:
                 me = await bot.get_me()
                 if getattr(me, "username", None):

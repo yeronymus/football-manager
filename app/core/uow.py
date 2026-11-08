@@ -1,3 +1,6 @@
+import inspect
+from typing import Any, Callable, List
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.repositories.announcement_repository import AnnouncementRepository
@@ -13,15 +16,19 @@ from app.db.database import async_session_maker
 
 class UnitOfWork:
     """
-    Provides transaction atomicity (Unit of Work pattern).
+    Provides transaction atomicity (Unit of Work pattern) with post-commit cache
+    eviction and domain event outbox hooks (ADR-05).
     Ensures all repositories share the same database session within an 'async with' block,
-    and guarantees rollback on exception for both standalone and injected sessions.
+    guarantees rollback on exception, and executes deferred cache evictions and post-commit
+    callbacks strictly AFTER the database transaction commits.
     """
 
     def __init__(self, session_factory=async_session_maker, session: AsyncSession | None = None):
         self._session_factory = session_factory
         self._session: AsyncSession | None = session
         self._external_session = session is not None
+        self._deferred_cache_keys: List[str] = []
+        self._post_commit_callbacks: List[Callable[[], Any]] = []
 
     async def __aenter__(self) -> "UnitOfWork":
         if not self._session:
@@ -44,11 +51,39 @@ class UnitOfWork:
             if not self._external_session:
                 await self._session.close()
 
+    def defer_cache_eviction(self, key: str) -> None:
+        """Schedules a Redis cache key to be evicted immediately after `commit()`."""
+        if key and key not in self._deferred_cache_keys:
+            self._deferred_cache_keys.append(key)
+
+    def defer_post_commit(self, callback: Callable[[], Any]) -> None:
+        """Registers a callback or coroutine function to run after `commit()`."""
+        self._post_commit_callbacks.append(callback)
+
     async def commit(self):
         if self._session:
             await self._session.commit()
 
+        # Execute post-commit cache evictions so concurrent readers never re-populate stale pre-commit rows
+        if self._deferred_cache_keys:
+            from app.core.services.cache import cache_service
+
+            keys = list(self._deferred_cache_keys)
+            self._deferred_cache_keys.clear()
+            for key in keys:
+                await cache_service.evict(key)
+
+        if self._post_commit_callbacks:
+            callbacks = list(self._post_commit_callbacks)
+            self._post_commit_callbacks.clear()
+            for cb in callbacks:
+                res = cb()
+                if inspect.isawaitable(res):
+                    await res
+
     async def rollback(self):
+        self._deferred_cache_keys.clear()
+        self._post_commit_callbacks.clear()
         if self._session:
             await self._session.rollback()
 

@@ -140,10 +140,12 @@ class RosterService:
         # 5. Create signup record
         signup = self.uow.game_repo.create_signup(game_id, user.user_id, status)
 
-        # Invalidate Cache
+        # Invalidate Cache (immediate + post-commit hook)
         from app.core.services.cache import cache_service
 
         await cache_service.evict(f"game_details:{game_id}")
+        if hasattr(self.uow, "defer_cache_eviction"):
+            self.uow.defer_cache_eviction(f"game_details:{game_id}")
 
         return JoinResult(True, signup, alert_msg, is_reserve)
 
@@ -249,10 +251,12 @@ class RosterService:
                 res_signup.status = SignupStatus.ACTIVE
                 promoted_user = res_user
 
-        # Invalidate Cache
+        # Invalidate Cache (immediate + post-commit hook)
         from app.core.services.cache import cache_service
 
         await cache_service.evict(f"game_details:{game_id}")
+        if hasattr(self.uow, "defer_cache_eviction"):
+            self.uow.defer_cache_eviction(f"game_details:{game_id}")
 
         return True, t("leave_success", locale=norm_locale), promoted_user
 
@@ -266,7 +270,7 @@ class RosterService:
         active_count = 0
 
         for signup, user in signups_with_user:
-            is_guest = user.user_id < 0
+            is_guest = bool(getattr(user, "is_guest", False)) or user.user_id < 0
 
             if is_guest:
                 if signup.status != SignupStatus.RESERVE:

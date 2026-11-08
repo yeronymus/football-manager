@@ -4,8 +4,12 @@ listeners.py — Bot-side event handlers.
 Subscribes to domain events from core/events.py and reacts by updating
 the Telegram UI. This module knows about the bot, but core/ does NOT.
 """
+import asyncio
 import html
 import logging
+import time
+from typing import Awaitable, Callable, Dict
+
 from app.bot.instance import bot
 from app.core.events import (
     GameCreatedEvent,
@@ -314,7 +318,65 @@ async def _refresh_full(game_id: int):
     await _refresh_dashboard(game_id)
 
 
-async def _refresh_public_message(game_id: int):
+class TelegramRenderDebouncer:
+    """
+    Per-game coalescing rate-limiter for Telegram `edit_message_text` calls (ADR-05).
+    Prevents HTTP 429 Too Many Requests during flash-crowd signups by enforcing a
+    minimum interval between public message edits per game (`cooldown_seconds=3.2s`
+    -> <= 18 edits/min/chat, safely below Telegram's 20 edits/min/group ceiling).
+    - First call outside the window executes immediately (leading edge).
+    - Subsequent calls within the window coalesce into a single trailing refresh.
+    """
+
+    def __init__(
+        self,
+        render_fn: Callable[[int], Awaitable[None]],
+        cooldown_seconds: float = 3.2,
+    ):
+        self._render_fn = render_fn
+        self.cooldown_seconds = cooldown_seconds
+        self._last_run: Dict[int, float] = {}
+        self._pending_tasks: Dict[int, asyncio.Task] = {}
+        self._dirty: set[int] = set()
+        self.coalesced_drops: int = 0
+
+    async def trigger(self, game_id: int) -> None:
+        if self.cooldown_seconds <= 0:
+            await self._render_fn(game_id)
+            return
+
+        now = time.monotonic()
+        last = self._last_run.get(game_id)
+
+        # If a trailing task is already scheduled or we are inside the cooldown window, coalesce
+        if game_id in self._pending_tasks or (
+            last is not None and (now - last) < self.cooldown_seconds
+        ):
+            self._dirty.add(game_id)
+            self.coalesced_drops += 1
+            if game_id not in self._pending_tasks:
+                delay = max(0.01, self.cooldown_seconds - (now - (last or now)))
+                self._pending_tasks[game_id] = asyncio.create_task(
+                    self._delayed_flush(game_id, delay)
+                )
+            return
+
+        # Leading-edge immediate execution
+        self._last_run[game_id] = now
+        await self._render_fn(game_id)
+
+    async def _delayed_flush(self, game_id: int, delay: float) -> None:
+        try:
+            await asyncio.sleep(delay)
+            if game_id in self._dirty:
+                self._dirty.discard(game_id)
+                self._last_run[game_id] = time.monotonic()
+                await self._render_fn(game_id)
+        finally:
+            self._pending_tasks.pop(game_id, None)
+
+
+async def _do_refresh_public_message(game_id: int):
     """Refresh only the public group/channel message."""
     async with async_session_maker() as session:
         game = await session.get(Game, game_id)
@@ -326,6 +388,14 @@ async def _refresh_public_message(game_id: int):
             await update_game_message(bot, game, session)
         except Exception as e:
             logger.warning(f"Failed to update game messages for game {game_id}: {e}")
+
+
+render_debouncer = TelegramRenderDebouncer(_do_refresh_public_message, cooldown_seconds=3.2)
+
+
+async def _refresh_public_message(game_id: int):
+    """Coalesced refresh of the public group/channel message."""
+    await render_debouncer.trigger(game_id)
 
 
 async def _refresh_dashboard(game_id: int):
