@@ -9,6 +9,7 @@ from app.api.auth import get_user_from_header
 from app.core.domain.tenant_policy import BillingMode, resolve_billing_mode
 from app.core.i18n import t
 from app.core.repositories.signup_repository import SignupRepository
+from app.core.services.audit import record_audit_log
 from app.core.services.game_numbering import get_group_game_number
 from app.core.timezone import format_prague_dt
 from app.db.database import get_session
@@ -39,6 +40,15 @@ async def toggle_payment(
     await _dash().check_admin_rights(game.chat_id, user_id)
 
     signup.is_paid = not signup.is_paid
+    record_audit_log(
+        session,
+        action="BILLING_PAYMENT_TOGGLED",
+        actor_user_id=user_id,
+        chat_id=getattr(game, "chat_id", None),
+        target_type="signup",
+        target_id=signup_id,
+        payload={"is_paid": signup.is_paid, "user_id": getattr(signup, "user_id", None)},
+    )
     await session.commit()
     return {"status": "ok", "is_paid": signup.is_paid}
 

@@ -13,6 +13,7 @@ from app.core.domain.sport_presets import get_sport_preset
 from app.core.domain.tenant_policy import resolve_billing_mode, resolve_tenant_policy
 from app.core.i18n import normalize_locale_code
 from app.core.repositories.tenant_repository import TenantRepository
+from app.core.services.audit import record_audit_log
 from app.core.services.game_numbering import clean_location, get_group_game_number
 from app.db.database import get_session
 from app.db.models import Chat, Game, Language, Signup, SignupStatus, User
@@ -167,6 +168,15 @@ async def update_group_settings(
         else:
             setattr(chat, field, value)
 
+    record_audit_log(
+        session,
+        action="TENANT_SETTINGS_UPDATE",
+        actor_user_id=user_id,
+        chat_id=chat_id,
+        target_type="chat",
+        target_id=chat_id,
+        payload=update_data,
+    )
     await session.commit()
     return {
         "status": "ok",

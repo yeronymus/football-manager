@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import get_user_from_header
 from app.core.i18n import normalize_locale_code, t
 from app.core.repositories.disciplinary_repository import DisciplinaryRepository
+from app.core.services.audit import record_audit_log
 from app.core.timezone import format_prague_dt
 from app.db.database import get_session
 from app.db.models import Chat, User
@@ -65,6 +66,15 @@ async def issue_player_card(
         weeks=data.weeks,
         reason=data.reason,
         issued_by=user_id,
+    )
+    record_audit_log(
+        session,
+        action="DISCIPLINARY_CARD_ISSUED",
+        actor_user_id=user_id,
+        chat_id=chat_id,
+        target_type="user",
+        target_id=target_user_id,
+        payload={"card_type": card_type, "weeks": data.weeks, "reason": data.reason},
     )
     await session.commit()
     await session.refresh(card)

@@ -17,9 +17,15 @@ def _is_dev_bypass_enabled() -> bool:
     return settings.app_env == "local_dev" and settings.dev_auth_bypass
 
 
-def validate_init_data(init_data: str, bot_token: str) -> bool:
+INIT_DATA_MAX_AGE_SECONDS = 43200
+
+
+def validate_init_data(
+    init_data: str, bot_token: str, max_age_seconds: int = INIT_DATA_MAX_AGE_SECONDS
+) -> bool:
     """
-    Validates Telegram WebApp initData using constant-time HMAC-SHA256 verification.
+    Validates Telegram WebApp initData using constant-time HMAC-SHA256 verification
+    and enforces both replay-window expiration and future clock-skew bounds.
     """
     try:
         if not init_data:
@@ -43,8 +49,9 @@ def validate_init_data(init_data: str, bot_token: str) -> bool:
             return False
 
         auth_date = int(parsed_data.get("auth_date", 0))
-        if time.time() - auth_date > 43200:
-            logger.warning("validate_init_data failed: Auth date expired")
+        now = time.time()
+        if now - auth_date > max_age_seconds or (auth_date - now) > 60:
+            logger.warning("validate_init_data failed: Auth date expired or invalid clock skew")
             return False
 
         return True
@@ -216,3 +223,55 @@ async def build_admin_games_query(user_id: int, session: AsyncSession):
         .join(ChatAdmin, Game.chat_id == ChatAdmin.chat_id)
         .where(ChatAdmin.user_id == user_id)
     )
+
+
+async def verify_tenant_membership(
+    chat_id: int, user_id: int, session: AsyncSession
+) -> bool:
+    """
+    BOLA/IDOR Tenant Guard (ADR-09):
+    Verifies that `user_id` is affiliated with tenant `chat_id` (as a ChatAdmin,
+    PlayerProfile member, historical match participant, or system owner/superadmin).
+    Raises HTTP 403 if the caller has no relationship with the requested tenant.
+    """
+    if user_id in settings.admin_ids or user_id == settings.system_owner_id:
+        return True
+
+    from sqlalchemy import select
+    from app.db.models import ChatAdmin, Game, PlayerProfile, Signup, User
+
+    user_res = await session.execute(select(User).where(User.user_id == user_id))
+    user = user_res.scalar_one_or_none()
+    if user and getattr(user, "is_superadmin", False):
+        return True
+
+    admin_res = await session.execute(
+        select(ChatAdmin.user_id).where(
+            ChatAdmin.chat_id == chat_id, ChatAdmin.user_id == user_id
+        )
+    )
+    if admin_res.scalar_one_or_none() is not None:
+        return True
+
+    prof_res = await session.execute(
+        select(PlayerProfile.user_id).where(
+            PlayerProfile.chat_id == chat_id, PlayerProfile.user_id == user_id
+        )
+    )
+    if prof_res.scalar_one_or_none() is not None:
+        return True
+
+    signup_res = await session.execute(
+        select(Signup.id)
+        .join(Game, Game.id == Signup.game_id)
+        .where(Game.chat_id == chat_id, Signup.user_id == user_id)
+        .limit(1)
+    )
+    if signup_res.scalar_one_or_none() is not None:
+        return True
+
+    raise HTTPException(
+        status_code=403,
+        detail="Access denied: user is not a member of this tenant organization",
+    )
+

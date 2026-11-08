@@ -375,3 +375,22 @@ class InventoryItem(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     chat = relationship("Chat", back_populates="inventory_items")
+
+
+class AuditLog(Base):
+    """
+    Immutable administrative audit ledger recording tenant-scoped mutations (ADR-09).
+    Tracks who performed an administrative action, in which tenant chat, on which target entity,
+    and with what structured payload.
+    """
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id", ondelete="SET NULL"), nullable=True, index=True)
+    actor_user_id = Column(BigInteger, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True, index=True)
+    action = Column(String(64), nullable=False, index=True)
+    target_type = Column(String(64), nullable=True)
+    target_id = Column(String(64), nullable=True)
+    payload = Column(JSON, default=dict, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
