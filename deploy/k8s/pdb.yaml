@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sports-manager-api-pdb
+  namespace: sports-platform
+  labels:
+    app.kubernetes.io/name: sports-manager-api
+    app.kubernetes.io/part-of: sports-manager
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sports-manager-api

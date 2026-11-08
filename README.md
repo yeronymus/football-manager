@@ -271,6 +271,9 @@ PYTHONPATH=. uv run pytest
 
 ## Documentation Index
 
+- **[Enterprise Architecture & Domain Design (`v3.0`)](./docs/ARCHITECTURE.md)** — Hexagonal (Ports & Adapters) boundaries, `UnitOfWork` + 8 domain repositories, Redis Streams Outbox, and ADRs 01–09.
+- **[Security Architecture, Threat Model & Compliance](./docs/SECURITY.md)** — Telegram WebApp `initData` HMAC-SHA256 verification, BOLA/IDOR tenant guards, `AuditLog` ledger, and Zero-Trust Kubernetes `NetworkPolicy`.
+- **[Concurrency, Matchmaking & Rate-Limiting Benchmarks](./docs/BENCHMARKS.md)** — Empirical results for 100-player flash-crowd slot allocation (`p99 = 0.276 ms`), 3-team `2-opt` matchmaking, and `TelegramRenderDebouncer` coalescing.
 - **[Configuration, Tenant Policy & Localization Guide](./docs/CONFIGURATION_AND_I18N.md)** — `EN/RU/CS` JSON locale catalog, `SportPresets`, `TenantPolicy` schema, Czech `SPAYD 1.0` QR Platba, and `free_corporate` billing mode.
 - **[Developer Sandbox & Workflow Guide](./docs/DEVELOPMENT.md)** — Local Docker Compose sandbox, `DEV_AUTH_BYPASS` browser testing, Cloudflare HTTPS tunnel for mobile WebApps, and CI gates.
 - **[Backup & Disaster Recovery Runbook](./docs/BACKUP_AND_DR.md)** — 3-2-1 backup strategy, `age`/`gpg` encryption, S3/R2 off-site sync, pre-migration hooks, and automated restore drills.
