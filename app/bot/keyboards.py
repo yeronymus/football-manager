@@ -65,7 +65,7 @@ def get_primary_select_keyboard(available: list[str]) -> InlineKeyboardMarkup:
             
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = "", lang: str = "en") -> InlineKeyboardMarkup:
+def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = "", lang: str = "en", include_rules: bool = False) -> InlineKeyboardMarkup:
     from app.config import settings
     import time
     
@@ -82,6 +82,13 @@ def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = ""
         ]
     ]
     
+    if include_rules:
+        rules_url = f"{base_url.rstrip('/')}/web/rules.html?lang={lang}"
+        rules_text = t("btn_channel_rules", locale=lang)
+        buttons.append([
+            InlineKeyboardButton(text=rules_text, web_app=types.WebAppInfo(url=rules_url))
+        ])
+
     if is_admin:
         draft_url = f"{base_url.rstrip('/')}/web/draft.html?game_id={game_id}&v={timestamp}{lang_param}"
         draft_btn_text = t("btn_draft_teams", locale=lang)
@@ -93,7 +100,7 @@ def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = ""
 
 def get_channel_game_keyboard(game_id: int, lang: str = "en") -> InlineKeyboardMarkup:
     from app.config import settings
-    bot_username = (settings.bot_username or "fm_metabot").lstrip("@")
+    bot_username = (getattr(settings, "bot_username", "") or "").lstrip("@")
     short_name = (getattr(settings, "webapp_short_name", "") or "").strip()
     if short_name:
         direct_link = f"https://t.me/{bot_username}/{short_name}?startapp=game_{game_id}"
@@ -179,17 +186,25 @@ def get_cancel_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
 def get_channel_voting_keyboard(game_id: int, lang: str = "en") -> InlineKeyboardMarkup:
     """Returns a channel-safe keyboard with deep-link URL button for voting."""
     from app.config import settings
-    bot_username = settings.bot_username.lstrip("@")
+    bot_username = (getattr(settings, "bot_username", "") or "").lstrip("@")
     deep_link = f"https://t.me/{bot_username}?start=vote_{game_id}"
     btn_text = t("btn_vote_mvp", locale=lang)
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=btn_text, url=deep_link)]
     ])
 
-def get_voting_keyboard(game_id: int, team_a: list, team_b: list, team_c: list = None, unassigned: list = None, lang: str = "en") -> InlineKeyboardMarkup:
+def get_voting_keyboard(
+    game_id: int,
+    team_a: list,
+    team_b: list,
+    team_c: list = None,
+    unassigned: list = None,
+    lang: str = "en",
+    voted_target_ids: set[int] = None,
+) -> InlineKeyboardMarkup:
     buttons = []
-    
-    
+    voted_set = set(voted_target_ids) if voted_target_ids else set()
+
     def _add_team_section(title: str, players: list):
         if not players:
             return
@@ -198,7 +213,9 @@ def get_voting_keyboard(game_id: int, team_a: list, team_b: list, team_c: list =
         for user in players:
             name = getattr(user, 'full_name', str(user))
             uid = getattr(user, 'user_id', user)
-            row.append(InlineKeyboardButton(text=name, callback_data=f"vote_{game_id}_{uid}"))
+            is_voted = uid in voted_set
+            btn_label = f"✅ {name}" if is_voted else name
+            row.append(InlineKeyboardButton(text=btn_label, callback_data=f"vote_{game_id}_{uid}"))
             if len(row) == 2:
                 buttons.append(row)
                 row = []

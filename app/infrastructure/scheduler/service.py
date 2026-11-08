@@ -6,7 +6,8 @@ from app.scheduler.tasks import (
     publish_game_task,
     calculate_mvp,
     send_pre_game_reminder_task,
-    check_inventory_alerts_task
+    check_inventory_alerts_task,
+    check_unopened_voting_task,
 )
 from app.db.models import Game
 import logging
@@ -51,22 +52,45 @@ class SchedulerService:
         run_date = date_time + timedelta(hours=match_hours)
         now_tz = datetime.now(date_time.tzinfo) if date_time.tzinfo else datetime.now()
         
+        job_id = f"voting_{game_id}"
         if run_date > now_tz:
-            job_id = f"voting_{game_id}"
             scheduler.add_job(
                 send_voting_message, 
                 'date', 
                 run_date=run_date, 
                 args=[game_id], 
                 id=job_id, 
+                misfire_grace_time=7200,
                 replace_existing=True
             )
             logger.info(f"Scheduled voting for game {game_id} at {run_date}")
+        else:
+            scheduler.add_job(
+                send_voting_message,
+                'date',
+                run_date=now_tz + timedelta(seconds=2),
+                args=[game_id],
+                id=job_id,
+                misfire_grace_time=7200,
+                replace_existing=True
+            )
+            logger.info(f"Game {game_id} duration already elapsed; triggered immediate voting")
 
         # Schedule automatic MVP calculation 24 hours after voting starts
-        mvp_run_date = run_date + timedelta(hours=24)
-        if mvp_run_date > now_tz:
-            self.schedule_mvp_calculation_at(game_id, mvp_run_date)
+        base_calc_time = max(run_date, now_tz)
+        mvp_run_date = base_calc_time + timedelta(hours=24)
+        self.schedule_mvp_calculation_at(game_id, mvp_run_date)
+
+    def schedule_periodic_unopened_voting_check(self):
+        """Schedules a recurring safety check every 5 minutes for matches whose voting hasn't opened."""
+        scheduler.add_job(
+            check_unopened_voting_task,
+            'interval',
+            minutes=5,
+            id="check_unopened_voting",
+            misfire_grace_time=300,
+            replace_existing=True
+        )
 
     def schedule_gk_release(self, game: Game):
         """Schedules GK slot release."""

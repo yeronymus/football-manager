@@ -431,7 +431,9 @@ async def update_game_message(bot, game, session: AsyncSession):
     text_short = await format_game_message(
         game, session, is_short=False, signups=signups, lang=lang
     )
-    kb = get_channel_game_keyboard(game.id, lang=lang)
+    from app.bot.keyboards import get_game_keyboard
+    is_channel = (game.channel_id == game.chat_id)
+    kb = get_channel_game_keyboard(game.id, lang=lang) if is_channel else get_game_keyboard(game.id, is_admin=False, lang=lang, include_rules=True)
     for attempt in range(3):
         try:
             await bot.edit_message_text(

@@ -119,6 +119,18 @@ async def send_voting_message(game_id: int):
             game.voting_message_id = msg.message_id
             await session.commit()
 
+        if game.channel_id and game.channel_id != game.chat_id:
+            try:
+                ch_kb = get_channel_voting_keyboard(game_id, lang=chat_lang)
+                await bot.send_message(
+                    chat_id=game.channel_id,
+                    text=text,
+                    reply_markup=ch_kb,
+                    parse_mode="HTML",
+                )
+            except Exception as ex:
+                logger.warning(f"Failed to send voting message to channel {game.channel_id}: {ex}")
+
         from app.infrastructure.scheduler.service import SchedulerService
 
         tz_name = getattr(chat, "timezone", None) or settings.default_timezone or "Europe/Prague"
@@ -430,9 +442,9 @@ async def release_gk_slots(game_id: int):
                 text = await format_game_message(game, session, lang=chat_lang)
 
                 if game.message_id and game.chat_id:
-                    from app.bot.keyboards import get_channel_game_keyboard
-
-                    kb = get_channel_game_keyboard(game.id, lang=chat_lang)
+                    from app.bot.keyboards import get_channel_game_keyboard, get_game_keyboard
+                    is_chan = (game.channel_id == game.chat_id)
+                    kb = get_channel_game_keyboard(game.id, lang=chat_lang) if is_chan else get_game_keyboard(game.id, is_admin=False, lang=chat_lang, include_rules=True)
                     try:
                         await bot.edit_message_text(
                             chat_id=game.chat_id,
@@ -481,7 +493,9 @@ async def publish_game_task(game_id: int):
         text_short = await format_game_message(
             game, session, is_short=False, lang=chat_lang
         )
-        kb = get_channel_game_keyboard(game.id, lang=chat_lang)
+        from app.bot.keyboards import get_game_keyboard
+        is_chan = (game.channel_id == game.chat_id)
+        kb = get_channel_game_keyboard(game.id, lang=chat_lang) if is_chan else get_game_keyboard(game.id, is_admin=False, lang=chat_lang, include_rules=True)
         try:
             sent_message = await bot.send_message(
                 chat_id=game.chat_id,
@@ -589,3 +603,38 @@ async def check_inventory_alerts_task():
         except Exception as e:
             logger.error(f"Failed to run automated inventory alert task: {e}")
 
+
+
+async def check_unopened_voting_task():
+    """
+    Periodic safety sweep: checks for matches whose duration has elapsed
+    and voting has not yet been opened, then triggers send_voting_message.
+    """
+    from datetime import timezone
+    async with async_session_maker() as session:
+        from app.db.models import GameStatus
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+        stmt = (
+            select(Game)
+            .where(
+                Game.date_time >= cutoff,
+                Game.status.in_([GameStatus.OPEN, GameStatus.FINISHED]),
+                Game.voting_message_id.is_(None),
+            )
+            .order_by(Game.date_time.asc())
+        )
+        res = await session.execute(stmt)
+        games = res.scalars().all()
+
+        for g in games:
+            if not g.date_time:
+                continue
+            duration = float(getattr(g, "duration", 2.0) or 2.0)
+            end_time = g.date_time + timedelta(hours=duration)
+            now_tz = datetime.now(g.date_time.tzinfo) if g.date_time.tzinfo else datetime.now(timezone.utc)
+            if now_tz >= end_time:
+                logger.info(f"check_unopened_voting_task: Triggering voting for ended game {g.id}")
+                try:
+                    await send_voting_message(g.id)
+                except Exception as e:
+                    logger.error(f"check_unopened_voting_task failed for game {g.id}: {e}")

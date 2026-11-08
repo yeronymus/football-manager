@@ -478,9 +478,16 @@ async def cmd_start(
                         unassigned.append(u)
 
                 from app.bot.keyboards import get_voting_keyboard
+                from app.db.models import Vote
+
+                voted_res = await session.execute(
+                    select(Vote.target_id).where(Vote.game_id == game_id, Vote.voter_id == user_id)
+                )
+                voted_target_ids = set(voted_res.scalars().all())
 
                 kb = get_voting_keyboard(
-                    game_id, team_a, team_b, team_c=team_c, unassigned=unassigned, lang=user_lang
+                    game_id, team_a, team_b, team_c=team_c, unassigned=unassigned, lang=user_lang,
+                    voted_target_ids=voted_target_ids
                 )
                 v_text = t("cmd_start_voting_title", locale=user_lang, game_num=game_num)
                 await message.answer(v_text, reply_markup=kb)
