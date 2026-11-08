@@ -47,9 +47,9 @@ class SchedulerService:
             logger.info(f"Scheduled T-3h pre-match reminder for game {game_id} at {run_date}")
 
     def schedule_voting(self, game_id: int, date_time: datetime, duration: float = 2.0):
-        """Schedules voting task based on match duration, and MVP resolution 24h later."""
-        match_hours = float(duration) if duration and duration > 0 else 2.0
-        run_date = date_time + timedelta(hours=match_hours)
+        """Schedules voting task 2 hours after kickoff (allowing ~30m cooldown/locker-room time after a 1.5h match), and MVP resolution 24h later."""
+        voting_hours = max(float(duration) if duration and duration > 0 else 2.0, 2.0)
+        run_date = date_time + timedelta(hours=voting_hours)
         now_tz = datetime.now(date_time.tzinfo) if date_time.tzinfo else datetime.now()
         
         job_id = f"voting_{game_id}"

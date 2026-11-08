@@ -631,10 +631,11 @@ async def check_unopened_voting_task():
         for g in games:
             if not g.date_time:
                 continue
-            duration = float(getattr(g, "duration", 2.0) or 2.0)
-            end_time = g.date_time + timedelta(hours=duration)
+            duration = float(getattr(g, "duration", 1.5) or 1.5)
+            # Voting triggers 2 hours after kickoff (allowing ~30m locker-room time)
+            voting_trigger_time = g.date_time + timedelta(hours=max(duration, 2.0))
             now_tz = datetime.now(g.date_time.tzinfo) if g.date_time.tzinfo else datetime.now(timezone.utc)
-            if now_tz >= end_time:
+            if now_tz >= voting_trigger_time:
                 logger.info(f"check_unopened_voting_task: Triggering voting for ended game {g.id}")
                 try:
                     await send_voting_message(g.id)
