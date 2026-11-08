@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.domain.dto import CreateGameDTO, FinishGameDTO, UpdateGameDTO
 from app.core.domain.tenant_policy import BillingMode, resolve_billing_mode
+from app.core.services.game_numbering import clean_location, compute_next_game_sequence_number
 from app.core.services.stats import StatsService
 from app.db.models import Chat, Game, GameStats, GameStatus, Signup, SignupStatus
 from app.infrastructure.scheduler.service import SchedulerService
@@ -52,13 +53,17 @@ class GameLifecycleService:
                 "This group is pending administrator approval before scheduling matches."
             )
 
-        resolved_location = (data.location or "").strip() or (
-            chat.default_location or ""
-        ).strip()
+        resolved_location = clean_location(
+            (data.location or "").strip() or (chat.default_location or "").strip()
+        )
         if not resolved_location:
             raise ValueError(
                 "Match location is required. Please set a location or configure group default."
             )
+
+        next_seq = await compute_next_game_sequence_number(
+            self.session, data.chat_id, getattr(chat, "channel_id", None)
+        )
 
         billing_mode = resolve_billing_mode(getattr(chat, "billing_mode", None))
         if billing_mode == BillingMode.FREE_CORPORATE:
@@ -77,6 +82,7 @@ class GameLifecycleService:
         game = Game(
             chat_id=data.chat_id,
             channel_id=chat.channel_id,
+            sequence_number=next_seq,
             created_by=creator_id,
             date_time=data.date_time,
             location=resolved_location,

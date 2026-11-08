@@ -202,6 +202,7 @@ class Game(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False, index=True)
+    sequence_number = Column(Integer, nullable=True, index=True)
     created_by = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
     date_time = Column(DateTime(timezone=True), nullable=False)
     location = Column(String, nullable=False)

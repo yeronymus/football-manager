@@ -1,13 +1,14 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, delete
+from app.core.repositories.base import BaseRepository
 from app.db.models import User, Position, GameStats, PlayerProfile, Language
 
-class UserRepository:
+class UserRepository(BaseRepository[User]):
     """
     Repository for managing user accounts, profiles, stats, and user account merging.
     """
     def __init__(self, session: AsyncSession):
-        self.session = session
+        super().__init__(session, User)
 
     async def get_user(self, user_id: int) -> User | None:
         """Fetch a user by Telegram ID."""
@@ -44,7 +45,7 @@ class UserRepository:
         result = await self.session.execute(stmt)
         return result.all()
 
-    async def create_user(self, user_id: int, full_name: str, username: str | None, position: Position | str, alt_positions: list[str] = None, language: Language | str = Language.ru) -> User:
+    async def create_user(self, user_id: int, full_name: str, username: str | None, position: Position | str, alt_positions: list[str] = None, language: Language | str = Language.en) -> User:
         """Create a new user. Does not commit automatically to allow transaction grouping."""
         
         # Ensure position is Enum
@@ -59,7 +60,7 @@ class UserRepository:
             username=username,
             player_position=position,
             alt_positions=alt_positions or [],
-            language=Language(language.lower()) if isinstance(language, str) else (language or Language.ru)
+            language=Language(language.lower()) if isinstance(language, str) else (language or Language.en)
         )
         self.session.add(user)
         return user

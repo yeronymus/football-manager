@@ -5,10 +5,9 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from app.core.uow import UnitOfWork
 
-from app.bot.i18n import t
 from app.core.domain.tenant_policy import resolve_tenant_policy
 from app.core.events import Event
-from app.core.i18n import normalize_locale_code
+from app.core.i18n import normalize_locale_code, t
 from app.db.models import Chat, Game, GameStatus, Position, Signup, SignupStatus, Team, User
 
 
@@ -145,9 +144,6 @@ class RosterService:
         from app.core.services.cache import cache_service
 
         await cache_service.evict(f"game_details:{game_id}")
-        from app.bot.utils import evict_game_signups_cache
-
-        evict_game_signups_cache(game_id)
 
         return JoinResult(True, signup, alert_msg, is_reserve)
 
@@ -257,9 +253,6 @@ class RosterService:
         from app.core.services.cache import cache_service
 
         await cache_service.evict(f"game_details:{game_id}")
-        from app.bot.utils import evict_game_signups_cache
-
-        evict_game_signups_cache(game_id)
 
         return True, t("leave_success", locale=norm_locale), promoted_user
 
@@ -292,9 +285,6 @@ class RosterService:
         from app.core.services.cache import cache_service
 
         await cache_service.evict(f"game_details:{game_id}")
-        from app.bot.utils import evict_game_signups_cache
-
-        evict_game_signups_cache(game_id)
 
         return True
 

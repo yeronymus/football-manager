@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import InventoryItem, InventoryStatus, InventoryCategory, Chat, ChatAdmin
-from app.bot.i18n import t
+from app.core.i18n import t
 from app.config import settings
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.repositories.announcement_repository import AnnouncementRepository
+from app.core.repositories.disciplinary_repository import DisciplinaryRepository
 from app.core.repositories.game_repo import GameRepository
+from app.core.repositories.signup_repository import SignupRepository
+from app.core.repositories.stats_repository import StatsRepository
+from app.core.repositories.tenant_repository import TenantRepository
 from app.core.repositories.user_repository import UserRepository
+from app.core.repositories.vote_repository import VoteRepository
 from app.db.database import async_session_maker
 
 
@@ -23,6 +29,12 @@ class UnitOfWork:
 
         self.game_repo = GameRepository(self._session)
         self.user_repo = UserRepository(self._session)
+        self.tenant_repo = TenantRepository(self._session)
+        self.signup_repo = SignupRepository(self._session)
+        self.vote_repo = VoteRepository(self._session)
+        self.disciplinary_repo = DisciplinaryRepository(self._session)
+        self.stats_repo = StatsRepository(self._session)
+        self.announcement_repo = AnnouncementRepository(self._session)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):

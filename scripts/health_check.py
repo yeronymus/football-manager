@@ -1,17 +1,17 @@
-import sys
 import ast
 from pathlib import Path
+import sys
 
-# Ensure UTF-8 output encoding across platforms
 if hasattr(sys.stdout, "reconfigure"):
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
         pass
 
+
 def check_project_health():
     print("🚀 Starting Football Manager Bot Health Check...")
-    
+
     critical_files = [
         "app/bot/instance.py",
         "app/bot/main.py",
@@ -19,17 +19,25 @@ def check_project_health():
         "app/core/events.py",
         "app/core/domain/dto.py",
         "app/core/services/game_lifecycle.py",
+        "app/core/services/game_numbering.py",
         "app/api/routers/admin.py",
+        "app/api/routers/dashboard.py",
+        "app/api/routers/tenants.py",
+        "app/api/routers/leaderboards.py",
+        "app/api/routers/disciplinary.py",
+        "app/api/routers/rosters.py",
+        "app/api/routers/votes.py",
+        "app/api/routers/billing.py",
         "app/api/auth.py",
         "app/api/routers/users.py",
         "app/api/routers/games.py",
         "app/api/main.py",
         "app/config.py",
     ]
-    
+
     all_ok = True
     base_path = Path(__file__).parent.parent
-    
+
     print("\n🔍 Checking for syntax errors...")
     for file_path in critical_files:
         full_path = base_path / file_path
@@ -37,7 +45,7 @@ def check_project_health():
             print(f"❌ MISSING: {file_path}")
             all_ok = False
             continue
-            
+
         try:
             with open(full_path, encoding="utf-8") as f:
                 ast.parse(f.read())
@@ -47,21 +55,24 @@ def check_project_health():
             all_ok = False
 
     print("\n📦 Checking layer boundaries...")
-    
-    # core/ must NOT import from api/
+
+    # Hexagonal invariant: core/ must NOT import from api/ or bot/
     for py_file in (base_path / "app/core").rglob("*.py"):
         with open(py_file, encoding="utf-8") as f:
             content = f.read()
+        rel = py_file.relative_to(base_path)
         if "from app.api" in content or "import app.api" in content:
-            rel = py_file.relative_to(base_path)
             print(f"❌ LAYER VIOLATION: {rel} imports from app.api!")
+            all_ok = False
+        if "from app.bot" in content or "import app.bot" in content:
+            print(f"❌ LAYER VIOLATION: {rel} imports from app.bot!")
             all_ok = False
 
     # api/ must NOT have top-level bot imports (except main.py bootstrap)
     for py_file in (base_path / "app/api").rglob("*.py"):
         rel = py_file.relative_to(base_path)
         if "main.py" in str(rel):
-            continue  # bootstrap is allowed
+            continue
         with open(py_file, encoding="utf-8") as f:
             try:
                 tree = ast.parse(f.read())
@@ -71,9 +82,7 @@ def check_project_health():
             if isinstance(node, (ast.Import, ast.ImportFrom)):
                 if isinstance(node, ast.ImportFrom) and node.module and "app.bot" in node.module:
                     print(f"⚠️  TOP-LEVEL bot import in {rel}: line {node.lineno}")
-                    # Not a hard fail, just a warning
 
-    # instance.py must not import from bot.main
     try:
         with open(base_path / "app/bot/instance.py", encoding="utf-8") as f:
             content = f.read()
@@ -81,7 +90,7 @@ def check_project_health():
             print("❌ CIRCULAR HAZARD: instance.py imports from app.bot.main!")
             all_ok = False
         else:
-            print("✅ instance.py is clean.")
+            print("✅ instance.py and core/ hexagonal boundaries are clean.")
     except Exception as e:
         print(f"⚠️ Could not check instance.py: {e}")
 
@@ -91,6 +100,7 @@ def check_project_health():
     else:
         print("\n⚠️ Health check detected issues. Please review. ⚠️")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     check_project_health()

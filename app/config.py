@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # Telegram Bot & Mini App
     bot_token: str
-    bot_username: str = "fm_metabot"
+    bot_username: str = "sports_manager_bot"
     webapp_short_name: str = ""
     admin_ids: List[int] = []
     allowed_users: List[int] = []

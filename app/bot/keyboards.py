@@ -93,7 +93,7 @@ def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = ""
 
 def get_channel_game_keyboard(game_id: int, lang: str = "en") -> InlineKeyboardMarkup:
     from app.config import settings
-    bot_username = (settings.bot_username or "fm_metabot").lstrip("@")
+    bot_username = (settings.bot_username or "sports_manager_bot").lstrip("@")
     short_name = (getattr(settings, "webapp_short_name", "") or "").strip()
     if short_name:
         direct_link = f"https://t.me/{bot_username}/{short_name}?startapp=game_{game_id}"

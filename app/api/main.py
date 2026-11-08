@@ -101,6 +101,14 @@ async def on_startup():
                 app.state.bg_tasks.append(polling_task)
                 setup_task = asyncio.create_task(safe_start_bot())
                 app.state.bg_tasks.append(setup_task)
+        elif not settings.bot_username or settings.bot_username == "sports_manager_bot":
+            try:
+                me = await bot.get_me()
+                if getattr(me, "username", None):
+                    settings.bot_username = me.username
+                    logger.info(f"API container resolved bot username: {settings.bot_username}")
+            except Exception as e:
+                logger.warning(f"API container could not resolve bot username via get_me: {e}")
 
         logger.info("Application started successfully")
     except Exception as e:

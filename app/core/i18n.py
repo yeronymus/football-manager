@@ -164,3 +164,13 @@ class LocaleCatalog:
 
 
 catalog = LocaleCatalog()
+
+
+def translate(locale: Any, key: str, /, **kwargs: Any) -> str:
+    """Module-level convenience wrapper around `catalog.translate(locale, key, **kwargs)`."""
+    return catalog.translate(locale, key, **kwargs)
+
+
+def t(key: str, locale: Any = "en", **kwargs: Any) -> str:
+    """Core localization helper (`key` first) usable across domain and application services."""
+    return catalog.translate(locale, key, **kwargs)
