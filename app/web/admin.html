@@ -180,8 +180,15 @@
                     </div>
 
                     <div id="group-settings-container" class="group-settings-card hidden" style="margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 24px;">
-                        <h3 data-i18n="group_settings_title">Group Defaults & Settings</h3>
-                        <p data-i18n="group_settings_desc" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">These values will be pre-filled when creating new games for this group.</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                            <div>
+                                <h3 data-i18n="group_settings_title" style="margin: 0;">Group Defaults & Settings</h3>
+                                <p data-i18n="group_settings_desc" style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 0 0;">These values will be pre-filled when creating new games for this group.</p>
+                            </div>
+                            <button class="action-btn outline" onclick="exportAttendanceCsv()" style="padding: 8px 14px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px;">
+                                📥 <span>Export HR Attendance CSV</span>
+                            </button>
+                        </div>
                         
                         <div class="settings-grid">
                             <div class="form-group">
@@ -271,6 +278,14 @@
                                 <label data-i18n="lbl_cancel_hours">Free Cancellation Window (Hours)</label>
                                 <input type="number" id="setting-cancel-hours" min="0" max="168" onblur="updatePolicySetting('free_cancellation_hours', parseInt(this.value, 10) || 0, this)" placeholder="24">
                                 <small data-i18n="help_cancel_hours" style="color: var(--text-muted); display: block; margin-top: 4px;">Minimum hours before kick-off for penalty-free cancellation.</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Rating System Strategy</label>
+                                <select id="setting-rating-system" onchange="updatePolicySetting('rating_system', this.value, this)">
+                                    <option value="simple_points">Simple Points (+Win / -Loss / +MVP)</option>
+                                    <option value="elo_v2">Dynamic Elo v2 (Expected Win Prob & Margin)</option>
+                                </select>
+                                <small style="color: var(--text-muted); display: block; margin-top: 4px;">Controls how player ratings are updated when matches finish.</small>
                             </div>
                         </div>
                     </div>

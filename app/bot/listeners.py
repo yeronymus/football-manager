@@ -52,13 +52,15 @@ async def on_game_created(event: GameCreatedEvent):
             return
 
         try:
-            from app.bot.keyboards import get_channel_game_keyboard
+            from app.bot.keyboards import get_channel_game_keyboard, get_game_keyboard
             from app.bot.utils import format_game_message, resolve_chat_language
 
+            is_channel = False
             try:
                 chat_info = await bot.get_chat(event.chat_id)
                 if chat_info.type == "channel":
                     game.channel_id = event.chat_id
+                    is_channel = True
             except Exception as e:
                 logger.warning(f"Failed to check chat type: {e}")
 
@@ -66,7 +68,27 @@ async def on_game_created(event: GameCreatedEvent):
             text = await format_game_message(
                 game, session, is_short=False, lang=chat_lang
             )
-            kb = get_channel_game_keyboard(game.id, lang=chat_lang)
+
+            # Publish to linked channel if distinct from main group
+            if game.channel_id and game.channel_id != game.chat_id:
+                try:
+                    ch_kb = get_channel_game_keyboard(game.id, lang=chat_lang)
+                    ch_msg = await bot.send_message(
+                        chat_id=game.channel_id,
+                        text=text,
+                        reply_markup=ch_kb,
+                        parse_mode="HTML",
+                    )
+                    game.channel_message_id = ch_msg.message_id
+                except Exception as e:
+                    logger.warning(f"Failed to publish to channel {game.channel_id}: {e}")
+
+            # For group chat, use get_game_keyboard (opens WebApp in-app without redirecting to PM)
+            kb = (
+                get_channel_game_keyboard(game.id, lang=chat_lang)
+                if is_channel
+                else get_game_keyboard(game.id, is_admin=False, lang=chat_lang, include_rules=True)
+            )
 
             msg = await bot.send_message(
                 chat_id=game.chat_id,
@@ -91,10 +113,8 @@ async def on_game_created(event: GameCreatedEvent):
             logger.warning(f"Failed to publish game {event.game_id} to chat: {e}")
 
     await _refresh_dashboard(event.game_id)
-
-
 async def on_game_finished(event: GameFinishedEvent):
-    """Send finish result text to chat, unpin match post, and close voting message."""
+    """Send finish result text to chat and unpin match post (voting remains open)."""
     if event.result_text:
         try:
             await bot.send_message(
@@ -114,9 +134,7 @@ async def on_game_finished(event: GameFinishedEvent):
                         chat_id=game.chat_id, message_id=game.message_id
                     )
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to unpin message for game {event.game_id} in chat {game.chat_id}: {e}"
-                    )
+                    logger.warning(f"Failed to unpin message for game {event.game_id}: {e}")
 
             if game.channel_id and game.channel_message_id:
                 try:
@@ -124,39 +142,17 @@ async def on_game_finished(event: GameFinishedEvent):
                         chat_id=game.channel_id, message_id=game.channel_message_id
                     )
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to unpin channel message for game {event.game_id} in channel {game.channel_id}: {e}"
-                    )
+                    logger.warning(f"Failed to unpin channel message for game {event.game_id}: {e}")
 
-            if game.voting_message_id:
+            # Trigger voting if not yet opened
+            if not game.voting_message_id:
                 try:
-                    from app.bot.i18n import t
-                    from app.bot.utils import (
-                        get_group_game_number,
-                        resolve_chat_language,
-                    )
-
-                    game_num = await get_group_game_number(session, game)
-                    chat_lang = await resolve_chat_language(session, game.chat_id)
-                    v_text = t(
-                        "voting_closed_title", locale=chat_lang, game_num=game_num
-                    )
-
-                    await bot.edit_message_text(
-                        chat_id=game.chat_id,
-                        message_id=game.voting_message_id,
-                        text=v_text,
-                        reply_markup=None,
-                        parse_mode="HTML",
-                    )
+                    from app.scheduler.tasks import send_voting_message
+                    await send_voting_message(game.id)
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to close voting message on game finish for game {event.game_id}: {e}"
-                    )
+                    logger.warning(f"Failed to trigger voting on game finish: {e}")
 
     await _refresh_full(event.game_id)
-
-
 async def on_game_updated(event: GameUpdatedEvent):
     """Edit public message if there were changes."""
     if event.changes:
@@ -172,12 +168,13 @@ async def on_teams_published(event: TeamsPublishedEvent):
             return
 
         try:
-            from app.bot.keyboards import get_channel_game_keyboard
+            from app.bot.keyboards import get_channel_game_keyboard, get_game_keyboard
             from app.bot.utils import format_game_message, resolve_chat_language
 
             chat_lang = await resolve_chat_language(session, game.chat_id)
             public_text = await format_game_message(game, session, lang=chat_lang)
-            kb = get_channel_game_keyboard(game.id, lang=chat_lang)
+            is_chan = (game.channel_id == game.chat_id)
+            kb = get_channel_game_keyboard(game.id, lang=chat_lang) if is_chan else get_game_keyboard(game.id, is_admin=False, lang=chat_lang, include_rules=True)
 
             if game.message_id:
                 try:

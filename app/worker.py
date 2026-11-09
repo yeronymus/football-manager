@@ -55,6 +55,11 @@ async def main():
     logger.info("Starting scheduler...")
     await start_scheduler(paused=False)
     from app.scheduler.main import scheduler
+    from app.infrastructure.scheduler.service import SchedulerService
+    from app.scheduler.tasks import check_unopened_voting_task
+
+    SchedulerService().schedule_periodic_unopened_voting_check()
+    asyncio.create_task(check_unopened_voting_task())
 
     sched_tick_task = asyncio.create_task(_scheduler_tick(scheduler))
 

@@ -262,6 +262,8 @@ async function loadGroupGames(group) {
     document.getElementById('setting-signup-limit').value = (group.default_signup_limit !== undefined && group.default_signup_limit !== null) ? group.default_signup_limit : 40;
     const cancelEl = document.getElementById('setting-cancel-hours');
     if (cancelEl) cancelEl.value = cancelHours;
+    const ratingSysEl = document.getElementById('setting-rating-system');
+    if (ratingSysEl) ratingSysEl.value = (group.policy && group.policy.rating_system) || 'simple_points';
 
     applyBillingModeSettingsUI(billingMode, currency);
     
@@ -1783,5 +1785,31 @@ async function triggerInventoryAlerts() {
         showAdminToast(getAdminText('toast_alerts_sent', { count }));
     } catch (err) {
         showAdminToast('Error checking alerts: ' + err.message);
+    }
+}
+
+async function exportAttendanceCsv() {
+    if (!currentGroupId) return;
+    try {
+        const headers = {};
+        if (initData) {
+            headers['Authorization'] = `tma ${initData}`;
+        }
+        const res = await fetch(`/api/dashboard/groups/${currentGroupId}/attendance.csv`, { headers });
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `attendance_group_${currentGroupId}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        showAdminToast('CSV exported!');
+    } catch (err) {
+        showAdminToast('CSV export failed: ' + err.message);
     }
 }
