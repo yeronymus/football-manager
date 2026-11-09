@@ -302,6 +302,7 @@ async def delete_game(
 @router.get("/groups/{chat_id}/attendance.csv")
 async def export_group_attendance_csv(
     chat_id: int,
+    send_dm: bool = Query(False),
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session),
 ):
@@ -381,10 +382,28 @@ async def export_group_attendance_csv(
             ]
         )
 
+    csv_content = buf.getvalue()
+    filename = f"attendance_{abs(chat_id)}.csv"
+
+    if send_dm:
+        from aiogram.types import BufferedInputFile
+        from fastapi.responses import JSONResponse
+        from app.bot.instance import bot
+
+        title = (getattr(chat, "title", None) if chat else None) or str(chat_id)
+        doc = BufferedInputFile(csv_content.encode("utf-8"), filename=filename)
+        await bot.send_document(
+            chat_id=user_id,
+            document=doc,
+            caption=f"📊 <b>HR / Attendance CSV Export</b>\n🏟 {title} ({len(rows)} rows)",
+            parse_mode="HTML",
+        )
+        return JSONResponse({"status": "sent_to_dm", "rows": len(rows), "filename": filename})
+
     return Response(
-        content=buf.getvalue(),
+        content=csv_content,
         media_type="text/csv; charset=utf-8",
         headers={
-            "Content-Disposition": f'attachment; filename="attendance_{abs(chat_id)}.csv"'
+            "Content-Disposition": f'attachment; filename="{filename}"'
         },
     )

@@ -1795,6 +1795,15 @@ async function exportAttendanceCsv() {
         if (initData) {
             headers['Authorization'] = `tma ${initData}`;
         }
+        const inTelegramWebView = Boolean(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
+        if (inTelegramWebView) {
+            const res = await fetch(`/api/dashboard/groups/${currentGroupId}/attendance.csv?send_dm=true`, { headers });
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            showAdminToast('📥 CSV-отчёт отправлен вам в личку бота!');
+            return;
+        }
         const res = await fetch(`/api/dashboard/groups/${currentGroupId}/attendance.csv`, { headers });
         if (!res.ok) {
             throw new Error(`HTTP ${res.status}`);
