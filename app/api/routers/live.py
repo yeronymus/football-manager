@@ -30,6 +30,7 @@ from app.core.events import (
     TeamsPublishedEvent,
     event_bus,
 )
+from app.core.services.cache import cache_service
 from app.core.services.game_numbering import clean_location
 from app.core.services.roster import PlayerJoinedEvent, PlayerLeftEvent
 from app.db.database import get_session
@@ -47,14 +48,30 @@ def _get_condition(game_id: int) -> asyncio.Condition:
     return _game_conditions[game_id]
 
 
-async def notify_game_live_subscribers(game_id: int) -> int:
-    """Bumps the live state version for `game_id` and wakes all connected SSE clients."""
+async def _wake_local_subscribers(game_id: int) -> int:
     new_ver = _game_versions.get(game_id, 0) + 1
     _game_versions[game_id] = new_ver
     cond = _game_conditions.get(game_id)
     if cond is not None:
         async with cond:
             cond.notify_all()
+    return new_ver
+
+
+async def notify_game_live_subscribers(game_id: int, publish_redis: bool = True) -> int:
+    """
+    Bumps the live state version for `game_id`, wakes local SSE clients, and broadcasts
+    across multi-worker / multi-pod replicas via Redis Pub/Sub (`live:game:{game_id}`).
+    """
+    new_ver = await _wake_local_subscribers(game_id)
+    if publish_redis and getattr(cache_service, "redis", None) is not None:
+        try:
+            await cache_service.redis.publish(
+                f"live:game:{game_id}",
+                json.dumps({"type": "update", "game_id": game_id, "version": new_ver}),
+            )
+        except Exception:
+            pass
     return new_ver
 
 
@@ -94,26 +111,56 @@ async def stream_game_updates(
             return
 
         cond = _get_condition(game_id)
-        while True:
+        pubsub = None
+        pubsub_task = None
+
+        async def _redis_pubsub_bridge():
+            nonlocal pubsub
             try:
-                async with cond:
-                    await asyncio.wait_for(
-                        cond.wait_for(lambda: _game_versions.get(game_id, 0) > last_seen),
-                        timeout=15.0,
-                    )
-                last_seen = _game_versions.get(game_id, 0)
-                payload = json.dumps(
-                    {"type": "update", "game_id": game_id, "version": last_seen}
-                )
-                yield f"data: {payload}\n\n"
-                sent += 1
-                if max_events and sent >= max_events:
+                redis_client = getattr(cache_service, "redis", None)
+                if redis_client is None or not hasattr(redis_client, "pubsub"):
                     return
-            except asyncio.TimeoutError:
-                # Emit SSE comment keepalive every 15s to prevent reverse-proxy idle disconnects
-                yield ": keepalive\n\n"
-            except asyncio.CancelledError:
-                break
+                pubsub = redis_client.pubsub()
+                await pubsub.subscribe(f"live:game:{game_id}")
+                async for msg in pubsub.listen():
+                    if msg and msg.get("type") == "message":
+                        await _wake_local_subscribers(game_id)
+            except Exception:
+                return
+
+        if getattr(cache_service, "redis", None) is not None:
+            pubsub_task = asyncio.create_task(_redis_pubsub_bridge())
+
+        try:
+            while True:
+                try:
+                    async with cond:
+                        await asyncio.wait_for(
+                            cond.wait_for(lambda: _game_versions.get(game_id, 0) > last_seen),
+                            timeout=15.0,
+                        )
+                    last_seen = _game_versions.get(game_id, 0)
+                    payload = json.dumps(
+                        {"type": "update", "game_id": game_id, "version": last_seen}
+                    )
+                    yield f"data: {payload}\n\n"
+                    sent += 1
+                    if max_events and sent >= max_events:
+                        return
+                except asyncio.TimeoutError:
+                    # Emit SSE comment keepalive every 15s to prevent reverse-proxy idle disconnects
+                    yield ": keepalive\n\n"
+                except asyncio.CancelledError:
+                    break
+        finally:
+            if pubsub_task is not None:
+                pubsub_task.cancel()
+            if pubsub is not None:
+                try:
+                    await pubsub.unsubscribe(f"live:game:{game_id}")
+                    await pubsub.close()
+                except Exception:
+                    pass
 
     return StreamingResponse(
         _event_generator(),
