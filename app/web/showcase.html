@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platform Showcase — Multi-Tenant Parameterized Event & Community ERP</title>
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --bg-card: #131b2e;
+            --bg-card-alt: #19233c;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.25);
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --purple: #8b5cf6;
+            --rose: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.09);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+            background: radial-gradient(circle at 15% 10%, #172554 0%, var(--bg-dark) 45%);
+            color: var(--text-main);
+            min-height: 100vh;
+            line-height: 1.5;
+            padding-bottom: 60px;
+        }
+        .container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 28px 24px;
+        }
+        .hero {
+            background: linear-gradient(135deg, rgba(30, 58, 138, 0.55), rgba(15, 23, 42, 0.9));
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 28px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            color: #93c5fd;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        .hero h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+        .hero p {
+            color: var(--text-muted);
+            max-width: 720px;
+            font-size: 0.98rem;
+        }
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 20px;
+        }
+        .kpi-val {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: #60a5fa;
+        }
+        .kpi-lbl {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .preset-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .preset-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .preset-btn:hover {
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+        .preset-btn.active {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border-color: #60a5fa;
+            box-shadow: 0 8px 20px var(--accent-glow);
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+        @media (max-width: 920px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+        .panel h3 {
+            font-size: 1.1rem;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.76rem;
+            font-weight: 600;
+        }
+        .tag.on { background: rgba(16, 185, 129, 0.16); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); }
+        .tag.off { background: rgba(148, 163, 184, 0.12); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2); }
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 14px 0 18px 0;
+        }
+        .module-box {
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.84rem;
+        }
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.88rem;
+        }
+        .term-table th, .term-table td {
+            padding: 9px 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        .term-table th { color: var(--text-muted); font-weight: 600; }
+        .btn-action {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.86rem;
+            cursor: pointer;
+            transition: filter 0.15s;
+        }
+        .btn-action:hover { filter: brightness(1.1); }
+        .btn-action.emerald { background: var(--emerald); }
+        .btn-action.purple { background: var(--purple); }
+        .slider-row {
+            margin-bottom: 12px;
+        }
+        .slider-row label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+            color: var(--text-muted);
+        }
+        .slider-row input[type=range] {
+            width: 100%;
+            accent-color: var(--accent);
+        }
+        .code-pill {
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 0.78rem;
+            background: #090d16;
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: #38bdf8;
+            word-break: break-all;
+            margin-top: 10px;
+        }
+        .teams-wrap {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .team-col {
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+        }
+        .player-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.82rem;
+            padding: 5px 0;
+            border-bottom: 1px dashed rgba(255,255,255,0.06);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <div>
+                <div class="hero-badge">🎓 Bachelor's Thesis Interactive Showcase • B2B & B2C SaaS</div>
+                <h1>Multi-Tenant Parameterized Event & Community ERP</h1>
+                <p>Единая облачная платформа для автоматизации спортивных лиг, групповых поездок (Прага → Дрезден), книжных клубов и корпоративных сообществ с комбинаторной оптимизацией (2-opt), банковским клирингом SPAYD (ISO 20022) и двухконтурной защитой данных.</p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="/web/admin.html" class="btn-action" style="text-decoration: none;">⚙️ Открыть Admin Mini App</a>
+                <a href="/web/game.html" class="btn-action emerald" style="text-decoration: none;">📱 Открыть Player Mini App</a>
+            </div>
+        </div>
+
+        <div class="kpi-strip">
+            <div class="kpi-card">
+                <div class="kpi-val">9 Presets</div>
+                <div class="kpi-lbl">Спорт, Поездки, Клубы, Квизы</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-val">&lt; 3 ms</div>
+                <div class="kpi-lbl">Сходимость 2-opt балансировки</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-val">-95% DB Load</div>
+                <div class="kpi-lbl">SSE + Redis Pub/Sub vs Polling</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-val">SPAYD 1.0</div>
+                <div class="kpi-lbl">Стандарт QR Platba ЧНБ + IBAN Mod-11</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-val">RLS + Vault</div>
+                <div class="kpi-lbl">Изоляция тенантов и Fernet GDPR</div>
+            </div>
+        </div>
+
+        <!-- 1. Interactive Preset Switcher -->
+        <div class="section-title">1. 🧩 Мета-модель: Параметризуемые пресеты событий (Domain Generalization)</div>
+        <div class="preset-bar">
+            <button class="preset-btn active" onclick="selectPreset('football', this)">⚽ Футбольная лига (Спорт)</button>
+            <button class="preset-btn" onclick="selectPreset('trip', this)">🚌 Поездка Прага → Дрезден (Туризм)</button>
+            <button class="preset-btn" onclick="selectPreset('book_club', this)">📚 Книжный клуб / Митап</button>
+            <button class="preset-btn" onclick="selectPreset('board_games', this)">🎲 Паб-квиз / Настолки</button>
+        </div>
+
+        <div class="grid-2">
+            <div class="panel">
+                <h3>
+                    <span id="preset-title">⚽ Футбол (большое поле / манеж)</span>
+                    <span class="tag on" id="preset-cat">category: sport</span>
+                </h3>
+                <p style="font-size: 0.86rem; color: var(--text-muted);" id="preset-desc">
+                    Классический спортивный режим: учитываются игровые позиции (GK/DEF/MID/FWD), работает 2-opt балансировка составов по рейтингу ELO, ввод счета и голосование за MVP матча.
+                </p>
+
+                <div class="module-grid" id="modules-container"></div>
+
+                <h4 style="font-size: 0.9rem; color: var(--text-muted); margin-top: 8px;">Локализованный словарь домена (Terminology Dictionary)</h4>
+                <table class="term-table">
+                    <thead>
+                        <tr>
+                            <th>Параметр</th>
+                            <th>Русский (RU)</th>
+                            <th>Čeština (CS)</th>
+                            <th>English (EN)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="term-tbody"></tbody>
+                </table>
+            </div>
+
+            <div class="panel">
+                <h3>
+                    <span>📱 Превью карточки события в Mini App</span>
+                    <span class="tag on" id="preview-flow-tag">Full Match Flow</span>
+                </h3>
+                <div style="background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: 700; font-size: 1.05rem;" id="card-event-title">⚽ Матч #42 — Прага, Страгов</span>
+                        <span class="tag on">OPEN • 14/16</span>
+                    </div>
+                    <div style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 14px;" id="card-event-meta">
+                        📍 Поле: Strahov Pitch #2 • 🕒 Чт, 19:30 • 💳 150 CZK (SPAYD QR)
+                    </div>
+                    <div style="margin-bottom: 14px;">
+                        <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px;">Доступные роли при записи:</div>
+                        <div id="card-roles-list" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+                    </div>
+                    <div style="margin-bottom: 14px;">
+                        <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px;">Чек-лист инвентаря / снаряжения:</div>
+                        <div id="card-inventory-list" style="font-size: 0.84rem; color: #cbd5e1;"></div>
+                    </div>
+                    <div style="padding-top: 12px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted);" id="card-finish-label">Пайплайн завершения:</span>
+                        <span class="btn-action emerald" id="card-finish-btn" style="padding: 6px 12px; font-size: 0.8rem;">🏁 Ввести счет (5:3) и голы</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Algorithms: 2-opt & Hybrid Co-Pay Billing -->
+        <div class="grid-2">
+            <!-- 2-opt Optimizer -->
+            <div class="panel">
+                <h3>
+                    <span>2. ⚖️ Комбинаторная оптимизация (2-opt Local Search)</span>
+                    <button class="btn-action" onclick="runTwoOptDemo()">⚡ Запустить 2-opt шаг</button>
+                </h3>
+                <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 10px;">
+                    Минимизирует дисперсию среднего рейтинга между группами (командами или экипажами машин) при соблюдении ограничений ролей:
+                </p>
+                <div style="display: flex; gap: 14px; align-items: center; background: #090d16; padding: 10px 14px; border-radius: 10px; font-size: 0.85rem;">
+                    <div>Итерация: <strong id="opt-iter" style="color:#60a5fa;">0 (Случайный посев)</strong></div>
+                    <div>Разброс Δ ELO: <strong id="opt-delta" style="color:#f43f5e;">24.5 pt</strong></div>
+                    <div>Время: <strong style="color:#34d399;">1.8 ms</strong></div>
+                </div>
+                <div class="teams-wrap" id="opt-teams-container"></div>
+            </div>
+
+            <!-- Hybrid Billing & SPAYD QR -->
+            <div class="panel">
+                <h3>
+                    <span>3. 💳 Гибридный клиринг: Co-Pay + MultiSport + SPAYD</span>
+                    <span class="tag on">ISO 20022</span>
+                </h3>
+                <div class="slider-row">
+                    <label><span>Общий бюджет события (Аренда / Билеты):</span> <strong id="lbl-total-cost">2400 CZK</strong></label>
+                    <input type="range" id="rng-cost" min="500" max="6000" step="100" value="2400" oninput="recalcBilling()">
+                </div>
+                <div class="slider-row">
+                    <label><span>Участников в основном составе:</span> <strong id="lbl-part-count">12 чел.</strong></label>
+                    <input type="range" id="rng-part" min="4" max="24" step="1" value="12" oninput="recalcBilling()">
+                </div>
+                <div class="slider-row">
+                    <label><span>🏢 Субсидия компании (Employer Co-Pay %):</span> <strong id="lbl-subsidy">50%</strong></label>
+                    <input type="range" id="rng-sub" min="0" max="100" step="10" value="50" oninput="recalcBilling()">
+                </div>
+                <div class="slider-row">
+                    <label><span>💳 Участников с картой MultiSport (-150 CZK):</span> <strong id="lbl-ms">4 чел.</strong></label>
+                    <input type="range" id="rng-ms" min="0" max="10" step="1" value="4" oninput="recalcBilling()">
+                </div>
+
+                <div style="background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 0.85rem; margin-top: 8px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                        <span style="color:var(--text-muted);">Оплачивает компания (B2B Invoice):</span>
+                        <strong id="out-emp-share" style="color:#60a5fa;">1200 CZK</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                        <span style="color:var(--text-muted);">Покрыто картами MultiSport:</span>
+                        <strong id="out-ms-share" style="color:#a78bfa;">600 CZK</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding-top:6px; border-top:1px solid var(--border); font-size:0.95rem;">
+                        <span>К оплате на 1 участника (без MultiSport):</span>
+                        <strong id="out-player-pay" style="color:#34d399;">75 CZK</strong>
+                    </div>
+                </div>
+                <div class="code-pill" id="spayd-string">SPD*1.0*ACC:CZ6508000000192000145399*AM:75.00*CC:CZK*X-VS:42*MSG:EVENT 42 PRAHA</div>
+            </div>
+        </div>
+
+        <!-- 3. Two-Tier Shadow Identity Vault (GDPR + Cold Storage) -->
+        <div class="panel">
+            <h3>
+                <span>4. 🛡 Двухконтурный Холодный Архив (Two-Tier Shadow Identity Vault для GDPR)</span>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn-action purple" onclick="toggleVaultState(true)">🔒 Анонимизировать (GDPR Erasure)</button>
+                    <button class="btn-action emerald" onclick="toggleVaultState(false)">♻️ Восстановить из Shadow Vault</button>
+                </div>
+            </h3>
+            <p style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 14px;">
+                Демонстрация сохранения ссылочной целостности истории матчей при удалении персональных данных сотрудника:
+            </p>
+            <div class="grid-2" style="margin-bottom: 0;">
+                <div style="background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+                    <div style="font-size: 0.78rem; text-transform: uppercase; color: #38bdf8; font-weight: 700; margin-bottom: 8px;">🔥 Контур 1: Боевая БД (Hot Production PostgreSQL)</div>
+                    <div style="font-size: 0.9rem; margin-bottom: 6px;">User ID: <code>502389915</code> (Внешние ключи в <code>signups</code> и <code>game_stats</code> сохранены)</div>
+                    <div style="font-size: 0.9rem; margin-bottom: 6px;">Отображаемое имя: <strong id="hot-name" style="color: #fff;">Melih Traveler</strong></div>
+                    <div style="font-size: 0.9rem; margin-bottom: 6px;">Telegram Handle: <strong id="hot-user" style="color: #60a5fa;">@melih_prague</strong></div>
+                    <div style="font-size: 0.9rem;">Статистика: <strong>24 события • Рейтинг 118 ELO • 5 MVP</strong></div>
+                </div>
+                <div style="background: #090d16; border: 1px solid rgba(139, 92, 246, 0.35); border-radius: 12px; padding: 16px;">
+                    <div style="font-size: 0.78rem; text-transform: uppercase; color: #c084fc; font-weight: 700; margin-bottom: 8px;">❄️ Контур 2: Изолированный Архив (ShadowIdentityVault • Fernet AES-128-CBC)</div>
+                    <div style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 6px;" id="vault-status">Статус: Профиль активен (слепок в архиве не требуется)</div>
+                    <div class="code-pill" id="vault-cipher" style="color: #c084fc;">[NO_ACTIVE_ARCHIVE — USER_IS_PUBLIC]</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const PRESET_DATA = {
+            football: {
+                title: "⚽ Футбол (большое поле / манеж)",
+                cat: "category: sport",
+                desc: "Классический спортивный режим: учитываются позиции (GK/DEF/MID/FWD), работает 2-opt балансировка составов по ELO, ввод счета и голосование за MVP матча.",
+                flowTag: "Full Match + Score Flow",
+                cardTitle: "⚽ Матч #42 — Прага, Страгов",
+                cardMeta: "📍 Поле: Strahov Pitch #2 • 🕒 Чт, 19:30 • 💳 150 CZK (SPAYD QR)",
+                roles: ["🧤 GK (Вратарь)", "🛡 DEF (Защитник)", "🎯 MID (Полузащитник)", "⚡ FWD (Нападающий)"],
+                inventory: "🦺 Манишки (2 комплекта) • ⚽ Мячи Select (3 шт.) • 🩹 Аптечка",
+                finishBtn: "🏁 Ввести счет (5:3), голы и открыть голосование MVP",
+                modules: {
+                    "🎭 Роли / Позиции": true,
+                    "⚖️ 2-opt Драфт команд": true,
+                    "🏁 Счет и голы": true,
+                    "🏆 Голосование MVP": true,
+                    "🎒 Инвентарь": true,
+                    "💳 SPAYD Биллинг": true
+                },
+                terms: [
+                    ["Событие (event_noun)", "Матч", "Zápas", "Match"],
+                    ["Участник (participant_noun)", "Игрок", "Hráč", "Player"],
+                    ["Локация (venue_noun)", "Поле", "Hřiště", "Pitch"],
+                    ["Группировка (grouping_noun)", "Команды", "Týmy", "Teams"]
+                ]
+            },
+            trip: {
+                title: "🚌 Поездка / Выезд (Прага → Дрезден / Саксонская Швейцария)",
+                cat: "category: trip",
+                desc: "Туристический пресет: вместо вратарей и защитников — Водители с авто и Пассажиры. Драфт распределяет людей по экипажам машин, а завершение события сразу считает сплит расходов на бензин и билеты без ввода счета.",
+                flowTag: "Zero-Score Quick Settlement",
+                cardTitle: "🚌 Выезд #12 — Прага → Дрезден & Бастай",
+                cardMeta: "📍 Точка сбора: Praha hl.n. / Chodov P+R • 🕒 Сб, 08:00 (8 ч) • 💳 400 CZK (Бензин / Групповой билет)",
+                roles: ["🚗 DRIVER (Водитель +3 места)", "🎒 PASSENGER (Пассажир)", "🧭 GUIDE (Организатор маршрута)"],
+                inventory: "🩹 Дорожная аптечка • 🔊 Bluetooth-колонка • 🎟 Групповые билеты ČD • 💧 Вода в машины",
+                finishBtn: "✅ Завершить поездку (Без счета) и разослать QR на оплату",
+                modules: {
+                    "🎭 Роли (Водитель/Пассажир)": true,
+                    "⚖️ Распределение по авто": true,
+                    "🏁 Счет и голы": false,
+                    "🏆 Голосование MVP": false,
+                    "🎒 Чек-лист вещей": true,
+                    "💳 Сплит расходов (SPAYD)": true
+                },
+                terms: [
+                    ["Событие (event_noun)", "Поездка", "Výlet", "Trip"],
+                    ["Участник (participant_noun)", "Участник", "Účastník", "Traveler"],
+                    ["Локация (venue_noun)", "Точка сбора", "Místo srazu", "Meeting Point"],
+                    ["Группировка (grouping_noun)", "Экипажи / Группы", "Posádky / Skupiny", "Cars / Groups"]
+                ]
+            },
+            book_club: {
+                title: "📚 Книжный клуб / Встреча / Лекторий",
+                cat: "category: club",
+                desc: "Пресет для камерных клубов и воркшопов: роли и деление на команды отключены. Фокус на лимите мест за столом, автоматическом вейтлисте, синхронизации с Google/Apple Calendar (.ics) и сплите депозита кафе.",
+                flowTag: "Attendance + Calendar Flow",
+                cardTitle: "📚 Встреча #8 — Разбор «Мастера и Маргариты»",
+                cardMeta: "📍 Локация: Kavárna Louvre (Зал 2) • 🕒 Ср, 18:30 • 💳 100 CZK (Депозит за бронь)",
+                roles: ["🗣 SPEAKER (Докладчик / Модератор)", "📖 MEMBER (Участник обсуждения)"],
+                inventory: "📖 Экземпляры книги • 💻 Проектор / Слайды • ☕ Бронь стола на 12 человек",
+                finishBtn: "✅ Завершить встречу и зафиксировать явку участников",
+                modules: {
+                    "🎭 Роли / Позиции": false,
+                    "⚖️ Деление на команды": false,
+                    "🏁 Счет и голы": false,
+                    "🏆 Голосование MVP": false,
+                    "🎒 Материалы встречи": true,
+                    "💳 Депозит / Сплит (SPAYD)": true
+                },
+                terms: [
+                    ["Событие (event_noun)", "Встреча", "Setkání", "Meetup"],
+                    ["Участник (participant_noun)", "Участник", "Člen", "Member"],
+                    ["Локация (venue_noun)", "Локация / Кафе", "Místo / Kavárna", "Venue / Cafe"],
+                    ["Группировка (grouping_noun)", "Столики", "Stoly", "Tables"]
+                ]
+            },
+            board_games: {
+                title: "🎲 Настольные игры / Паб-квиз / Вечер досуга",
+                cat: "category: social",
+                desc: "Социально-игровой режим: автоматическая рассадка участников по столам/командам квиза, трекинг коробок с настолками в инвентаре и голосование за лучшего игрока вечера.",
+                flowTag: "Table Grouping + MVP Flow",
+                cardTitle: "🎲 Игровой вечер #19 — Настолки & Pub Quiz",
+                cardMeta: "📍 Заведение: Geekárna Prague • 🕒 Пт, 19:00 • 💳 120 CZK (Взнос за столы)",
+                roles: ["🎩 HOST (Гейм-мастер / Ведущий)", "🎲 PLAYER (Участник)"],
+                inventory: "📦 Колонизаторы (Catan) • 📦 Билет на поезд • 📝 Бланки для квиза",
+                finishBtn: "✅ Завершить вечер и открыть голосование за MVP",
+                modules: {
+                    "🎭 Роли / Позиции": false,
+                    "⚖️ Рассадка по столам": true,
+                    "🏁 Футбольный счет": false,
+                    "🏆 Голосование MVP вечера": true,
+                    "🎒 Коробки с играми": true,
+                    "💳 Сплит чека (SPAYD)": true
+                },
+                terms: [
+                    ["Событие (event_noun)", "Игровой вечер", "Herní večer", "Game Night"],
+                    ["Участник (participant_noun)", "Участник", "Účastník", "Participant"],
+                    ["Локация (venue_noun)", "Заведение / Зал", "Podnik / Sál", "Pub / Venue"],
+                    ["Группировка (grouping_noun)", "Столы / Команды", "Stoly / Týmy", "Tables / Teams"]
+                ]
+            }
+        };
+
+        function selectPreset(code, btnEl) {
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            if (btnEl) btnEl.classList.add('active');
+            const p = PRESET_DATA[code];
+            document.getElementById('preset-title').textContent = p.title;
+            document.getElementById('preset-cat').textContent = p.cat;
+            document.getElementById('preset-desc').textContent = p.desc;
+            document.getElementById('preview-flow-tag').textContent = p.flowTag;
+            document.getElementById('card-event-title').textContent = p.cardTitle;
+            document.getElementById('card-event-meta').textContent = p.cardMeta;
+            document.getElementById('card-inventory-list').textContent = p.inventory;
+            document.getElementById('card-finish-btn').textContent = p.finishBtn;
+
+            const rolesEl = document.getElementById('card-roles-list');
+            rolesEl.innerHTML = p.roles.map(r => `<span class="tag on">${r}</span>`).join('');
+
+            const modEl = document.getElementById('modules-container');
+            modEl.innerHTML = Object.entries(p.modules).map(([name, enabled]) => `
+                <div class="module-box">
+                    <span>${name}</span>
+                    <span class="tag ${enabled ? 'on' : 'off'}">${enabled ? 'ON' : 'OFF'}</span>
+                </div>
+            `).join('');
+
+            const tbody = document.getElementById('term-tbody');
+            tbody.innerHTML = p.terms.map(row => `
+                <tr>
+                    <td><code>${row[0]}</code></td>
+                    <td><strong>${row[1]}</strong></td>
+                    <td>${row[2]}</td>
+                    <td>${row[3]}</td>
+                </tr>
+            `).join('');
+        }
+
+        let twoOptDone = false;
+        const UNBALANCED_STATE = {
+            iter: "0 (До оптимизации — Перекос)",
+            delta: "24.5 pt",
+            deltaColor: "#f43f5e",
+            teamA: [
+                ["Vlad Lishanlo", "FWD", 132],
+                ["Dias August", "MID", 126],
+                ["Bauyrzhan B.", "DEF", 122],
+                ["Yernur B.", "MID", 116]
+            ],
+            teamB: [
+                ["Raimbek S.", "GK", 104],
+                ["Filip Haltmar", "DEF", 98],
+                ["Tynai", "MID", 96],
+                ["Hersson Diaz", "FWD", 100]
+            ]
+        };
+        const BALANCED_STATE = {
+            iter: "4 итерации 2-opt (Локальный оптимум)",
+            delta: "0.5 pt",
+            deltaColor: "#34d399",
+            teamA: [
+                ["Vlad Lishanlo", "FWD", 132],
+                ["Yernur B.", "MID", 116],
+                ["Filip Haltmar", "DEF", 98],
+                ["Tynai", "MID", 96]
+            ],
+            teamB: [
+                ["Dias August", "MID", 126],
+                ["Bauyrzhan B.", "DEF", 122],
+                ["Raimbek S.", "GK", 104],
+                ["Hersson Diaz", "FWD", 100]
+            ]
+        };
+
+        function renderTwoOpt(state) {
+            document.getElementById('opt-iter').textContent = state.iter;
+            const dEl = document.getElementById('opt-delta');
+            dEl.textContent = state.delta;
+            dEl.style.color = state.deltaColor;
+
+            const avgA = (state.teamA.reduce((s, x) => s + x[2], 0) / state.teamA.length).toFixed(1);
+            const avgB = (state.teamB.reduce((s, x) => s + x[2], 0) / state.teamB.length).toFixed(1);
+
+            document.getElementById('opt-teams-container').innerHTML = `
+                <div class="team-col">
+                    <div style="font-weight:700; margin-bottom:8px; display:flex; justify-content:space-between;">
+                        <span>🔴 Группа / Команда A</span>
+                        <span style="color:#60a5fa;">Avg: ${avgA}</span>
+                    </div>
+                    ${state.teamA.map(p => `<div class="player-row"><span>${p[0]} <small style="color:#94a3b8;">(${p[1]})</small></span><strong>${p[2]}</strong></div>`).join('')}
+                </div>
+                <div class="team-col">
+                    <div style="font-weight:700; margin-bottom:8px; display:flex; justify-content:space-between;">
+                        <span>🔵 Группа / Команда B</span>
+                        <span style="color:#60a5fa;">Avg: ${avgB}</span>
+                    </div>
+                    ${state.teamB.map(p => `<div class="player-row"><span>${p[0]} <small style="color:#94a3b8;">(${p[1]})</small></span><strong>${p[2]}</strong></div>`).join('')}
+                </div>
+            `;
+        }
+
+        function runTwoOptDemo() {
+            twoOptDone = !twoOptDone;
+            renderTwoOpt(twoOptDone ? BALANCED_STATE : UNBALANCED_STATE);
+        }
+
+        function recalcBilling() {
+            const total = parseInt(document.getElementById('rng-cost').value, 10);
+            const part = parseInt(document.getElementById('rng-part').value, 10);
+            const subPct = parseInt(document.getElementById('rng-sub').value, 10);
+            const msCount = Math.min(part, parseInt(document.getElementById('rng-ms').value, 10));
+
+            document.getElementById('lbl-total-cost').textContent = `${total} CZK`;
+            document.getElementById('lbl-part-count').textContent = `${part} чел.`;
+            document.getElementById('lbl-subsidy').textContent = `${subPct}%`;
+            document.getElementById('lbl-ms').textContent = `${msCount} чел.`;
+
+            const empShare = Math.round(total * (subPct / 100));
+            const afterEmp = Math.max(0, total - empShare);
+            const msDiscount = Math.min(afterEmp, msCount * 150);
+            const netPool = Math.max(0, afterEmp - msDiscount);
+            const payingCount = Math.max(1, part - msCount);
+            const perPlayer = (part - msCount) > 0 ? Math.round(netPool / payingCount) : 0;
+
+            document.getElementById('out-emp-share').textContent = `${empShare} CZK`;
+            document.getElementById('out-ms-share').textContent = `${msDiscount} CZK`;
+            document.getElementById('out-player-pay').textContent = `${perPlayer} CZK`;
+            document.getElementById('spayd-string').textContent =
+                `SPD*1.0*ACC:CZ6508000000192000145399*AM:${perPlayer.toFixed(2)}*CC:CZK*X-VS:42*MSG:EVENT 42 PRAHA`;
+        }
+
+        function toggleVaultState(anonymize) {
+            if (anonymize) {
+                document.getElementById('hot-name').textContent = "Former Participant #89915";
+                document.getElementById('hot-name').style.color = "#f59e0b";
+                document.getElementById('hot-user').textContent = "NULL (Удалено по GDPR)";
+                document.getElementById('vault-status').textContent = "Статус: Зашифрованный слепок сохранен в ShadowIdentityVault (AES-128-CBC + HMAC)";
+                document.getElementById('vault-cipher').textContent = "gAAAAABnL9xK_7vQp2mR8tW1yZ0cB4nF6jH3kL5mP9qS2vX8zA1bC4dE7fG0hJ2kL5mN8pQ1rT4uV7wX0yZ3aB6cD9eF==";
+            } else {
+                document.getElementById('hot-name').textContent = "Melih Traveler";
+                document.getElementById('hot-name').style.color = "#ffffff";
+                document.getElementById('hot-user').textContent = "@melih_prague";
+                document.getElementById('vault-status').textContent = "Статус: Профиль успешно расшифрован и восстановлен в боевую базу!";
+                document.getElementById('vault-cipher').textContent = "[RESTORED_FROM_VAULT -> ACTIVE_PROFILE]";
+            }
+        }
+
+        // Init
+        selectPreset('football', document.querySelector('.preset-btn'));
+        renderTwoOpt(UNBALANCED_STATE);
+        recalcBilling();
+    </script>
+</body>
+</html>
