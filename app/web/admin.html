@@ -201,13 +201,17 @@
                                 <small data-i18n="help_group_lang" style="color: var(--text-muted); display: block; margin-top: 4px;">Group match posts will use this language.</small>
                             </div>
                             <div class="form-group">
-                                <label data-i18n="lbl_sport_type">Sport Preset</label>
+                                <label data-i18n="lbl_sport_type">Event / Community Preset</label>
                                 <select id="setting-sport-type" onchange="updateGroupSetting('sport_type', this.value, this)">
                                     <option value="football" selected>⚽ Football</option>
                                     <option value="futsal">🥅 Futsal (5v5)</option>
                                     <option value="volleyball">🏐 Volleyball (6v6)</option>
                                     <option value="basketball">🏀 Basketball (5v5)</option>
-                                    <option value="generic">🏅 Generic Team Sport</option>
+                                    <option value="padel">🎾 Padel / Tennis</option>
+                                    <option value="trip">🚌 Trip / Excursion (e.g. Prague → Dresden)</option>
+                                    <option value="book_club">📚 Book Club / Meetup / Lecture</option>
+                                    <option value="board_games">🎲 Board Games / Pub Quiz</option>
+                                    <option value="generic">🏃 Corporate Wellness / Custom Event</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -215,6 +219,7 @@
                                 <select id="setting-billing-mode" onchange="onBillingModeSettingChange(this)">
                                     <option value="manual" data-i18n="opt_bill_manual">Manual Bank / Cash</option>
                                     <option value="spayd_qr" data-i18n="opt_bill_spayd">Czech QR Platba (SPAYD 1.0)</option>
+                                    <option value="co_pay_multisport">🏢 Corporate Co-Pay + MultiSport</option>
                                     <option value="free_corporate" data-i18n="opt_bill_free">Corporate Free (Covered by Org)</option>
                                 </select>
                             </div>
@@ -283,9 +288,38 @@
                                 <label>Rating System Strategy</label>
                                 <select id="setting-rating-system" onchange="updatePolicySetting('rating_system', this.value, this)">
                                     <option value="simple_points">Simple Points (+Win / -Loss / +MVP)</option>
-                                    <option value="elo_v2">Dynamic Elo v2 (Expected Win Prob & Margin)</option>
+                                    <option value="dynamic_elo">Dynamic Elo v2 (Expected Win Prob & Margin)</option>
                                 </select>
                                 <small style="color: var(--text-muted); display: block; margin-top: 4px;">Controls how player ratings are updated when matches finish.</small>
+                            </div>
+                            <div class="form-group">
+                                <label>🏢 Employer Co-Pay Subsidy (%)</label>
+                                <input type="number" id="setting-employer-subsidy" min="0" max="100" onblur="updatePolicySetting('employer_subsidy_pct', parseInt(this.value, 10) || 0, this)" placeholder="0">
+                                <small style="color: var(--text-muted); display: block; margin-top: 4px;">Percentage of total event cost covered by the company (0–100%).</small>
+                            </div>
+                            <div class="form-group">
+                                <label>💳 MultiSport Card Deduction (CZK)</label>
+                                <input type="number" id="setting-multisport-discount" min="0" max="5000" onblur="updatePolicySetting('multisport_discount_amount', parseInt(this.value, 10) || 0, this)" placeholder="150">
+                                <small style="color: var(--text-muted); display: block; margin-top: 4px;">Amount deducted per active MultiSport card holder.</small>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                            <h4 style="margin: 0 0 8px 0; font-size: 0.95rem;">🧩 Pluggable Event Modules (Constructor)</h4>
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 12px 0;">Toggle which modules are active for this group (e.g. disable Score & Goals for Trips or Book Clubs).</p>
+                            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; background: rgba(255,255,255,0.04); padding: 6px 10px; border-radius: 8px; cursor: pointer;">
+                                    <input type="checkbox" id="mod-roles" onchange="updateEventModuleToggle('roles_enabled', this.checked)"> 🎭 Roles / Positions
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; background: rgba(255,255,255,0.04); padding: 6px 10px; border-radius: 8px; cursor: pointer;">
+                                    <input type="checkbox" id="mod-draft" onchange="updateEventModuleToggle('team_draft_enabled', this.checked)"> ⚖️ Teams / Carpool Grouping
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; background: rgba(255,255,255,0.04); padding: 6px 10px; border-radius: 8px; cursor: pointer;">
+                                    <input type="checkbox" id="mod-score" onchange="updateEventModuleToggle('score_tracking_enabled', this.checked)"> 🏁 Score & Goals
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; background: rgba(255,255,255,0.04); padding: 6px 10px; border-radius: 8px; cursor: pointer;">
+                                    <input type="checkbox" id="mod-voting" onchange="updateEventModuleToggle('mvp_voting_enabled', this.checked)"> 🏆 MVP / Event Voting
+                                </label>
                             </div>
                         </div>
                     </div>
@@ -314,10 +348,13 @@
                     <button class="action-tile" onclick="openApp('edit')">
                         <span class="icon">✏️</span> Edit Info
                     </button>
-                    <button class="action-tile" onclick="openApp('score')">
+                    <button class="action-tile" id="btn-enter-score" onclick="openApp('score')">
                         <span class="icon">🏁</span> Enter Score
                     </button>
-                    <button class="action-tile primary" onclick="openApp('draft')">
+                    <button class="action-tile" id="btn-settle-event" onclick="settleEventWithoutScoreClick()" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #34d399;">
+                        <span class="icon">✅</span> Settle Event
+                    </button>
+                    <button class="action-tile primary" id="btn-manage-draft" onclick="openApp('draft')">
                         <span class="icon">🛡</span> Manage Draft
                     </button>
                     <button class="action-tile" id="btn-trigger-voting" onclick="triggerVotingClick()">

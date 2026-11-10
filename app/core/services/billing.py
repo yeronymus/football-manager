@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from app.config import settings
-from app.core.domain.tenant_policy import BillingMode, resolve_billing_mode
+from app.core.domain.tenant_policy import BillingMode, resolve_billing_mode, resolve_tenant_policy
 
 # Czech National Bank (ČNB) Modulo-11 weights from least-significant to most-significant digit
 _CNB_WEIGHTS_6 = (10, 5, 8, 4, 2, 1)
@@ -116,6 +116,65 @@ def build_spayd_payload(
 
 
 @dataclass
+class HybridSettlementBreakdown:
+    """
+    Financial clearing breakdown for Corporate Co-Pay & MultiSport / Benefit Plus events.
+    """
+
+    total_event_cost: int
+    participant_count: int
+    multisport_count: int
+    employer_subsidy_pct: int
+    employer_share: int
+    multisport_total_discount: int
+    net_participant_pool: int
+    per_paying_participant_amount: int
+    per_multisport_participant_amount: int
+
+
+def calculate_hybrid_settlement(
+    total_cost: int,
+    participant_count: int,
+    multisport_count: int = 0,
+    employer_subsidy_pct: int = 0,
+    multisport_discount: int = 150,
+) -> HybridSettlementBreakdown:
+    """
+    Calculates split-billing across employer subsidy (% Co-Pay) and MultiSport card deductions.
+    """
+    total = max(0, int(total_cost or 0))
+    n_total = max(1, int(participant_count or 1))
+    n_ms = max(0, min(int(multisport_count or 0), n_total))
+    sub_pct = max(0, min(int(employer_subsidy_pct or 0), 100))
+    ms_disc = max(0, int(multisport_discount or 0))
+
+    employer_share = int(round(total * (sub_pct / 100.0)))
+    after_employer = max(0, total - employer_share)
+    ms_total_discount = min(after_employer, n_ms * ms_disc)
+    net_pool = max(0, after_employer - ms_total_discount)
+
+    n_paying = max(0, n_total - n_ms)
+    if n_paying > 0:
+        per_paying = int(round(net_pool / n_paying))
+        per_ms = 0
+    else:
+        per_paying = 0
+        per_ms = int(round(net_pool / n_total))
+
+    return HybridSettlementBreakdown(
+        total_event_cost=total,
+        participant_count=n_total,
+        multisport_count=n_ms,
+        employer_subsidy_pct=sub_pct,
+        employer_share=employer_share,
+        multisport_total_discount=ms_total_discount,
+        net_participant_pool=net_pool,
+        per_paying_participant_amount=per_paying,
+        per_multisport_participant_amount=per_ms,
+    )
+
+
+@dataclass
 class GameBillingSummary:
     billing_mode: str
     currency: str
@@ -132,7 +191,7 @@ def resolve_game_billing(
     chat: Any = None,
     game_number: Optional[int] = None,
 ) -> GameBillingSummary:
-    """Computes effective billing metadata for a match across all 3 enterprise modes."""
+    """Computes effective billing metadata for a match across all enterprise modes."""
     mode = resolve_billing_mode(getattr(chat, "billing_mode", None) if chat else None)
     currency = (
         (getattr(chat, "currency", None) if chat else None)
@@ -153,6 +212,10 @@ def resolve_game_billing(
         )
 
     amount = int(getattr(game, "price", 0) or 0)
+    policy = resolve_tenant_policy(chat) if chat else None
+    if policy and policy.employer_subsidy_pct > 0 and amount > 0:
+        amount = max(0, int(round(amount * (100 - policy.employer_subsidy_pct) / 100.0)))
+
     raw_payment = getattr(game, "payment_info", None) or (
         getattr(chat, "payment_info", None) if chat else None
     )
@@ -174,8 +237,8 @@ def resolve_game_billing(
     vs = str(getattr(game, "id", "")) if getattr(game, "id", None) else None
     spayd = None
 
-    if mode == BillingMode.SPAYD_QR and iban:
-        loc = getattr(game, "location", "") or "Match"
+    if mode in (BillingMode.SPAYD_QR, BillingMode.CO_PAY_MULTISPORT) and iban:
+        loc = getattr(game, "location", "") or "Event"
         msg = f"Match #{num} {loc}".strip() if num else f"Match {loc}".strip()
         spayd = build_spayd_payload(
             iban_or_account=iban,

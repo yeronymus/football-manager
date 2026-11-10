@@ -264,6 +264,22 @@ async function loadGroupGames(group) {
     if (cancelEl) cancelEl.value = cancelHours;
     const ratingSysEl = document.getElementById('setting-rating-system');
     if (ratingSysEl) ratingSysEl.value = (group.policy && group.policy.rating_system) || 'simple_points';
+    const subEl = document.getElementById('setting-employer-subsidy');
+    if (subEl) subEl.value = (group.policy && group.policy.employer_subsidy_pct !== undefined) ? group.policy.employer_subsidy_pct : 0;
+    const msEl = document.getElementById('setting-multisport-discount');
+    if (msEl) msEl.value = (group.policy && group.policy.multisport_discount_amount !== undefined) ? group.policy.multisport_discount_amount : 150;
+
+    const nonScorePresets = ['trip', 'book_club', 'board_games', 'generic'];
+    const isNonScorePreset = nonScorePresets.includes(sportType);
+    const modOverrides = (group.policy && group.policy.enabled_modules) || {};
+    const modRolesEl = document.getElementById('mod-roles');
+    if (modRolesEl) modRolesEl.checked = modOverrides.roles_enabled !== undefined ? Boolean(modOverrides.roles_enabled) : !['book_club', 'board_games', 'padel'].includes(sportType);
+    const modDraftEl = document.getElementById('mod-draft');
+    if (modDraftEl) modDraftEl.checked = modOverrides.team_draft_enabled !== undefined ? Boolean(modOverrides.team_draft_enabled) : (sportType !== 'book_club');
+    const modScoreEl = document.getElementById('mod-score');
+    if (modScoreEl) modScoreEl.checked = modOverrides.score_tracking_enabled !== undefined ? Boolean(modOverrides.score_tracking_enabled) : !isNonScorePreset;
+    const modVotingEl = document.getElementById('mod-voting');
+    if (modVotingEl) modVotingEl.checked = modOverrides.mvp_voting_enabled !== undefined ? Boolean(modOverrides.mvp_voting_enabled) : !['trip', 'book_club', 'padel'].includes(sportType);
 
     applyBillingModeSettingsUI(billingMode, currency);
     
@@ -1836,5 +1852,34 @@ async function exportAttendanceCsv() {
         showAdminToast('CSV exported!');
     } catch (err) {
         showAdminToast('CSV export failed: ' + err.message);
+    }
+}
+
+async function updateEventModuleToggle(moduleKey, isChecked) {
+    if (!currentGroupId) return;
+    try {
+        const group = groupsCache.find(g => String(g.chat_id) === String(currentGroupId)) || {};
+        const policy = Object.assign({}, group.policy || {});
+        const enabledModules = Object.assign({}, policy.enabled_modules || {});
+        enabledModules[moduleKey] = Boolean(isChecked);
+        policy.enabled_modules = enabledModules;
+        await apiCall(`/groups/${currentGroupId}`, 'PATCH', { policy });
+        group.policy = policy;
+        showAdminToast('🧩 Модуль обновлён!');
+    } catch (err) {
+        showAdminToast('Failed to update module: ' + err.message);
+    }
+}
+
+async function settleEventWithoutScoreClick() {
+    if (!currentGroupId || !currentGameId) return;
+    const confirmed = await promptConfirm('Завершить событие без ввода счёта и зафиксировать посещаемость участников?');
+    if (!confirmed) return;
+    try {
+        const res = await apiCall(`/groups/${currentGroupId}/events/${currentGameId}/settle`, 'POST', {});
+        showAdminToast(`✅ Событие завершено! Участников: ${res.participants_count || 0}`);
+        await loadGameDetails(currentGameId);
+    } catch (err) {
+        showAdminToast('Ошибка завершения события: ' + err.message);
     }
 }

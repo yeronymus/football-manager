@@ -1,11 +1,26 @@
 {
     "football": {
         "code": "football",
+        "category": "sport",
         "icon": "⚽",
         "name": {
             "en": "Football (Outdoor / Artificial Turf)",
             "ru": "Футбол (большое поле / манеж)",
             "cs": "Fotbal (venkovní / umělá tráva)"
+        },
+        "terminology": {
+            "en": {"event_noun": "Match", "participant_noun": "Player", "venue_noun": "Pitch", "grouping_noun": "Teams"},
+            "ru": {"event_noun": "Матч", "participant_noun": "Игрок", "venue_noun": "Поле", "grouping_noun": "Команды"},
+            "cs": {"event_noun": "Zápas", "participant_noun": "Hráč", "venue_noun": "Hřiště", "grouping_noun": "Týmy"}
+        },
+        "modules": {
+            "roles_enabled": true,
+            "team_draft_enabled": true,
+            "score_tracking_enabled": true,
+            "mvp_voting_enabled": true,
+            "inventory_enabled": true,
+            "billing_enabled": true,
+            "late_tracking_enabled": true
         },
         "has_goalkeeper": true,
         "default_team_count": 2,
@@ -19,11 +34,26 @@
     },
     "futsal": {
         "code": "futsal",
+        "category": "sport",
         "icon": "🥅",
         "name": {
             "en": "Futsal / Indoor 5-a-Side",
             "ru": "Футзал / Мини-футбол (5х5)",
             "cs": "Futsal / Halový fotbal (5v5)"
+        },
+        "terminology": {
+            "en": {"event_noun": "Match", "participant_noun": "Player", "venue_noun": "Court", "grouping_noun": "Teams"},
+            "ru": {"event_noun": "Матч", "participant_noun": "Игрок", "venue_noun": "Зал", "grouping_noun": "Команды"},
+            "cs": {"event_noun": "Zápas", "participant_noun": "Hráč", "venue_noun": "Hala", "grouping_noun": "Týmy"}
+        },
+        "modules": {
+            "roles_enabled": true,
+            "team_draft_enabled": true,
+            "score_tracking_enabled": true,
+            "mvp_voting_enabled": true,
+            "inventory_enabled": true,
+            "billing_enabled": true,
+            "late_tracking_enabled": true
         },
         "has_goalkeeper": true,
         "default_team_count": 3,
@@ -37,11 +67,26 @@
     },
     "volleyball": {
         "code": "volleyball",
+        "category": "sport",
         "icon": "🏐",
         "name": {
             "en": "Volleyball",
             "ru": "Волейбол",
             "cs": "Volejbal"
+        },
+        "terminology": {
+            "en": {"event_noun": "Match", "participant_noun": "Player", "venue_noun": "Court", "grouping_noun": "Teams"},
+            "ru": {"event_noun": "Матч", "participant_noun": "Игрок", "venue_noun": "Площадка", "grouping_noun": "Команды"},
+            "cs": {"event_noun": "Zápas", "participant_noun": "Hráč", "venue_noun": "Kurt", "grouping_noun": "Týmy"}
+        },
+        "modules": {
+            "roles_enabled": true,
+            "team_draft_enabled": true,
+            "score_tracking_enabled": true,
+            "mvp_voting_enabled": true,
+            "inventory_enabled": true,
+            "billing_enabled": true,
+            "late_tracking_enabled": true
         },
         "has_goalkeeper": false,
         "default_team_count": 2,
@@ -55,11 +100,26 @@
     },
     "basketball": {
         "code": "basketball",
+        "category": "sport",
         "icon": "🏀",
         "name": {
             "en": "Basketball",
             "ru": "Баскетбол",
             "cs": "Basketbal"
+        },
+        "terminology": {
+            "en": {"event_noun": "Game", "participant_noun": "Player", "venue_noun": "Court", "grouping_noun": "Teams"},
+            "ru": {"event_noun": "Игра", "participant_noun": "Игрок", "venue_noun": "Площадка", "grouping_noun": "Команды"},
+            "cs": {"event_noun": "Zápas", "participant_noun": "Hráč", "venue_noun": "Hřiště", "grouping_noun": "Týmy"}
+        },
+        "modules": {
+            "roles_enabled": true,
+            "team_draft_enabled": true,
+            "score_tracking_enabled": true,
+            "mvp_voting_enabled": true,
+            "inventory_enabled": true,
+            "billing_enabled": true,
+            "late_tracking_enabled": true
         },
         "has_goalkeeper": false,
         "default_team_count": 2,
@@ -71,17 +131,164 @@
         "roles": ["DEF", "MID", "FWD"],
         "card_system_enabled": true
     },
-    "generic": {
-        "code": "generic",
-        "icon": "🏃",
+    "padel": {
+        "code": "padel",
+        "category": "sport",
+        "icon": "🎾",
         "name": {
-            "en": "Corporate Wellness / General Team Activity",
-            "ru": "Корпоративный спорт / Командная активность",
-            "cs": "Firemní sport / Týmová aktivita"
+            "en": "Padel / Tennis",
+            "ru": "Падел / Теннис",
+            "cs": "Padel / Tenis"
+        },
+        "terminology": {
+            "en": {"event_noun": "Session", "participant_noun": "Player", "venue_noun": "Court", "grouping_noun": "Pairs"},
+            "ru": {"event_noun": "Игра", "participant_noun": "Игрок", "venue_noun": "Корт", "grouping_noun": "Пары"},
+            "cs": {"event_noun": "Hra", "participant_noun": "Hráč", "venue_noun": "Kurt", "grouping_noun": "Dvojice"}
+        },
+        "modules": {
+            "roles_enabled": false,
+            "team_draft_enabled": true,
+            "score_tracking_enabled": true,
+            "mvp_voting_enabled": false,
+            "inventory_enabled": true,
+            "billing_enabled": true,
+            "late_tracking_enabled": true
         },
         "has_goalkeeper": false,
         "default_team_count": 2,
-        "supported_team_counts": [2, 3, 4],
+        "supported_team_counts": [2, 4],
+        "default_main_players_count": 4,
+        "default_max_players": 6,
+        "default_duration_hours": 1.5,
+        "pitch_formats": ["2v2"],
+        "roles": ["MID", "FWD"],
+        "card_system_enabled": false
+    },
+    "trip": {
+        "code": "trip",
+        "category": "trip",
+        "icon": "🚌",
+        "name": {
+            "en": "Trip / Excursion (e.g. Prague -> Dresden)",
+            "ru": "Поездка / Выезд (напр. Прага -> Дрезден)",
+            "cs": "Výlet / Exkurze (např. Praha -> Drážďany)"
+        },
+        "terminology": {
+            "en": {"event_noun": "Trip", "participant_noun": "Traveler", "venue_noun": "Meeting Point", "grouping_noun": "Cars / Groups"},
+            "ru": {"event_noun": "Поездка", "participant_noun": "Участник", "venue_noun": "Точка сбора", "grouping_noun": "Экипажи / Группы"},
+            "cs": {"event_noun": "Výlet", "participant_noun": "Účastník", "venue_noun": "Místo srazu", "grouping_noun": "Posádky / Skupiny"}
+        },
+        "modules": {
+            "roles_enabled": true,
+            "team_draft_enabled": true,
+            "score_tracking_enabled": false,
+            "mvp_voting_enabled": false,
+            "inventory_enabled": true,
+            "billing_enabled": true,
+            "late_tracking_enabled": true
+        },
+        "has_goalkeeper": false,
+        "default_team_count": 2,
+        "supported_team_counts": [1, 2, 3, 4],
+        "default_main_players_count": 16,
+        "default_max_players": 24,
+        "default_duration_hours": 8.0,
+        "pitch_formats": ["carpool", "train", "bus"],
+        "roles": ["DRIVER", "PASSENGER", "GUIDE"],
+        "card_system_enabled": true
+    },
+    "book_club": {
+        "code": "book_club",
+        "category": "club",
+        "icon": "📚",
+        "name": {
+            "en": "Book Club / Meetup / Lecture",
+            "ru": "Книжный клуб / Встреча / Лекция",
+            "cs": "Čtenářský klub / Setkání / Přednáška"
+        },
+        "terminology": {
+            "en": {"event_noun": "Meetup", "participant_noun": "Member", "venue_noun": "Venue / Cafe", "grouping_noun": "Tables"},
+            "ru": {"event_noun": "Встреча", "participant_noun": "Участник", "venue_noun": "Локация / Кафе", "grouping_noun": "Столики"},
+            "cs": {"event_noun": "Setkání", "participant_noun": "Člen", "venue_noun": "Místo / Kavárna", "grouping_noun": "Stoly"}
+        },
+        "modules": {
+            "roles_enabled": false,
+            "team_draft_enabled": false,
+            "score_tracking_enabled": false,
+            "mvp_voting_enabled": false,
+            "inventory_enabled": true,
+            "billing_enabled": true,
+            "late_tracking_enabled": true
+        },
+        "has_goalkeeper": false,
+        "default_team_count": 1,
+        "supported_team_counts": [1, 2],
+        "default_main_players_count": 12,
+        "default_max_players": 16,
+        "default_duration_hours": 2.0,
+        "pitch_formats": ["roundtable", "seminar"],
+        "roles": ["SPEAKER", "MEMBER"],
+        "card_system_enabled": false
+    },
+    "board_games": {
+        "code": "board_games",
+        "category": "social",
+        "icon": "🎲",
+        "name": {
+            "en": "Board Games / Pub Quiz / Social Night",
+            "ru": "Настольные игры / Паб-квиз / Вечер досуга",
+            "cs": "Deskové hry / Pub kvíz / Společenský večer"
+        },
+        "terminology": {
+            "en": {"event_noun": "Game Night", "participant_noun": "Participant", "venue_noun": "Pub / Venue", "grouping_noun": "Tables / Teams"},
+            "ru": {"event_noun": "Игровой вечер", "participant_noun": "Участник", "venue_noun": "Заведение / Зал", "grouping_noun": "Столы / Команды"},
+            "cs": {"event_noun": "Herní večer", "participant_noun": "Účastník", "venue_noun": "Podnik / Sál", "grouping_noun": "Stoly / Týmy"}
+        },
+        "modules": {
+            "roles_enabled": false,
+            "team_draft_enabled": true,
+            "score_tracking_enabled": false,
+            "mvp_voting_enabled": true,
+            "inventory_enabled": true,
+            "billing_enabled": true,
+            "late_tracking_enabled": true
+        },
+        "has_goalkeeper": false,
+        "default_team_count": 2,
+        "supported_team_counts": [1, 2, 3, 4],
+        "default_main_players_count": 12,
+        "default_max_players": 20,
+        "default_duration_hours": 3.0,
+        "pitch_formats": ["quiz_tables", "board_tables"],
+        "roles": ["HOST", "PLAYER"],
+        "card_system_enabled": false
+    },
+    "generic": {
+        "code": "generic",
+        "category": "custom",
+        "icon": "🏃",
+        "name": {
+            "en": "Corporate Wellness / Custom Event",
+            "ru": "Корпоративное событие / Универсальный формат",
+            "cs": "Firemní akce / Univerzální formát"
+        },
+        "terminology": {
+            "en": {"event_noun": "Event", "participant_noun": "Participant", "venue_noun": "Location", "grouping_noun": "Groups"},
+            "ru": {"event_noun": "Событие", "participant_noun": "Участник", "venue_noun": "Локация", "grouping_noun": "Группы"},
+            "cs": {"event_noun": "Událost", "participant_noun": "Účastník", "venue_noun": "Místo", "grouping_noun": "Skupiny"}
+        },
+        "modules": {
+            "roles_enabled": false,
+            "team_draft_enabled": true,
+            "score_tracking_enabled": false,
+            "mvp_voting_enabled": false,
+            "inventory_enabled": true,
+            "billing_enabled": true,
+            "late_tracking_enabled": true
+        },
+        "has_goalkeeper": false,
+        "default_team_count": 2,
+        "supported_team_counts": [1, 2, 3, 4],
         "default_main_players_count": 12,
         "default_max_players": 20,
         "default_duration_hours": 1.5,
