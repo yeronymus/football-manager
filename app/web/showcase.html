@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,6 +32,29 @@
             max-width: 1240px;
             margin: 0 auto;
             padding: 28px 24px;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 14px;
+            gap: 8px;
+        }
+        .lang-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .lang-btn.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: #60a5fa;
+            box-shadow: 0 4px 14px var(--accent-glow);
         }
         .hero {
             background: linear-gradient(135deg, rgba(30, 58, 138, 0.55), rgba(15, 23, 42, 0.9));
@@ -152,6 +175,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
         }
         .tag {
             display: inline-flex;
@@ -254,70 +278,74 @@
 </head>
 <body>
     <div class="container">
+        <div class="top-bar">
+            <button class="lang-btn active" id="lang-en" onclick="setShowcaseLang('en')">🇬🇧 English (EN)</button>
+            <button class="lang-btn" id="lang-cs" onclick="setShowcaseLang('cs')">🇨🇿 Čeština (CS)</button>
+            <button class="lang-btn" id="lang-ru" onclick="setShowcaseLang('ru')">🇷🇺 Русский (RU)</button>
+        </div>
+
         <div class="hero">
             <div>
-                <div class="hero-badge">🎓 Bachelor's Thesis Interactive Showcase • B2B & B2C SaaS</div>
-                <h1>Multi-Tenant Parameterized Event & Community ERP</h1>
-                <p>Единая облачная платформа для автоматизации спортивных лиг, групповых поездок (Прага → Дрезден), книжных клубов и корпоративных сообществ с комбинаторной оптимизацией (2-opt), банковским клирингом SPAYD (ISO 20022) и двухконтурной защитой данных.</p>
+                <div class="hero-badge" id="ui-hero-badge">🎓 Bachelor's Thesis Interactive Showcase • B2B & B2C Cloud SaaS</div>
+                <h1 id="ui-hero-title">Multi-Tenant Parameterized Event & Community ERP</h1>
+                <p id="ui-hero-desc">Unified cloud-native platform for automating sports leagues, group excursions (Prague → Dresden), book clubs, and corporate communities — powered by 2-opt combinatorial optimization, SPAYD (ISO 20022) clearing, and two-tier GDPR data isolation.</p>
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <a href="/web/admin.html" class="btn-action" style="text-decoration: none;">⚙️ Открыть Admin Mini App</a>
-                <a href="/web/game.html" class="btn-action emerald" style="text-decoration: none;">📱 Открыть Player Mini App</a>
+                <a href="/web/admin.html" class="btn-action" style="text-decoration: none;" id="ui-btn-admin">⚙️ Open Admin Portal</a>
+                <a href="/web/game.html" class="btn-action emerald" style="text-decoration: none;" id="ui-btn-player">📱 Open Player Mini App</a>
             </div>
         </div>
 
         <div class="kpi-strip">
             <div class="kpi-card">
                 <div class="kpi-val">9 Presets</div>
-                <div class="kpi-lbl">Спорт, Поездки, Клубы, Квизы</div>
+                <div class="kpi-lbl" id="kpi-1">Sports, Trips, Book Clubs, Quizzes</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-val">&lt; 3 ms</div>
-                <div class="kpi-lbl">Сходимость 2-opt балансировки</div>
+                <div class="kpi-lbl" id="kpi-2">2-opt Local Search Convergence</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-val">-95% DB Load</div>
-                <div class="kpi-lbl">SSE + Redis Pub/Sub vs Polling</div>
+                <div class="kpi-lbl" id="kpi-3">SSE + Redis Pub/Sub vs HTTP Polling</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-val">SPAYD 1.0</div>
-                <div class="kpi-lbl">Стандарт QR Platba ЧНБ + IBAN Mod-11</div>
+                <div class="kpi-lbl" id="kpi-4">ČNB Modulo-11 IBAN + QR Platba</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-val">RLS + Vault</div>
-                <div class="kpi-lbl">Изоляция тенантов и Fernet GDPR</div>
+                <div class="kpi-lbl" id="kpi-5">PostgreSQL RLS & Fernet GDPR Vault</div>
             </div>
         </div>
 
         <!-- 1. Interactive Preset Switcher -->
-        <div class="section-title">1. 🧩 Мета-модель: Параметризуемые пресеты событий (Domain Generalization)</div>
+        <div class="section-title" id="sec-1-title">1. 🧩 Meta-Model: Parameterized Event Engine (Domain Generalization)</div>
         <div class="preset-bar">
-            <button class="preset-btn active" onclick="selectPreset('football', this)">⚽ Футбольная лига (Спорт)</button>
-            <button class="preset-btn" onclick="selectPreset('trip', this)">🚌 Поездка Прага → Дрезден (Туризм)</button>
-            <button class="preset-btn" onclick="selectPreset('book_club', this)">📚 Книжный клуб / Митап</button>
-            <button class="preset-btn" onclick="selectPreset('board_games', this)">🎲 Паб-квиз / Настолки</button>
+            <button class="preset-btn active" id="pbtn-football" onclick="selectPreset('football', this)">⚽ Football League (Sport)</button>
+            <button class="preset-btn" id="pbtn-trip" onclick="selectPreset('trip', this)">🚌 Excursion: Prague → Dresden (Trip)</button>
+            <button class="preset-btn" id="pbtn-book_club" onclick="selectPreset('book_club', this)">📚 Book Club / Meetup</button>
+            <button class="preset-btn" id="pbtn-board_games" onclick="selectPreset('board_games', this)">🎲 Pub Quiz / Board Games</button>
         </div>
 
         <div class="grid-2">
             <div class="panel">
                 <h3>
-                    <span id="preset-title">⚽ Футбол (большое поле / манеж)</span>
+                    <span id="preset-title">⚽ Football (Outdoor / Artificial Turf)</span>
                     <span class="tag on" id="preset-cat">category: sport</span>
                 </h3>
-                <p style="font-size: 0.86rem; color: var(--text-muted);" id="preset-desc">
-                    Классический спортивный режим: учитываются игровые позиции (GK/DEF/MID/FWD), работает 2-opt балансировка составов по рейтингу ELO, ввод счета и голосование за MVP матча.
-                </p>
+                <p style="font-size: 0.86rem; color: var(--text-muted);" id="preset-desc"></p>
 
                 <div class="module-grid" id="modules-container"></div>
 
-                <h4 style="font-size: 0.9rem; color: var(--text-muted); margin-top: 8px;">Локализованный словарь домена (Terminology Dictionary)</h4>
+                <h4 style="font-size: 0.9rem; color: var(--text-muted); margin-top: 8px;" id="ui-dict-header">Localized Domain Terminology Dictionary</h4>
                 <table class="term-table">
                     <thead>
                         <tr>
-                            <th>Параметр</th>
-                            <th>Русский (RU)</th>
-                            <th>Čeština (CS)</th>
+                            <th id="th-key">Key</th>
                             <th>English (EN)</th>
+                            <th>Čeština (CS)</th>
+                            <th>Русский (RU)</th>
                         </tr>
                     </thead>
                     <tbody id="term-tbody"></tbody>
@@ -326,28 +354,26 @@
 
             <div class="panel">
                 <h3>
-                    <span>📱 Превью карточки события в Mini App</span>
+                    <span id="ui-preview-header">📱 Live Mini App Event Card Preview</span>
                     <span class="tag on" id="preview-flow-tag">Full Match Flow</span>
                 </h3>
                 <div style="background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-top: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-weight: 700; font-size: 1.05rem;" id="card-event-title">⚽ Матч #42 — Прага, Страгов</span>
+                        <span style="font-weight: 700; font-size: 1.05rem;" id="card-event-title"></span>
                         <span class="tag on">OPEN • 14/16</span>
                     </div>
-                    <div style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 14px;" id="card-event-meta">
-                        📍 Поле: Strahov Pitch #2 • 🕒 Чт, 19:30 • 💳 150 CZK (SPAYD QR)
-                    </div>
+                    <div style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 14px;" id="card-event-meta"></div>
                     <div style="margin-bottom: 14px;">
-                        <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px;">Доступные роли при записи:</div>
+                        <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px;" id="ui-roles-lbl">Available Sign-Up Roles:</div>
                         <div id="card-roles-list" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
                     </div>
                     <div style="margin-bottom: 14px;">
-                        <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px;">Чек-лист инвентаря / снаряжения:</div>
+                        <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px;" id="ui-inv-lbl">Inventory / Equipment Checklist:</div>
                         <div id="card-inventory-list" style="font-size: 0.84rem; color: #cbd5e1;"></div>
                     </div>
-                    <div style="padding-top: 12px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.8rem; color: var(--text-muted);" id="card-finish-label">Пайплайн завершения:</span>
-                        <span class="btn-action emerald" id="card-finish-btn" style="padding: 6px 12px; font-size: 0.8rem;">🏁 Ввести счет (5:3) и голы</span>
+                    <div style="padding-top: 12px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted);" id="ui-settle-lbl">Settlement Pipeline:</span>
+                        <span class="btn-action emerald" id="card-finish-btn" style="padding: 6px 12px; font-size: 0.8rem;"></span>
                     </div>
                 </div>
             </div>
@@ -358,16 +384,16 @@
             <!-- 2-opt Optimizer -->
             <div class="panel">
                 <h3>
-                    <span>2. ⚖️ Комбинаторная оптимизация (2-opt Local Search)</span>
-                    <button class="btn-action" onclick="runTwoOptDemo()">⚡ Запустить 2-opt шаг</button>
+                    <span id="sec-2-title">2. ⚖️ Combinatorial Optimization (2-opt Local Search)</span>
+                    <button class="btn-action" id="btn-run-2opt" onclick="runTwoOptDemo()">⚡ Run 2-opt Optimization</button>
                 </h3>
-                <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 10px;">
-                    Минимизирует дисперсию среднего рейтинга между группами (командами или экипажами машин) при соблюдении ограничений ролей:
+                <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 10px;" id="sec-2-desc">
+                    Minimizes ELO rating variance across groups (teams or carpool vehicles) while enforcing positional role constraints:
                 </p>
-                <div style="display: flex; gap: 14px; align-items: center; background: #090d16; padding: 10px 14px; border-radius: 10px; font-size: 0.85rem;">
-                    <div>Итерация: <strong id="opt-iter" style="color:#60a5fa;">0 (Случайный посев)</strong></div>
-                    <div>Разброс Δ ELO: <strong id="opt-delta" style="color:#f43f5e;">24.5 pt</strong></div>
-                    <div>Время: <strong style="color:#34d399;">1.8 ms</strong></div>
+                <div style="display: flex; gap: 14px; align-items: center; background: #090d16; padding: 10px 14px; border-radius: 10px; font-size: 0.85rem; flex-wrap: wrap;">
+                    <div>State: <strong id="opt-iter" style="color:#60a5fa;"></strong></div>
+                    <div>Spread Δ ELO: <strong id="opt-delta" style="color:#f43f5e;">24.5 pt</strong></div>
+                    <div>Runtime: <strong style="color:#34d399;">1.8 ms</strong></div>
                 </div>
                 <div class="teams-wrap" id="opt-teams-container"></div>
             </div>
@@ -375,37 +401,37 @@
             <!-- Hybrid Billing & SPAYD QR -->
             <div class="panel">
                 <h3>
-                    <span>3. 💳 Гибридный клиринг: Co-Pay + MultiSport + SPAYD</span>
+                    <span id="sec-3-title">3. 💳 Hybrid Clearing: Co-Pay + MultiSport + SPAYD</span>
                     <span class="tag on">ISO 20022</span>
                 </h3>
                 <div class="slider-row">
-                    <label><span>Общий бюджет события (Аренда / Билеты):</span> <strong id="lbl-total-cost">2400 CZK</strong></label>
+                    <label><span id="sl-lbl-cost">Total Event Cost (Pitch / Tickets):</span> <strong id="lbl-total-cost">2400 CZK</strong></label>
                     <input type="range" id="rng-cost" min="500" max="6000" step="100" value="2400" oninput="recalcBilling()">
                 </div>
                 <div class="slider-row">
-                    <label><span>Участников в основном составе:</span> <strong id="lbl-part-count">12 чел.</strong></label>
+                    <label><span id="sl-lbl-part">Active Participants:</span> <strong id="lbl-part-count">12</strong></label>
                     <input type="range" id="rng-part" min="4" max="24" step="1" value="12" oninput="recalcBilling()">
                 </div>
                 <div class="slider-row">
-                    <label><span>🏢 Субсидия компании (Employer Co-Pay %):</span> <strong id="lbl-subsidy">50%</strong></label>
+                    <label><span id="sl-lbl-sub">🏢 Employer Co-Pay Subsidy (%):</span> <strong id="lbl-subsidy">50%</strong></label>
                     <input type="range" id="rng-sub" min="0" max="100" step="10" value="50" oninput="recalcBilling()">
                 </div>
                 <div class="slider-row">
-                    <label><span>💳 Участников с картой MultiSport (-150 CZK):</span> <strong id="lbl-ms">4 чел.</strong></label>
+                    <label><span id="sl-lbl-ms">💳 MultiSport Card Holders (-150 CZK):</span> <strong id="lbl-ms">4</strong></label>
                     <input type="range" id="rng-ms" min="0" max="10" step="1" value="4" oninput="recalcBilling()">
                 </div>
 
                 <div style="background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 0.85rem; margin-top: 8px;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                        <span style="color:var(--text-muted);">Оплачивает компания (B2B Invoice):</span>
+                        <span style="color:var(--text-muted);" id="out-lbl-emp">Covered by Employer (B2B Invoice):</span>
                         <strong id="out-emp-share" style="color:#60a5fa;">1200 CZK</strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                        <span style="color:var(--text-muted);">Покрыто картами MultiSport:</span>
+                        <span style="color:var(--text-muted);" id="out-lbl-ms">Covered by MultiSport Cards:</span>
                         <strong id="out-ms-share" style="color:#a78bfa;">600 CZK</strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; padding-top:6px; border-top:1px solid var(--border); font-size:0.95rem;">
-                        <span>К оплате на 1 участника (без MultiSport):</span>
+                        <span id="out-lbl-net">Net Share per Paying Participant:</span>
                         <strong id="out-player-pay" style="color:#34d399;">75 CZK</strong>
                     </div>
                 </div>
@@ -416,26 +442,26 @@
         <!-- 3. Two-Tier Shadow Identity Vault (GDPR + Cold Storage) -->
         <div class="panel">
             <h3>
-                <span>4. 🛡 Двухконтурный Холодный Архив (Two-Tier Shadow Identity Vault для GDPR)</span>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn-action purple" onclick="toggleVaultState(true)">🔒 Анонимизировать (GDPR Erasure)</button>
-                    <button class="btn-action emerald" onclick="toggleVaultState(false)">♻️ Восстановить из Shadow Vault</button>
+                <span id="sec-4-title">4. 🛡 Two-Tier Shadow Identity Vault (GDPR Pseudonymization & Cold Storage)</span>
+                <div style="display:flex; gap:8px; flex-wrap: wrap;">
+                    <button class="btn-action purple" id="btn-gdpr-anon" onclick="toggleVaultState(true)">🔒 Anonymize (GDPR Right to Erasure)</button>
+                    <button class="btn-action emerald" id="btn-gdpr-rest" onclick="toggleVaultState(false)">♻️ Restore from Shadow Vault</button>
                 </div>
             </h3>
-            <p style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 14px;">
-                Демонстрация сохранения ссылочной целостности истории матчей при удалении персональных данных сотрудника:
+            <p style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 14px;" id="sec-4-desc">
+                Preserves 100% of relational foreign-key integrity across historical matches and financial ledgers while erasing PII from the hot database:
             </p>
             <div class="grid-2" style="margin-bottom: 0;">
                 <div style="background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
-                    <div style="font-size: 0.78rem; text-transform: uppercase; color: #38bdf8; font-weight: 700; margin-bottom: 8px;">🔥 Контур 1: Боевая БД (Hot Production PostgreSQL)</div>
-                    <div style="font-size: 0.9rem; margin-bottom: 6px;">User ID: <code>502389915</code> (Внешние ключи в <code>signups</code> и <code>game_stats</code> сохранены)</div>
-                    <div style="font-size: 0.9rem; margin-bottom: 6px;">Отображаемое имя: <strong id="hot-name" style="color: #fff;">Melih Traveler</strong></div>
+                    <div style="font-size: 0.78rem; text-transform: uppercase; color: #38bdf8; font-weight: 700; margin-bottom: 8px;" id="vault-hot-title">🔥 Tier 1: Hot Production DB (PostgreSQL Public Schema)</div>
+                    <div style="font-size: 0.9rem; margin-bottom: 6px;">User ID: <code>502389915</code> (Foreign keys in <code>signups</code> & <code>game_stats</code> preserved)</div>
+                    <div style="font-size: 0.9rem; margin-bottom: 6px;">Public Name: <strong id="hot-name" style="color: #fff;">Melih Traveler</strong></div>
                     <div style="font-size: 0.9rem; margin-bottom: 6px;">Telegram Handle: <strong id="hot-user" style="color: #60a5fa;">@melih_prague</strong></div>
-                    <div style="font-size: 0.9rem;">Статистика: <strong>24 события • Рейтинг 118 ELO • 5 MVP</strong></div>
+                    <div style="font-size: 0.9rem;">Historical Stats: <strong>24 Events • 118 ELO • 5 MVPs</strong></div>
                 </div>
                 <div style="background: #090d16; border: 1px solid rgba(139, 92, 246, 0.35); border-radius: 12px; padding: 16px;">
-                    <div style="font-size: 0.78rem; text-transform: uppercase; color: #c084fc; font-weight: 700; margin-bottom: 8px;">❄️ Контур 2: Изолированный Архив (ShadowIdentityVault • Fernet AES-128-CBC)</div>
-                    <div style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 6px;" id="vault-status">Статус: Профиль активен (слепок в архиве не требуется)</div>
+                    <div style="font-size: 0.78rem; text-transform: uppercase; color: #c084fc; font-weight: 700; margin-bottom: 8px;" id="vault-cold-title">❄️ Tier 2: Isolated Cold Archive (ShadowIdentityVault • Fernet AES-128-CBC)</div>
+                    <div style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 6px;" id="vault-status">Status: Active public profile (cold snapshot not required)</div>
                     <div class="code-pill" id="vault-cipher" style="color: #c084fc;">[NO_ACTIVE_ARCHIVE — USER_IS_PUBLIC]</div>
                 </div>
             </div>
@@ -443,121 +469,450 @@
     </div>
 
     <script>
+        let currentLang = 'en';
+        let currentPreset = 'football';
+        let twoOptDone = false;
+        let isVaultAnonymized = false;
+
+        const UI_I18N = {
+            en: {
+                heroBadge: "🎓 Bachelor's Thesis Interactive Showcase • B2B & B2C Cloud SaaS",
+                heroTitle: "Multi-Tenant Parameterized Event & Community ERP",
+                heroDesc: "Unified cloud-native platform for automating sports leagues, group excursions (Prague → Dresden), book clubs, and corporate communities — powered by 2-opt combinatorial optimization, SPAYD (ISO 20022) clearing, and two-tier GDPR data isolation.",
+                btnAdmin: "⚙️ Open Admin Portal",
+                btnPlayer: "📱 Open Player Mini App",
+                kpi1: "Sports, Trips, Book Clubs, Quizzes",
+                kpi2: "2-opt Local Search Convergence",
+                kpi3: "SSE + Redis Pub/Sub vs HTTP Polling",
+                kpi4: "ČNB Modulo-11 IBAN + QR Platba",
+                kpi5: "PostgreSQL RLS & Fernet GDPR Vault",
+                sec1Title: "1. 🧩 Meta-Model: Parameterized Event Engine (Domain Generalization)",
+                pbtn_football: "⚽ Football League (Sport)",
+                pbtn_trip: "🚌 Excursion: Prague → Dresden (Trip)",
+                pbtn_book_club: "📚 Book Club / Meetup",
+                pbtn_board_games: "🎲 Pub Quiz / Board Games",
+                dictHeader: "Localized Domain Terminology Dictionary",
+                thKey: "Domain Parameter",
+                previewHeader: "📱 Live Mini App Event Card Preview",
+                rolesLbl: "Available Sign-Up Roles:",
+                invLbl: "Inventory / Equipment Checklist:",
+                settleLbl: "Settlement Pipeline:",
+                sec2Title: "2. ⚖️ Combinatorial Optimization (2-opt Local Search)",
+                btnRun2Opt: "⚡ Toggle 2-opt Optimization",
+                sec2Desc: "Minimizes ELO rating variance across groups (teams or carpool vehicles) while enforcing positional role constraints:",
+                iterBefore: "0 (Initial Unbalanced Seed)",
+                iterAfter: "4 Iterations of 2-opt (Local Optimum)",
+                groupA: "🔴 Group / Team A",
+                groupB: "🔵 Group / Team B",
+                sec3Title: "3. 💳 Hybrid Clearing: Co-Pay + MultiSport + SPAYD",
+                slCost: "Total Event Cost (Pitch / Tickets):",
+                slPart: "Active Participants:",
+                slSub: "🏢 Employer Co-Pay Subsidy (%):",
+                slMs: "💳 MultiSport Card Holders (-150 CZK):",
+                outEmp: "Covered by Employer (B2B Invoice):",
+                outMs: "Covered by MultiSport Cards:",
+                outNet: "Net Share per Paying Participant:",
+                sec4Title: "4. 🛡 Two-Tier Shadow Identity Vault (GDPR Pseudonymization & Cold Storage)",
+                btnAnon: "🔒 Anonymize (GDPR Right to Erasure)",
+                btnRest: "♻️ Restore from Shadow Vault",
+                sec4Desc: "Preserves 100% of relational foreign-key integrity across historical matches and financial ledgers while erasing PII from the hot database:",
+                vaultHotTitle: "🔥 Tier 1: Hot Production DB (PostgreSQL Public Schema)",
+                vaultColdTitle: "❄️ Tier 2: Isolated Cold Archive (ShadowIdentityVault • Fernet AES-128-CBC)",
+                vaultActive: "Status: Active public profile (cold snapshot not required)",
+                vaultAnon: "Status: Encrypted snapshot stored in ShadowIdentityVault (AES-128-CBC + HMAC)",
+                vaultRestored: "Status: Profile decrypted and restored to hot production DB!"
+            },
+            cs: {
+                heroBadge: "🎓 Bakalářská práce — Interaktivní Showcase • B2B & B2C Cloud SaaS",
+                heroTitle: "Multi-tenantní parametrizovaná platforma pro správu komunit a událostí",
+                heroDesc: "Jednotná cloudová platforma pro automatizaci sportovních lig, skupinových výletů (Praha → Drážďany), čtenářských klubů a firemních komunit — využívající kombinatorickou optimalizaci 2-opt, bankovní standard SPAYD (ISO 20022) a dvouvrstvou izolaci dat (GDPR).",
+                btnAdmin: "⚙️ Otevřít Admin Portál",
+                btnPlayer: "📱 Otevřít Hráčskou Mini App",
+                kpi1: "Sport, Výlety, Kluby, Kvízy",
+                kpi2: "Konvergence 2-opt optimalizace",
+                kpi3: "SSE + Redis Pub/Sub vs HTTP Polling",
+                kpi4: "ČNB Modulo-11 IBAN + QR Platba",
+                kpi5: "PostgreSQL RLS & Fernet GDPR Vault",
+                sec1Title: "1. 🧩 Meta-model: Parametrizovaný engine událostí (Doménová generalizace)",
+                pbtn_football: "⚽ Fotbalová liga (Sport)",
+                pbtn_trip: "🚌 Výlet: Praha → Drážďany (Turistika)",
+                pbtn_book_club: "📚 Čtenářský klub / Setkání",
+                pbtn_board_games: "🎲 Pub kvíz / Deskové hry",
+                dictHeader: "Lokalizovaný doménový slovník (Terminology Dictionary)",
+                thKey: "Doménový parametr",
+                previewHeader: "📱 Živý náhled karty události v Mini App",
+                rolesLbl: "Dostupné role při registraci:",
+                invLbl: "Kontrolní seznam vybavení / inventáře:",
+                settleLbl: "Proces uzavření a vyúčtování:",
+                sec2Title: "2. ⚖️ Kombinatorická optimalizace (2-opt Local Search)",
+                btnRun2Opt: "⚡ Spustit 2-opt optimalizaci",
+                sec2Desc: "Minimalizuje rozptyl průměrného ELO ratingu mezi skupinami (týmy nebo posádkami aut) při zachování pozičních omezení:",
+                iterBefore: "0 (Počáteční nevyvážené rozdělení)",
+                iterAfter: "4 iterace 2-opt (Lokální optimum)",
+                groupA: "🔴 Skupina / Tým A",
+                groupB: "🔵 Skupina / Tým B",
+                sec3Title: "3. 💳 Hybridní vyúčtování: Co-Pay + MultiSport + SPAYD",
+                slCost: "Celkové náklady události (Pronájem / Jízdenky):",
+                slPart: "Počet aktivních účastníků:",
+                slSub: "🏢 Příspěvek zaměstnavatele (Employer Co-Pay %):",
+                slMs: "💳 Držitelé karty MultiSport (-150 CZK):",
+                outEmp: "Hrazeno firmou (B2B Faktura):",
+                outMs: "Pokryto kartami MultiSport:",
+                outNet: "Částka k úhradě na 1 platícího účastníka:",
+                sec4Title: "4. 🛡 Dvouvrstvý archiv identit (ShadowIdentityVault pro GDPR)",
+                btnAnon: "🔒 Anonymizovat (GDPR Právo na výmaz)",
+                btnRest: "♻️ Obnovit ze Shadow Vault",
+                sec4Desc: "Zachovává 100% referenční integritu cizích klíčů v historii zápasů a financích při odstranění osobních údajů z produkční DB:",
+                vaultHotTitle: "🔥 Vrstva 1: Produkční DB (PostgreSQL Public Schema)",
+                vaultColdTitle: "❄️ Vrstva 2: Izolovaný archiv (ShadowIdentityVault • Fernet AES-128-CBC)",
+                vaultActive: "Stav: Aktivní veřejný profil (šifrovaný snímek není vyžadován)",
+                vaultAnon: "Stav: Šifrovaný snímek uložen v ShadowIdentityVault (AES-128-CBC + HMAC)",
+                vaultRestored: "Stav: Profil úspěšně dešifrován a obnoven do produkční DB!"
+            },
+            ru: {
+                heroBadge: "🎓 Интерактивный Шоукейс Бакалаврской Работы • B2B & B2C Cloud SaaS",
+                heroTitle: "Multi-Tenant Parameterized Event & Community ERP",
+                heroDesc: "Единая облачная платформа для автоматизации спортивных лиг, групповых поездок (Прага → Дрезден), книжных клубов и корпоративных сообществ с комбинаторной оптимизацией (2-opt), банковским клирингом SPAYD (ISO 20022) и двухконтурной защитой данных.",
+                btnAdmin: "⚙️ Открыть Admin Mini App",
+                btnPlayer: "📱 Открыть Player Mini App",
+                kpi1: "Спорт, Поездки, Клубы, Квизы",
+                kpi2: "Сходимость 2-opt балансировки",
+                kpi3: "SSE + Redis Pub/Sub vs Polling",
+                kpi4: "Стандарт QR Platba ЧНБ + IBAN Mod-11",
+                kpi5: "Изоляция тенантов и Fernet GDPR",
+                sec1Title: "1. 🧩 Мета-модель: Параметризуемые пресеты событий (Domain Generalization)",
+                pbtn_football: "⚽ Футбольная лига (Спорт)",
+                pbtn_trip: "🚌 Поездка Прага → Дрезден (Туризм)",
+                pbtn_book_club: "📚 Книжный клуб / Митап",
+                pbtn_board_games: "🎲 Паб-квиз / Настолки",
+                dictHeader: "Локализованный словарь домена (Terminology Dictionary)",
+                thKey: "Параметр",
+                previewHeader: "📱 Превью карточки события в Mini App",
+                rolesLbl: "Доступные роли при записи:",
+                invLbl: "Чек-лист инвентаря / снаряжения:",
+                settleLbl: "Пайплайн завершения:",
+                sec2Title: "2. ⚖️ Комбинаторная оптимизация (2-opt Local Search)",
+                btnRun2Opt: "⚡ Запустить 2-opt шаг",
+                sec2Desc: "Минимизирует дисперсию среднего рейтинга между группами (командами или экипажами машин) при соблюдении ограничений ролей:",
+                iterBefore: "0 (До оптимизации — Перекос)",
+                iterAfter: "4 итерации 2-opt (Локальный оптимум)",
+                groupA: "🔴 Группа / Команда A",
+                groupB: "🔵 Группа / Команда B",
+                sec3Title: "3. 💳 Гибридный клиринг: Co-Pay + MultiSport + SPAYD",
+                slCost: "Общий бюджет события (Аренда / Билеты):",
+                slPart: "Участников в основном составе:",
+                slSub: "🏢 Субсидия компании (Employer Co-Pay %):",
+                slMs: "💳 Участников с картой MultiSport (-150 CZK):",
+                outEmp: "Оплачивает компания (B2B Invoice):",
+                outMs: "Покрыто картами MultiSport:",
+                outNet: "К оплате на 1 участника (без MultiSport):",
+                sec4Title: "4. 🛡 Двухконтурный Холодный Архив (Shadow Identity Vault для GDPR)",
+                btnAnon: "🔒 Анонимизировать (GDPR Erasure)",
+                btnRest: "♻️ Восстановить из Shadow Vault",
+                sec4Desc: "Демонстрация сохранения ссылочной целостности истории матчей при удалении персональных данных сотрудника:",
+                vaultHotTitle: "🔥 Контур 1: Боевая БД (Hot Production PostgreSQL)",
+                vaultColdTitle: "❄️ Контур 2: Изолированный Архив (ShadowIdentityVault • Fernet AES-128-CBC)",
+                vaultActive: "Статус: Профиль активен (слепок в архиве не требуется)",
+                vaultAnon: "Статус: Зашифрованный слепок сохранен в ShadowIdentityVault (AES-128-CBC + HMAC)",
+                vaultRestored: "Статус: Профиль успешно расшифрован и восстановлен в боевую базу!"
+            }
+        };
+
         const PRESET_DATA = {
             football: {
-                title: "⚽ Футбол (большое поле / манеж)",
                 cat: "category: sport",
-                desc: "Классический спортивный режим: учитываются позиции (GK/DEF/MID/FWD), работает 2-opt балансировка составов по ELO, ввод счета и голосование за MVP матча.",
                 flowTag: "Full Match + Score Flow",
-                cardTitle: "⚽ Матч #42 — Прага, Страгов",
-                cardMeta: "📍 Поле: Strahov Pitch #2 • 🕒 Чт, 19:30 • 💳 150 CZK (SPAYD QR)",
-                roles: ["🧤 GK (Вратарь)", "🛡 DEF (Защитник)", "🎯 MID (Полузащитник)", "⚡ FWD (Нападающий)"],
-                inventory: "🦺 Манишки (2 комплекта) • ⚽ Мячи Select (3 шт.) • 🩹 Аптечка",
-                finishBtn: "🏁 Ввести счет (5:3), голы и открыть голосование MVP",
+                title: {
+                    en: "⚽ Football (Outdoor / Artificial Turf)",
+                    cs: "⚽ Fotbal (venkovní / umělá tráva)",
+                    ru: "⚽ Футбол (большое поле / манеж)"
+                },
+                desc: {
+                    en: "Classic competitive sport preset: enforces positional roles (GK/DEF/MID/FWD), runs 2-opt ELO team balancing, tracks match scores/goals, and opens post-match MVP voting.",
+                    cs: "Klasický sportovní režim: zohledňuje hráčské pozice (GK/DEF/MID/FWD), spouští 2-opt vyvažování týmů podle ELO, eviduje skóre/góly a otevírá hlasování o MVP zápasu.",
+                    ru: "Классический спортивный режим: учитываются позиции (GK/DEF/MID/FWD), работает 2-opt балансировка составов по ELO, ввод счета и голосование за MVP матча."
+                },
+                cardTitle: {
+                    en: "⚽ Match #42 — Prague, Strahov",
+                    cs: "⚽ Zápas #42 — Praha, Strahov",
+                    ru: "⚽ Матч #42 — Прага, Страгов"
+                },
+                cardMeta: {
+                    en: "📍 Pitch: Strahov Pitch #2 • 🕒 Thu, 19:30 • 💳 150 CZK (SPAYD QR)",
+                    cs: "📍 Hřiště: Strahov Hřiště #2 • 🕒 Čt, 19:30 • 💳 150 CZK (SPAYD QR)",
+                    ru: "📍 Поле: Strahov Pitch #2 • 🕒 Чт, 19:30 • 💳 150 CZK (SPAYD QR)"
+                },
+                roles: ["🧤 GK", "🛡 DEF", "🎯 MID", "⚡ FWD"],
+                inventory: {
+                    en: "🦺 Team Bibs (2 sets) • ⚽ Select Match Balls (3x) • 🩹 First-Aid Kit",
+                    cs: "🦺 Rozlišovací dresy (2 sady) • ⚽ Míče Select (3x) • 🩹 Lékárnička",
+                    ru: "🦺 Манишки (2 комплекта) • ⚽ Мячи Select (3 шт.) • 🩹 Аптечка"
+                },
+                finishBtn: {
+                    en: "🏁 Enter Score (5:3), Goals & Open MVP Voting",
+                    cs: "🏁 Zadat skóre (5:3), góly a otevřít MVP hlasování",
+                    ru: "🏁 Ввести счет (5:3), голы и открыть голосование MVP"
+                },
                 modules: {
-                    "🎭 Роли / Позиции": true,
-                    "⚖️ 2-opt Драфт команд": true,
-                    "🏁 Счет и голы": true,
-                    "🏆 Голосование MVP": true,
-                    "🎒 Инвентарь": true,
-                    "💳 SPAYD Биллинг": true
+                    "🎭 Roles / Positions": true,
+                    "⚖️ 2-opt Team Draft": true,
+                    "🏁 Score & Goals": true,
+                    "🏆 MVP Voting": true,
+                    "🎒 Equipment Inventory": true,
+                    "💳 SPAYD Split Billing": true
                 },
                 terms: [
-                    ["Событие (event_noun)", "Матч", "Zápas", "Match"],
-                    ["Участник (participant_noun)", "Игрок", "Hráč", "Player"],
-                    ["Локация (venue_noun)", "Поле", "Hřiště", "Pitch"],
-                    ["Группировка (grouping_noun)", "Команды", "Týmy", "Teams"]
+                    ["event_noun", "Match", "Zápas", "Матч"],
+                    ["participant_noun", "Player", "Hráč", "Игрок"],
+                    ["venue_noun", "Pitch", "Hřiště", "Поле"],
+                    ["grouping_noun", "Teams", "Týmy", "Команды"]
                 ]
             },
             trip: {
-                title: "🚌 Поездка / Выезд (Прага → Дрезден / Саксонская Швейцария)",
                 cat: "category: trip",
-                desc: "Туристический пресет: вместо вратарей и защитников — Водители с авто и Пассажиры. Драфт распределяет людей по экипажам машин, а завершение события сразу считает сплит расходов на бензин и билеты без ввода счета.",
                 flowTag: "Zero-Score Quick Settlement",
-                cardTitle: "🚌 Выезд #12 — Прага → Дрезден & Бастай",
-                cardMeta: "📍 Точка сбора: Praha hl.n. / Chodov P+R • 🕒 Сб, 08:00 (8 ч) • 💳 400 CZK (Бензин / Групповой билет)",
-                roles: ["🚗 DRIVER (Водитель +3 места)", "🎒 PASSENGER (Пассажир)", "🧭 GUIDE (Организатор маршрута)"],
-                inventory: "🩹 Дорожная аптечка • 🔊 Bluetooth-колонка • 🎟 Групповые билеты ČD • 💧 Вода в машины",
-                finishBtn: "✅ Завершить поездку (Без счета) и разослать QR на оплату",
+                title: {
+                    en: "🚌 Group Excursion (Prague → Dresden & Bastei)",
+                    cs: "🚌 Skupinový výlet (Praha → Drážďany a Bastei)",
+                    ru: "🚌 Поездка / Выезд (Прага → Дрезден & Бастай)"
+                },
+                desc: {
+                    en: "Excursion & carpool preset: replaces sport positions with Drivers (+3 seats) and Passengers. The 2-opt engine assigns passengers to cars, and settlement splits fuel/group ticket costs without asking for a match score.",
+                    cs: "Turistický režim: místo sportovních pozic eviduje Řidiče s autem a Cestující. Algoritmus rozděluje účastníky do posádek aut a uzavření akce rovnou rozpočítá náklady na palivo a jízdenky bez zadávání skóre.",
+                    ru: "Туристический пресет: вместо вратарей и защитников — Водители с авто и Пассажиры. Драфт распределяет людей по экипажам машин, а завершение сразу считает сплит расходов на бензин и билеты без ввода счета."
+                },
+                cardTitle: {
+                    en: "🚌 Trip #12 — Prague → Dresden & Saxon Switzerland",
+                    cs: "🚌 Výlet #12 — Praha → Drážďany a Saské Švýcarsko",
+                    ru: "🚌 Выезд #12 — Прага → Дрезден & Бастай"
+                },
+                cardMeta: {
+                    en: "📍 Meeting Point: Praha hl.n. / Chodov P+R • 🕒 Sat, 08:00 (8h) • 💳 400 CZK (Fuel / ČD Group Ticket)",
+                    cs: "📍 Místo srazu: Praha hl.n. / Chodov P+R • 🕒 So, 08:00 (8h) • 💳 400 CZK (Palivo / Skupinová jízdenka ČD)",
+                    ru: "📍 Точка сбора: Praha hl.n. / Chodov P+R • 🕒 Сб, 08:00 (8 ч) • 💳 400 CZK (Бензин / Групповой билет)"
+                },
+                roles: ["🚗 DRIVER (+3 seats)", "🎒 PASSENGER", "🧭 GUIDE"],
+                inventory: {
+                    en: "🩹 Travel First-Aid Kit • 🔊 Bluetooth Speaker • 🎟 ČD Group Tickets • 💧 Water Packs",
+                    cs: "🩹 Cestovní lékárnička • 🔊 Bluetooth reproduktor • 🎟 Skupinové jízdenky ČD • 💧 Voda do aut",
+                    ru: "🩹 Дорожная аптечка • 🔊 Bluetooth-колонка • 🎟 Групповые билеты ČD • 💧 Вода в машины"
+                },
+                finishBtn: {
+                    en: "✅ Settle Trip (No Score) & Dispatch SPAYD QR Invoices",
+                    cs: "✅ Uzavřít výlet (bez skóre) a rozeslat SPAYD QR platby",
+                    ru: "✅ Завершить поездку (Без счета) и разослать QR на оплату"
+                },
                 modules: {
-                    "🎭 Роли (Водитель/Пассажир)": true,
-                    "⚖️ Распределение по авто": true,
-                    "🏁 Счет и голы": false,
-                    "🏆 Голосование MVP": false,
-                    "🎒 Чек-лист вещей": true,
-                    "💳 Сплит расходов (SPAYD)": true
+                    "🎭 Roles (Driver/Passenger)": true,
+                    "⚖️ Carpool Assignment": true,
+                    "🏁 Score & Goals": false,
+                    "🏆 MVP Voting": false,
+                    "🎒 Trip Checklist": true,
+                    "💳 Fuel/Ticket Split (SPAYD)": true
                 },
                 terms: [
-                    ["Событие (event_noun)", "Поездка", "Výlet", "Trip"],
-                    ["Участник (participant_noun)", "Участник", "Účastník", "Traveler"],
-                    ["Локация (venue_noun)", "Точка сбора", "Místo srazu", "Meeting Point"],
-                    ["Группировка (grouping_noun)", "Экипажи / Группы", "Posádky / Skupiny", "Cars / Groups"]
+                    ["event_noun", "Trip", "Výlet", "Поездка"],
+                    ["participant_noun", "Traveler", "Účastník", "Участник"],
+                    ["venue_noun", "Meeting Point", "Místo srazu", "Точка сбора"],
+                    ["grouping_noun", "Cars / Groups", "Posádky / Skupiny", "Экипажи / Группы"]
                 ]
             },
             book_club: {
-                title: "📚 Книжный клуб / Встреча / Лекторий",
                 cat: "category: club",
-                desc: "Пресет для камерных клубов и воркшопов: роли и деление на команды отключены. Фокус на лимите мест за столом, автоматическом вейтлисте, синхронизации с Google/Apple Calendar (.ics) и сплите депозита кафе.",
                 flowTag: "Attendance + Calendar Flow",
-                cardTitle: "📚 Встреча #8 — Разбор «Мастера и Маргариты»",
-                cardMeta: "📍 Локация: Kavárna Louvre (Зал 2) • 🕒 Ср, 18:30 • 💳 100 CZK (Депозит за бронь)",
-                roles: ["🗣 SPEAKER (Докладчик / Модератор)", "📖 MEMBER (Участник обсуждения)"],
-                inventory: "📖 Экземпляры книги • 💻 Проектор / Слайды • ☕ Бронь стола на 12 человек",
-                finishBtn: "✅ Завершить встречу и зафиксировать явку участников",
+                title: {
+                    en: "📚 Book Club / Meetup / Seminar",
+                    cs: "📚 Čtenářský klub / Setkání / Seminář",
+                    ru: "📚 Книжный клуб / Встреча / Лекторий"
+                },
+                desc: {
+                    en: "Club & seminar preset: team drafting and scores are disabled. Focuses on seat capacity, automated waitlist promotion, RFC 5545 iCal synchronization, and splitting cafe reservation deposits.",
+                    cs: "Režim pro kluby a semináře: rozdělování do týmů a skóre jsou vypnuté. Zaměřeno na kapacitu míst, automatický waitlist, synchronizaci s Google/Apple kalendářem (.ics) a rozúčtování rezervace.",
+                    ru: "Пресет для клубов и воркшопов: роли и деление на команды отключены. Фокус на лимите мест, автоматическом вейтлисте, синхронизации с календарем (.ics) и сплите депозита кафе."
+                },
+                cardTitle: {
+                    en: "📚 Meetup #8 — Kafka & Prague Literature Discussion",
+                    cs: "📚 Setkání #8 — Diskuze: Franze Kafka a pražská literatura",
+                    ru: "📚 Встреча #8 — Литературный разбор в Праге"
+                },
+                cardMeta: {
+                    en: "📍 Venue: Kavárna Louvre (Salon 2) • 🕒 Wed, 18:30 • 💳 100 CZK (Table Deposit)",
+                    cs: "📍 Místo: Kavárna Louvre (Salonek 2) • 🕒 St, 18:30 • 💳 100 CZK (Rezervační depozit)",
+                    ru: "📍 Локация: Kavárna Louvre (Зал 2) • 🕒 Ср, 18:30 • 💳 100 CZK (Депозит за бронь)"
+                },
+                roles: ["🗣 SPEAKER", "📖 MEMBER"],
+                inventory: {
+                    en: "📖 Book Copies • 💻 Projector / Slides • ☕ Reserved Table for 12",
+                    cs: "📖 Výtisky knihy • 💻 Projektor / Prezentace • ☕ Rezervace stolu pro 12 osob",
+                    ru: "📖 Экземпляры книги • 💻 Проектор / Слайды • ☕ Бронь стола на 12 человек"
+                },
+                finishBtn: {
+                    en: "✅ Complete Meetup & Record Attendance",
+                    cs: "✅ Uzavřít setkání a zapsat docházku",
+                    ru: "✅ Завершить встречу и зафиксировать явку участников"
+                },
                 modules: {
-                    "🎭 Роли / Позиции": false,
-                    "⚖️ Деление на команды": false,
-                    "🏁 Счет и голы": false,
-                    "🏆 Голосование MVP": false,
-                    "🎒 Материалы встречи": true,
-                    "💳 Депозит / Сплит (SPAYD)": true
+                    "🎭 Roles / Positions": false,
+                    "⚖️ Team Drafting": false,
+                    "🏁 Score & Goals": false,
+                    "🏆 MVP Voting": false,
+                    "🎒 Meetup Materials": true,
+                    "💳 Deposit Split (SPAYD)": true
                 },
                 terms: [
-                    ["Событие (event_noun)", "Встреча", "Setkání", "Meetup"],
-                    ["Участник (participant_noun)", "Участник", "Člen", "Member"],
-                    ["Локация (venue_noun)", "Локация / Кафе", "Místo / Kavárna", "Venue / Cafe"],
-                    ["Группировка (grouping_noun)", "Столики", "Stoly", "Tables"]
+                    ["event_noun", "Meetup", "Setkání", "Встреча"],
+                    ["participant_noun", "Member", "Člen", "Участник"],
+                    ["venue_noun", "Venue / Cafe", "Místo / Kavárna", "Локация / Кафе"],
+                    ["grouping_noun", "Tables", "Stoly", "Столики"]
                 ]
             },
             board_games: {
-                title: "🎲 Настольные игры / Паб-квиз / Вечер досуга",
                 cat: "category: social",
-                desc: "Социально-игровой режим: автоматическая рассадка участников по столам/командам квиза, трекинг коробок с настолками в инвентаре и голосование за лучшего игрока вечера.",
                 flowTag: "Table Grouping + MVP Flow",
-                cardTitle: "🎲 Игровой вечер #19 — Настолки & Pub Quiz",
-                cardMeta: "📍 Заведение: Geekárna Prague • 🕒 Пт, 19:00 • 💳 120 CZK (Взнос за столы)",
-                roles: ["🎩 HOST (Гейм-мастер / Ведущий)", "🎲 PLAYER (Участник)"],
-                inventory: "📦 Колонизаторы (Catan) • 📦 Билет на поезд • 📝 Бланки для квиза",
-                finishBtn: "✅ Завершить вечер и открыть голосование за MVP",
+                title: {
+                    en: "🎲 Board Games / Pub Quiz Night",
+                    cs: "🎲 Deskové hry / Pub kvíz",
+                    ru: "🎲 Настольные игры / Паб-квиз"
+                },
+                desc: {
+                    en: "Social gaming preset: assigns participants across quiz tables, tracks board game boxes in inventory, and enables end-of-night MVP voting without sport scores.",
+                    cs: "Společenský herní režim: automaticky rozděluje účastníky ke stolům kvízu, eviduje krabice s hrami v inventáři a otevírá hlasování o MVP večera.",
+                    ru: "Социально-игровой режим: автоматическая рассадка участников по столам квиза, трекинг коробок с настолками в инвентаре и голосование за MVP вечера."
+                },
+                cardTitle: {
+                    en: "🎲 Game Night #19 — Board Games & Pub Quiz",
+                    cs: "🎲 Herní večer #19 — Deskovky & Pub kvíz",
+                    ru: "🎲 Игровой вечер #19 — Настолки & Pub Quiz"
+                },
+                cardMeta: {
+                    en: "📍 Venue: Geekárna Prague • 🕒 Fri, 19:00 • 💳 120 CZK (Table Entry Fee)",
+                    cs: "📍 Podnik: Geekárna Praha • 🕒 Pá, 19:00 • 💳 120 CZK (Vstupné na stoly)",
+                    ru: "📍 Заведение: Geekárna Prague • 🕒 Пт, 19:00 • 💳 120 CZK (Взнос за столы)"
+                },
+                roles: ["🎩 HOST", "🎲 PLAYER"],
+                inventory: {
+                    en: "📦 Catan Box • 📦 Ticket to Ride • 📝 Quiz Answer Sheets",
+                    cs: "📦 Osadníci z Katanu • 📦 Jízdenky, prosím! • 📝 Archy pro kvíz",
+                    ru: "📦 Колонизаторы (Catan) • 📦 Билет на поезд • 📝 Бланки для квиза"
+                },
+                finishBtn: {
+                    en: "✅ Finish Game Night & Open MVP Voting",
+                    cs: "✅ Ukončit herní večer a otevřít MVP hlasování",
+                    ru: "✅ Завершить вечер и открыть голосование за MVP"
+                },
                 modules: {
-                    "🎭 Роли / Позиции": false,
-                    "⚖️ Рассадка по столам": true,
-                    "🏁 Футбольный счет": false,
-                    "🏆 Голосование MVP вечера": true,
-                    "🎒 Коробки с играми": true,
-                    "💳 Сплит чека (SPAYD)": true
+                    "🎭 Roles / Positions": false,
+                    "⚖️ Table Assignment": true,
+                    "🏁 Sport Score": false,
+                    "🏆 Night MVP Voting": true,
+                    "🎒 Game Boxes Inventory": true,
+                    "💳 Bill Split (SPAYD)": true
                 },
                 terms: [
-                    ["Событие (event_noun)", "Игровой вечер", "Herní večer", "Game Night"],
-                    ["Участник (participant_noun)", "Участник", "Účastník", "Participant"],
-                    ["Локация (venue_noun)", "Заведение / Зал", "Podnik / Sál", "Pub / Venue"],
-                    ["Группировка (grouping_noun)", "Столы / Команды", "Stoly / Týmy", "Tables / Teams"]
+                    ["event_noun", "Game Night", "Herní večer", "Игровой вечер"],
+                    ["participant_noun", "Participant", "Účastník", "Участник"],
+                    ["venue_noun", "Pub / Venue", "Podnik / Sál", "Заведение / Зал"],
+                    ["grouping_noun", "Tables / Teams", "Stoly / Týmy", "Столы / Команды"]
                 ]
             }
         };
 
+        const UNBALANCED_STATE = {
+            delta: "24.5 pt",
+            deltaColor: "#f43f5e",
+            teamA: [
+                ["Vlad Lishanlo", "FWD", 132],
+                ["Dias August", "MID", 126],
+                ["Bauyrzhan B.", "DEF", 122],
+                ["Yernur B.", "MID", 116]
+            ],
+            teamB: [
+                ["Raimbek S.", "GK", 104],
+                ["Filip Haltmar", "DEF", 98],
+                ["Tynai", "MID", 96],
+                ["Hersson Diaz", "FWD", 100]
+            ]
+        };
+        const BALANCED_STATE = {
+            delta: "0.5 pt",
+            deltaColor: "#34d399",
+            teamA: [
+                ["Vlad Lishanlo", "FWD", 132],
+                ["Yernur B.", "MID", 116],
+                ["Filip Haltmar", "DEF", 98],
+                ["Tynai", "MID", 96]
+            ],
+            teamB: [
+                ["Dias August", "MID", 126],
+                ["Bauyrzhan B.", "DEF", 122],
+                ["Raimbek S.", "GK", 104],
+                ["Hersson Diaz", "FWD", 100]
+            ]
+        };
+
+        function setShowcaseLang(lang) {
+            currentLang = lang;
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`lang-${lang}`).classList.add('active');
+            const d = UI_I18N[lang];
+
+            document.getElementById('ui-hero-badge').textContent = d.heroBadge;
+            document.getElementById('ui-hero-title').textContent = d.heroTitle;
+            document.getElementById('ui-hero-desc').textContent = d.heroDesc;
+            document.getElementById('ui-btn-admin').textContent = d.btnAdmin;
+            document.getElementById('ui-btn-player').textContent = d.btnPlayer;
+            document.getElementById('kpi-1').textContent = d.kpi1;
+            document.getElementById('kpi-2').textContent = d.kpi2;
+            document.getElementById('kpi-3').textContent = d.kpi3;
+            document.getElementById('kpi-4').textContent = d.kpi4;
+            document.getElementById('kpi-5').textContent = d.kpi5;
+            document.getElementById('sec-1-title').textContent = d.sec1Title;
+            document.getElementById('pbtn-football').textContent = d.pbtn_football;
+            document.getElementById('pbtn-trip').textContent = d.pbtn_trip;
+            document.getElementById('pbtn-book_club').textContent = d.pbtn_book_club;
+            document.getElementById('pbtn-board_games').textContent = d.pbtn_board_games;
+            document.getElementById('ui-dict-header').textContent = d.dictHeader;
+            document.getElementById('th-key').textContent = d.thKey;
+            document.getElementById('ui-preview-header').textContent = d.previewHeader;
+            document.getElementById('ui-roles-lbl').textContent = d.rolesLbl;
+            document.getElementById('ui-inv-lbl').textContent = d.invLbl;
+            document.getElementById('ui-settle-lbl').textContent = d.settleLbl;
+            document.getElementById('sec-2-title').textContent = d.sec2Title;
+            document.getElementById('btn-run-2opt').textContent = d.btnRun2Opt;
+            document.getElementById('sec-2-desc').textContent = d.sec2Desc;
+            document.getElementById('sec-3-title').textContent = d.sec3Title;
+            document.getElementById('sl-lbl-cost').textContent = d.slCost;
+            document.getElementById('sl-lbl-part').textContent = d.slPart;
+            document.getElementById('sl-lbl-sub').textContent = d.slSub;
+            document.getElementById('sl-lbl-ms').textContent = d.slMs;
+            document.getElementById('out-lbl-emp').textContent = d.outEmp;
+            document.getElementById('out-lbl-ms').textContent = d.outMs;
+            document.getElementById('out-lbl-net').textContent = d.outNet;
+            document.getElementById('sec-4-title').textContent = d.sec4Title;
+            document.getElementById('btn-gdpr-anon').textContent = d.btnAnon;
+            document.getElementById('btn-gdpr-rest').textContent = d.btnRest;
+            document.getElementById('sec-4-desc').textContent = d.sec4Desc;
+            document.getElementById('vault-hot-title').textContent = d.vaultHotTitle;
+            document.getElementById('vault-cold-title').textContent = d.vaultColdTitle;
+
+            selectPreset(currentPreset, document.getElementById(`pbtn-${currentPreset}`));
+            renderTwoOpt(twoOptDone ? BALANCED_STATE : UNBALANCED_STATE);
+            toggleVaultState(isVaultAnonymized);
+        }
+
         function selectPreset(code, btnEl) {
+            currentPreset = code;
             document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
             if (btnEl) btnEl.classList.add('active');
             const p = PRESET_DATA[code];
-            document.getElementById('preset-title').textContent = p.title;
+            document.getElementById('preset-title').textContent = p.title[currentLang];
             document.getElementById('preset-cat').textContent = p.cat;
-            document.getElementById('preset-desc').textContent = p.desc;
+            document.getElementById('preset-desc').textContent = p.desc[currentLang];
             document.getElementById('preview-flow-tag').textContent = p.flowTag;
-            document.getElementById('card-event-title').textContent = p.cardTitle;
-            document.getElementById('card-event-meta').textContent = p.cardMeta;
-            document.getElementById('card-inventory-list').textContent = p.inventory;
-            document.getElementById('card-finish-btn').textContent = p.finishBtn;
+            document.getElementById('card-event-title').textContent = p.cardTitle[currentLang];
+            document.getElementById('card-event-meta').textContent = p.cardMeta[currentLang];
+            document.getElementById('card-inventory-list').textContent = p.inventory[currentLang];
+            document.getElementById('card-finish-btn').textContent = p.finishBtn[currentLang];
 
             const rolesEl = document.getElementById('card-roles-list');
             rolesEl.innerHTML = p.roles.map(r => `<span class="tag on">${r}</span>`).join('');
@@ -575,50 +930,15 @@
                 <tr>
                     <td><code>${row[0]}</code></td>
                     <td><strong>${row[1]}</strong></td>
-                    <td>${row[2]}</td>
+                    <td><strong>${row[2]}</strong></td>
                     <td>${row[3]}</td>
                 </tr>
             `).join('');
         }
 
-        let twoOptDone = false;
-        const UNBALANCED_STATE = {
-            iter: "0 (До оптимизации — Перекос)",
-            delta: "24.5 pt",
-            deltaColor: "#f43f5e",
-            teamA: [
-                ["Vlad Lishanlo", "FWD", 132],
-                ["Dias August", "MID", 126],
-                ["Bauyrzhan B.", "DEF", 122],
-                ["Yernur B.", "MID", 116]
-            ],
-            teamB: [
-                ["Raimbek S.", "GK", 104],
-                ["Filip Haltmar", "DEF", 98],
-                ["Tynai", "MID", 96],
-                ["Hersson Diaz", "FWD", 100]
-            ]
-        };
-        const BALANCED_STATE = {
-            iter: "4 итерации 2-opt (Локальный оптимум)",
-            delta: "0.5 pt",
-            deltaColor: "#34d399",
-            teamA: [
-                ["Vlad Lishanlo", "FWD", 132],
-                ["Yernur B.", "MID", 116],
-                ["Filip Haltmar", "DEF", 98],
-                ["Tynai", "MID", 96]
-            ],
-            teamB: [
-                ["Dias August", "MID", 126],
-                ["Bauyrzhan B.", "DEF", 122],
-                ["Raimbek S.", "GK", 104],
-                ["Hersson Diaz", "FWD", 100]
-            ]
-        };
-
         function renderTwoOpt(state) {
-            document.getElementById('opt-iter').textContent = state.iter;
+            const d = UI_I18N[currentLang];
+            document.getElementById('opt-iter').textContent = twoOptDone ? d.iterAfter : d.iterBefore;
             const dEl = document.getElementById('opt-delta');
             dEl.textContent = state.delta;
             dEl.style.color = state.deltaColor;
@@ -629,14 +949,14 @@
             document.getElementById('opt-teams-container').innerHTML = `
                 <div class="team-col">
                     <div style="font-weight:700; margin-bottom:8px; display:flex; justify-content:space-between;">
-                        <span>🔴 Группа / Команда A</span>
+                        <span>${d.groupA}</span>
                         <span style="color:#60a5fa;">Avg: ${avgA}</span>
                     </div>
                     ${state.teamA.map(p => `<div class="player-row"><span>${p[0]} <small style="color:#94a3b8;">(${p[1]})</small></span><strong>${p[2]}</strong></div>`).join('')}
                 </div>
                 <div class="team-col">
                     <div style="font-weight:700; margin-bottom:8px; display:flex; justify-content:space-between;">
-                        <span>🔵 Группа / Команда B</span>
+                        <span>${d.groupB}</span>
                         <span style="color:#60a5fa;">Avg: ${avgB}</span>
                     </div>
                     ${state.teamB.map(p => `<div class="player-row"><span>${p[0]} <small style="color:#94a3b8;">(${p[1]})</small></span><strong>${p[2]}</strong></div>`).join('')}
@@ -656,9 +976,9 @@
             const msCount = Math.min(part, parseInt(document.getElementById('rng-ms').value, 10));
 
             document.getElementById('lbl-total-cost').textContent = `${total} CZK`;
-            document.getElementById('lbl-part-count').textContent = `${part} чел.`;
+            document.getElementById('lbl-part-count').textContent = `${part}`;
             document.getElementById('lbl-subsidy').textContent = `${subPct}%`;
-            document.getElementById('lbl-ms').textContent = `${msCount} чел.`;
+            document.getElementById('lbl-ms').textContent = `${msCount}`;
 
             const empShare = Math.round(total * (subPct / 100));
             const afterEmp = Math.max(0, total - empShare);
@@ -675,24 +995,25 @@
         }
 
         function toggleVaultState(anonymize) {
+            isVaultAnonymized = anonymize;
+            const d = UI_I18N[currentLang];
             if (anonymize) {
                 document.getElementById('hot-name').textContent = "Former Participant #89915";
                 document.getElementById('hot-name').style.color = "#f59e0b";
-                document.getElementById('hot-user').textContent = "NULL (Удалено по GDPR)";
-                document.getElementById('vault-status').textContent = "Статус: Зашифрованный слепок сохранен в ShadowIdentityVault (AES-128-CBC + HMAC)";
+                document.getElementById('hot-user').textContent = "NULL (GDPR Erased)";
+                document.getElementById('vault-status').textContent = d.vaultAnon;
                 document.getElementById('vault-cipher').textContent = "gAAAAABnL9xK_7vQp2mR8tW1yZ0cB4nF6jH3kL5mP9qS2vX8zA1bC4dE7fG0hJ2kL5mN8pQ1rT4uV7wX0yZ3aB6cD9eF==";
             } else {
                 document.getElementById('hot-name').textContent = "Melih Traveler";
                 document.getElementById('hot-name').style.color = "#ffffff";
                 document.getElementById('hot-user').textContent = "@melih_prague";
-                document.getElementById('vault-status').textContent = "Статус: Профиль успешно расшифрован и восстановлен в боевую базу!";
-                document.getElementById('vault-cipher').textContent = "[RESTORED_FROM_VAULT -> ACTIVE_PROFILE]";
+                document.getElementById('vault-status').textContent = d.vaultActive;
+                document.getElementById('vault-cipher').textContent = "[NO_ACTIVE_ARCHIVE — USER_IS_PUBLIC]";
             }
         }
 
-        // Init
-        selectPreset('football', document.querySelector('.preset-btn'));
-        renderTwoOpt(UNBALANCED_STATE);
+        // Init in English by default
+        setShowcaseLang('en');
         recalcBilling();
     </script>
 </body>
