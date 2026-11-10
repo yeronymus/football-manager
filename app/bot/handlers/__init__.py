@@ -10,8 +10,10 @@ from .setup_handlers import router as setup_handlers_router
 from .stats_handlers import router as stats_handlers_router
 from .vote_handlers import router as vote_handlers_router
 from .language_handlers import router as language_handlers_router
+from .tracking import router as tracking_router
 
 router = Router()
+router.include_router(tracking_router)
 router.include_router(language_handlers_router)
 router.include_router(common_router)
 router.include_router(registration_router)

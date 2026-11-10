@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.config import settings
+from app.core.services.member_tracking import track_chat_member
 from app.db.models import Chat, PlayerProfile, User
 
 
@@ -126,7 +127,19 @@ class TenantMiddleware(BaseMiddleware):
 
         data["tenant"] = chat_obj
 
-        if tg_user:
+        if tg_user and not getattr(tg_user, "is_bot", False):
+            try:
+                await track_chat_member(
+                    session=session,
+                    chat_id=chat_id,
+                    user_id=tg_user.id,
+                    full_name=tg_user.full_name,
+                    username=tg_user.username,
+                    status="member",
+                )
+            except Exception:
+                pass
+
             user_obj = await session.get(User, tg_user.id)
             if user_obj:
                 stmt = select(PlayerProfile).where(

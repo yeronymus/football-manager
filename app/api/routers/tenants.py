@@ -302,7 +302,7 @@ async def delete_game(
 @router.get("/groups/{chat_id}/attendance.csv")
 async def export_group_attendance_csv(
     chat_id: int,
-    send_dm: bool = Query(False),
+    send_dm: bool = False,
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session),
 ):
@@ -384,8 +384,9 @@ async def export_group_attendance_csv(
 
     csv_content = buf.getvalue()
     filename = f"attendance_{abs(chat_id)}.csv"
+    should_send_dm = bool(send_dm) if not hasattr(send_dm, "default") else bool(send_dm.default)
 
-    if send_dm:
+    if should_send_dm:
         from aiogram.types import BufferedInputFile
         from fastapi.responses import JSONResponse
         from app.bot.instance import bot

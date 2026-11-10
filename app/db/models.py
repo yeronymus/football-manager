@@ -133,6 +133,7 @@ class Chat(Base):
     games = relationship("Game", back_populates="chat")
     players = relationship("PlayerProfile", back_populates="chat", cascade="all, delete-orphan")
     admins = relationship("ChatAdmin", back_populates="chat", cascade="all, delete-orphan")
+    members = relationship("ChatMember", back_populates="chat", cascade="all, delete-orphan")
     player_cards = relationship("PlayerCard", back_populates="chat", cascade="all, delete-orphan")
     inventory_items = relationship("InventoryItem", back_populates="chat", cascade="all, delete-orphan")
 
@@ -177,6 +178,30 @@ class ChatAdmin(Base):
 
     __table_args__ = (
         UniqueConstraint('chat_id', 'user_id', name='unique_chat_admin'),
+    )
+
+
+class ChatMember(Base):
+    """
+    Tracks all Telegram group participants observed by the bot (both registered and unregistered).
+    Enables tracking of group membership status (member, left, kicked) and outreach to unregistered users.
+    """
+    __tablename__ = "chat_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(BigInteger, nullable=False, index=True)
+    username = Column(String, nullable=True)
+    full_name = Column(String, nullable=True)
+    status = Column(String(32), default="member", nullable=False)
+    is_registered = Column(Boolean, default=False, nullable=False)
+    first_seen_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
+    last_seen_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False)
+
+    chat = relationship("Chat", back_populates="members")
+
+    __table_args__ = (
+        UniqueConstraint("chat_id", "user_id", name="uq_chat_members_chat_user"),
     )
 
 class AdBanner(Base):

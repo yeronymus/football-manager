@@ -1073,14 +1073,20 @@ function renderCommunityPlayers() {
     
     let html = '';
     filtered.forEach(p => {
-        const pos = p.position || 'CM';
+        const isRegistered = p.is_registered !== false;
+        const isInChat = p.is_in_chat !== false;
+        const pos = p.position || (isRegistered ? 'CM' : '—');
         let posClass = '';
         if (pos === 'GK') posClass = 'gk';
         else if (['CB', 'LB', 'RB', 'LWB', 'RWB', 'DEF'].includes(pos)) posClass = 'def';
         else if (['ST', 'CF', 'LW', 'RW', 'ATT'].includes(pos)) posClass = 'att';
         
         let tagHtml = '';
-        if (p.is_core) {
+        if (!isInChat) {
+            tagHtml = `<span class="community-tag-dormant" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35);">🚪 ${getAdminText('Left Group', 'Нет в группе')}</span>`;
+        } else if (!isRegistered) {
+            tagHtml = `<span class="community-tag-dormant" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.35);">👻 ${getAdminText('Unregistered', 'Не в боте')}</span>`;
+        } else if (p.is_core) {
             tagHtml = `<span class="community-tag-core">⭐ ${getAdminText('Core', 'Костяк')} • ${p.games_last_4_weeks} ${getAdminText('stat_in_4w')}</span>`;
         } else if (p.is_dormant) {
             const daysText = p.days_since_last_game !== null ? getAdminText('stat_days_ago', { days: p.days_since_last_game }) : getAdminText('stat_never_played');
@@ -1098,6 +1104,24 @@ function renderCommunityPlayers() {
         } else if (p.active_card_type === 'YELLOW') {
             cardBadge = `<span title="${getAdminText('card_yellow_title')}" style="cursor:help; font-size:0.9rem; margin-left:4px;">🟨</span>`;
         }
+
+        const statsHtml = isRegistered
+            ? `<span>${gamesLabel}: <b>${p.total_games}</b></span>
+               <span>•</span>
+               <span>${goalsLabel}: <b>${p.total_goals}</b></span>
+               <span>•</span>
+               <span>MVP: <b>${p.total_mvps}</b></span>
+               <span>•</span>
+               <span style="color: #60a5fa;">ELO: <b>${p.rating}</b></span>`
+            : `<span style="color: var(--text-muted); font-size: 0.8rem;">${getAdminText('In Telegram chat, not registered in bot', 'В чате группы, ещё не запустил бота')}</span>`;
+
+        let actionBtnHtml = '';
+        if (isRegistered) {
+            actionBtnHtml = `<button class="community-profile-btn" onclick="openPlayerModal(${p.user_id})">${profileBtnText}</button>`;
+        } else {
+            const chatUrl = p.username ? `https://t.me/${p.username}` : `tg://user?id=${p.user_id}`;
+            actionBtnHtml = `<a href="${chatUrl}" target="_blank" class="community-profile-btn" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35);">💬 ${getAdminText('Write', 'Написать')}</a>`;
+        }
         
         html += `
             <div class="community-player-card">
@@ -1111,19 +1135,11 @@ function renderCommunityPlayers() {
                             ${tagHtml}
                         </div>
                         <div class="community-player-stats">
-                            <span>${gamesLabel}: <b>${p.total_games}</b></span>
-                            <span>•</span>
-                            <span>${goalsLabel}: <b>${p.total_goals}</b></span>
-                            <span>•</span>
-                            <span>MVP: <b>${p.total_mvps}</b></span>
-                            <span>•</span>
-                            <span style="color: #60a5fa;">ELO: <b>${p.rating}</b></span>
+                            ${statsHtml}
                         </div>
                     </div>
                 </div>
-                <button class="community-profile-btn" onclick="openPlayerModal(${p.user_id})">
-                    ${profileBtnText}
-                </button>
+                ${actionBtnHtml}
             </div>
         `;
     });

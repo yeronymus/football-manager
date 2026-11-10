@@ -12,7 +12,7 @@ from app.core.repositories.stats_repository import StatsRepository
 from app.core.services.game_numbering import clean_location, get_group_game_number
 from app.core.timezone import format_prague_dt, to_prague_dt
 from app.db.database import get_session
-from app.db.models import Game, GameStats, PlayerCard, PlayerProfile, Signup, SignupStatus, User
+from app.db.models import ChatMember, Game, GameStats, PlayerCard, PlayerProfile, Signup, SignupStatus, User
 
 router = APIRouter(tags=["dashboard-leaderboards"])
 
@@ -39,6 +39,9 @@ class PlayerActivityOut(BaseModel):
     late_percentage: float = 0.0
     is_core: bool = False
     is_dormant: bool = False
+    is_registered: bool = True
+    is_in_chat: bool = True
+    chat_status: str = "member"
     active_card_type: Optional[str] = None
 
 
@@ -47,6 +50,8 @@ class GroupAnalyticsOut(BaseModel):
     total_players: int
     core_count: int
     dormant_count: int
+    left_chat_count: int = 0
+    unregistered_count: int = 0
     players: List[PlayerActivityOut]
 
 
@@ -166,6 +171,7 @@ async def get_group_analytics(
         .outerjoin(lates_subq, lates_subq.c.user_id == User.user_id)
         .where(
             User.user_id > 0,
+            User.is_guest == False,  # Exclude guest placeholders
             or_(
                 PlayerProfile.chat_id == chat_id,
                 last_game_subq.c.last_game_date.isnot(None),
@@ -187,6 +193,13 @@ async def get_group_analytics(
     disc_repo = DisciplinaryRepository(session)
     cards_map = await disc_repo.get_active_cards_map(chat_id)
 
+    members_res = await session.execute(
+        select(ChatMember).where(ChatMember.chat_id == chat_id)
+    )
+    members_map = {m.user_id: m for m in members_res.scalars().all()}
+
+    left_chat_count = 0
+
     for r in rows:
         uid = r.user_id
         last_dt = r.last_game_date
@@ -205,9 +218,15 @@ async def get_group_analytics(
             days_ago is None and total_g == 0
         )
 
-        if is_core:
+        member_entry = members_map.get(uid)
+        chat_status = member_entry.status if member_entry else "member"
+        is_in_chat = chat_status not in ("left", "kicked")
+
+        if not is_in_chat:
+            left_chat_count += 1
+        elif is_core:
             core_count += 1
-        if is_dormant:
+        elif is_dormant:
             dormant_count += 1
 
         pos_str = (
@@ -236,15 +255,64 @@ async def get_group_analytics(
                 days_since_last_game=days_ago,
                 is_core=is_core,
                 is_dormant=is_dormant,
+                is_registered=True,
+                is_in_chat=is_in_chat,
+                chat_status=chat_status,
                 active_card_type=cards_map.get(uid),
             )
         )
+
+    # Append observed group participants who are not yet registered in the bot
+    unregistered_count = 0
+    existing_uids = {p.user_id for p in players_out}
+    for m in members_map.values():
+        if m.user_id not in existing_uids and not m.is_registered and m.status not in ("left", "kicked"):
+            unregistered_count += 1
+            players_out.append(
+                PlayerActivityOut(
+                    user_id=m.user_id,
+                    full_name=m.full_name or m.username or f"User {m.user_id}",
+                    username=m.username,
+                    position=None,
+                    rating=0,
+                    total_games=0,
+                    total_goals=0,
+                    total_mvps=0,
+                    total_lates=0,
+                    late_percentage=0.0,
+                    games_last_4_weeks=0,
+                    last_game_date=None,
+                    days_since_last_game=None,
+                    is_core=False,
+                    is_dormant=False,
+                    is_registered=False,
+                    is_in_chat=True,
+                    chat_status=m.status,
+                    active_card_type=None,
+                )
+            )
+
+    # Sort players by priority:
+    # 0: Registered members currently in group (Core -> Regular by rating -> Dormant)
+    # 1: Registered members who left the group (penultimate priority)
+    # 2: Unregistered members in group (last priority)
+    def _sort_key(p: PlayerActivityOut):
+        if p.is_registered and p.is_in_chat:
+            sub = 0 if p.is_core else (2 if p.is_dormant else 1)
+            return (0, sub, -p.games_last_4_weeks, -p.rating)
+        if p.is_registered and not p.is_in_chat:
+            return (1, 0, -p.total_games, -p.rating)
+        return (2, 0, 0, p.full_name.lower())
+
+    players_out.sort(key=_sort_key)
 
     return GroupAnalyticsOut(
         chat_id=chat_id,
         total_players=len(players_out),
         core_count=core_count,
         dormant_count=dormant_count,
+        left_chat_count=left_chat_count,
+        unregistered_count=unregistered_count,
         players=players_out,
     )
 
