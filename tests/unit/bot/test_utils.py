@@ -549,3 +549,56 @@ async def test_finish_announcement_localization(session: AsyncSession):
     assert "MVP Votes:" in text_en
     assert "Goals:" in text_en
     assert "Alex: 2" in text_en
+
+
+@pytest.mark.asyncio
+async def test_format_single_team_explicit_sub(session: AsyncSession):
+    """Explicitly placed Position.SUB player must always appear under the sub separator, even if their original position is DEF."""
+    from app.bot.utils import _format_single_team
+
+    creator, chat = await setup_base_entities(session)
+    game = Game(
+        id=801,
+        chat_id=chat.chat_id,
+        created_by=creator.user_id,
+        date_time=datetime(2026, 11, 14, 11, 0, tzinfo=timezone.utc),
+        location="Pitch",
+        max_players=18,
+        main_players_count=18,
+        team_count=2,
+        status=GameStatus.ACTIVE,
+        has_active_gk_b=True,
+    )
+
+    alish = User(user_id=-1001, full_name="Alish (Guest)", player_position=Position.CB)
+    dias = User(user_id=5001, full_name="Dias August", player_position=Position.LW)
+    # Explicitly put Alish (originally CB) into SUB, and keep Dias (LW) in main squad
+    s_alish = Signup(
+        game_id=game.id,
+        user_id=alish.user_id,
+        status=SignupStatus.ACTIVE,
+        team=Team.B,
+        position=Position.SUB,
+    )
+    s_dias = Signup(
+        game_id=game.id,
+        user_id=dias.user_id,
+        status=SignupStatus.ACTIVE,
+        team=Team.B,
+        position=Position.LW,
+    )
+
+    text = _format_single_team(
+        game=game,
+        signups=[(s_alish, alish), (s_dias, dias)],
+        team_enum=Team.B,
+        team_name="Green",
+        needed_gk=False,
+        lang="ru",
+    )
+
+    sub_idx = text.index("--- замена ---")
+    dias_idx = text.index("Dias August")
+    alish_idx = text.index("Alish (Guest)")
+    assert dias_idx < sub_idx < alish_idx
+

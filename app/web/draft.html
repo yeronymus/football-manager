@@ -906,12 +906,18 @@
                         const pid = parseInt(pidStr);
                         list.push(pid);
                         
-                        // Record position based on the badge on the card (to keep CB, LB, etc.)
+                        // Respect explicit SUB / GK slot placement; otherwise preserve specific badge or original_position
                         const posBadge = c.querySelector('.player-pos');
-                        if (posBadge) {
-                            data.positions[pid] = posBadge.innerText;
+                        const badgeText = posBadge ? posBadge.innerText.trim() : '';
+                        if (pos === 'SUB') {
+                            data.positions[pid] = 'SUB';
+                        } else if (pos === 'GK') {
+                            data.positions[pid] = 'GK';
+                        } else if (badgeText && badgeText !== 'SUB' && badgeText !== 'GK') {
+                            data.positions[pid] = badgeText;
                         } else {
-                            data.positions[pid] = pos;
+                            const orig = allPlayers[pid] && allPlayers[pid].original_position;
+                            data.positions[pid] = (orig && orig !== 'SUB' && orig !== 'GK') ? orig : pos;
                         }
                     });
                 });
@@ -927,7 +933,13 @@
             const gatherPool = (id) => {
                 const list = [];
                 document.getElementById(id).querySelectorAll('.player-card').forEach(c => {
-                    list.push(parseInt(c.dataset.playerId));
+                    const pid = parseInt(c.dataset.playerId);
+                    list.push(pid);
+                    const posBadge = c.querySelector('.player-pos');
+                    if (posBadge && posBadge.innerText.trim() === 'SUB') {
+                        const orig = allPlayers[pid] && allPlayers[pid].original_position;
+                        data.positions[pid] = (orig && orig !== 'SUB') ? orig : 'DEF';
+                    }
                 });
                 return list;
             };

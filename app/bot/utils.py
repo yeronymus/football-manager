@@ -91,12 +91,14 @@ def _format_single_team(game, signups, team_enum, team_name, needed_gk, lang: st
     ]
     text += f"{team_name} ({len(t_players)}):\n"
 
-    groups = {"GK": [], "DEF": [], "MID": [], "FWD": []}
+    groups = {"GK": [], "DEF": [], "MID": [], "FWD": [], "SUB": []}
     for s, u in t_players:
         pos_enum = s.position if s.position else u.player_position
         pos_str = pos_enum.value if pos_enum else "DEF"
         if pos_str == "GK":
             groups["GK"].append((s, u))
+        elif pos_str == "SUB":
+            groups["SUB"].append((s, u))
         elif pos_str in ["CB", "LB", "RB", "LWB", "RWB", "DEF"]:
             groups["DEF"].append((s, u))
         elif pos_str in ["CM", "CDM", "CAM", "LM", "RM", "MID"]:
@@ -115,13 +117,22 @@ def _format_single_team(game, signups, team_enum, team_name, needed_gk, lang: st
     sub_marker = f"{t('sub_separator', locale=lang)}\n"
     gk_field_marker = f"<i>{t('gk_on_field', locale=lang)}</i>\n"
 
+    m_per_team = (getattr(game, "main_players_count", 22) or 22) // (game.team_count or 2)
+    has_explicit_subs = bool(groups["SUB"])
+    sub_printed = False
+
     team_counter = 1
     has_gk = False
-    for cat in ["GK", "DEF", "MID", "FWD"]:
+    for cat in ["GK", "DEF", "MID", "FWD", "SUB"]:
         plist = groups[cat]
         if not plist:
             continue
-        text += f"<i>{headers[cat]}</i>\n"
+        if cat == "SUB":
+            if not sub_printed:
+                text += sub_marker
+                sub_printed = True
+        else:
+            text += f"<i>{headers[cat]}</i>\n"
         for signup, user in plist:
             if cat == "GK":
                 has_gk = True
@@ -129,9 +140,9 @@ def _format_single_team(game, signups, team_enum, team_name, needed_gk, lang: st
                 f'{team_counter}. <a href="tg://user?id={user.user_id}">'
                 f"{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
             )
-            m_per_team = (getattr(game, "main_players_count", 22) or 22) // (game.team_count or 2)
-            if team_counter == m_per_team:
+            if not has_explicit_subs and not sub_printed and team_counter == m_per_team:
                 text += sub_marker
+                sub_printed = True
             team_counter += 1
 
     if not has_gk and needed_gk:
