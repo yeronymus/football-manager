@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, BigInteger, UniqueConstraint, Float, JSON
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Enum, BigInteger, UniqueConstraint, Float, JSON
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -31,6 +31,19 @@ class Position(str, enum.Enum):
     RW = "RW"
     CF = "CF"
     SUB = "SUB" # Substitute
+
+    # Universal Event & Non-Football Roles (Trips, Book Clubs, Padel, Board Games)
+    DRIVER = "DRIVER"
+    PASSENGER = "PASSENGER"
+    GUIDE = "GUIDE"
+    SPEAKER = "SPEAKER"
+    MEMBER = "MEMBER"
+    HOST = "HOST"
+    PLAYER = "PLAYER"
+    PARTICIPANT = "PARTICIPANT"
+    LEFT = "LEFT"
+    RIGHT = "RIGHT"
+    UNIVERSAL = "UNIVERSAL"
 
 class GameStatus(str, enum.Enum):
     OPEN = "open"
@@ -200,6 +213,7 @@ class ChatMember(Base):
     full_name = Column(String, nullable=True)
     status = Column(String(32), default="member", nullable=False)
     is_registered = Column(Boolean, default=False, nullable=False)
+    admin_note = Column(Text, nullable=True)
     first_seen_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
     last_seen_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False)
 

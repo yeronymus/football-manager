@@ -42,6 +42,7 @@ class PlayerActivityOut(BaseModel):
     is_registered: bool = True
     is_in_chat: bool = True
     chat_status: str = "member"
+    admin_note: Optional[str] = None
     active_card_type: Optional[str] = None
 
 
@@ -88,8 +89,16 @@ class PlayerProfileDetailOut(BaseModel):
     total_mvps: int = 0
     total_lates: int = 0
     late_percentage: float = 0.0
+    is_registered: bool = True
+    is_in_chat: bool = True
+    chat_status: str = "member"
+    admin_note: Optional[str] = None
     active_card: Optional[PlayerCardOut] = None
     recent_matches: List[PlayerHistoryGameOut]
+
+
+class PlayerNoteIn(BaseModel):
+    note: Optional[str] = None
 
 
 @router.get("/groups/{chat_id}/analytics", response_model=GroupAnalyticsOut)
@@ -258,6 +267,7 @@ async def get_group_analytics(
                 is_registered=True,
                 is_in_chat=is_in_chat,
                 chat_status=chat_status,
+                admin_note=member_entry.admin_note if member_entry else None,
                 active_card_type=cards_map.get(uid),
             )
         )
@@ -266,8 +276,14 @@ async def get_group_analytics(
     unregistered_count = 0
     existing_uids = {p.user_id for p in players_out}
     for m in members_map.values():
-        if m.user_id not in existing_uids and not m.is_registered and m.status not in ("left", "kicked"):
-            unregistered_count += 1
+        if m.user_id not in existing_uids and not m.is_registered:
+            m_in_chat = m.status not in ("left", "kicked")
+            if not m_in_chat and not m.admin_note:
+                continue
+            if m_in_chat:
+                unregistered_count += 1
+            else:
+                left_chat_count += 1
             players_out.append(
                 PlayerActivityOut(
                     user_id=m.user_id,
@@ -286,8 +302,9 @@ async def get_group_analytics(
                     is_core=False,
                     is_dormant=False,
                     is_registered=False,
-                    is_in_chat=True,
+                    is_in_chat=m_in_chat,
                     chat_status=m.status,
+                    admin_note=m.admin_note,
                     active_card_type=None,
                 )
             )
@@ -328,8 +345,38 @@ async def get_group_player_detail(
 ):
     await _dash().check_admin_rights(chat_id, user_id, session=session)
     user = await session.get(User, target_user_id)
-    if not user:
+    member_entry = await session.scalar(
+        select(ChatMember).where(
+            ChatMember.chat_id == chat_id,
+            ChatMember.user_id == target_user_id,
+        )
+    )
+    if not user and not member_entry:
         raise HTTPException(status_code=404, detail="Player not found")
+
+    chat_status = member_entry.status if member_entry else "member"
+    is_in_chat = chat_status not in ("left", "kicked")
+    admin_note = member_entry.admin_note if member_entry else None
+
+    if not user:
+        return PlayerProfileDetailOut(
+            user_id=member_entry.user_id,
+            full_name=member_entry.full_name or member_entry.username or f"User {member_entry.user_id}",
+            username=member_entry.username,
+            position=None,
+            rating=0,
+            total_games=0,
+            total_goals=0,
+            total_mvps=0,
+            total_lates=0,
+            late_percentage=0.0,
+            is_registered=False,
+            is_in_chat=is_in_chat,
+            chat_status=chat_status,
+            admin_note=admin_note,
+            active_card=None,
+            recent_matches=[],
+        )
 
     prof = await session.scalar(
         select(PlayerProfile).where(
@@ -408,6 +455,50 @@ async def get_group_player_detail(
         total_mvps=prof.stats_mvp if prof else 0,
         total_lates=total_lates,
         late_percentage=late_pct,
+        is_registered=True,
+        is_in_chat=is_in_chat,
+        chat_status=chat_status,
+        admin_note=admin_note,
         active_card=active_card_out,
         recent_matches=recent_matches,
     )
+
+
+@router.put("/groups/{chat_id}/players/{target_user_id}/note")
+async def update_group_player_note(
+    chat_id: int,
+    target_user_id: int,
+    payload: PlayerNoteIn,
+    user_id: int = Depends(get_user_from_header),
+    session: AsyncSession = Depends(get_session),
+):
+    await _dash().check_admin_rights(chat_id, user_id, session=session)
+
+    raw_note = (payload.note or "").strip()
+    clean_note = raw_note[:500] if raw_note else None
+
+    member_entry = await session.scalar(
+        select(ChatMember).where(
+            ChatMember.chat_id == chat_id,
+            ChatMember.user_id == target_user_id,
+        )
+    )
+    if member_entry is None:
+        user = await session.get(User, target_user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="Player not found")
+        member_entry = ChatMember(
+            chat_id=chat_id,
+            user_id=target_user_id,
+            username=user.username,
+            full_name=user.full_name,
+            status="member",
+            is_registered=not bool(getattr(user, "is_guest", False)),
+            admin_note=clean_note,
+        )
+        session.add(member_entry)
+    else:
+        member_entry.admin_note = clean_note
+
+    await session.commit()
+    return {"status": "ok", "user_id": target_user_id, "admin_note": clean_note}

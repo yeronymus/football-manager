@@ -451,6 +451,24 @@
             <!-- Recent matches loaded here -->
         </div>
 
+        <!-- Admin Note Section -->
+        <div id="modal-admin-note-section" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span data-i18n="lbl_admin_note" style="font-size: 0.82rem; font-weight: 600; color: #fbbf24;">📝 Admin Note</span>
+                <span id="modal-admin-note-status" style="font-size: 0.72rem; color: #34d399;"></span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+                <button type="button" class="action-btn outline" onclick="appendAdminNotePreset('note_preset_late')" data-i18n="note_preset_late" style="padding: 3px 8px; font-size: 0.72rem; border-radius: 12px;">⏰ Late to game</button>
+                <button type="button" class="action-btn outline" onclick="appendAdminNotePreset('note_preset_no_reply')" data-i18n="note_preset_no_reply" style="padding: 3px 8px; font-size: 0.72rem; border-radius: 12px;">📵 No reply</button>
+                <button type="button" class="action-btn outline" onclick="appendAdminNotePreset('note_preset_unpaid')" data-i18n="note_preset_unpaid" style="padding: 3px 8px; font-size: 0.72rem; border-radius: 12px;">💸 Didn't pay</button>
+            </div>
+            <textarea id="modal-admin-note-input" rows="2" maxlength="500" data-i18n-ph="ph_admin_note" placeholder="Add a private admin note (e.g. late, no reply, unpaid)..." style="width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); color: var(--text-main); font-size: 0.82rem; font-family: inherit; resize: vertical;"></textarea>
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+                <button type="button" class="action-btn outline" onclick="clearPlayerAdminNote()" data-i18n="btn_clear_note" style="padding: 5px 10px; font-size: 0.76rem; color: var(--text-muted);">Clear</button>
+                <button type="button" class="action-btn primary" onclick="savePlayerAdminNote()" data-i18n="btn_save_note" style="padding: 5px 12px; font-size: 0.76rem;">Save Note</button>
+            </div>
+        </div>
+
         <!-- Disciplinary Section -->
         <div id="modal-discipline-section" style="margin-bottom: 16px;"></div>
 
@@ -589,6 +607,16 @@
             chip_dormant: "Inactive (30d+)",
             chip_unregistered: "Not in Bot",
             chip_left: "Left Group",
+            tag_kicked: "Kicked",
+            tag_left: "Left",
+            lbl_admin_note: "📝 Admin Note",
+            ph_admin_note: "Add a private admin note (e.g. late, no reply, unpaid)...",
+            btn_save_note: "Save Note",
+            btn_clear_note: "Clear",
+            note_preset_late: "⏰ Late to game",
+            note_preset_no_reply: "📵 No reply",
+            note_preset_unpaid: "💸 Didn't pay",
+            note_saved: "Saved ✓",
             btn_message_tg: "Message in Telegram",
             btn_view_profile: "Profile ›",
             modal_stat_rating: "Rating",
@@ -751,6 +779,16 @@
             chip_dormant: "Давно не играли (30д+)",
             chip_unregistered: "Не в боте",
             chip_left: "Вышли из группы",
+            tag_kicked: "Кикнут",
+            tag_left: "Вышел сам",
+            lbl_admin_note: "📝 Админ-заметка",
+            ph_admin_note: "Заметка для админов (например: опоздал, не отвечал, не заплатил)...",
+            btn_save_note: "Сохранить",
+            btn_clear_note: "Очистить",
+            note_preset_late: "⏰ Опоздал на игру",
+            note_preset_no_reply: "📵 Не отвечал",
+            note_preset_unpaid: "💸 Не заплатил",
+            note_saved: "Сохранено ✓",
             btn_message_tg: "Написать в Telegram",
             btn_view_profile: "Профиль ›",
             modal_stat_rating: "Рейтинг",
@@ -913,6 +951,16 @@
             chip_dormant: "Neaktivní (30d+)",
             chip_unregistered: "Nejsou v botu",
             chip_left: "Odešli ze skupiny",
+            tag_kicked: "Vyhozen",
+            tag_left: "Odešel sám",
+            lbl_admin_note: "📝 Poznámka admina",
+            ph_admin_note: "Soukromá poznámka (např. přišel pozdě, neodpovídal, nezaplatil)...",
+            btn_save_note: "Uložit",
+            btn_clear_note: "Smazat",
+            note_preset_late: "⏰ Pozdní příchod",
+            note_preset_no_reply: "📵 Neodpovídal",
+            note_preset_unpaid: "💸 Nezaplatil",
+            note_saved: "Uloženo ✓",
             btn_message_tg: "Napsat na Telegramu",
             btn_view_profile: "Profil ›",
             modal_stat_rating: "Rating",
@@ -1067,6 +1115,6 @@
     setAdminLang(adminCurrentLang);
 </script>
 
-<script src="js/admin.js?v=3.2.0"></script>
+<script src="js/admin.js?v=3.3.0"></script>
 </body>
 </html>

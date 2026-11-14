@@ -76,3 +76,83 @@ async def test_track_chat_member_service():
 
     session.execute.assert_called_once()
     session.commit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_update_group_player_note_saves_and_clears(monkeypatch):
+    from app.api.routers import leaderboards
+
+    dash_mock = MagicMock()
+    dash_mock.check_admin_rights = AsyncMock()
+    monkeypatch.setattr(leaderboards, "_dash", lambda: dash_mock)
+
+    member = ChatMember(
+        chat_id=-100,
+        user_id=42,
+        username="late_guy",
+        full_name="Late Guy",
+        status="kicked",
+        is_registered=True,
+        admin_note=None,
+    )
+    session = AsyncMock()
+    session.scalar.return_value = member
+
+    res = await leaderboards.update_group_player_note(
+        chat_id=-100,
+        target_user_id=42,
+        payload=leaderboards.PlayerNoteIn(note="  Опоздал на игру; не заплатил  "),
+        user_id=1,
+        session=session,
+    )
+    assert res == {
+        "status": "ok",
+        "user_id": 42,
+        "admin_note": "Опоздал на игру; не заплатил",
+    }
+    assert member.admin_note == "Опоздал на игру; не заплатил"
+    session.commit.assert_awaited()
+
+    res_clear = await leaderboards.update_group_player_note(
+        chat_id=-100,
+        target_user_id=42,
+        payload=leaderboards.PlayerNoteIn(note="   "),
+        user_id=1,
+        session=session,
+    )
+    assert res_clear["admin_note"] is None
+    assert member.admin_note is None
+
+
+@pytest.mark.asyncio
+async def test_get_group_player_detail_unregistered_member(monkeypatch):
+    from app.api.routers import leaderboards
+
+    dash_mock = MagicMock()
+    dash_mock.check_admin_rights = AsyncMock()
+    monkeypatch.setattr(leaderboards, "_dash", lambda: dash_mock)
+
+    member = ChatMember(
+        chat_id=-100,
+        user_id=777,
+        username="ghost777",
+        full_name="Ghost User",
+        status="left",
+        is_registered=False,
+        admin_note="Не отвечал",
+    )
+    session = AsyncMock()
+    session.get.return_value = None
+    session.scalar.return_value = member
+
+    detail = await leaderboards.get_group_player_detail(
+        chat_id=-100,
+        target_user_id=777,
+        user_id=1,
+        session=session,
+    )
+    assert detail.user_id == 777
+    assert detail.is_registered is False
+    assert detail.is_in_chat is False
+    assert detail.chat_status == "left"
+    assert detail.admin_note == "Не отвечал"

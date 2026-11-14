@@ -1110,7 +1110,11 @@ function renderCommunityPlayers() {
         
         let tagHtml = '';
         if (!isInChat) {
-            tagHtml = `<span class="community-tag-dormant" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35);">🚪 ${getAdminText('Left Group', 'Нет в группе')}</span>`;
+            if (p.chat_status === 'kicked') {
+                tagHtml = `<span class="community-tag-dormant" style="background: rgba(239, 68, 68, 0.22); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">⛔ ${getAdminText('tag_kicked', 'Кикнут')}</span>`;
+            } else {
+                tagHtml = `<span class="community-tag-dormant" style="background: rgba(148, 163, 184, 0.18); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.35);">🚪 ${getAdminText('tag_left', 'Вышел сам')}</span>`;
+            }
         } else if (!isRegistered) {
             tagHtml = `<span class="community-tag-dormant" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.35);">👻 ${getAdminText('Unregistered', 'Не в боте')}</span>`;
         } else if (p.is_core) {
@@ -1147,8 +1151,16 @@ function renderCommunityPlayers() {
             actionBtnHtml = `<button class="community-profile-btn" onclick="openPlayerModal(${p.user_id})">${profileBtnText}</button>`;
         } else {
             const chatUrl = p.username ? `https://t.me/${p.username}` : `tg://user?id=${p.user_id}`;
-            actionBtnHtml = `<a href="${chatUrl}" target="_blank" class="community-profile-btn" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35);">💬 ${getAdminText('Write', 'Написать')}</a>`;
+            actionBtnHtml = `
+                <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
+                    <button class="community-profile-btn" onclick="openPlayerModal(${p.user_id})" title="${getAdminText('lbl_admin_note', 'Заметка')}" style="padding: 6px 9px;">📝</button>
+                    <a href="${chatUrl}" target="_blank" class="community-profile-btn" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35);">💬 ${getAdminText('Write', 'Написать')}</a>
+                </div>`;
         }
+
+        const adminNoteHtml = p.admin_note
+            ? `<div style="font-size: 0.76rem; color: #fbbf24; margin-top: 4px; display: flex; align-items: flex-start; gap: 4px; line-height: 1.3;"><span>📝</span><span style="word-break: break-word;">${escapeHtml(p.admin_note)}</span></div>`
+            : '';
         
         html += `
             <div class="community-player-card">
@@ -1156,7 +1168,7 @@ function renderCommunityPlayers() {
                     <span class="community-pos-badge ${posClass}">${pos}</span>
                     <div style="min-width: 0;">
                         <div class="community-player-name">
-                            <span>${p.full_name}</span>
+                            <span>${escapeHtml(p.full_name)}</span>
                             ${cardBadge}
                             ${usernameDisplay}
                             ${tagHtml}
@@ -1164,6 +1176,7 @@ function renderCommunityPlayers() {
                         <div class="community-player-stats">
                             ${statsHtml}
                         </div>
+                        ${adminNoteHtml}
                     </div>
                 </div>
                 ${actionBtnHtml}
@@ -1174,8 +1187,11 @@ function renderCommunityPlayers() {
     listEl.innerHTML = html;
 }
 
+let currentModalUserId = null;
+
 async function openPlayerModal(userId) {
     if (!currentGroupId) return;
+    currentModalUserId = userId;
     
     const modal = document.getElementById('player-profile-modal');
     if (!modal) return;
@@ -1189,12 +1205,24 @@ async function openPlayerModal(userId) {
     document.getElementById('modal-stat-goals').textContent = '...';
     document.getElementById('modal-stat-mvp').textContent = '...';
     document.getElementById('modal-matches-list').innerHTML = '<div class="loading-spinner"></div>';
+    const noteInput = document.getElementById('modal-admin-note-input');
+    const noteStatus = document.getElementById('modal-admin-note-status');
+    if (noteInput) noteInput.value = '';
+    if (noteStatus) noteStatus.textContent = '';
     
     try {
         const data = await apiCall(`/groups/${currentGroupId}/players/${userId}`);
         
         document.getElementById('modal-player-name').textContent = data.full_name;
-        document.getElementById('modal-player-meta').textContent = `${data.username ? '@' + data.username + ' • ' : ''}${data.position || 'CM'}`;
+        let metaText = `${data.username ? '@' + data.username + ' • ' : ''}${data.position || (data.is_registered === false ? '—' : 'CM')}`;
+        if (data.is_in_chat === false) {
+            metaText += data.chat_status === 'kicked'
+                ? ` • ⛔ ${getAdminText('tag_kicked', 'Кикнут')}`
+                : ` • 🚪 ${getAdminText('tag_left', 'Вышел сам')}`;
+        } else if (data.is_registered === false) {
+            metaText += ` • 👻 ${getAdminText('Unregistered', 'Не в боте')}`;
+        }
+        document.getElementById('modal-player-meta').textContent = metaText;
         document.getElementById('modal-stat-rating').textContent = data.rating;
         document.getElementById('modal-stat-games').textContent = data.total_games;
         document.getElementById('modal-stat-goals').textContent = data.total_goals;
@@ -1242,10 +1270,61 @@ async function openPlayerModal(userId) {
             matchesEl.innerHTML = mHtml;
         }
         
-        renderModalDiscipline(data.active_card, userId);
+        if (noteInput) {
+            noteInput.value = data.admin_note || '';
+        }
+
+        if (data.is_registered === false) {
+            const discSection = document.getElementById('modal-discipline-section');
+            if (discSection) discSection.innerHTML = '';
+        } else {
+            renderModalDiscipline(data.active_card, userId);
+        }
     } catch (e) {
         document.getElementById('modal-matches-list').innerHTML = `<p style="color:var(--danger); padding:10px;">${e.message}</p>`;
     }
+}
+
+function appendAdminNotePreset(i18nKey) {
+    const input = document.getElementById('modal-admin-note-input');
+    if (!input) return;
+    const label = getAdminText(i18nKey).replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    const current = (input.value || '').trim();
+    if (!current) {
+        input.value = label;
+    } else if (!current.toLowerCase().includes(label.toLowerCase())) {
+        input.value = `${current}; ${label}`;
+    }
+    input.focus();
+}
+
+async function savePlayerAdminNote(overrideVal) {
+    if (!currentGroupId || !currentModalUserId) return;
+    const input = document.getElementById('modal-admin-note-input');
+    const statusEl = document.getElementById('modal-admin-note-status');
+    const noteText = overrideVal !== undefined ? overrideVal : (input ? input.value : '');
+    if (statusEl) statusEl.textContent = '...';
+    try {
+        const res = await apiCall(`/groups/${currentGroupId}/players/${currentModalUserId}/note`, 'PUT', { note: noteText });
+        if (input) input.value = res.admin_note || '';
+        if (statusEl) statusEl.textContent = getAdminText('note_saved', 'Сохранено ✓');
+        if (communityData && Array.isArray(communityData.players)) {
+            const target = communityData.players.find(p => p.user_id === currentModalUserId);
+            if (target) {
+                target.admin_note = res.admin_note || null;
+                renderCommunityPlayers();
+            }
+        }
+    } catch (e) {
+        if (statusEl) statusEl.textContent = '';
+        alert(e.message || 'Failed to save note');
+    }
+}
+
+function clearPlayerAdminNote() {
+    const input = document.getElementById('modal-admin-note-input');
+    if (input) input.value = '';
+    savePlayerAdminNote('');
 }
 
 let selectedCardType = 'YELLOW';
