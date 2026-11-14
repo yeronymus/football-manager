@@ -103,6 +103,12 @@
                                 <button class="community-chip" id="chip-dormant" onclick="filterCommunity('dormant')">
                                     ⏳ <span data-i18n="chip_dormant">Inactive (30d+)</span>
                                 </button>
+                                <button class="community-chip" id="chip-unregistered" onclick="filterCommunity('unregistered')">
+                                    👻 <span data-i18n="chip_unregistered">Not in Bot</span> <span id="badge-unregistered-cnt"></span>
+                                </button>
+                                <button class="community-chip" id="chip-left" onclick="filterCommunity('left')">
+                                    🚪 <span data-i18n="chip_left">Left Group</span> <span id="badge-left-cnt"></span>
+                                </button>
                             </div>
                         </div>
 
@@ -581,6 +587,8 @@
             chip_all: "All Players",
             chip_core: "Core Squad",
             chip_dormant: "Inactive (30d+)",
+            chip_unregistered: "Not in Bot",
+            chip_left: "Left Group",
             btn_message_tg: "Message in Telegram",
             btn_view_profile: "Profile ›",
             modal_stat_rating: "Rating",
@@ -741,6 +749,8 @@
             chip_all: "Все игроки",
             chip_core: "Костяк",
             chip_dormant: "Давно не играли (30д+)",
+            chip_unregistered: "Не в боте",
+            chip_left: "Вышли из группы",
             btn_message_tg: "Написать в Telegram",
             btn_view_profile: "Профиль ›",
             modal_stat_rating: "Рейтинг",
@@ -901,6 +911,8 @@
             chip_all: "Všichni hráči",
             chip_core: "Jádro týmu",
             chip_dormant: "Neaktivní (30d+)",
+            chip_unregistered: "Nejsou v botu",
+            chip_left: "Odešli ze skupiny",
             btn_message_tg: "Napsat na Telegramu",
             btn_view_profile: "Profil ›",
             modal_stat_rating: "Rating",

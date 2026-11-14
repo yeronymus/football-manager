@@ -1026,6 +1026,11 @@ async function loadGroupCommunity(chatId) {
         if (totalVal) totalVal.textContent = data.total_players || 0;
         if (coreVal) coreVal.textContent = data.core_count || 0;
         if (dormantVal) dormantVal.textContent = data.dormant_count || 0;
+
+        const unregBadge = document.getElementById('badge-unregistered-cnt');
+        const leftBadge = document.getElementById('badge-left-cnt');
+        if (unregBadge) unregBadge.textContent = data.unregistered_count ? `(${data.unregistered_count})` : '';
+        if (leftBadge) leftBadge.textContent = data.left_chat_count ? `(${data.left_chat_count})` : '';
         
         renderCommunityPlayers();
     } catch (e) {
@@ -1066,11 +1071,17 @@ function renderCommunityPlayers() {
     
     let filtered = communityData.players;
     
-    // Category filter
-    if (currentCommunityFilter === 'core') {
-        filtered = filtered.filter(p => p.is_core);
+    // Category filter: keep departed players strictly in the separate 'left' historical tab
+    if (currentCommunityFilter === 'left') {
+        filtered = filtered.filter(p => p.is_in_chat === false);
+    } else if (currentCommunityFilter === 'unregistered') {
+        filtered = filtered.filter(p => p.is_in_chat !== false && p.is_registered === false);
+    } else if (currentCommunityFilter === 'core') {
+        filtered = filtered.filter(p => p.is_in_chat !== false && p.is_core);
     } else if (currentCommunityFilter === 'dormant') {
-        filtered = filtered.filter(p => p.is_dormant);
+        filtered = filtered.filter(p => p.is_in_chat !== false && p.is_dormant);
+    } else {
+        filtered = filtered.filter(p => p.is_in_chat !== false);
     }
     
     // Search filter

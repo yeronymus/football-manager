@@ -308,7 +308,7 @@ async def get_group_analytics(
 
     return GroupAnalyticsOut(
         chat_id=chat_id,
-        total_players=len(players_out),
+        total_players=sum(1 for p in players_out if p.is_in_chat),
         core_count=core_count,
         dormant_count=dormant_count,
         left_chat_count=left_chat_count,
