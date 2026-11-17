@@ -1,3 +1,9 @@
+let communityData = null;
+let currentCommunityFilter = 'all';
+let dmSentUserIds = new Set();
+let dmBlockedUserIds = new Set();
+let lastBotStartUrl = 'https://t.me/fm_metabot?start=reg';
+
 async function loadGroupCommunity(chatId) {
     const listEl = document.getElementById('community-players-list');
     if (listEl) listEl.innerHTML = '<div class="loading-spinner"></div>';
@@ -123,6 +129,11 @@ function renderCommunityPlayers() {
             }
         } else if (!isRegistered) {
             tagHtml = `<span class="community-tag-dormant" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.35);">👻 ${getAdminText('Unregistered', 'Не в боте')}</span>`;
+            if (dmSentUserIds.has(p.user_id)) {
+                tagHtml += ` <span class="community-tag-dormant" style="background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">✅ Бот написал в ЛС</span>`;
+            } else if (dmBlockedUserIds.has(p.user_id)) {
+                tagHtml += ` <span class="community-tag-dormant" style="background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);">⚠️ Не получил (написать вручную)</span>`;
+            }
         } else if (p.is_core) {
             tagHtml = `<span class="community-tag-core">⭐ ${getAdminText('Core', 'Костяк')} • ${p.games_last_4_weeks} ${getAdminText('stat_in_4w')}</span>`;
         } else if (p.is_dormant) {
@@ -157,10 +168,7 @@ function renderCommunityPlayers() {
             actionBtnHtml = `<button class="community-profile-btn" onclick="openPlayerModal(${p.user_id})">${profileBtnText}</button>`;
         } else {
             const warnDmText = encodeURIComponent(
-                getAdminText(
-                    'Hi! Please register in our football bot (press /start), otherwise we will have to remove you from the group during squad cleanup 🙏',
-                    'Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте (нажми /start), иначе нам придётся удалить тебя из группы при чистке состава 🙏'
-                )
+                `Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте (${lastBotStartUrl} — нажми Start и заполни пару полей), иначе при чистке состава мы будем вынуждены удалить тебя из группы 🙏`
             );
             const chatUrl = p.username ? `https://t.me/${p.username}?text=${warnDmText}` : `tg://user?id=${p.user_id}`;
             const safeJsName = (p.full_name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -350,10 +358,7 @@ function clearPlayerAdminNote() {
 }
 
 async function copyUnregisteredDmTemplate() {
-    const text = getAdminText(
-        'Hi! Please register in our football bot (press /start), otherwise we will have to remove you from the group during squad cleanup 🙏',
-        'Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте (нажми /start), иначе нам придётся удалить тебя из группы при чистке состава 🙏'
-    );
+    const text = `Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте (${lastBotStartUrl} — просто нажми Start и заполни пару полей), иначе при ближайшей чистке состава мы будем вынуждены удалить тебя из группы 🙏`;
     try {
         await navigator.clipboard.writeText(text);
         showAdminToast(getAdminText('DM text copied!', 'Текст для ЛС скопирован!'));
@@ -364,10 +369,7 @@ async function copyUnregisteredDmTemplate() {
 
 async function warnAllUnregistered() {
     if (!currentGroupId) return;
-    const defaultMsg = getAdminText(
-        'Hi! Please register in our football bot (press /start), otherwise we will have to remove you from the group during squad cleanup 🙏',
-        'Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте (нажми /start), иначе нам придётся удалить тебя из группы при чистке состава 🙏'
-    );
+    const defaultMsg = 'Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте (нажми /start), иначе нам придётся удалить тебя из группы при чистке состава 🙏';
     const customMsg = prompt(
         getAdminText('Private DM text (sent only to users who already opened the bot; no group chat spam):', 'Текст для отправки в личку (бот напишет тем, у кого уже открыт диалог с ботом; в общий чат ничего не уйдёт):'),
         defaultMsg
@@ -378,11 +380,14 @@ async function warnAllUnregistered() {
         const res = await apiCall(`/groups/${currentGroupId}/unregistered/warn`, 'POST', {
             custom_message: customMsg
         });
+        if (res.bot_start_url) lastBotStartUrl = res.bot_start_url;
+        dmSentUserIds = new Set((res.dm_sent_users || []).map(u => u.user_id));
+        dmBlockedUserIds = new Set((res.blocked_users || []).map(u => u.user_id));
+        renderCommunityPlayers();
+
+        const sentNames = (res.dm_sent_users || []).map(u => `${u.full_name}${u.username ? ' (@' + u.username + ')' : ''}`).join(', ');
         alert(
-            getAdminText(
-                `Sent in DM: ${res.dm_sent_count}. Could not DM (never started bot): ${res.blocked_count}. Use "💬 Write" next to each player to message them from your Telegram.`,
-                `Отправлено в личку ботом: ${res.dm_sent_count}.\nНедоступно для бота (не нажимали /start): ${res.blocked_count}.\nДля остальных используй кнопку «💬 Написать» напротив каждого игрока — она сразу откроет ЛС от твоего имени.`
-            )
+            `✅ Бот написал в ЛС (${res.dm_sent_count}):\n${sentNames || '—'}\n\n⚠️ Не получили (${res.blocked_count}, не нажимали /start):\nОни отмечены оранжевым бейджем в списке ниже — нажми «💬 Написать» напротив каждого.`
         );
     } catch (e) {
         alert(e.message || 'Failed to send DMs');

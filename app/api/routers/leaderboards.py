@@ -642,7 +642,14 @@ async def warn_unregistered_group_members(
 
     dm_sent_count = 0
     blocked_count = 0
+    dm_sent_users = []
+    blocked_users = []
     for m in unreg:
+        entry = {
+            "user_id": m.user_id,
+            "full_name": m.full_name or m.username or f"User {m.user_id}",
+            "username": m.username,
+        }
         try:
             await bot.send_message(
                 chat_id=m.user_id,
@@ -651,13 +658,17 @@ async def warn_unregistered_group_members(
                 parse_mode="HTML",
             )
             dm_sent_count += 1
+            dm_sent_users.append(entry)
         except Exception:
             blocked_count += 1
+            blocked_users.append(entry)
 
     return {
         "status": "ok",
         "warned_count": len(unreg),
         "dm_sent_count": dm_sent_count,
         "blocked_count": blocked_count,
+        "dm_sent_users": dm_sent_users,
+        "blocked_users": blocked_users,
         "bot_start_url": start_url,
     }

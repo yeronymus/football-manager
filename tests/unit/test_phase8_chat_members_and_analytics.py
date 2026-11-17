@@ -224,6 +224,9 @@ async def test_kick_group_player_and_warn_unregistered(monkeypatch):
     assert warn_res["warned_count"] == 1
     assert warn_res["dm_sent_count"] == 1
     assert warn_res["blocked_count"] == 0
+    assert len(warn_res["dm_sent_users"]) == 1
+    assert warn_res["dm_sent_users"][0]["user_id"] == 999
+    assert warn_res["blocked_users"] == []
     # Must DM the user directly (user_id=999), NOT post in the group chat (-100)
     bot_mock.send_message.assert_awaited_once()
     assert bot_mock.send_message.call_args.kwargs["chat_id"] == 999
