@@ -8,7 +8,7 @@ import backward-compatibility.
 from fastapi import APIRouter
 
 from app.api.auth import check_admin_rights, get_user_from_header
-from app.api.routers import billing, disciplinary, leaderboards, rosters, tenants, votes
+from app.api.routers import billing, community, disciplinary, leaderboards, rosters, tenants, votes
 from app.api.routers.billing import (
     notify_all_unpaid_pm,
     notify_group_unpaid,
@@ -64,6 +64,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 router.include_router(tenants.router)
 router.include_router(leaderboards.router)
+router.include_router(community.router)
 router.include_router(disciplinary.router)
 router.include_router(rosters.router)
 router.include_router(votes.router)

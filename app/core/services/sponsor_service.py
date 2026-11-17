@@ -8,10 +8,15 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.i18n import t
+from app.core.i18n import DEFAULT_LOCALES_DIR, LocaleCatalog
 from app.db.models import Chat, ChatAdmin, ChatMember, User
 
 logger = logging.getLogger(__name__)
+_catalog = LocaleCatalog(locales_dir=DEFAULT_LOCALES_DIR, default_locale="en")
+
+
+def _t(key: str, locale: str = "en", **kwargs: Any) -> str:
+    return _catalog.translate(locale, key, **kwargs)
 
 SPONSORS_PATH = Path(__file__).resolve().parent.parent / "presets" / "sponsors.json"
 
@@ -84,11 +89,11 @@ def get_sponsor_for_chat(chat_id: Optional[int] = None) -> Optional[SponsorConfi
 def get_localized_banner_fields(sponsor: SponsorConfig, lang: str = "en") -> Dict[str, str]:
     prefix = sponsor.i18n_prefix
     return {
-        "title": t(f"{prefix}_title", locale=lang),
-        "subtitle": t(f"{prefix}_subtitle", locale=lang),
-        "badge_text": t(f"{prefix}_badge", locale=lang),
-        "text": t(f"{prefix}_text", locale=lang),
-        "cta_text": t(f"{prefix}_cta", locale=lang),
+        "title": _t(f"{prefix}_title", locale=lang),
+        "subtitle": _t(f"{prefix}_subtitle", locale=lang),
+        "badge_text": _t(f"{prefix}_badge", locale=lang),
+        "text": _t(f"{prefix}_text", locale=lang),
+        "cta_text": _t(f"{prefix}_cta", locale=lang),
     }
 
 
@@ -180,7 +185,7 @@ async def process_mvp_winners_sponsor_rewards(
                 sponsor=sponsor,
             )
             try:
-                msg = t(
+                msg = _t(
                     "mvp_coffee_already_linked_notified",
                     locale=player_lang,
                     game_num=game_num,
@@ -209,7 +214,7 @@ async def process_mvp_winners_sponsor_rewards(
                 or f"Player {mvp_uid}"
             )
             safe_db_name = html.escape(db_name)
-            msg = t(
+            msg = _t(
                 "mvp_coffee_guide",
                 locale=player_lang,
                 game_num=game_num,
@@ -221,13 +226,13 @@ async def process_mvp_winners_sponsor_rewards(
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text=t("mvp_coffee_btn_open_reg", locale=player_lang),
+                            text=_t("mvp_coffee_btn_open_reg", locale=player_lang),
                             url=sponsor.registration_url,
                         )
                     ],
                     [
                         InlineKeyboardButton(
-                            text=t(
+                            text=_t(
                                 "mvp_coffee_btn_confirm",
                                 locale=player_lang,
                                 db_name=db_name[:28],
@@ -237,7 +242,7 @@ async def process_mvp_winners_sponsor_rewards(
                     ],
                     [
                         InlineKeyboardButton(
-                            text=t("mvp_coffee_btn_other_name", locale=player_lang),
+                            text=_t("mvp_coffee_btn_other_name", locale=player_lang),
                             callback_data=f"mvp_loyalty_rename:{chat_id}:{game_num}:{sponsor.id}",
                         )
                     ],

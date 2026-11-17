@@ -251,7 +251,7 @@ def test_frontend_xss_and_url_token_leak_invariants():
                 f"Found initData URL query leak in {fpath.name}"
             )
 
-    admin_js = (web_dir / "js" / "admin.js").read_text(encoding="utf-8")
+    admin_js = (web_dir / "js" / "admin" / "admin-community.js").read_text(encoding="utf-8")
     assert "${escapeHtml(p.full_name)}" in admin_js
 
     k8s_deploy = (REPO_ROOT / "deploy" / "k8s" / "deployment.yaml").read_text(

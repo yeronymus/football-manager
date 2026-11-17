@@ -5,7 +5,7 @@ async function loadSponsorMetricsPanel() {
 
     try {
         const lang = localStorage.getItem('webapp_lang') || 'en';
-        const data = await apiCall(`/groups/${currentGroupId}/ads/metrics?lang=${encodeURIComponent(lang)}`);
+        const data = await apiCall(`/api/groups/${currentGroupId}/ads/metrics?lang=${encodeURIComponent(lang)}`);
         const banner = (data.banners && data.banners[0]) || {
             title: getAdminText('sponsor_21coffee_title'),
             subtitle: getAdminText('sponsor_21coffee_subtitle'),

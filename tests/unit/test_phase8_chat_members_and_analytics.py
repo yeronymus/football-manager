@@ -160,12 +160,13 @@ async def test_get_group_player_detail_unregistered_member(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_kick_group_player_and_warn_unregistered(monkeypatch):
-    from app.api.routers import leaderboards
+    from app.api.routers import community, leaderboards
     from app.bot import instance as bot_instance
 
     dash_mock = MagicMock()
     dash_mock.check_admin_rights = AsyncMock()
     monkeypatch.setattr(leaderboards, "_dash", lambda: dash_mock)
+    monkeypatch.setattr(community, "_dash", lambda: dash_mock)
 
     bot_mock = MagicMock()
     bot_mock.ban_chat_member = AsyncMock()

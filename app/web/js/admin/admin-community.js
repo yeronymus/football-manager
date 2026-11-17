@@ -1,6 +1,6 @@
 let dmSentUserIds = new Set();
 let dmBlockedUserIds = new Set();
-let lastBotStartUrl = 'https://t.me/fm_metabot?start=reg';
+let lastBotStartUrl = '';
 
 async function loadGroupCommunity(chatId) {
     const listEl = document.getElementById('community-players-list');
@@ -165,8 +165,9 @@ function renderCommunityPlayers() {
         if (isRegistered) {
             actionBtnHtml = `<button class="community-profile-btn" onclick="openPlayerModal(${p.user_id})">${profileBtnText}</button>`;
         } else {
+            const botHint = lastBotStartUrl ? `(${lastBotStartUrl} — нажми Start и заполни пару полей)` : '(нажми /start и заполни пару полей)';
             const warnDmText = encodeURIComponent(
-                `Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте (${lastBotStartUrl} — нажми Start и заполни пару полей), иначе при чистке состава мы будем вынуждены удалить тебя из группы 🙏`
+                `Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте ${botHint}, иначе при чистке состава мы будем вынуждены удалить тебя из группы 🙏`
             );
             const chatUrl = p.username ? `https://t.me/${p.username}?text=${warnDmText}` : `tg://user?id=${p.user_id}`;
             const safeJsName = (p.full_name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -356,7 +357,8 @@ function clearPlayerAdminNote() {
 }
 
 async function copyUnregisteredDmTemplate() {
-    const text = `Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте (${lastBotStartUrl} — просто нажми Start и заполни пару полей), иначе при ближайшей чистке состава мы будем вынуждены удалить тебя из группы 🙏`;
+    const botHint = lastBotStartUrl ? `(${lastBotStartUrl} — просто нажми Start и заполни пару полей)` : '(просто нажми /start и заполни пару полей)';
+    const text = `Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте ${botHint}, иначе при ближайшей чистке состава мы будем вынуждены удалить тебя из группы 🙏`;
     try {
         await navigator.clipboard.writeText(text);
         showAdminToast(getAdminText('DM text copied!', 'Текст для ЛС скопирован!'));
@@ -443,7 +445,7 @@ async function issueManualCoffeeReward() {
         return;
     }
     try {
-        const res = await apiCall(`/groups/${currentGroupId}/rewards/issue`, 'POST', {
+        const res = await apiCall(`/api/groups/${currentGroupId}/rewards/issue`, 'POST', {
             target_user_id: currentModalUserId
         });
         alert(

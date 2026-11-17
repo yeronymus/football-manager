@@ -1,0 +1,150 @@
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Enum, BigInteger, UniqueConstraint, Float, JSON
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from app.db.database import Base
+from app.db.models.enums import Position, GameStatus, GameType, SignupStatus, Team, InventoryCategory, InventoryStatus
+
+
+class Game(Base):
+    """
+    Database model representing a football match.
+    Stores metadata like location, pricing, limits, scores, winner, and telegram message links.
+    """
+    __tablename__ = "games"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False, index=True)
+    sequence_number = Column(Integer, nullable=True, index=True)
+    created_by = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
+    date_time = Column(DateTime(timezone=True), nullable=False)
+    location = Column(String, nullable=False)
+    max_players = Column(Integer, default=18)
+    price = Column(Integer, default=100)
+    payment_info = Column(String, nullable=True, default=None)
+    team_count = Column(Integer, default=2)
+    gk_hours = Column(Integer, default=0)
+    duration = Column(Float, default=2.0) # Match duration in hours
+    status = Column(Enum(GameStatus, native_enum=False), default=GameStatus.OPEN)
+    game_type = Column(Enum(GameType, name="game_type_enum", native_enum=False), default=GameType.REGULAR)
+    winner_team = Column(Enum(Team, native_enum=False), nullable=True)
+    score_a = Column(Integer, nullable=True)
+    score_b = Column(Integer, nullable=True)
+    score_c = Column(Integer, nullable=True)
+    message_id = Column(BigInteger, nullable=True) # Public Group Message
+    channel_id = Column(BigInteger, nullable=True) # Channel Chat ID
+    channel_message_id = Column(BigInteger, nullable=True) # Channel Message ID
+    admin_message_id = Column(BigInteger, nullable=True) # Dashboard Message
+    voting_message_id = Column(BigInteger, nullable=True) # MVP Voting Message
+    has_active_gk_a = Column(Boolean, default=True)
+    has_active_gk_b = Column(Boolean, default=True)
+    has_active_gk_c = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # Registration Window (0 = Unlimited, 24 = 24 hours from creation)
+    registration_hours = Column(Integer, default=0)
+    
+    # New Format Fields
+    main_players_count = Column(Integer, default=22) # Number of players in "Main Roster"
+    signup_limit = Column(Integer, default=999)      # Total players allowed (Active + Reserve)
+    
+    chat = relationship("Chat", back_populates="games")
+    creator = relationship("User", back_populates="games_created")
+    signups = relationship("Signup", back_populates="game", cascade="all, delete-orphan")
+    votes = relationship("Vote", back_populates="game", cascade="all, delete-orphan")
+    rating_history = relationship("RatingHistory", back_populates="game", cascade="all, delete-orphan")
+    stats = relationship("GameStats", back_populates="game", cascade="all, delete-orphan")
+
+class Signup(Base):
+    """
+    Database model representing a player's signup registration for a specific game.
+    Tracks signup status (ACTIVE/RESERVE), assigned team, and payment confirmation.
+    """
+    __tablename__ = "signups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    game_id = Column(Integer, ForeignKey("games.id"), nullable=False, index=True)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
+    status = Column(Enum(SignupStatus, native_enum=False), default=SignupStatus.ACTIVE)
+    team = Column(Enum(Team, native_enum=False), nullable=True)
+    position = Column(Enum(Position, name="signup_position_enum", native_enum=False), nullable=True) # Per-match override
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_paid = Column(Boolean, default=False)
+    is_late = Column(Boolean, default=False, nullable=False)
+
+    game = relationship("Game", back_populates="signups")
+    user = relationship("User", back_populates="signups")
+
+    __table_args__ = (
+        UniqueConstraint('game_id', 'user_id', name='unique_signup'),
+    )
+
+class Vote(Base):
+    """
+    Database model representing a user's vote cast for MVP.
+    """
+    __tablename__ = "votes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    game_id = Column(Integer, ForeignKey("games.id"), nullable=False, index=True)
+    voter_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
+    target_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False, index=True)
+    vote_team = Column(Enum(Team, name="vote_team_enum", native_enum=False), nullable=False)
+
+    game = relationship("Game", back_populates="votes")
+    voter = relationship("User", foreign_keys=[voter_id], back_populates="votes_cast")
+    target = relationship("User", foreign_keys=[target_id], back_populates="votes_received")
+
+    __table_args__ = (
+        UniqueConstraint('game_id', 'voter_id', 'vote_team', name='unique_vote_team'),
+    )
+
+
+
+class GameStats(Base):
+    """
+    Database model storing match statistics (goals, assists, MVP status) for a player in a game.
+    """
+    __tablename__ = "game_stats"
+    
+    id = Column(Integer, primary_key=True)
+    game_id = Column(Integer, ForeignKey("games.id"), index=True)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"), index=True)
+    
+    goals = Column(Integer, default=0)
+    assists = Column(Integer, default=0)
+    is_mvp = Column(Boolean, default=False)
+    
+    game = relationship("Game", back_populates="stats")
+    user = relationship("User", backref="match_stats")
+
+    __table_args__ = (
+        UniqueConstraint('game_id', 'user_id', name='uq_game_stats_game_user'),
+    )
+
+
+
+
+class InventoryItem(Base):
+    """
+    Database model representing an equipment or inventory item managed for a group/tenant.
+    Tracks quantities, condition, lifespan countdown, and automated status alerts.
+    """
+    __tablename__ = "inventory_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(120), nullable=False)
+    category = Column(Enum(InventoryCategory, native_enum=False), default=InventoryCategory.OTHER, nullable=False)
+    quantity = Column(Integer, default=1, nullable=False)
+    status = Column(Enum(InventoryStatus, native_enum=False), default=InventoryStatus.IN_STOCK, nullable=False)
+    purchase_date = Column(DateTime(timezone=True), nullable=True)
+    lifespan_days = Column(Integer, nullable=True)
+    notes = Column(String, nullable=True)
+    alert_recipient_user_id = Column(BigInteger, nullable=True)
+    last_alert_sent_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    chat = relationship("Chat", back_populates="inventory_items")
+
+
