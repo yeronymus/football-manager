@@ -1,0 +1,20 @@
+{
+  "default_sponsor_id": "21coffee",
+  "sponsors": {
+    "21coffee": {
+      "id": "21coffee",
+      "name": "21 Coffee",
+      "instagram_url": "https://www.instagram.com/21coffeecz/",
+      "registration_url": "https://app.bondus.cz/api/check/info?id=691&source=qr",
+      "recipient_telegram_id": null,
+      "chat_ids": [-1003437568976],
+      "is_default": true,
+      "reward_type": "free_coffee",
+      "assets": {
+        "logo": "/web/assets/sponsors/21coffee_logo.jpg",
+        "hero": "/web/assets/sponsors/21coffee_hero.webp"
+      },
+      "i18n_prefix": "sponsor_21coffee"
+    }
+  }
+}

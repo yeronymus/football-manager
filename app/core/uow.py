@@ -12,6 +12,7 @@ from app.core.repositories.tenant_repository import TenantRepository
 from app.core.repositories.user_repository import UserRepository
 from app.core.repositories.vote_repository import VoteRepository
 from app.db.database import async_session_maker
+from app.db.rls import apply_rls_session_vars, current_superadmin_var, current_tenant_var
 
 
 class UnitOfWork:
@@ -33,6 +34,9 @@ class UnitOfWork:
     async def __aenter__(self) -> "UnitOfWork":
         if not self._session:
             self._session = self._session_factory()
+
+        if current_tenant_var.get() is not None or current_superadmin_var.get():
+            await apply_rls_session_vars(self._session)
 
         self.game_repo = GameRepository(self._session)
         self.user_repo = UserRepository(self._session)

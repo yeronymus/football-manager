@@ -9,6 +9,7 @@ from app.config import settings
 from app.core.domain.dto import CreateGameDTO, FinishGameDTO, UpdateGameDTO
 from app.core.domain.tenant_policy import BillingMode, resolve_billing_mode
 from app.core.services.game_numbering import clean_location, compute_next_game_sequence_number
+from app.core.services.saas import assert_can_create_event
 from app.core.services.stats import StatsService
 from app.db.models import Chat, Game, GameStats, GameStatus, Signup, SignupStatus
 from app.infrastructure.scheduler.service import SchedulerService
@@ -52,6 +53,9 @@ class GameLifecycleService:
             raise PermissionError(
                 "This group is pending administrator approval before scheduling matches."
             )
+
+        if not is_superadmin:
+            await assert_can_create_event(self.session, data.chat_id, enforce_strict=True)
 
         resolved_location = clean_location(
             (data.location or "").strip() or (chat.default_location or "").strip()

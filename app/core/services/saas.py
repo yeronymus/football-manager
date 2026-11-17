@@ -151,7 +151,12 @@ async def assert_can_create_event(
 
 
 def _derive_fernet_key(secret: Optional[str] = None) -> bytes:
-    raw_secret = (secret or settings.bot_token or "default-enterprise-kms-secret").encode("utf-8")
+    raw_secret = (
+        secret
+        or getattr(settings, "vault_master_key", "")
+        or settings.bot_token
+        or "default-enterprise-kms-secret"
+    ).encode("utf-8")
     digest = hashlib.sha256(raw_secret).digest()
     return base64.urlsafe_b64encode(digest)
 

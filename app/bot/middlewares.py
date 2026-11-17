@@ -1,4 +1,5 @@
-from typing import Any, Awaitable, Callable, Dict
+import time
+from typing import Any, Awaitable, Callable, Dict, Tuple
 
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject
@@ -8,6 +9,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.config import settings
 from app.core.services.member_tracking import track_chat_member
 from app.db.models import Chat, PlayerProfile, User
+
+_MEMBER_TRACK_SEEN_AT: Dict[Tuple[int, int], float] = {}
+_MEMBER_TRACK_TTL_SECONDS = 300.0
 
 
 def is_auto_approved_tenant(actor_id: int | None) -> bool:
@@ -128,17 +132,24 @@ class TenantMiddleware(BaseMiddleware):
         data["tenant"] = chat_obj
 
         if tg_user and not getattr(tg_user, "is_bot", False):
-            try:
-                await track_chat_member(
-                    session=session,
-                    chat_id=chat_id,
-                    user_id=tg_user.id,
-                    full_name=tg_user.full_name,
-                    username=tg_user.username,
-                    status="member",
-                )
-            except Exception:
-                pass
+            track_key = (chat_id, tg_user.id)
+            now_mono = time.monotonic()
+            last_seen = _MEMBER_TRACK_SEEN_AT.get(track_key)
+            if last_seen is None or (now_mono - last_seen) >= _MEMBER_TRACK_TTL_SECONDS:
+                if len(_MEMBER_TRACK_SEEN_AT) > 5000:
+                    _MEMBER_TRACK_SEEN_AT.clear()
+                _MEMBER_TRACK_SEEN_AT[track_key] = now_mono
+                try:
+                    await track_chat_member(
+                        session=session,
+                        chat_id=chat_id,
+                        user_id=tg_user.id,
+                        full_name=tg_user.full_name,
+                        username=tg_user.username,
+                        status="member",
+                    )
+                except Exception:
+                    pass
 
             user_obj = await session.get(User, tg_user.id)
             if user_obj:

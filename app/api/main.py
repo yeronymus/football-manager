@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import hmac
 import logging
 from typing import Optional
@@ -20,42 +21,9 @@ logger = logging.getLogger(__name__)
 
 _enable_api_docs = settings.debug or settings.app_env != "production"
 
-app = FastAPI(
-    title="Sports & Team Logistics Platform API",
-    docs_url="/docs" if _enable_api_docs else None,
-    redoc_url="/redoc" if _enable_api_docs else None,
-    openapi_url="/openapi.json" if _enable_api_docs else None,
-)
 
-Instrumentator().instrument(app).expose(app, include_in_schema=False)
-
-
-@app.middleware("http")
-async def add_no_cache_header_for_web(request: Request, call_next):
-    response = await call_next(request)
-    if request.url.path.startswith("/web"):
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-    return response
-
-
-_allowed_origins = ["https://t.me", "https://web.telegram.org", settings.webapp_url]
-if settings.app_env == "local_dev":
-    _allowed_origins.extend(["http://localhost:8000", "http://127.0.0.1:8000"])
-
-app.add_middleware(GZipMiddleware, minimum_size=1000)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.on_event("startup")
-async def on_startup():
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI):
     try:
         if settings.run_migrations:
             from app.db.database import init_models
@@ -87,20 +55,20 @@ async def on_startup():
                 f"Startup config: APP_ENV={settings.app_env}, USE_POLLING={settings.use_polling}"
             )
 
-            if not hasattr(app.state, "bg_tasks"):
-                app.state.bg_tasks = []
+            if not hasattr(app_instance.state, "bg_tasks"):
+                app_instance.state.bg_tasks = []
 
             if not settings.use_polling:
                 logger.info("Starting Bot in Webhook mode...")
                 setup_task = asyncio.create_task(safe_start_bot())
-                app.state.bg_tasks.append(setup_task)
+                app_instance.state.bg_tasks.append(setup_task)
             else:
                 logger.info("Starting Bot in Polling mode...")
                 await bot.delete_webhook(drop_pending_updates=True)
                 polling_task = asyncio.create_task(dp.start_polling(bot))
-                app.state.bg_tasks.append(polling_task)
+                app_instance.state.bg_tasks.append(polling_task)
                 setup_task = asyncio.create_task(safe_start_bot())
-                app.state.bg_tasks.append(setup_task)
+                app_instance.state.bg_tasks.append(setup_task)
         elif not settings.bot_username or settings.bot_username == "sports_manager_bot":
             from app.core.events import event_bus
             from app.infrastructure.messaging import producer
@@ -118,9 +86,8 @@ async def on_startup():
     except Exception as e:
         logger.error(f"Startup error: {e}", exc_info=True)
 
+    yield
 
-@app.on_event("shutdown")
-async def on_shutdown():
     if settings.run_consumer:
         from app.infrastructure.messaging import consumer as msg_consumer
 
@@ -139,6 +106,52 @@ async def on_shutdown():
 
     if settings.run_bot:
         await stop_bot()
+
+
+app = FastAPI(
+    title="Sports & Team Logistics Platform API",
+    docs_url="/docs" if _enable_api_docs else None,
+    redoc_url="/redoc" if _enable_api_docs else None,
+    openapi_url="/openapi.json" if _enable_api_docs else None,
+    lifespan=lifespan,
+)
+
+Instrumentator().instrument(app).expose(app, include_in_schema=False)
+
+
+@app.middleware("http")
+async def add_no_cache_and_rate_limit(request: Request, call_next):
+    if request.url.path.startswith("/api/"):
+        from app.core.services.saas import check_tenant_rate_limit
+
+        tenant_key = (
+            request.headers.get("X-Tenant-Id")
+            or request.query_params.get("chat_id")
+            or (request.client.host if request.client else "global")
+        )
+        if not check_tenant_rate_limit(f"api:{tenant_key}", limit_rps=120):
+            return JSONResponse(status_code=429, content={"detail": "Tenant rate limit exceeded"})
+
+    response = await call_next(request)
+    if request.url.path.startswith("/web"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
+_allowed_origins = ["https://t.me", "https://web.telegram.org", settings.webapp_url]
+if settings.app_env == "local_dev":
+    _allowed_origins.extend(["http://localhost:8000", "http://127.0.0.1:8000"])
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # Routers

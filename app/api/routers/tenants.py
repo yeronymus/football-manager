@@ -752,9 +752,33 @@ async def get_organization_wide_analytics(
             "branches": [],
         }
 
-    # Verify user is owner/member of org or admin of at least one attached chat
-    if org.owner_user_id != user_id:
-        await _dash().check_admin_rights(chat_ids[0], user_id, session=session)
+    # Verify user is owner/privileged member of org or admin of an attached chat
+    is_org_privileged = (
+        org.owner_user_id == user_id
+        or user_id == settings.system_owner_id
+        or user_id in settings.admin_ids
+    )
+    if not is_org_privileged:
+        member = (
+            await session.execute(
+                select(OrganizationMember).where(
+                    OrganizationMember.organization_id == org_id,
+                    OrganizationMember.user_id == user_id,
+                    OrganizationMember.role.in_(["owner", "auditor", "branch_admin"]),
+                )
+            )
+        ).scalar_one_or_none()
+        if member is None:
+            is_branch_admin = False
+            for cid in chat_ids:
+                try:
+                    await _dash().check_admin_rights(cid, user_id, session=session)
+                    is_branch_admin = True
+                    break
+                except HTTPException:
+                    continue
+            if not is_branch_admin:
+                raise HTTPException(status_code=403, detail="Organization access denied")
 
     games = (
         await session.execute(select(Game).where(Game.chat_id.in_(chat_ids)))

@@ -157,8 +157,8 @@ def test_phase11_saas_encryption_rate_limiter_and_rls_sql():
 async def test_phase9_to_12_end_to_end_org_settlement_and_shadow_vault(db_session: AsyncSession):
     admin = User(
         user_id=5001,
-        full_name="Yernur Admin",
-        username="yeronym",
+        full_name="Tenant Admin",
+        username="tenant_admin",
         player_position=Position.CM,
         is_superadmin=True,
     )
@@ -324,3 +324,24 @@ async def test_phase9_to_12_end_to_end_org_settlement_and_shadow_vault(db_sessio
 
     quota_info = await assert_can_create_event(db_session, -1009002, enforce_strict=True)
     assert quota_info["allowed"] is True
+
+
+@pytest.mark.asyncio
+async def test_enterprise_hardening_fixes(db_session: AsyncSession, monkeypatch):
+    from app.config import settings
+    from app.core.services.saas import decrypt_secret_envelope, encrypt_secret_envelope
+
+    # 1. Universal non-football Position enum values work seamlessly in ORM
+    assert Position("DRIVER") == Position.DRIVER
+    assert Position("PASSENGER") == Position.PASSENGER
+    assert Position("SPEAKER") == Position.SPEAKER
+    assert Position("HOST") == Position.HOST
+
+    # 2. Vault master key decoupling: rotating bot_token does not break decryption
+    monkeypatch.setattr(settings, "vault_master_key", "dedicated-enterprise-kms-key-2026")
+    monkeypatch.setattr(settings, "bot_token", "123456:OLD_BOT_TOKEN")
+    cipher = encrypt_secret_envelope('{"name": "GDPR Protected"}')
+
+    monkeypatch.setattr(settings, "bot_token", "999999:ROTATED_BOT_TOKEN")
+    assert decrypt_secret_envelope(cipher) == '{"name": "GDPR Protected"}'
+

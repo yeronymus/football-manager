@@ -98,16 +98,8 @@
         <p style="text-align: center; color: #aaa; margin-bottom: 14px;">Выберите по одному игроку из каждой команды.
         </p>
 
-        <!-- 21 Coffee MVP Partner Banner -->
-        <div id="vote-sponsor-banner" onclick="openVoteSponsor()" style="position:relative; overflow:hidden; border-radius:14px; padding:12px 14px; margin-bottom:18px; cursor:pointer; border:1px solid rgba(245,158,11,0.45); background:linear-gradient(125deg, rgba(18,14,11,0.92), rgba(40,28,16,0.88)), url('/web/assets/sponsors/21coffee_hero.webp') center/cover no-repeat; display:flex; align-items:center; gap:12px; box-shadow:0 8px 22px rgba(0,0,0,0.45);">
-            <img src="/web/assets/sponsors/21coffee_logo.jpg" alt="21 Coffee" style="width:46px; height:46px; border-radius:11px; object-fit:cover; border:2px solid rgba(252,211,77,0.55); flex-shrink:0;">
-            <div style="flex:1; min-width:0;">
-                <div style="font-size:10px; font-weight:800; color:#fcd34d; text-transform:uppercase; letter-spacing:0.5px;">☕ ПАРТНЁР MVP • 21 COFFEE</div>
-                <div style="font-size:13px; font-weight:700; color:#fff; margin-top:2px;">Победитель голосования получает бесплатный кофе!</div>
-                <div style="font-size:11px; color:#d6d3d1; margin-top:2px;">📍 Holešovice (Na Maninách 16) • Vinohrady (Londýnská)</div>
-            </div>
-            <div style="flex-shrink:0; padding:5px 10px; border-radius:999px; background:linear-gradient(135deg,#f59e0b,#d97706); color:#111; font-weight:800; font-size:11px;">@21coffeecz ↗</div>
-        </div>
+        <!-- Sponsor Banner (config-driven via sponsor-banner.js) -->
+        <div id="vote-sponsor-banner" style="display:none; margin-bottom:18px;"></div>
 
         <div class="vote-section" style="border-left: 5px solid var(--team-a-color);">
             <h3>🟠 Team A MVP</h3>
@@ -127,6 +119,7 @@
         <p>Thank you for voting.</p>
     </div>
 
+    <script src="/web/js/sponsor-banner.js?v=1.0.0"></script>
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
@@ -240,10 +233,11 @@
             document.getElementById('voted-message').classList.remove('hidden');
         }
 
-        function openVoteSponsor() {
-            const url = 'https://www.instagram.com/21coffeecz/';
-            if (tg && tg.openLink) tg.openLink(url);
-            else window.open(url, '_blank');
+        if (window.SponsorBanner) {
+            window.SponsorBanner.loadAndRender(
+                [{ el: '#vote-sponsor-banner', placement: 'mvp_vote' }],
+                { placement: 'mvp_vote' }
+            );
         }
 
         loadData();

@@ -72,6 +72,10 @@ class Settings(BaseSettings):
     support_contact: str = ""
     registration_mode: Literal["approval_required", "open_saas"] = "open_saas"
 
+    # Dedicated KMS/Fernet Master Key for ShadowIdentityVault & BYOB secrets
+    # (kept separate from BOT_TOKEN so bot token rotation never invalidates encrypted archives)
+    vault_master_key: str = ""
+
     # Bootstrap Seed Chats
     initial_chats: List[Dict[str, Any]] = []
 
