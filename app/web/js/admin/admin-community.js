@@ -1,5 +1,3 @@
-let communityData = null;
-let currentCommunityFilter = 'all';
 let dmSentUserIds = new Set();
 let dmBlockedUserIds = new Set();
 let lastBotStartUrl = 'https://t.me/fm_metabot?start=reg';
