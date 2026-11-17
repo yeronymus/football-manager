@@ -57,3 +57,37 @@ async def track_chat_member(
     )
     await session.execute(stmt)
     await session.commit()
+
+
+async def sync_registered_user_to_chat_members(
+    session: AsyncSession,
+    user_id: int,
+    full_name: str,
+    username: Optional[str] = None,
+) -> None:
+    """
+    Marks existing ChatMember rows for this user as registered and ensures a PlayerProfile
+    exists for each active group they belong to so they immediately appear in Squad & Activity.
+    """
+    from app.db.models import PlayerProfile
+
+    res = await session.execute(
+        select(ChatMember).where(ChatMember.user_id == user_id)
+    )
+    memberships = res.scalars().all()
+    for cm in memberships:
+        cm.is_registered = True
+        if full_name:
+            cm.full_name = full_name
+        if username is not None:
+            cm.username = username
+        if cm.status not in ("left", "kicked"):
+            existing_prof = await session.scalar(
+                select(PlayerProfile).where(
+                    PlayerProfile.user_id == user_id,
+                    PlayerProfile.chat_id == cm.chat_id,
+                )
+            )
+            if not existing_prof:
+                session.add(PlayerProfile(user_id=user_id, chat_id=cm.chat_id, rating=100))
+    await session.commit()

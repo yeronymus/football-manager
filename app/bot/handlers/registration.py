@@ -10,6 +10,7 @@ from app.bot.fsm import Registration
 from app.bot.i18n import t
 from app.bot.keyboards import get_multiselect_keyboard, get_primary_select_keyboard, get_game_keyboard
 from app.core.repositories.user_repository import UserRepository
+from app.core.services.member_tracking import sync_registered_user_to_chat_members
 from app.db.models import Game, Language
 
 router = Router()
@@ -101,6 +102,12 @@ async def process_position(
         language=init_lang,
     )
     await session.commit()
+    await sync_registered_user_to_chat_members(
+        session=session,
+        user_id=callback.from_user.id,
+        full_name=full_name,
+        username=callback.from_user.username,
+    )
 
     user_lang = init_lang.value if hasattr(init_lang, "value") else str(init_lang)
 

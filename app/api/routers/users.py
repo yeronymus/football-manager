@@ -404,6 +404,14 @@ async def register_user(
             logger.warning(f"Failed to create initial profile during registration: {ex}")
 
     await session.commit()
+    from app.core.services.member_tracking import sync_registered_user_to_chat_members
+
+    await sync_registered_user_to_chat_members(
+        session=session,
+        user_id=user_id,
+        full_name=name,
+        username=user.username if user else None,
+    )
     return {"status": "ok", "user_id": user_id}
 
 

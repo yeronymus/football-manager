@@ -180,6 +180,8 @@ async def get_group_analytics(
             or_(
                 PlayerProfile.chat_id == chat_id,
                 last_game_subq.c.last_game_date.isnot(None),
+                (User.user_id.in_(select(ChatMember.user_id).where(ChatMember.chat_id == chat_id)))
+                & (User.player_position.isnot(None)),
             ),
         )
         .order_by(
