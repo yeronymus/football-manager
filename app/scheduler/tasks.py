@@ -388,6 +388,114 @@ async def calculate_mvp(game_id: int):
                 f"Persisted MVP resolution for game {game_id} (awarded rating bonus to {newly_awarded_ids})"
             )
 
+            if newly_awarded_ids:
+                await _issue_mvp_sponsor_rewards(
+                    session=session,
+                    game=game,
+                    game_num=game_num,
+                    mvp_ids=newly_awarded_ids,
+                )
+
+
+async def _issue_mvp_sponsor_rewards(
+    session,
+    game: Game,
+    game_num: int,
+    mvp_ids: list[int],
+) -> None:
+    """
+    Automatically issues non-proprietary MVP sponsor reward vouchers (e.g., 21 Coffee)
+    for newly awarded MVP winners and sends them a claim pass in Telegram DM.
+    """
+    try:
+        from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+        from app.api.routers.ads import generate_mvp_reward_code
+        from app.db.models import AdBanner, ChatMember, MvpRewardClaim
+
+        banner_res = await session.execute(
+            select(AdBanner).where(
+                AdBanner.is_active == True,  # noqa: E712
+                (AdBanner.chat_id == game.chat_id) | (AdBanner.chat_id.is_(None)),
+            )
+        )
+        banners = banner_res.scalars().all()
+        sponsor_banner = next(
+            (b for b in banners if isinstance(b, AdBanner) and getattr(b, "reward_title", None)),
+            None,
+        )
+        if not sponsor_banner:
+            return
+
+        sponsor_name = (
+            sponsor_banner.title.split("•")[0].strip()
+            if getattr(sponsor_banner, "title", None)
+            else "21 Coffee"
+        )
+        reward_title = sponsor_banner.reward_title or "1x Бесплатный кофе от 21 Coffee"
+        sponsor_url = sponsor_banner.link or "https://www.instagram.com/21coffeecz/"
+
+        base_url = (settings.webapp_url or "https://football.yeronym.com").rstrip("/")
+        reward_base = f"{base_url}/reward.html" if base_url.endswith("/web") else f"{base_url}/web/reward.html"
+
+        for mvp_uid in mvp_ids:
+            code = generate_mvp_reward_code(game_num or game.id)
+            cm_res = await session.execute(
+                select(ChatMember).where(
+                    ChatMember.chat_id == game.chat_id,
+                    ChatMember.user_id == mvp_uid,
+                )
+            )
+            cm = cm_res.scalar_one_or_none()
+            saved_card = getattr(cm, "loyalty_card_id", None) if cm else None
+
+            claim = MvpRewardClaim(
+                code=code,
+                chat_id=game.chat_id,
+                game_id=game.id,
+                user_id=mvp_uid,
+                banner_id=sponsor_banner.id,
+                sponsor_name=sponsor_name,
+                reward_title=reward_title,
+                sponsor_url=sponsor_url,
+                loyalty_identifier=saved_card,
+                status="PENDING_CREDIT" if saved_card else "ISSUED",
+            )
+            session.add(claim)
+            await session.commit()
+
+            kb = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="☕ Забрать бесплатный кофе (MVP Pass)",
+                            web_app=WebAppInfo(url=f"{reward_base}?code={code}"),
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            text=f"📸 {sponsor_name} (@21coffeecz)",
+                            url=sponsor_url,
+                        )
+                    ],
+                ]
+            )
+            try:
+                await bot.send_message(
+                    chat_id=mvp_uid,
+                    text=(
+                        f"🏆☕ <b>Поздравляем со званием MVP матча #{game_num}!</b>\n\n"
+                        f"Наш партнёр <b>{sponsor_name}</b> дарит тебе: <b>{reward_title}</b>!\n"
+                        f"🎫 Твой код награды: <code>{code}</code>\n\n"
+                        f"Нажми кнопку ниже, чтобы указать свой номер / карту Apple Wallet 21 Coffee (тебе начислят кофе прямо в систему) или показать пасс бариста на кассе!"
+                    ),
+                    reply_markup=kb,
+                    parse_mode="HTML",
+                )
+            except Exception as dm_err:
+                logger.warning(f"Could not DM MVP reward to user {mvp_uid}: {dm_err}")
+    except Exception as e:
+        logger.warning(f"Skipped MVP sponsor reward issuance for game {game.id}: {e}")
+
 
 async def release_gk_slots(game_id: int):
     """

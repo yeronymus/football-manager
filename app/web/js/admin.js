@@ -1052,6 +1052,24 @@ function filterCommunity(filterType) {
     document.querySelectorAll('.community-chip').forEach(c => c.classList.remove('active'));
     const chipEl = document.getElementById(`chip-${filterType}`);
     if (chipEl) chipEl.classList.add('active');
+
+    const unregBar = document.getElementById('unregistered-outreach-bar');
+    if (unregBar) {
+        if (filterType === 'unregistered') unregBar.classList.remove('hidden');
+        else unregBar.classList.add('hidden');
+    }
+
+    const sponsorPanel = document.getElementById('sponsor-metrics-panel');
+    const playersList = document.getElementById('community-players-list');
+    if (filterType === 'sponsors') {
+        if (sponsorPanel) sponsorPanel.classList.remove('hidden');
+        if (playersList) playersList.classList.add('hidden');
+        loadSponsorMetricsPanel();
+        return;
+    } else {
+        if (sponsorPanel) sponsorPanel.classList.add('hidden');
+        if (playersList) playersList.classList.remove('hidden');
+    }
     
     renderCommunityPlayers();
 }
@@ -1150,11 +1168,22 @@ function renderCommunityPlayers() {
         if (isRegistered) {
             actionBtnHtml = `<button class="community-profile-btn" onclick="openPlayerModal(${p.user_id})">${profileBtnText}</button>`;
         } else {
-            const chatUrl = p.username ? `https://t.me/${p.username}` : `tg://user?id=${p.user_id}`;
+            const warnDmText = encodeURIComponent(
+                getAdminText(
+                    'Hi! Please register in our football bot (press /start), otherwise we will have to remove you from the group during squad cleanup 🙏',
+                    'Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте (нажми /start), иначе нам придётся удалить тебя из группы при чистке состава 🙏'
+                )
+            );
+            const chatUrl = p.username ? `https://t.me/${p.username}?text=${warnDmText}` : `tg://user?id=${p.user_id}`;
+            const safeJsName = (p.full_name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const kickBtnHtml = isInChat
+                ? `<button class="community-profile-btn" onclick="kickPlayerFromGroup(${p.user_id}, '${safeJsName}')" title="${getAdminText('btn_kick_group', 'Кикнуть из группы')}" style="padding: 6px 9px; background: rgba(239, 68, 68, 0.18); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.38);">👢 ${getAdminText('btn_kick_short', 'Кик')}</button>`
+                : '';
             actionBtnHtml = `
-                <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
+                <div style="display:flex; gap:5px; align-items:center; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end;">
                     <button class="community-profile-btn" onclick="openPlayerModal(${p.user_id})" title="${getAdminText('lbl_admin_note', 'Заметка')}" style="padding: 6px 9px;">📝</button>
                     <a href="${chatUrl}" target="_blank" class="community-profile-btn" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35);">💬 ${getAdminText('Write', 'Написать')}</a>
+                    ${kickBtnHtml}
                 </div>`;
         }
 
@@ -1274,6 +1303,11 @@ async function openPlayerModal(userId) {
             noteInput.value = data.admin_note || '';
         }
 
+        const kickModalBtn = document.getElementById('modal-btn-kick');
+        if (kickModalBtn) {
+            kickModalBtn.style.display = data.is_in_chat === false ? 'none' : 'inline-flex';
+        }
+
         if (data.is_registered === false) {
             const discSection = document.getElementById('modal-discipline-section');
             if (discSection) discSection.innerHTML = '';
@@ -1325,6 +1359,211 @@ function clearPlayerAdminNote() {
     const input = document.getElementById('modal-admin-note-input');
     if (input) input.value = '';
     savePlayerAdminNote('');
+}
+
+async function warnAllUnregistered() {
+    if (!currentGroupId) return;
+    const defaultMsg = getAdminText(
+        '⚠️ Attention group members not yet registered in the bot! Please click the button below and register (/start), otherwise we will remove you from the group during squad cleanup:',
+        '⚠️ Внимание участникам группы, которые ещё не зарегистрированы в боте!\nПожалуйста, нажмите кнопку ниже и пройдите быструю регистрацию (/start), иначе при чистке состава мы будем вынуждены удалить вас из чата:'
+    );
+    const customMsg = prompt(
+        getAdminText('Message to post in group chat (mentions all unregistered users):', 'Текст предупреждения в общий чат (бот автоматически тегнет всех незарегистрированных):'),
+        defaultMsg
+    );
+    if (customMsg === null) return;
+
+    try {
+        const res = await apiCall(`/groups/${currentGroupId}/unregistered/warn`, 'POST', {
+            custom_message: customMsg
+        });
+        alert(
+            getAdminText(
+                `Sent warning in group chat for ${res.warned_count} unregistered members!`,
+                `Готово! В чат отправлено предупреждение с тегами для ${res.warned_count} незарегистрированных участников.`
+            )
+        );
+    } catch (e) {
+        alert(e.message || 'Failed to send warning');
+    }
+}
+
+async function kickPlayerFromGroup(targetUserId, fullName) {
+    if (!currentGroupId || !targetUserId) return;
+    const reason = prompt(
+        getAdminText(
+            `Remove ${fullName} from the Telegram group? Optional note/reason:`,
+            `Удалить «${fullName}» из Telegram-группы?\nУкажи причину для истории (например: не зарегался в боте, не заплатил):`
+        ),
+        getAdminText('Not registered in bot', 'Не зарегистрировался в боте')
+    );
+    if (reason === null) return;
+
+    try {
+        const res = await apiCall(`/groups/${currentGroupId}/players/${targetUserId}/kick`, 'POST', {
+            reason: reason
+        });
+        if (communityData && Array.isArray(communityData.players)) {
+            const p = communityData.players.find(x => x.user_id === targetUserId);
+            if (p) {
+                p.is_in_chat = false;
+                p.chat_status = 'kicked';
+                if (res.admin_note) p.admin_note = res.admin_note;
+            }
+            communityData.unregistered_count = communityData.players.filter(x => x.is_in_chat !== false && x.is_registered === false).length;
+            communityData.left_chat_count = communityData.players.filter(x => x.is_in_chat === false).length;
+            const unregBadge = document.getElementById('badge-unregistered-cnt');
+            const leftBadge = document.getElementById('badge-left-cnt');
+            if (unregBadge) unregBadge.textContent = communityData.unregistered_count ? `(${communityData.unregistered_count})` : '';
+            if (leftBadge) leftBadge.textContent = communityData.left_chat_count ? `(${communityData.left_chat_count})` : '';
+            renderCommunityPlayers();
+        }
+        closePlayerModalDirect();
+    } catch (e) {
+        alert(e.message || 'Failed to kick member');
+    }
+}
+
+function kickPlayerFromModal() {
+    if (!currentModalUserId) return;
+    const nameEl = document.getElementById('modal-player-name');
+    const name = nameEl ? nameEl.textContent : `User ${currentModalUserId}`;
+    kickPlayerFromGroup(currentModalUserId, name);
+}
+
+async function issueManualCoffeeReward() {
+    if (!currentGroupId || !currentModalUserId) return;
+    const nameEl = document.getElementById('modal-player-name');
+    const name = nameEl ? nameEl.textContent : `User ${currentModalUserId}`;
+    if (!confirm(getAdminText(`Send a 21 Coffee MVP voucher to ${name}?`, `Отправить купон на бесплатный кофе 21 Coffee игроку «${name}»?`))) {
+        return;
+    }
+    try {
+        const res = await apiCall(`/groups/${currentGroupId}/rewards/issue`, 'POST', {
+            target_user_id: currentModalUserId
+        });
+        alert(
+            getAdminText(
+                `Voucher ${res.code} issued and sent to player!`,
+                `Купон ${res.code} создан и отправлен игроку в личку бота!`
+            )
+        );
+    } catch (e) {
+        alert(e.message || 'Failed to issue reward');
+    }
+}
+
+async function loadSponsorMetricsPanel() {
+    const panel = document.getElementById('sponsor-metrics-panel');
+    if (!panel || !currentGroupId) return;
+    panel.innerHTML = '<div class="loading-spinner"></div>';
+
+    try {
+        const data = await apiCall(`/groups/${currentGroupId}/ads/metrics`);
+        const banner = (data.banners && data.banners[0]) || {
+            title: '21 Coffee • Specialty Coffee & Brunch',
+            subtitle: '📍 Holešovice (Na Maninách 16) • Vinohrady (Londýnská)',
+            text: 'Бесплатный спешелти-кофе каждому MVP матча от 21 Coffee!',
+            link: 'https://www.instagram.com/21coffeecz/',
+            image_url: '/web/assets/sponsors/21coffee_logo.jpg',
+            hero_image_url: '/web/assets/sponsors/21coffee_hero.webp',
+            impressions: data.total_impressions || 0,
+            unique_viewers: 0,
+            clicks: data.total_clicks || 0,
+            unique_clickers: 0,
+            ctr_percent: data.overall_ctr_percent || 0,
+            placements: {}
+        };
+
+        const plEntries = Object.entries(banner.placements || {});
+        let plHtml = '';
+        if (plEntries.length > 0) {
+            plHtml = `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">` +
+                plEntries.map(([pl, st]) => `<span style="font-size:0.74rem; padding:4px 9px; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid var(--border-color);">📍 <b>${escapeHtml(pl)}</b>: ${st.impressions} 👀 / ${st.clicks} 👆</span>`).join('') +
+                `</div>`;
+        }
+
+        const rewards = data.mvp_rewards || [];
+        let rewardsHtml = '';
+        if (rewards.length === 0) {
+            rewardsHtml = `<p style="color:var(--text-muted); font-size:0.82rem; text-align:center; padding:14px;">${getAdminText('No MVP coffee vouchers issued yet. They are generated automatically after MVP voting finishes (or via "Give MVP Coffee" in any player profile).', 'Купоны MVP ещё не выдавались. Они начисляются автоматически после завершения голосования MVP (либо вручную кнопкой «☕ Выдать кофе MVP» в профиле игрока).')}</p>`;
+        } else {
+            rewardsHtml = rewards.map(r => {
+                const isDone = r.status === 'CREDITED' || r.status === 'REDEEMED';
+                const statusColor = isDone ? '#34d399' : (r.status === 'PENDING_CREDIT' ? '#fbbf24' : '#60a5fa');
+                const actionBtn = !isDone
+                    ? `<button class="action-btn primary" onclick="markRewardCredited('${escapeHtml(r.code)}')" style="padding:5px 10px; font-size:0.74rem; background:linear-gradient(135deg,#10b981,#059669); border:none;">✅ ${getAdminText('Credited to Card', 'Начислено в систему')}</button>`
+                    : `<span style="font-size:0.75rem; color:#34d399; font-weight:700;">✓ ${escapeHtml(r.status)}</span>`;
+
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border-color); margin-bottom:8px;">
+                        <div>
+                            <div style="font-weight:700; font-size:0.88rem;">
+                                ☕ ${escapeHtml(r.full_name)} ${r.username ? `<span style="color:var(--text-muted); font-weight:400;">@${escapeHtml(r.username)}</span>` : ''}
+                                <span style="margin-left:6px; font-size:0.75rem; color:${statusColor}; border:1px solid ${statusColor}; padding:1px 6px; border-radius:6px;">${escapeHtml(r.status)}</span>
+                            </div>
+                            <div style="font-size:0.76rem; color:var(--text-muted); margin-top:3px;">
+                                Купон: <a href="/web/reward.html?code=${encodeURIComponent(r.code)}" target="_blank" style="color:#fcd34d; font-weight:700;">${escapeHtml(r.code)} ↗</a>
+                                • Карта / Тел (Apple Wallet): <b style="color:var(--text-main);">${escapeHtml(r.loyalty_identifier || 'ещё не указал')}</b>
+                            </div>
+                        </div>
+                        ${actionBtn}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        panel.innerHTML = `
+            <!-- Live Banner Preview -->
+            <div style="position:relative; overflow:hidden; border-radius:16px; padding:16px; margin-bottom:16px; border:1px solid rgba(245,158,11,0.45); background:linear-gradient(125deg, rgba(18,14,11,0.92), rgba(40,28,16,0.86)), url('${banner.hero_image_url || '/web/assets/sponsors/21coffee_hero.webp'}') center/cover no-repeat; display:flex; align-items:center; gap:14px; box-shadow:0 12px 28px rgba(0,0,0,0.45);">
+                <img src="${banner.image_url || '/web/assets/sponsors/21coffee_logo.jpg'}" style="width:56px; height:56px; border-radius:14px; object-fit:cover; border:2px solid rgba(252,211,77,0.6);">
+                <div style="flex:1; min-width:0;">
+                    <span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:0.68rem; font-weight:800; background:rgba(245,158,11,0.22); color:#fcd34d; border:1px solid rgba(245,158,11,0.45);">☕ ACTIVE SPONSOR BANNER</span>
+                    <div style="font-weight:800; font-size:1rem; color:#fff; margin-top:4px;">${escapeHtml(banner.title)}</div>
+                    <div style="font-size:0.82rem; color:#fde68a; margin-top:2px;">${escapeHtml(banner.text)}</div>
+                    <div style="font-size:0.75rem; color:#d6d3d1; margin-top:2px;">${escapeHtml(banner.subtitle || '')}</div>
+                </div>
+                <a href="${banner.link || 'https://www.instagram.com/21coffeecz/'}" target="_blank" style="text-decoration:none; padding:7px 12px; border-radius:999px; background:linear-gradient(135deg,#f59e0b,#d97706); color:#111; font-weight:800; font-size:0.78rem;">@21coffeecz ↗</a>
+            </div>
+
+            <!-- Metrics KPI Grid -->
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-bottom:14px; text-align:center;">
+                <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:10px 6px;">
+                    <div style="font-size:1.25rem; font-weight:800; color:#60a5fa;">${banner.impressions || 0}</div>
+                    <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase;">Показы (Views)</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:10px 6px;">
+                    <div style="font-size:1.25rem; font-weight:800; color:#c084fc;">${banner.unique_viewers || 0}</div>
+                    <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase;">Охват (Uniq)</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:10px 6px;">
+                    <div style="font-size:1.25rem; font-weight:800; color:#34d399;">${banner.clicks || 0}</div>
+                    <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase;">Клики (IG)</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:10px 6px;">
+                    <div style="font-size:1.25rem; font-weight:800; color:#fbbf24;">${banner.ctr_percent || 0}%</div>
+                    <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase;">CTR</div>
+                </div>
+            </div>
+            ${plHtml}
+
+            <div style="margin-top:18px;">
+                <h4 style="margin:0 0 10px 0; font-size:0.9rem; color:#fcd34d;">🎁 Выданные купоны MVP (21 Coffee • Apple Wallet / Касса)</h4>
+                ${rewardsHtml}
+            </div>
+        `;
+    } catch (e) {
+        panel.innerHTML = `<p style="color:var(--danger); text-align:center; padding:20px;">${escapeHtml(e.message)}</p>`;
+    }
+}
+
+async function markRewardCredited(code) {
+    try {
+        await apiCall(`/rewards/${encodeURIComponent(code)}/redeem`, 'POST', { status: 'CREDITED' });
+        await loadSponsorMetricsPanel();
+    } catch (e) {
+        alert(e.message || 'Failed to update reward status');
+    }
 }
 
 let selectedCardType = 'YELLOW';

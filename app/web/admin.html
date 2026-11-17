@@ -109,7 +109,26 @@
                                 <button class="community-chip" id="chip-left" onclick="filterCommunity('left')">
                                     🚪 <span data-i18n="chip_left">Left Group</span> <span id="badge-left-cnt"></span>
                                 </button>
+                                <button class="community-chip" id="chip-sponsors" onclick="filterCommunity('sponsors')">
+                                    ☕ <span data-i18n="chip_sponsors">21 Coffee & Ads</span>
+                                </button>
                             </div>
+                        </div>
+
+                        <!-- Unregistered Bulk Warning Bar (shown on 'unregistered' chip) -->
+                        <div id="unregistered-outreach-bar" class="hidden" style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 200px;">
+                                <div style="font-weight: 700; font-size: 0.9rem; color: #c084fc;" data-i18n="unreg_bar_title">👻 Outreach to Unregistered Chat Members</div>
+                                <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;" data-i18n="unreg_bar_desc">Tag all unregistered members in the group chat with a /start registration button, or kick inactive accounts.</div>
+                            </div>
+                            <button type="button" class="action-btn primary" onclick="warnAllUnregistered()" style="background: linear-gradient(135deg, #a855f7, #7e22ce); border: none; padding: 8px 14px; font-size: 0.8rem; font-weight: 700;">
+                                📣 <span data-i18n="btn_warn_all_unreg">Ping All in Chat (Add Bot or Kick)</span>
+                            </button>
+                        </div>
+
+                        <!-- Sponsor Metrics & MVP Coffee Rewards View (shown on 'sponsors' chip) -->
+                        <div id="sponsor-metrics-panel" class="hidden" style="margin-bottom: 18px;">
+                            <div class="loading-spinner"></div>
                         </div>
 
                         <!-- Player List -->
@@ -473,7 +492,15 @@
         <div id="modal-discipline-section" style="margin-bottom: 16px;"></div>
 
         <!-- Action Buttons -->
-        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+        <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" id="modal-btn-coffee" class="action-btn outline" onclick="issueManualCoffeeReward()" style="font-size: 0.78rem; padding: 7px 11px; border-color: rgba(245, 158, 11, 0.45); color: #fcd34d; background: rgba(245, 158, 11, 0.1);">
+                    ☕ <span data-i18n="btn_issue_coffee">Give MVP Coffee</span>
+                </button>
+                <button type="button" id="modal-btn-kick" class="action-btn outline" onclick="kickPlayerFromModal()" style="font-size: 0.78rem; padding: 7px 11px; border-color: rgba(239, 68, 68, 0.45); color: #f87171; background: rgba(239, 68, 68, 0.1);">
+                    👢 <span data-i18n="btn_kick_group">Kick from Group</span>
+                </button>
+            </div>
             <a id="modal-tg-link" href="#" target="_blank" class="action-btn outline" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; padding: 8px 14px;">
                 ✉️ <span data-i18n="btn_message_tg">Message in Telegram</span>
             </a>
@@ -617,6 +644,13 @@
             note_preset_no_reply: "📵 No reply",
             note_preset_unpaid: "💸 Didn't pay",
             note_saved: "Saved ✓",
+            chip_sponsors: "21 Coffee & Ads",
+            unreg_bar_title: "👻 Outreach to Unregistered Chat Members",
+            unreg_bar_desc: "Tag all unregistered members in the group chat with a /start registration button, or kick inactive accounts.",
+            btn_warn_all_unreg: "Ping All in Chat (Add Bot or Kick)",
+            btn_issue_coffee: "Give MVP Coffee",
+            btn_kick_group: "Kick from Group",
+            btn_kick_short: "Kick",
             btn_message_tg: "Message in Telegram",
             btn_view_profile: "Profile ›",
             modal_stat_rating: "Rating",
@@ -789,6 +823,13 @@
             note_preset_no_reply: "📵 Не отвечал",
             note_preset_unpaid: "💸 Не заплатил",
             note_saved: "Сохранено ✓",
+            chip_sponsors: "21 Coffee и реклама",
+            unreg_bar_title: "👻 Оповещение незарегистрированных в боте",
+            unreg_bar_desc: "Тегнуть всех незареганных участников прямо в группе с кнопкой /start или удалить из чата.",
+            btn_warn_all_unreg: "Написать всем в чат (добавиться или кик)",
+            btn_issue_coffee: "Выдать кофе MVP",
+            btn_kick_group: "Кикнуть из группы",
+            btn_kick_short: "Кик",
             btn_message_tg: "Написать в Telegram",
             btn_view_profile: "Профиль ›",
             modal_stat_rating: "Рейтинг",
@@ -961,6 +1002,13 @@
             note_preset_no_reply: "📵 Neodpovídal",
             note_preset_unpaid: "💸 Nezaplatil",
             note_saved: "Uloženo ✓",
+            chip_sponsors: "21 Coffee a reklama",
+            unreg_bar_title: "👻 Výzva neregistrovaným členům",
+            unreg_bar_desc: "Označit všechny neregistrované členy ve skupině s tlačítkem /start nebo je odebrat.",
+            btn_warn_all_unreg: "Pingnout všechny v chatu (registrace nebo kick)",
+            btn_issue_coffee: "Darovat MVP kávu",
+            btn_kick_group: "Vyhodit ze skupiny",
+            btn_kick_short: "Kick",
             btn_message_tg: "Napsat na Telegramu",
             btn_view_profile: "Profil ›",
             modal_stat_rating: "Rating",
@@ -1115,6 +1163,6 @@
     setAdminLang(adminCurrentLang);
 </script>
 
-<script src="js/admin.js?v=3.3.0"></script>
+<script src="js/admin.js?v=3.4.0"></script>
 </body>
 </html>

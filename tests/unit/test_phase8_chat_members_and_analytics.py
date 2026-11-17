@@ -156,3 +156,71 @@ async def test_get_group_player_detail_unregistered_member(monkeypatch):
     assert detail.is_in_chat is False
     assert detail.chat_status == "left"
     assert detail.admin_note == "Не отвечал"
+
+
+@pytest.mark.asyncio
+async def test_kick_group_player_and_warn_unregistered(monkeypatch):
+    from app.api.routers import leaderboards
+    from app.bot import instance as bot_instance
+
+    dash_mock = MagicMock()
+    dash_mock.check_admin_rights = AsyncMock()
+    monkeypatch.setattr(leaderboards, "_dash", lambda: dash_mock)
+
+    bot_mock = MagicMock()
+    bot_mock.ban_chat_member = AsyncMock()
+    bot_mock.unban_chat_member = AsyncMock()
+    bot_mock.get_me = AsyncMock(return_value=MagicMock(username="test_football_bot"))
+    bot_mock.send_message = AsyncMock()
+    monkeypatch.setattr(bot_instance, "bot", bot_mock)
+
+    member = ChatMember(
+        chat_id=-100,
+        user_id=888,
+        username="unreg_user",
+        full_name="Unreg User",
+        status="member",
+        is_registered=False,
+    )
+    session = AsyncMock()
+    session.scalar.return_value = member
+
+    kick_res = await leaderboards.kick_group_player(
+        chat_id=-100,
+        target_user_id=888,
+        payload=leaderboards.PlayerKickIn(reason="Не зарегистрировался в боте"),
+        user_id=1,
+        session=session,
+    )
+    assert kick_res["chat_status"] == "kicked"
+    assert member.status == "kicked"
+    assert member.admin_note == "Не зарегистрировался в боте"
+    bot_mock.ban_chat_member.assert_awaited_once_with(chat_id=-100, user_id=888)
+    bot_mock.unban_chat_member.assert_awaited_once_with(
+        chat_id=-100, user_id=888, only_if_banned=True
+    )
+
+    # Test warn_unregistered_group_members
+    unreg_member = ChatMember(
+        chat_id=-100,
+        user_id=999,
+        username="ghost999",
+        full_name="Ghost 999",
+        status="member",
+        is_registered=False,
+    )
+    prof_res = MagicMock()
+    prof_res.all.return_value = []
+    mem_res = MagicMock()
+    mem_res.scalars.return_value.all.return_value = [member, unreg_member]
+    session.execute = AsyncMock(side_effect=[prof_res, mem_res])
+
+    warn_res = await leaderboards.warn_unregistered_group_members(
+        chat_id=-100,
+        payload=leaderboards.UnregisteredWarnIn(custom_message="Зарегайтесь!"),
+        user_id=1,
+        session=session,
+    )
+    assert warn_res["warned_count"] == 1
+    assert warn_res["messages_sent"] == 1
+    bot_mock.send_message.assert_awaited_once()

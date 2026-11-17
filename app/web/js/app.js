@@ -641,24 +641,47 @@ window.closePopup = function() {
 
 async function loadAd() {
     try {
-        let ep = `/ads/random`;
-        if (currentChatId) ep += `?chat_id=${currentChatId}`;
+        let ep = `/ads/random?placement=app_hub`;
+        if (currentChatId) ep += `&chat_id=${currentChatId}`;
         const adRes = await fetchAPI(ep);
         
-        if (adRes.status === 'ok') {
+        if (adRes.status === 'ok' && adRes.ad) {
             const ad = adRes.ad;
+            const heroBg = ad.hero_image_url || '/web/assets/sponsors/21coffee_hero.webp';
+            const logoUrl = ad.image_url || '/web/assets/sponsors/21coffee_logo.jpg';
+            const badge = ad.badge_text || '☕ MVP PARTNER • FREE COFFEE';
+            const title = ad.title || '21 Coffee • Specialty Coffee & Brunch';
+            const subtitle = ad.subtitle || '📍 Holešovice (Na Maninách 16) • Vinohrady (Londýnská)';
+            const cta = ad.cta_text || '@21coffeecz ↗';
+
             const adContainer = document.createElement('div');
-            adContainer.className = 'card flex-row';
-            adContainer.style.background = 'linear-gradient(45deg, rgba(30,30,30,0.8), rgba(60,30,80,0.8))';
-            adContainer.style.cursor = 'pointer';
-            adContainer.style.margin = '16px';
-            adContainer.onclick = () => tg.openLink(ad.link);
+            adContainer.style.cssText = `
+                position: relative; overflow: hidden; border-radius: 16px; padding: 14px;
+                margin: 14px 16px; cursor: pointer;
+                border: 1px solid rgba(245, 158, 11, 0.42);
+                box-shadow: 0 10px 26px rgba(0,0,0,0.42), 0 0 18px rgba(245,158,11,0.14);
+                background: linear-gradient(125deg, rgba(18,14,11,0.92), rgba(35,24,14,0.86)), url('${heroBg}') center/cover no-repeat;
+            `;
+            adContainer.onclick = () => {
+                if (ad.id) {
+                    fetchAPI(`/ads/${ad.id}/click`, 'POST', {
+                        chat_id: currentChatId ? parseInt(currentChatId) : null,
+                        placement: 'app_hub'
+                    }).catch(() => {});
+                }
+                tg.openLink(ad.link || 'https://www.instagram.com/21coffeecz/');
+            };
             
             adContainer.innerHTML = `
-                ${ad.image_url ? `<img src="${ad.image_url}" style="width:40px;height:40px;border-radius:8px">` : '📢'}
-                <div style="flex:1">
-                    <div style="font-size:10px; color:var(--hint-color)">${t('lbl_ad')}</div>
-                    <div style="font-weight:bold; font-size:14px">${ad.text}</div>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <img src="${logoUrl}" style="width:50px;height:50px;border-radius:12px;object-fit:cover;border:2px solid rgba(252,211,77,0.55);flex-shrink:0;">
+                    <div style="flex:1; min-width:0;">
+                        <span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:9.5px; font-weight:800; background:rgba(245,158,11,0.22); color:#fcd34d; border:1px solid rgba(245,158,11,0.45);">${badge}</span>
+                        <div style="font-weight:800; font-size:13.5px; color:#fff; margin-top:4px;">${title}</div>
+                        <div style="font-size:11.5px; color:#fde68a; font-weight:600; margin-top:2px;">${ad.text}</div>
+                        <div style="font-size:10.5px; color:#d6d3d1; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${subtitle}</div>
+                    </div>
+                    <div style="flex-shrink:0; padding:6px 10px; border-radius:999px; background:linear-gradient(135deg,#f59e0b,#d97706); color:#111; font-weight:800; font-size:11px;">${cta}</div>
                 </div>
             `;
             document.body.insertBefore(adContainer, document.querySelector('.page-container'));
