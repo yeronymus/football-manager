@@ -1,6 +1,6 @@
 """Add sponsor banner metrics, MVP reward claims, and 21 Coffee default sponsor banner
 
-Revision ID: a3b4c5d6e7f8
+Revision ID: b7c8d9e0f1a2
 Revises: a1b2c3d4e5f7
 Create Date: 2026-11-17 12:02:00.000000
 
@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "a3b4c5d6e7f8"
+revision: str = "b7c8d9e0f1a2"
 down_revision: Union[str, Sequence[str], None] = "a1b2c3d4e5f7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
