@@ -438,8 +438,8 @@
   "note_saved": "Saved ✓",
   "chip_sponsors": "21 Coffee & Ads",
   "unreg_bar_title": "👻 Outreach to Unregistered Chat Members",
-  "unreg_bar_desc": "Tag all unregistered members in the group chat with a /start registration button, or kick inactive accounts.",
-  "btn_warn_all_unreg": "Ping All in Chat (Add Bot or Kick)",
+  "unreg_bar_desc": "Send a private DM to each member (bots cannot message first if they never pressed /start), or kick inactive accounts.",
+  "btn_warn_all_unreg": "DM via Bot (if opened)",
   "btn_issue_coffee": "Give MVP Coffee",
   "btn_kick_group": "Kick from Group",
   "btn_kick_short": "Kick",
@@ -551,5 +551,6 @@
   "mvp_coffee_btn_other_name": "✏️ My card uses another name",
   "mvp_coffee_ask_name": "✏️ Please reply with the exact <b>Name and Surname</b> written on your 21 Coffee loyalty card (as registered in Bondus):",
   "mvp_coffee_saved_and_notified": "✅ Saved! Your loyalty card name <code>{loyalty_name}</code> is linked.\nWe have notified <b>{sponsor_name}</b> to credit your <b>1 Free Coffee</b>!",
-  "mvp_coffee_already_linked_notified": "🏆☕ <b>Match #{game_num} MVP!</b>\nWe have automatically notified <b>{sponsor_name}</b> to credit <b>1 Free Coffee</b> to your loyalty card (<code>{loyalty_name}</code>)."
+  "mvp_coffee_already_linked_notified": "🏆☕ <b>Match #{game_num} MVP!</b>\nWe have automatically notified <b>{sponsor_name}</b> to credit <b>1 Free Coffee</b> to your loyalty card (<code>{loyalty_name}</code>).",
+  "btn_copy_dm_text": "Copy DM Text"
 }

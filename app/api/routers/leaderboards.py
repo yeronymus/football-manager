@@ -581,10 +581,10 @@ async def warn_unregistered_group_members(
     session: AsyncSession = Depends(get_session),
 ):
     """
-    Posts an official warning in the Telegram group tagging all unregistered chat members
-    with a 1-click button to register in the bot before they are kicked.
+    Attempts to send a private DM (NOT in the group chat) to unregistered members
+    who already have an open bot conversation, and returns the remaining list
+    of @usernames for manual/personal DM outreach.
     """
-    import html as _html
     from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
     from app.bot.instance import bot
 
@@ -608,7 +608,13 @@ async def warn_unregistered_group_members(
     ]
 
     if not unreg:
-        return {"status": "ok", "warned_count": 0, "messages_sent": 0}
+        return {
+            "status": "ok",
+            "warned_count": 0,
+            "dm_sent_count": 0,
+            "blocked_count": 0,
+            "bot_start_url": "",
+        }
 
     try:
         me = await bot.get_me()
@@ -616,48 +622,42 @@ async def warn_unregistered_group_members(
     except Exception:
         bot_username = "football_manager_bot"
 
+    start_url = f"https://t.me/{bot_username}?start=reg"
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
                     text="⚽ Зарегистрироваться в боте (/start)",
-                    url=f"https://t.me/{bot_username}?start=reg",
+                    url=start_url,
                 )
             ]
         ]
     )
 
-    intro = (
+    dm_text = (
         ((payload.custom_message if payload else None) or "").strip()
-        or "⚠️ <b>Внимание участникам группы, которые ещё не зарегистрированы в боте!</b>\n"
-        "Пожалуйста, нажмите кнопку ниже и пройдите быструю регистрацию (<code>/start</code>), "
-        "иначе при чистке состава мы будем вынуждены удалить вас из чата:"
+        or "Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте (нажми /start), "
+        "иначе нам придётся удалить тебя из группы при чистке состава 🙏"
     )
 
-    mentions = []
+    dm_sent_count = 0
+    blocked_count = 0
     for m in unreg:
-        if m.username:
-            mentions.append(f"@{m.username}")
-        else:
-            safe_name = _html.escape(m.full_name or f"User {m.user_id}")
-            mentions.append(f'<a href="tg://user?id={m.user_id}">{safe_name}</a>')
-
-    chunk_size = 20
-    sent_count = 0
-    for idx in range(0, len(mentions), chunk_size):
-        chunk = mentions[idx : idx + chunk_size]
-        header = intro if idx == 0 else "⚠️ <b>Незарегистрированные участники (продолжение):</b>"
-        body = f"{header}\n\n" + ", ".join(chunk)
-        await bot.send_message(
-            chat_id=chat_id,
-            text=body,
-            reply_markup=kb,
-            parse_mode="HTML",
-        )
-        sent_count += 1
+        try:
+            await bot.send_message(
+                chat_id=m.user_id,
+                text=dm_text,
+                reply_markup=kb,
+                parse_mode="HTML",
+            )
+            dm_sent_count += 1
+        except Exception:
+            blocked_count += 1
 
     return {
         "status": "ok",
         "warned_count": len(unreg),
-        "messages_sent": sent_count,
+        "dm_sent_count": dm_sent_count,
+        "blocked_count": blocked_count,
+        "bot_start_url": start_url,
     }

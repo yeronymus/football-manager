@@ -438,8 +438,8 @@
   "note_saved": "Uloženo ✓",
   "chip_sponsors": "21 Coffee a reklama",
   "unreg_bar_title": "👻 Výzva neregistrovaným členům",
-  "unreg_bar_desc": "Označit všechny neregistrované členy ve skupině s tlačítkem /start nebo je odebrat.",
-  "btn_warn_all_unreg": "Pingnout všechny v chatu (registrace nebo kick)",
+  "unreg_bar_desc": "Pošli soukromou zprávu (bot nemůže napsat první bez /start), nebo neaktivní účty odeber.",
+  "btn_warn_all_unreg": "Napsat SZ přes bota",
   "btn_issue_coffee": "Darovat MVP kávu",
   "btn_kick_group": "Vyhodit ze skupiny",
   "btn_kick_short": "Kick",
@@ -551,5 +551,6 @@
   "mvp_coffee_btn_other_name": "✏️ Na kartě mám jiné jméno",
   "mvp_coffee_ask_name": "✏️ Napiš prosím přesné <b>Jméno a Příjmení</b>, které máš na své věrnostní kartě 21 Coffee:",
   "mvp_coffee_saved_and_notified": "✅ Uloženo! Jméno karty <code>{loyalty_name}</code> je propojeno.\nOdeslali jsme zprávu do <b>{sponsor_name}</b> k připsání kávy zdarma!",
-  "mvp_coffee_already_linked_notified": "🏆☕ <b>MVP zápasu #{game_num}!</b>\nAutomaticky jsme odeslali požadavek do <b>{sponsor_name}</b> na připsání kávy zdarma na jméno <code>{loyalty_name}</code>."
+  "mvp_coffee_already_linked_notified": "🏆☕ <b>MVP zápasu #{game_num}!</b>\nAutomaticky jsme odeslali požadavek do <b>{sponsor_name}</b> na připsání kávy zdarma na jméno <code>{loyalty_name}</code>.",
+  "btn_copy_dm_text": "Kopírovat text SZ"
 }

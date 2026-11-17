@@ -115,15 +115,20 @@
                             </div>
                         </div>
 
-                        <!-- Unregistered Bulk Warning Bar (shown on 'unregistered' chip) -->
+                        <!-- Unregistered DM Outreach Bar (shown on 'unregistered' chip) -->
                         <div id="unregistered-outreach-bar" class="hidden" style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
                             <div style="flex: 1; min-width: 200px;">
                                 <div style="font-weight: 700; font-size: 0.9rem; color: #c084fc;" data-i18n="unreg_bar_title">👻 Outreach to Unregistered Chat Members</div>
-                                <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;" data-i18n="unreg_bar_desc">Tag all unregistered members in the group chat with a /start registration button, or kick inactive accounts.</div>
+                                <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;" data-i18n="unreg_bar_desc">Send a private DM to each member (bots cannot message first if they never pressed /start), or kick inactive accounts.</div>
                             </div>
-                            <button type="button" class="action-btn primary" onclick="warnAllUnregistered()" style="background: linear-gradient(135deg, #a855f7, #7e22ce); border: none; padding: 8px 14px; font-size: 0.8rem; font-weight: 700;">
-                                📣 <span data-i18n="btn_warn_all_unreg">Ping All in Chat (Add Bot or Kick)</span>
-                            </button>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <button type="button" class="action-btn outline" onclick="copyUnregisteredDmTemplate()" style="padding: 7px 11px; font-size: 0.78rem;">
+                                    📋 <span data-i18n="btn_copy_dm_text">Copy DM Text</span>
+                                </button>
+                                <button type="button" class="action-btn primary" onclick="warnAllUnregistered()" style="background: linear-gradient(135deg, #a855f7, #7e22ce); border: none; padding: 7px 12px; font-size: 0.78rem; font-weight: 700;">
+                                    ✉️ <span data-i18n="btn_warn_all_unreg">DM via Bot (if opened)</span>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Sponsor Metrics & MVP Coffee Rewards View (shown on 'sponsors' chip) -->

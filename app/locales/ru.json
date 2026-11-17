@@ -438,8 +438,8 @@
   "note_saved": "Сохранено ✓",
   "chip_sponsors": "21 Coffee и реклама",
   "unreg_bar_title": "👻 Оповещение незарегистрированных в боте",
-  "unreg_bar_desc": "Тегнуть всех незареганных участников прямо в группе с кнопкой /start или удалить из чата.",
-  "btn_warn_all_unreg": "Написать всем в чат (добавиться или кик)",
+  "unreg_bar_desc": "Напиши в личку каждому участнику (бот не может написать первым, если человек не нажимал /start) или удали из группы.",
+  "btn_warn_all_unreg": "Написать в ЛС через бота",
   "btn_issue_coffee": "Выдать кофе MVP",
   "btn_kick_group": "Кикнуть из группы",
   "btn_kick_short": "Кик",
@@ -551,5 +551,6 @@
   "mvp_coffee_btn_other_name": "✏️ На моей карте другое имя",
   "mvp_coffee_ask_name": "✏️ Напиши в ответ точное <b>Имя и Фамилию</b>, которые указаны на твоей карте лояльности 21 Coffee:",
   "mvp_coffee_saved_and_notified": "✅ Готово! Имя карты <code>{loyalty_name}</code> сохранено.\nМы уже отправили заявку владельцу <b>{sponsor_name}</b> на начисление бесплатного кофе!",
-  "mvp_coffee_already_linked_notified": "🏆☕ <b>Ты снова MVP матча #{game_num}!</b>\nМы уже автоматически отправили заявку в <b>{sponsor_name}</b> на начисление бесплатного кофе на твоё имя (<code>{loyalty_name}</code>)."
+  "mvp_coffee_already_linked_notified": "🏆☕ <b>Ты снова MVP матча #{game_num}!</b>\nМы уже автоматически отправили заявку в <b>{sponsor_name}</b> на начисление бесплатного кофе на твоё имя (<code>{loyalty_name}</code>).",
+  "btn_copy_dm_text": "Скопировать текст ЛС"
 }

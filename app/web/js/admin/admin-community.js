@@ -349,14 +349,27 @@ function clearPlayerAdminNote() {
     savePlayerAdminNote('');
 }
 
+async function copyUnregisteredDmTemplate() {
+    const text = getAdminText(
+        'Hi! Please register in our football bot (press /start), otherwise we will have to remove you from the group during squad cleanup 🙏',
+        'Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте (нажми /start), иначе нам придётся удалить тебя из группы при чистке состава 🙏'
+    );
+    try {
+        await navigator.clipboard.writeText(text);
+        showAdminToast(getAdminText('DM text copied!', 'Текст для ЛС скопирован!'));
+    } catch (_) {
+        prompt(getAdminText('Copy DM text:', 'Скопируйте текст для ЛС:'), text);
+    }
+}
+
 async function warnAllUnregistered() {
     if (!currentGroupId) return;
     const defaultMsg = getAdminText(
-        '⚠️ Attention group members not yet registered in the bot! Please click the button below and register (/start), otherwise we will remove you from the group during squad cleanup:',
-        '⚠️ Внимание участникам группы, которые ещё не зарегистрированы в боте!\nПожалуйста, нажмите кнопку ниже и пройдите быструю регистрацию (/start), иначе при чистке состава мы будем вынуждены удалить вас из чата:'
+        'Hi! Please register in our football bot (press /start), otherwise we will have to remove you from the group during squad cleanup 🙏',
+        'Привет! Зарегистрируйся, пожалуйста, в нашем футбольном боте (нажми /start), иначе нам придётся удалить тебя из группы при чистке состава 🙏'
     );
     const customMsg = prompt(
-        getAdminText('Message to post in group chat (mentions all unregistered users):', 'Текст предупреждения в общий чат (бот автоматически тегнет всех незарегистрированных):'),
+        getAdminText('Private DM text (sent only to users who already opened the bot; no group chat spam):', 'Текст для отправки в личку (бот напишет тем, у кого уже открыт диалог с ботом; в общий чат ничего не уйдёт):'),
         defaultMsg
     );
     if (customMsg === null) return;
@@ -367,12 +380,12 @@ async function warnAllUnregistered() {
         });
         alert(
             getAdminText(
-                `Sent warning in group chat for ${res.warned_count} unregistered members!`,
-                `Готово! В чат отправлено предупреждение с тегами для ${res.warned_count} незарегистрированных участников.`
+                `Sent in DM: ${res.dm_sent_count}. Could not DM (never started bot): ${res.blocked_count}. Use "💬 Write" next to each player to message them from your Telegram.`,
+                `Отправлено в личку ботом: ${res.dm_sent_count}.\nНедоступно для бота (не нажимали /start): ${res.blocked_count}.\nДля остальных используй кнопку «💬 Написать» напротив каждого игрока — она сразу откроет ЛС от твоего имени.`
             )
         );
     } catch (e) {
-        alert(e.message || 'Failed to send warning');
+        alert(e.message || 'Failed to send DMs');
     }
 }
 
