@@ -28,6 +28,7 @@ class SponsorConfig:
     instagram_url: str
     registration_url: str
     recipient_telegram_id: Optional[int]
+    recipient_username: Optional[str]
     chat_ids: List[int]
     is_default: bool
     reward_type: str
@@ -51,6 +52,7 @@ def _to_config(raw: Dict[str, Any]) -> SponsorConfig:
         instagram_url=str(raw.get("instagram_url") or ""),
         registration_url=str(raw.get("registration_url") or ""),
         recipient_telegram_id=raw.get("recipient_telegram_id"),
+        recipient_username=raw.get("recipient_username"),
         chat_ids=[int(cid) for cid in (raw.get("chat_ids") or [])],
         is_default=bool(raw.get("is_default", False)),
         reward_type=str(raw.get("reward_type") or "free_coffee"),
