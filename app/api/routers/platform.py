@@ -160,6 +160,8 @@ async def get_tenant_public_rules(
                 "name": c.name,
                 "handle": c.handle,
                 "url": c.url,
+                "role_i18n": c.role_i18n,
+                "name_i18n": c.name_i18n,
             }
             for c in contacts_list
         ],

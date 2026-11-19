@@ -636,8 +636,10 @@
             }
 
             return contacts.map(c => {
-                const role = escapeHtml(c.role || '');
-                const name = escapeHtml(c.name || '');
+                const rawRole = (c.role_i18n && (c.role_i18n[activeLang] || c.role_i18n.en)) || c.role || '';
+                const rawName = (c.name_i18n && (c.name_i18n[activeLang] || c.name_i18n.en)) || c.name || '';
+                const role = escapeHtml(rawRole);
+                const name = escapeHtml(rawName);
                 const handleLabel = escapeHtml(c.handle || (activeLang === 'ru' ? '💬 Написать' : (activeLang === 'cs' ? '💬 Napsat' : '💬 Message')));
                 const href = escapeHtml(c.url || (c.handle ? `https://t.me/${String(c.handle).replace(/^@/, '')}` : '#'));
                 return `

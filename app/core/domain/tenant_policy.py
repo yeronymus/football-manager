@@ -23,6 +23,8 @@ class OrganizerContact(BaseModel):
     role: str = "Organizer"
     name: str = ""
     handle: str
+    role_i18n: Optional[Dict[str, str]] = None
+    name_i18n: Optional[Dict[str, str]] = None
 
     @field_validator("handle")
     @classmethod
