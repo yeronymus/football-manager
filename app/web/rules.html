@@ -346,6 +346,9 @@
             <p id="t-hero-subtitle">How match sign-ups, reserve promotions, rules, and MVP voting work.</p>
         </div>
 
+        <!-- Sponsor Banner (config-driven via sponsor-banner.js) -->
+        <div id="rules-sponsor-banner" style="display:none; margin-bottom: 18px;"></div>
+
         <!-- 1. How to Sign Up -->
         <div class="rule-card">
             <div class="rule-card-header" id="t-s1-title">1. How to Sign Up</div>
@@ -400,6 +403,7 @@
         <img id="lightbox-img" src="" alt="Screenshot preview">
     </div>
 
+    <script src="/web/js/sponsor-banner.js?v=1.0.0"></script>
     <script>
         let tenantConfig = {
             title: "Football Manager",
@@ -790,6 +794,12 @@
                         activeLang = normalizeLang(data.language);
                     }
                     switchLang(activeLang);
+                    if (window.SponsorBanner) {
+                        window.SponsorBanner.loadAndRender(
+                            [{ el: '#rules-sponsor-banner', placement: 'rules_guide' }],
+                            { chatId: data.chat_id || chatId, placement: 'rules_guide', lang: activeLang }
+                        );
+                    }
                 }
             } catch (e) {
                 // Static defaults remain rendered cleanly
