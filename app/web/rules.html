@@ -442,7 +442,7 @@
                 s3_title: "3. Cancellation Policy",
                 s3_body: `<p>To cancel: open the match card in the bot and tap <b>«❌ Leave Match»</b>.</p>
                     <ul>
-                        <li><b>Free cancellation:</b> cancel at least <b>{cancel_hours} hours</b> before kick-off so reserve players have time to prepare.</li>
+                        <li><b>Timely cancellation:</b> cancel at least <b>{cancel_hours} hours</b> before kick-off so reserve players have time to prepare.</li>
                         <li><b>Late cancellation (&lt; {cancel_hours} hours):</b> repeated late withdrawals may result in an automatic disciplinary warning (🟨).</li>
                     </ul>`,
                 s4_title: "4. Match Fee & Payment",
@@ -497,7 +497,7 @@
                 s3_title: "3. Правила отмены записи",
                 s3_body: `<p>Для отмены откройте карточку матча в боте и нажмите <b>«❌ Выписаться с игры»</b>.</p>
                     <ul>
-                        <li><b>Бесплатная отмена:</b> не позднее чем за <b>{cancel_hours} ч.</b> до начала, чтобы игроки из резерва успели собраться.</li>
+                        <li><b>Своевременная отмена:</b> не позднее чем за <b>{cancel_hours} ч.</b> до начала, чтобы игроки из резерва успели собраться.</li>
                         <li><b>Поздняя отмена (&lt; {cancel_hours} ч.):</b> за поздний выход может быть вынесено предупреждение — жёлтая карточка (🟨).</li>
                     </ul>`,
                 s4_title: "4. Взнос и оплата",
@@ -552,7 +552,7 @@
                 s3_title: "3. Pravidla odhlášení ze zápasu",
                 s3_body: `<p>Pro odhlášení otevřete kartu zápasu v botovi a klepněte na <b>«❌ Odhlásit se ze zápasu»</b>.</p>
                     <ul>
-                        <li><b>Bezplatné odhlášení:</b> nejpozději <b>{cancel_hours} hodin</b> před výkopem, aby se náhradníci stihli připravit.</li>
+                        <li><b>Včasné odhlášení:</b> nejpozději <b>{cancel_hours} hodin</b> před výkopem, aby se náhradníci stihli připravit.</li>
                         <li><b>Pozdní odhlášení (&lt; {cancel_hours} hodin):</b> za pozdní odhlášení může být uděleno napomenutí — žlutá karta (🟨).</li>
                     </ul>`,
                 s4_title: "4. Startovné a platba",
@@ -672,11 +672,7 @@
             } else {
                 document.getElementById('t-hero-title').innerText = d.hero_title;
             }
-            if (tenantConfig && tenantConfig.default_location) {
-                document.getElementById('t-hero-subtitle').innerText = `📍 ${tenantConfig.default_location} • ${d.hero_subtitle}`;
-            } else {
-                document.getElementById('t-hero-subtitle').innerText = d.hero_subtitle;
-            }
+            document.getElementById('t-hero-subtitle').innerText = d.hero_subtitle;
 
             document.getElementById('t-s1-title').innerText = d.s1_title;
             document.getElementById('t-s1-body').innerHTML = d.s1_body + `
