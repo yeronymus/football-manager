@@ -203,11 +203,22 @@ async def cmd_rules(message: types.Message, session: AsyncSession | None = None)
             db_user = None
 
     user_lang = _resolve_event_lang(message.from_user, db_user)
-    rules_web_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html?lang={user_lang}"
-    btn = types.InlineKeyboardButton(
-        text=t("cmd_rules_btn", locale=user_lang),
-        web_app=types.WebAppInfo(url=rules_web_url),
-    )
+    bot_username = (getattr(settings, "bot_username", "") or "").lstrip("@")
+    short_name = (getattr(settings, "webapp_short_name", "") or "").strip()
+
+    if message.chat.type in ("group", "supergroup") and short_name and bot_username:
+        rules_web_url = f"https://t.me/{bot_username}/{short_name}?startapp=rules_{user_lang}_c{abs(message.chat.id)}"
+        btn = types.InlineKeyboardButton(
+            text=t("cmd_rules_btn", locale=user_lang),
+            url=rules_web_url,
+        )
+    else:
+        chat_q = f"&chat_id={message.chat.id}" if message.chat.type in ("group", "supergroup") else ""
+        rules_web_url = f"{settings.webapp_url.rstrip('/')}/web/rules.html?lang={user_lang}{chat_q}"
+        btn = types.InlineKeyboardButton(
+            text=t("cmd_rules_btn", locale=user_lang),
+            web_app=types.WebAppInfo(url=rules_web_url),
+        )
     kb = types.InlineKeyboardMarkup(inline_keyboard=[[btn]])
 
     text = t("cmd_rules_text", locale=user_lang, cancel_hours=24, rules_url=rules_web_url)

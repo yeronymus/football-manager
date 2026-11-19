@@ -634,15 +634,15 @@
             return contacts.map(c => {
                 const role = escapeHtml(c.role || '');
                 const name = escapeHtml(c.name || '');
-                const handle = escapeHtml(c.handle || c.url || '');
+                const handleLabel = escapeHtml(c.handle || (activeLang === 'ru' ? '💬 Написать' : (activeLang === 'cs' ? '💬 Napsat' : '💬 Message')));
                 const href = escapeHtml(c.url || (c.handle ? `https://t.me/${String(c.handle).replace(/^@/, '')}` : '#'));
                 return `
                     <div class="contact-item">
                         <div>
-                            ${role ? `<div style="font-weight:600;">${role}</div>` : ''}
-                            ${name ? `<div style="font-size:12px; color:var(--hint-color);">${name}</div>` : ''}
+                            <div style="font-weight:600;">${name || role}</div>
+                            ${role && name ? `<div style="font-size:12px; color:var(--hint-color);">${role}</div>` : ''}
                         </div>
-                        ${handle ? `<div><a href="${href}" class="contact-link" target="_blank" rel="noopener noreferrer">${handle}</a></div>` : ''}
+                        ${href !== '#' ? `<div><a href="${href}" class="contact-link" target="_blank" rel="noopener noreferrer">${handleLabel}</a></div>` : ''}
                     </div>
                 `;
             }).join('');
@@ -662,10 +662,15 @@
 
             if (tenantConfig && tenantConfig.title) {
                 document.getElementById('top-bar-org-title').innerText = tenantConfig.title;
+                document.getElementById('t-hero-title').innerText = `${tenantConfig.title} — ${d.hero_title}`;
+            } else {
+                document.getElementById('t-hero-title').innerText = d.hero_title;
             }
-
-            document.getElementById('t-hero-title').innerText = d.hero_title;
-            document.getElementById('t-hero-subtitle').innerText = d.hero_subtitle;
+            if (tenantConfig && tenantConfig.default_location) {
+                document.getElementById('t-hero-subtitle').innerText = `📍 ${tenantConfig.default_location} • ${d.hero_subtitle}`;
+            } else {
+                document.getElementById('t-hero-subtitle').innerText = d.hero_subtitle;
+            }
 
             document.getElementById('t-s1-title').innerText = d.s1_title;
             document.getElementById('t-s1-body').innerHTML = d.s1_body + `
@@ -766,9 +771,12 @@
             document.getElementById('img-lightbox').style.display = 'none';
         }
 
-        async function loadDynamicRulesConfig(chatId, explicitLangProvided) {
+        async function loadDynamicRulesConfig(chatId, gameId, explicitLangProvided) {
             try {
-                const q = chatId ? `?chat_id=${encodeURIComponent(chatId)}` : '';
+                const qs = new URLSearchParams();
+                if (chatId) qs.set('chat_id', chatId);
+                if (gameId) qs.set('game_id', gameId);
+                const q = qs.toString() ? `?${qs.toString()}` : '';
                 const res = await fetch(`/api/v1/tenants/public-rules${q}`);
                 if (!res.ok) return;
                 const data = await res.json();
@@ -793,6 +801,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const urlLang = urlParams.get('lang');
             const chatId = urlParams.get('chat_id');
+            const gameId = urlParams.get('game_id');
             let initialLang = 'en';
             let explicitLangProvided = false;
 
@@ -811,7 +820,7 @@
             }
 
             switchLang(initialLang);
-            loadDynamicRulesConfig(chatId, explicitLangProvided);
+            loadDynamicRulesConfig(chatId, gameId, explicitLangProvided);
 
             if (window.Telegram && window.Telegram.WebApp) {
                 window.Telegram.WebApp.expand();

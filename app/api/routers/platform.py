@@ -72,13 +72,20 @@ async def get_sport_presets():
 @router.get("/tenants/public-rules")
 async def get_tenant_public_rules(
     chat_id: Optional[int] = Query(default=None),
+    game_id: Optional[int] = Query(default=None),
     session: AsyncSession = Depends(get_session),
 ):
     """
     Returns sanitized, OPSEC-safe dynamic rules configuration for `rules.html`.
-    Never exposes private bank accounts, raw chat IDs when unrequested, or personal developer handles.
+    Personalizes rules with group title, default fee/location, and live group admin contacts.
     """
-    chat = await _find_chat_tolerant(session, chat_id) if chat_id is not None else None
+    resolved_chat_id = chat_id
+    if resolved_chat_id is None and game_id is not None:
+        game_obj = await session.get(Game, game_id)
+        if game_obj and game_obj.chat_id is not None:
+            resolved_chat_id = game_obj.chat_id
+
+    chat = await _find_chat_tolerant(session, resolved_chat_id) if resolved_chat_id is not None else None
     policy = resolve_tenant_policy(chat)
     billing_mode = resolve_billing_mode(getattr(chat, "billing_mode", None) if chat else None)
     currency = (
@@ -88,6 +95,31 @@ async def get_tenant_public_rules(
     ).upper()
 
     contacts_list = list(policy.organizer_contacts)
+    if not contacts_list and chat is not None:
+        from app.db.models import ChatAdmin, User
+
+        admin_res = await session.execute(
+            select(User)
+            .join(ChatAdmin, ChatAdmin.user_id == User.user_id)
+            .where(ChatAdmin.chat_id == chat.chat_id)
+            .order_by(User.full_name.asc())
+        )
+        for admin_u in admin_res.scalars().all():
+            handle = f"@{admin_u.username}" if admin_u.username else ""
+            url = (
+                f"https://t.me/{admin_u.username}"
+                if admin_u.username
+                else f"tg://user?id={admin_u.user_id}"
+            )
+            contacts_list.append(
+                OrganizerContact(
+                    role="Admin",
+                    name=admin_u.full_name or admin_u.username or f"Admin {admin_u.user_id}",
+                    handle=handle,
+                    url=url,
+                )
+            )
+
     if not contacts_list and (settings.support_contact or "").strip():
         contacts_list = [
             OrganizerContact(
@@ -105,7 +137,9 @@ async def get_tenant_public_rules(
 
     return {
         "bot_username": settings.bot_username,
+        "chat_id": chat.chat_id if chat else None,
         "title": chat.title if chat else None,
+        "default_location": getattr(chat, "default_location", None) if chat else None,
         "language": normalize_locale_code(
             getattr(chat, "language", None) if chat else settings.default_locale,
             default="en",

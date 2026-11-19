@@ -88,11 +88,13 @@ def get_game_keyboard(game_id: int, is_admin: bool = False, webapp_url: str = ""
     buttons = [[join_btn]]
     
     if include_rules:
-        rules_url = f"{base_url.rstrip('/')}/web/rules.html?lang={lang}"
         rules_text = t("btn_channel_rules", locale=lang)
-        buttons.append([
-            InlineKeyboardButton(text=rules_text, url=rules_url)
-        ])
+        if not webapp_url and short_name and bot_username:
+            rules_direct_link = f"https://t.me/{bot_username}/{short_name}?startapp=rules_{lang}_g{game_id}"
+            buttons.append([InlineKeyboardButton(text=rules_text, url=rules_direct_link)])
+        else:
+            rules_url = f"{base_url.rstrip('/')}/web/rules.html?lang={lang}&game_id={game_id}"
+            buttons.append([InlineKeyboardButton(text=rules_text, web_app=types.WebAppInfo(url=rules_url))])
 
     if is_admin:
         draft_url = f"{base_url.rstrip('/')}/web/draft.html?game_id={game_id}&v={timestamp}{lang_param}"
@@ -109,7 +111,7 @@ def get_channel_game_keyboard(game_id: int, lang: str = "en") -> InlineKeyboardM
     short_name = (getattr(settings, "webapp_short_name", "") or "").strip()
     if short_name:
         direct_link = f"https://t.me/{bot_username}/{short_name}?startapp=game_{game_id}"
-        rules_link = f"https://t.me/{bot_username}/{short_name}?startapp=rules_{lang}"
+        rules_link = f"https://t.me/{bot_username}/{short_name}?startapp=rules_{lang}_g{game_id}"
     else:
         direct_link = f"https://t.me/{bot_username}?start=game_{game_id}"
         rules_link = (

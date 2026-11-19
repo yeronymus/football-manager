@@ -16,7 +16,13 @@
                     || params.get('start_param');
                 if (raw && (raw === 'rules' || raw.startsWith('rules_') || raw.startsWith('rules'))) {
                     const lang = raw.includes('ru') ? 'ru' : ((raw.includes('cs') || raw.includes('cz')) ? 'cs' : (raw.includes('en') ? 'en' : ''));
-                    const q = lang ? `?lang=${lang}` : '';
+                    const gMatch = raw.match(/_g(\d+)/);
+                    const cMatch = raw.match(/_c(\d+)/);
+                    const qs = new URLSearchParams();
+                    if (lang) qs.set('lang', lang);
+                    if (gMatch) qs.set('game_id', gMatch[1]);
+                    if (cMatch) qs.set('chat_id', `-${cMatch[1]}`);
+                    const q = qs.toString() ? `?${qs.toString()}` : '';
                     window.location.replace(`/web/rules.html${q}`);
                 }
             } catch (e) {}
