@@ -355,6 +355,12 @@
             <div class="rule-body" id="t-s1-body"></div>
         </div>
 
+        <!-- 2. Inviting Friends & Guests -->
+        <div class="rule-card" id="guests">
+            <div class="rule-card-header" id="t-sguests-title">2. Inviting Friends & Guests</div>
+            <div class="rule-body" id="t-sguests-body"></div>
+        </div>
+
         <!-- 2. Moving from Reserve to Main Squad -->
         <div class="rule-card">
             <div class="rule-card-header" id="t-s2-title">2. Moving from Reserve to Main Squad</div>
@@ -434,22 +440,29 @@
                     <li>Tap <b>«Sign Up for Game»</b>. Open spots put you straight into the <b>Main Squad</b>. When full, you enter the <b>Reserve Queue</b>.</li>
                 </ul>`,
                 screen_caption: "Tap any screenshot to enlarge",
-                s2_title: "2. Moving from Reserve to Main Squad",
+                sguests_title: "2. Inviting Friends & Guests",
+                sguests_body: `<p>Want to invite a friend to play?</p>
+                    <ul>
+                        <li><b>Guest first:</b> before adding a new player to the group chat, they must first come to a match as a <b>Guest</b>. Message <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">the group administrators below</a> so they can add your friend.</li>
+                        <li><b>Group priority:</b> registered group members always have priority for match spots — a guest can only be added if spots are available.</li>
+                        <li><b>Adding to the group:</b> only after playing as a guest can a player be added to the group chat.</li>
+                    </ul>`,
+                s2_title: "3. Moving from Reserve to Main Squad",
                 s2_body: `<p>When a main squad player drops out, the bot automatically promotes the first reserve player into the main roster.</p>
                     <div class="callout-box">
                         The bot sends a direct Telegram message notification. Keep bot notifications unmuted.
                     </div>`,
-                s3_title: "3. Cancellation Policy",
+                s3_title: "4. Cancellation Policy",
                 s3_body: `<p>To cancel: open the match card in the bot and tap <b>«❌ Leave Match»</b>.</p>
                     <ul>
                         <li><b>Timely cancellation:</b> cancel at least <b>{cancel_hours} hours</b> before kick-off so reserve players have time to prepare.</li>
                         <li><b>Late cancellation (&lt; {cancel_hours} hours):</b> repeated late withdrawals may result in an automatic disciplinary warning (🟨).</li>
                     </ul>`,
-                s4_title: "4. Match Fee & Payment",
+                s4_title: "5. Match Fee & Payment",
                 s4_manual: `<p>The fee and payment details are shown on each match card. Please complete payment <b>before kick-off</b> via bank transfer or as specified by your group organizer.</p>`,
                 s4_spayd_qr: `<p>The match fee, IBAN, Variable Symbol (VS), and an instant <b>QR Platba (SPAYD 1.0)</b> code are displayed directly inside the match Mini App. Scan the QR code in your banking app before kick-off.</p>`,
                 s4_free_corporate: `<p>✨ <b>Corporate / Sponsored Mode:</b> Matches in this group are covered by the organization — no player match fee is required.</p>`,
-                s5_title: "5. Pitch Conduct & Disciplinary Cards",
+                s5_title: "6. Pitch Conduct & Disciplinary Cards",
                 s5_body: `<ul>
                     <li>Dangerous tackles, rough challenges, fights, and unsportsmanlike insults are strictly prohibited.</li>
                     <li>Arrive on time to avoid losing booked venue time.</li>
@@ -457,7 +470,7 @@
                     <li><b>Red Card (🟥):</b> issued for 2 yellow cards, gross misconduct, or unexcused no-shows. Temporarily suspends match registration.</li>
                     <li><b>Card Reason:</b> the specific reason is always stated in the card notification and in your profile. Questions can be addressed to <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">group administrators below</a>.</li>
                 </ul>`,
-                s6_title: "6. Post-Match & MVP Voting",
+                s6_title: "7. Post-Match & MVP Voting",
                 s6_body: `<p>The MVP poll opens in the group chat after full-time. <b>Vote for 1 player from EACH team</b> (e.g. 1 from Green + 1 from Orange). Do not vote for only 1 player overall.</p>`,
                 mvp_sample_title: "Sample Ballot: 1 vote per team",
                 mvp_team_a: "Green (Team A)",
@@ -468,13 +481,13 @@
                 elo_draw: "Draw",
                 elo_loss: "Defeat",
                 elo_mvp: "Match MVP Bonus",
-                s7_title: "7. Profile, Stats & Active Cards",
+                s7_title: "8. Profile, Stats & Active Cards",
                 s7_body: `<p>Personal statistics, match history, and MMR rating are available anytime via <code>/profile</code> in private chat with the bot. <b>Your active cards, reason, and remaining duration</b> are also displayed directly on your profile card.</p>`,
                 link_bot_text: "Open Telegram Bot",
                 link_prof: "👤 My Profile",
                 link_lead: "🏆 Leaderboard",
                 link_hist: "📅 History",
-                s8_title: "8. Contacts & Questions",
+                s8_title: "9. Contacts & Questions",
                 contacts_default_hint: "Have questions about scheduling, payments, or rules? Reach out to your group administrators directly in the Telegram group chat.",
                 support_role_label: "Platform & Technical Support:"
             },
@@ -489,22 +502,29 @@
                     <li>Нажмите <b>«Записаться на игру»</b>. При наличии мест вы попадаете в <b>Основной состав</b>. Если лимит исчерпан — в <b>Список резерва</b>.</li>
                 </ul>`,
                 screen_caption: "Нажмите на скриншот, чтобы увеличить",
-                s2_title: "2. Переход из Резерва в Основу",
+                sguests_title: "2. Приглашение друзей и гостей",
+                sguests_body: `<p>Хотите позвать друга или нового игрока?</p>
+                    <ul>
+                        <li><b>Сначала как гость:</b> прежде чем добавлять человека в группу, его нужно сначала позвать на игру в статусе <b>Гостя</b>. Для этого напишите <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">администраторам группы ниже</a>, чтобы они добавили его в заявку.</li>
+                        <li><b>Приоритет у участников группы:</b> игроки, состоящие в группе, всегда имеют приоритет на места в составе — гость может занять место только при наличии свободных слотов.</li>
+                        <li><b>Добавление в чат:</b> пригласить человека в общую группу можно только после того, как он сыграет как гость.</li>
+                    </ul>`,
+                s2_title: "3. Переход из Резерва в Основу",
                 s2_body: `<p>Когда игрок основного состава выписывается, бот автоматически переводит первого игрока из резерва в основной состав.</p>
                     <div class="callout-box">
                         Бот присылает уведомление в личные сообщения Telegram. Не отключайте уведомления бота.
                     </div>`,
-                s3_title: "3. Правила отмены записи",
+                s3_title: "4. Правила отмены записи",
                 s3_body: `<p>Для отмены откройте карточку матча в боте и нажмите <b>«❌ Выписаться с игры»</b>.</p>
                     <ul>
                         <li><b>Своевременная отмена:</b> не позднее чем за <b>{cancel_hours} ч.</b> до начала, чтобы игроки из резерва успели собраться.</li>
                         <li><b>Поздняя отмена (&lt; {cancel_hours} ч.):</b> за поздний выход может быть вынесено предупреждение — жёлтая карточка (🟨).</li>
                     </ul>`,
-                s4_title: "4. Взнос и оплата",
+                s4_title: "5. Взнос и оплата",
                 s4_manual: `<p>Сумма взноса и реквизиты указаны в карточке матча. Пожалуйста, переводите взнос <b>до начала матча</b> по указанным реквизитам организатора.</p>`,
                 s4_spayd_qr: `<p>Сумма взноса, IBAN, вариабельный символ (VS) и мгновенный код <b>QR Platba (SPAYD 1.0)</b> доступны прямо внутри карточки матча. Отсканируйте QR-код в банковском приложении до начала игры.</p>`,
                 s4_free_corporate: `<p>✨ <b>Корпоративный режим:</b> Матчи в этой группе оплачиваются организацией — взнос с игроков не взимается.</p>`,
-                s5_title: "5. Поведение на площадке и карточки",
+                s5_title: "6. Поведение на площадке и карточки",
                 s5_body: `<ul>
                     <li>Опасные подкаты, грубость, драки и токсичное поведение строго запрещены.</li>
                     <li>Приходите вовремя, чтобы не терять арендованное время площадки.</li>
@@ -512,7 +532,7 @@
                     <li><b>Красная карточка (🟥):</b> за 2 жёлтые карточки, драку или неявку без предупреждения. Временно блокирует запись на матчи.</li>
                     <li><b>Причина карточки:</b> точная причина всегда пишется в уведомлении от бота и в профиле. По вопросам можно обратиться к <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">администраторам группы ниже</a>.</li>
                 </ul>`,
-                s6_title: "6. Голосование за MVP после матча",
+                s6_title: "7. Голосование за MVP после матча",
                 s6_body: `<p>После матча в чате запускается опрос за лучшего игрока. <b>Голосовать нужно за 1 игрока из КАЖДОЙ команды</b> (например, 1 из Зелёных + 1 из Оранжевых). Не отдавайте голос только за одну команду.</p>`,
                 mvp_sample_title: "Образец бюллетеня: по 1 голосу на команду",
                 mvp_team_a: "Зелёные (Команда А)",
@@ -523,13 +543,13 @@
                 elo_draw: "Ничья",
                 elo_loss: "Поражение",
                 elo_mvp: "Бонус MVP матча",
-                s7_title: "7. Профиль, статистика и карточки",
+                s7_title: "8. Профиль, статистика и карточки",
                 s7_body: `<p>Личная статистика, история матчей и рейтинг MMR доступны в любой момент через <code>/profile</code> в ЛС с ботом. <b>Все активные карточки, причина и оставшийся срок</b> отображаются прямо в вашем профиле.</p>`,
                 link_bot_text: "Открыть Telegram-бота",
                 link_prof: "👤 Мой профиль",
                 link_lead: "🏆 Лидерборд",
                 link_hist: "📅 История",
-                s8_title: "8. Контакты и вопросы",
+                s8_title: "9. Контакты и вопросы",
                 contacts_default_hint: "Вопросы по расписанию, оплате или правилам? Обратитесь к администраторам вашей группы напрямую в групповом чате Telegram.",
                 support_role_label: "Техническая поддержка платформы:"
             },
@@ -544,22 +564,29 @@
                     <li>Klepněte na <b>«Přihlásit se na zápas»</b>. Volná místa vás zařadí do <b>Hlavní sestavy</b>, po naplnění kapacity jdete mezi <b>Náhradníky</b>.</li>
                 </ul>`,
                 screen_caption: "Klepnutím na snímek obrazovky jej zvětšíte",
-                s2_title: "2. Přesun z náhradníků do hlavní sestavy",
+                sguests_title: "2. Pozvání přátel a hostů",
+                sguests_body: `<p>Chcete na zápas pozvat kamaráda nebo nového hráče?</p>
+                    <ul>
+                        <li><b>Nejprve jako host:</b> před přidáním nového hráče do skupinového chatu ho musíte nejprve pozvat na zápas jako <b>Hosta</b>. Napište <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">správcům skupiny níže</a>, aby ho zapsali.</li>
+                        <li><b>Přednost pro členy skupiny:</b> hráči ve skupině mají vždy přednost na volná místa — host může nastoupit pouze tehdy, pokud je volné místo.</li>
+                        <li><b>Přidání do skupiny:</b> hráče lze přidat do skupiny až poté, co odehraje zápas jako host.</li>
+                    </ul>`,
+                s2_title: "3. Přesun z náhradníků do hlavní sestavy",
                 s2_body: `<p>Když se hráč z hlavní sestavy odhlásí, bot automaticky přesune prvního náhradníka v pořadí do hlavní sestavy.</p>
                     <div class="callout-box">
                         Bot vám pošle okamžité upozornění do soukromé zprávy na Telegramu. Nechte si zapnutá oznámení od bota.
                     </div>`,
-                s3_title: "3. Pravidla odhlášení ze zápasu",
+                s3_title: "4. Pravidla odhlášení ze zápasu",
                 s3_body: `<p>Pro odhlášení otevřete kartu zápasu v botovi a klepněte na <b>«❌ Odhlásit se ze zápasu»</b>.</p>
                     <ul>
                         <li><b>Včasné odhlášení:</b> nejpozději <b>{cancel_hours} hodin</b> před výkopem, aby se náhradníci stihli připravit.</li>
                         <li><b>Pozdní odhlášení (&lt; {cancel_hours} hodin):</b> za pozdní odhlášení může být uděleno napomenutí — žlutá karta (🟨).</li>
                     </ul>`,
-                s4_title: "4. Startovné a platba",
+                s4_title: "5. Startovné a platba",
                 s4_manual: `<p>Výše startovného a platební údaje jsou uvedeny na kartě zápasu. Platbu prosím odešlete <b>před začátkem zápasu</b> převodem na uvedený účet nebo dle pokynů organizátora.</p>`,
                 s4_spayd_qr: `<p>Částka, IBAN, variabilní symbol (VS) i okamžitý kód <b>QR Platba (SPAYD 1.0)</b> jsou zobrazeny přímo v detailu zápasu. Před výkopem jednoduše naskenujte QR kód ve své bankovní aplikaci.</p>`,
                 s4_free_corporate: `<p>✨ <b>Firemní / sponzorovaný režim:</b> Zápasy v této skupině hradí organizace — hráči neplatí žádné startovné.</p>`,
-                s5_title: "5. Chování na hřišti a systém karet",
+                s5_title: "6. Chování na hřišti a systém karet",
                 s5_body: `<ul>
                     <li>Nebezpečné zákroky, hrubá hra, potyčky a urážky jsou přísně zakázány.</li>
                     <li>Choďte včas, abyste nepřicházeli o rezervovaný čas hřiště.</li>
@@ -567,7 +594,7 @@
                     <li><b>Červená karta (🟥):</b> za 2 žluté karty, hrubé porušení pravidel nebo neomluvenou neúčast. Dočasně blokuje přihlašování na zápasy.</li>
                     <li><b>Důvod karty:</b> konkrétní důvod vždy najdete v oznámení bota i ve svém profilu. V případě dotazů kontaktujte <a href="#contacts" style="color:var(--accent-color); text-decoration:none; font-weight:600;">správce skupiny níže</a>.</li>
                 </ul>`,
-                s6_title: "6. Pozápasové hlasování o MVP",
+                s6_title: "7. Pozápasové hlasování o MVP",
                 s6_body: `<p>Po skončení zápasu se ve skupině otevře hlasování o nejlepšího hráče. <b>Hlasujte pro 1 hráče z KAŽDÉHO týmu</b> (např. 1 ze Zelených + 1 z Oranžových). Nehlasujte jen pro jeden tým.</p>`,
                 mvp_sample_title: "Ukázka hlasování: 1 hlas pro každý tým",
                 mvp_team_a: "Zelení (Tým A)",
@@ -578,13 +605,13 @@
                 elo_draw: "Remíza",
                 elo_loss: "Prohra",
                 elo_mvp: "Bonus za MVP zápasu",
-                s7_title: "7. Profil, statistiky a aktivní karty",
+                s7_title: "8. Profil, statistiky a aktivní karty",
                 s7_body: `<p>Osobní statistiky, historie zápasů a MMR rating jsou kdykoli dostupné přes příkaz <code>/profile</code> v soukromém chatu s botem. <b>Aktivní karty, důvod udělení a zbývající dny platnosti</b> vidíte přímo na kartě profilu.</p>`,
                 link_bot_text: "Otevřít Telegram bota",
                 link_prof: "👤 Můj profil",
                 link_lead: "🏆 Žebříček",
                 link_hist: "📅 Historie",
-                s8_title: "8. Kontakty a dotazy",
+                s8_title: "9. Kontakty a dotazy",
                 contacts_default_hint: "Máte dotazy k rozpisu, platbám nebo pravidlům? Obraťte se přímo na správce své skupiny ve skupinovém chatu na Telegramu.",
                 support_role_label: "Technická podpora platformy:"
             }
@@ -689,6 +716,9 @@
                 </div>
                 <div class="screen-caption">${d.screen_caption}</div>
             `;
+
+            document.getElementById('t-sguests-title').innerText = d.sguests_title;
+            document.getElementById('t-sguests-body').innerHTML = d.sguests_body;
 
             document.getElementById('t-s2-title').innerText = d.s2_title;
             document.getElementById('t-s2-body').innerHTML = d.s2_body;
