@@ -142,8 +142,11 @@ async def send_voting_message(game_id: int):
         except Exception:
             now_dt = datetime.now()
 
+        target_day = now_dt if now_dt.hour < 6 else (now_dt + timedelta(days=1))
+        next_morning_9am = target_day.replace(hour=9, minute=0, second=0, microsecond=0)
+
         SchedulerService().schedule_mvp_calculation_at(
-            game_id, now_dt + timedelta(hours=policy.mvp_voting_window_hours)
+            game_id, next_morning_9am
         )
 
 
@@ -339,6 +342,7 @@ async def calculate_mvp(game_id: int):
             from app.db.models import GameStats, PlayerProfile, RatingHistory
 
             newly_awarded_ids = []
+            sponsor_reward_ids = []
             for mvp_id in all_mvp_ids:
                 stat_res = await session.execute(
                     select(GameStats).where(
@@ -353,6 +357,9 @@ async def calculate_mvp(game_id: int):
                     session.add(
                         GameStats(game_id=game_id, user_id=mvp_id, goals=0, is_mvp=True)
                     )
+
+                if not already_awarded:
+                    sponsor_reward_ids.append(mvp_id)
 
                 if game.status == GameStatus.FINISHED and not already_awarded:
                     newly_awarded_ids.append(mvp_id)
@@ -385,15 +392,15 @@ async def calculate_mvp(game_id: int):
 
             await session.commit()
             logger.info(
-                f"Persisted MVP resolution for game {game_id} (awarded rating bonus to {newly_awarded_ids})"
+                f"Persisted MVP resolution for game {game_id} (awarded rating bonus to {newly_awarded_ids}, sponsor rewards to {sponsor_reward_ids})"
             )
 
-            if newly_awarded_ids:
+            if sponsor_reward_ids:
                 await _issue_mvp_sponsor_rewards(
                     session=session,
                     game=game,
                     game_num=game_num,
-                    mvp_ids=newly_awarded_ids,
+                    mvp_ids=sponsor_reward_ids,
                 )
 
 
