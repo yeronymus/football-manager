@@ -42,9 +42,12 @@ async def test_get_my_profile_without_profile():
 @pytest.mark.asyncio
 async def test_register_user_without_initial_chat_profile():
     session = AsyncMock()
-    
-    # Mock user not existing yet
+
+    # Mock user not existing yet and empty chat_memberships query
     session.get.return_value = None
+    mock_exec_res = MagicMock()
+    mock_exec_res.scalars.return_value.all.return_value = []
+    session.execute.return_value = mock_exec_res
     
     data = {
         "name": "New Registered User",
