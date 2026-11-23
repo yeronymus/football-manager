@@ -639,6 +639,33 @@ window.closePopup = function() {
     document.body.style.overflow = '';
 }
 
+function syncAppLangBadge() {
+    const codeEl = document.getElementById('app-lang-code');
+    if (codeEl) {
+        const cur = (window.i18n && window.i18n.getLang ? window.i18n.getLang() : localStorage.getItem('webapp_lang')) || 'en';
+        codeEl.innerText = String(cur).toUpperCase();
+    }
+}
+
+window.toggleAppLang = async function() {
+    const order = ['en', 'ru', 'cs'];
+    const cur = (window.i18n && window.i18n.getLang ? window.i18n.getLang() : localStorage.getItem('webapp_lang')) || 'en';
+    const next = order[(order.indexOf(cur) + 1) % order.length] || 'en';
+    localStorage.setItem('webapp_lang', next);
+    if (window.i18n && window.i18n.setLanguage) {
+        await window.i18n.setLanguage(next);
+    }
+    syncAppLangBadge();
+    await loadCurrentTab();
+    const existingAd = document.getElementById('app-hub-ad-container');
+    if (existingAd && window.SponsorBanner) {
+        window.SponsorBanner.loadAndRender(
+            [{ el: existingAd, placement: 'app_hub' }],
+            { chatId: currentChatId, placement: 'app_hub', lang: next }
+        );
+    }
+};
+
 async function loadAd() {
     try {
         const lang = localStorage.getItem('webapp_lang') || 'en';
@@ -648,9 +675,13 @@ async function loadAd() {
 
         if (adRes.status === 'ok' && adRes.ad) {
             const ad = adRes.ad;
-            const adContainer = document.createElement('div');
-            adContainer.style.margin = '14px 16px';
-            document.body.insertBefore(adContainer, document.querySelector('.page-container'));
+            let adContainer = document.getElementById('app-hub-ad-container');
+            if (!adContainer) {
+                adContainer = document.createElement('div');
+                adContainer.id = 'app-hub-ad-container';
+                adContainer.style.margin = '14px 16px';
+                document.body.insertBefore(adContainer, document.querySelector('.page-container'));
+            }
             if (window.SponsorBanner) {
                 window.SponsorBanner.render(adContainer, ad, currentChatId, 'app_hub');
             }
@@ -661,6 +692,7 @@ async function loadAd() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    syncAppLangBadge();
     init();
     setTimeout(loadAd, 1500);
 });
