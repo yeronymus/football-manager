@@ -8,6 +8,7 @@ variables:
   POSTGRES_DB: test_db
   POSTGRES_USER: test_user
   POSTGRES_PASSWORD: test_password
+  POSTGRES_HOST_AUTH_METHOD: trust
   POSTGRES_HOST: postgres
   POSTGRES_PORT: 5432
   REDIS_HOST: redis
@@ -40,6 +41,7 @@ linting:
 integration_tests:
   stage: test
   image: python:3.12-slim
+  timeout: 15m
   services:
     - name: postgres:15-alpine
       alias: postgres
@@ -73,7 +75,7 @@ integration_tests:
       "
     - uv run alembic stamp head
     - uv run python scripts/health_check.py
-    - uv run pytest tests/
+    - PYTHONPATH=. uv run pytest tests/ -v --tb=short
   only:
     - merge_requests
     - main

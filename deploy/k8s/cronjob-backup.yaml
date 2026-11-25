@@ -26,6 +26,12 @@ spec:
           containers:
             - name: pg-backup
               image: postgres:15-alpine
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
               command:
                 - /bin/sh
                 - -c
@@ -43,7 +49,12 @@ spec:
               volumeMounts:
                 - name: backup-storage
                   mountPath: /backups
+                - name: tmp-dir
+                  mountPath: /tmp
           volumes:
             - name: backup-storage
               persistentVolumeClaim:
                 claimName: sports-manager-backups-pvc
+            - name: tmp-dir
+              emptyDir:
+                sizeLimit: 32Mi
