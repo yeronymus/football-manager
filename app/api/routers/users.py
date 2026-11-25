@@ -347,7 +347,7 @@ async def get_leaderboard(
             desc(func.coalesce(goals_sub.c.total_goals, 0)),
             User.full_name.asc(),
         )
-        .limit(100)
+        .limit(500)
     )
 
     result = []

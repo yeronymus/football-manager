@@ -108,7 +108,13 @@ window.jumpToMyLeaderboardRank = async function() {
 window.scrollToLeaderboardRank = function(uid) {
     const row = document.getElementById(`leaderboard-row-${uid}`);
     if (!row) return;
-    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    try {
+        const rect = row.getBoundingClientRect();
+        const targetTop = Math.max(0, (window.scrollY || window.pageYOffset || 0) + rect.top - (window.innerHeight / 2) + (rect.height / 2));
+        window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    } catch (e) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     row.classList.remove('rank-pulse');
     void row.offsetWidth;
     row.classList.add('rank-pulse');
@@ -264,6 +270,14 @@ window.switchTab = async function(tab, opts = {}) {
         console.error(e);
     } finally {
         if (loader) loader.style.display = 'none';
+    }
+
+    if (tab === 'leaderboard' && pendingLeaderboardHighlightUserId) {
+        const highlightTarget = pendingLeaderboardHighlightUserId;
+        pendingLeaderboardHighlightUserId = null;
+        requestAnimationFrame(() => {
+            setTimeout(() => window.scrollToLeaderboardRank(highlightTarget), 60);
+        });
     }
 }
 
@@ -640,12 +654,6 @@ async function renderLeaderboard(forceRefresh = false) {
 
     if (pages.leaderboard) {
         pages.leaderboard.innerHTML = `<h2>${t('leaderboard_title')}</h2>` + myRankBanner + listHtml;
-    }
-
-    const highlightTarget = pendingLeaderboardHighlightUserId;
-    if (highlightTarget) {
-        pendingLeaderboardHighlightUserId = null;
-        requestAnimationFrame(() => window.scrollToLeaderboardRank(highlightTarget));
     }
 }
 
