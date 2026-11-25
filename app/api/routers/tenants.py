@@ -201,14 +201,22 @@ async def update_group_settings(
         payload=update_data,
     )
     await session.commit()
+    norm_lang = normalize_locale_code(chat.language, default="en")
+    preset = get_sport_preset(getattr(chat, "sport_type", None))
     return {
         "status": "ok",
         "group": {
             "chat_id": chat.chat_id,
-            "language": normalize_locale_code(chat.language, default="en"),
+            "title": chat.title,
+            "is_active": chat.is_active,
+            "language": norm_lang,
             "currency": getattr(chat, "currency", None) or "CZK",
             "timezone": getattr(chat, "timezone", None) or "Europe/Prague",
-            "sport_type": getattr(chat, "sport_type", None) or "football",
+            "sport_type": preset.code,
+            "preset_icon": preset.icon,
+            "modules": resolve_effective_modules(chat),
+            "terminology": preset.localized_terminology(norm_lang),
+            "roles": preset.roles,
             "billing_mode": resolve_billing_mode(getattr(chat, "billing_mode", None)).value,
             "policy": resolve_tenant_policy(chat).model_dump(),
             "payment_info": chat.payment_info,
@@ -294,14 +302,22 @@ async def delete_game(
         logger.warning(f"Failed to cancel scheduler tasks for game {game_id}: {e}")
 
     try:
+        import asyncio
         from app.bot.main import bot
 
+        del_coros = []
         if game.chat_id and game.message_id:
-            await bot.delete_message(chat_id=game.chat_id, message_id=game.message_id)
+            del_coros.append(bot.delete_message(chat_id=game.chat_id, message_id=game.message_id))
         if game.chat_id and game.admin_message_id:
-            await bot.delete_message(chat_id=game.chat_id, message_id=game.admin_message_id)
+            del_coros.append(
+                bot.delete_message(chat_id=game.chat_id, message_id=game.admin_message_id)
+            )
         if game.chat_id and game.voting_message_id:
-            await bot.delete_message(chat_id=game.chat_id, message_id=game.voting_message_id)
+            del_coros.append(
+                bot.delete_message(chat_id=game.chat_id, message_id=game.voting_message_id)
+            )
+        if del_coros:
+            await asyncio.gather(*del_coros, return_exceptions=True)
     except Exception as e:
         logger.warning(f"Failed to delete telegram messages for deleted game {game_id}: {e}")
 

@@ -6,10 +6,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_user_from_header, verify_tenant_membership
 from app.config import settings
+from app.core.domain.sport_presets import get_sport_preset
+from app.core.domain.tenant_policy import resolve_effective_modules
+from app.core.i18n import normalize_locale_code
 from app.core.services.billing import resolve_game_billing
 from app.core.services.cache import cache_service
 from app.db.database import get_session
-from app.db.models import Chat, Game, GameStats, GameStatus, Signup, SignupStatus, Team, User
+from app.db.models import (
+    Chat,
+    Game,
+    GameStats,
+    GameStatus,
+    PlayerProfile,
+    Signup,
+    SignupStatus,
+    Team,
+    User,
+)
 
 router = APIRouter()
 
@@ -47,10 +60,14 @@ async def get_game_details(
             chat = maybe_chat
 
     result = await session.execute(
-        select(User, Signup, GameStats)
+        select(User, Signup, GameStats, PlayerProfile)
         .join(Signup, User.user_id == Signup.user_id)
         .outerjoin(
             GameStats, (GameStats.game_id == game_id) & (GameStats.user_id == User.user_id)
+        )
+        .outerjoin(
+            PlayerProfile,
+            (PlayerProfile.user_id == User.user_id) & (PlayerProfile.chat_id == game.chat_id),
         )
         .where(Signup.game_id == game_id)
         .where(Signup.status.in_([SignupStatus.ACTIVE, SignupStatus.RESERVE]))
@@ -59,14 +76,23 @@ async def get_game_details(
     players_data = result.all()
 
     def serialize_player(p_tuple):
-        user, signup, stats = p_tuple
+        if len(p_tuple) == 4:
+            user, signup, stats, prof = p_tuple
+        else:
+            user, signup, stats = p_tuple
+            prof = None
         eff_pos = signup.position if signup.position else user.player_position
+        eff_rating = (
+            prof.rating
+            if (prof is not None and getattr(prof, "rating", None) is not None)
+            else user.rating
+        )
 
         return {
             "id": user.user_id,
             "signup_id": signup.id,
             "name": user.full_name,
-            "rating": user.rating,
+            "rating": eff_rating,
             "position": eff_pos.value if eff_pos else "DEF",
             "original_position": user.player_position.value if user.player_position else "DEF",
             "alt_positions": user.alt_positions or [],
@@ -95,6 +121,10 @@ async def get_game_details(
 
     game_number = await get_group_game_number(session, game)
     billing = resolve_game_billing(game, chat=chat, game_number=game_number)
+    chat_lang = normalize_locale_code(getattr(chat, "language", None) if chat else None, default="en")
+    preset = get_sport_preset(getattr(chat, "sport_type", None) if chat else "football")
+    modules = resolve_effective_modules(chat)
+    terminology = preset.localized_terminology(chat_lang)
 
     response_data = {
         "id": game.id,
@@ -110,7 +140,15 @@ async def get_game_details(
         "iban": billing.iban,
         "variable_symbol": billing.variable_symbol,
         "spayd_payload": billing.spayd_payload,
-        "sport_type": (getattr(chat, "sport_type", None) if chat else None) or "football",
+        "sport_type": preset.code,
+        "preset_category": preset.category,
+        "preset_icon": preset.icon,
+        "preset_name": preset.localized_name(chat_lang),
+        "terminology": terminology,
+        "modules": modules,
+        "has_goalkeeper": preset.has_goalkeeper,
+        "roles": preset.roles,
+        "card_system_enabled": preset.card_system_enabled,
         "timezone": (getattr(chat, "timezone", None) if chat else None) or "Europe/Prague",
         "team_count": game.team_count,
         "gk_hours": game.gk_hours,

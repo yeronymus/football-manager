@@ -2,7 +2,7 @@ import logging
 from aiogram import Router, types
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.services.member_tracking import track_chat_member
+from app.core.services.member_tracking import sync_chat_admin_membership, track_chat_member
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,14 @@ async def on_chat_member_updated(
             full_name=tg_user.full_name,
             username=tg_user.username,
             status=member_status,
+        )
+        await sync_chat_admin_membership(
+            session=session,
+            chat_id=event.chat.id,
+            user_id=tg_user.id,
+            full_name=tg_user.full_name,
+            username=tg_user.username,
+            is_admin=(member_status == "administrator"),
         )
         logger.info(
             "Tracked chat_member update: chat=%s user=%s status=%s",

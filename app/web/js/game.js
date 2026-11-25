@@ -95,15 +95,26 @@ async function init() {
     }
 
     try {
-        // 1. Fetch game details first to get chat_id if not present in URL
+        // Fetch game details and (if chatId is already in URL) user profile in parallel
+        let profilePromise = chatId
+            ? fetchAPI(`/users/me/profile?chat_id=${chatId}`).catch(err => ({ _err: err }))
+            : null;
+
         currentGame = await fetchAPI(`/game/${gameId}`);
         if (currentGame && currentGame.chat_id) {
             chatId = currentGame.chat_id;
         }
 
-        // 2. Fetch User Profile to verify registration and load stats
         try {
-            currentUserProfile = await fetchAPI(`/users/me/profile?chat_id=${chatId}`);
+            if (profilePromise) {
+                const profRes = await profilePromise;
+                if (profRes && profRes._err) {
+                    throw profRes._err;
+                }
+                currentUserProfile = profRes;
+            } else {
+                currentUserProfile = await fetchAPI(`/users/me/profile?chat_id=${chatId}`);
+            }
             if (currentUserProfile && currentUserProfile.language && !urlParams.get('lang')) {
                 const userLang = String(currentUserProfile.language).toLowerCase();
                 if (window.i18n) {
@@ -112,7 +123,6 @@ async function init() {
             }
         } catch (profileError) {
             if (profileError.message === 'USER_NOT_REGISTERED') {
-                // Redirect user to register screen
                 let registerUrl = `/web/register.html?game_id=${gameId}`;
                 if (chatId) registerUrl += `&chat_id=${chatId}`;
                 if (window.i18n) registerUrl += `&lang=${window.i18n.currentLang}`;
@@ -122,13 +132,11 @@ async function init() {
             throw profileError;
         }
 
-        // 3. Render everything
+        // 3. Render everything immediately without waiting for secondary requests
         rerenderAll();
 
-        // 4. Load Ads
-        await loadAds();
-
-        // 5. Start Real-time Live Polling
+        // 4. Fire non-blocking background ad fetch + live SSE stream
+        loadAds();
         startLivePolling();
 
     } catch (e) {
@@ -185,11 +193,32 @@ window.copyGameIban = async function() {
     }
 };
 
+function getGameModules() {
+    return (currentGame && currentGame.modules) || {
+        roles_enabled: true,
+        team_draft_enabled: true,
+        score_tracking_enabled: true,
+        mvp_voting_enabled: true
+    };
+}
+
 function renderGameHeader() {
     const num = currentGame.game_number || currentGame.id;
     const t = window.i18n ? window.i18n.t : (k => k);
     const lang = (window.i18n && window.i18n.currentLang) || 'en';
-    document.getElementById('game-label').innerText = t('match_num', { num });
+    const mods = getGameModules();
+    const icon = currentGame.preset_icon || '⚽';
+    const sportCode = currentGame.sport_type || 'football';
+    const evNoun = (currentGame.terminology && currentGame.terminology.event_noun) || null;
+
+    const topBarTitle = document.getElementById('app-topbar-title');
+    if (topBarTitle && currentGame.preset_name) {
+        topBarTitle.innerText = `${icon} ${currentGame.preset_name}`;
+    }
+
+    document.getElementById('game-label').innerText = (sportCode !== 'football' && evNoun)
+        ? `${icon} ${evNoun} #${num}`
+        : t('match_num', { num });
     
     // Status
     const isFinished = currentGame.status === 'finished';
@@ -213,10 +242,31 @@ function renderGameHeader() {
     const tz = currentGame.timezone || 'Europe/Prague';
     document.getElementById('game-date').innerText = `📅 ${dt.toLocaleString(dateLocale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: tz })}`;
     
-    // Main players count for game format
+    // Format or Capacity
     const teamCount = currentGame.team_count || 2;
-    const formatCount = currentGame.main_players_count ? Math.round(currentGame.main_players_count / 2) : 11;
-    document.getElementById('game-format').innerText = teamCount > 2 ? `${formatCount}x${formatCount} (${teamCount}T)` : `${formatCount}x${formatCount}`;
+    const formatEl = document.getElementById('game-format');
+    const formatLblEl = formatEl && formatEl.previousElementSibling;
+    if (!mods.team_draft_enabled || teamCount <= 1 || sportCode !== 'football') {
+        if (formatLblEl && !mods.team_draft_enabled) formatLblEl.innerText = t('event_capacity_label');
+        if (!mods.team_draft_enabled || teamCount <= 1) {
+            formatEl.innerText = `👥 ${currentGame.max_players}`;
+        } else if (currentGame.preset_category === 'sport') {
+            const formatCount = currentGame.main_players_count ? Math.round(currentGame.main_players_count / teamCount) : 5;
+            formatEl.innerText = `${formatCount}x${formatCount}`;
+        } else {
+            const grpNoun = (currentGame.terminology && currentGame.terminology.grouping_noun) || 'Groups';
+            formatEl.innerText = `${teamCount} ${grpNoun} • 👥 ${currentGame.max_players}`;
+        }
+    } else {
+        const formatCount = currentGame.main_players_count ? Math.round(currentGame.main_players_count / 2) : 11;
+        formatEl.innerText = teamCount > 2 ? `${formatCount}x${formatCount} (${teamCount}T)` : `${formatCount}x${formatCount}`;
+    }
+
+    const priceEl = document.getElementById('game-price');
+    const priceLblEl = priceEl && priceEl.previousElementSibling;
+    if (priceLblEl && sportCode !== 'football') {
+        priceLblEl.innerText = t('event_fee_label');
+    }
 
     // Billing & QR Platba (ADR-05)
     const isFreeCorporate = currentGame.billing_mode === 'free_corporate' || currentGame.is_free;
@@ -254,12 +304,15 @@ function renderStatusInfo() {
     const descText = document.getElementById('status-info-desc');
     const titleText = document.getElementById('status-info-title');
     const t = window.i18n ? window.i18n.t : (k => k);
+    const mods = getGameModules();
     
     let showCard = false;
     
     // Match closed status
     if (currentGame.status === 'finished') {
-        descText.innerText = t('match_finished_notice', { score_a: currentGame.score_a || 0, score_b: currentGame.score_b || 0 });
+        descText.innerText = mods.score_tracking_enabled
+            ? t('match_finished_notice', { score_a: currentGame.score_a || 0, score_b: currentGame.score_b || 0 })
+            : t('event_finished_notice');
         titleText.style.color = '#ef4444';
         titleText.innerText = t('status_finished');
         statusCard.style.background = 'rgba(244,67,54,0.05)';
@@ -273,6 +326,9 @@ function renderStatusInfo() {
 function renderAchievements() {
     if (!currentUserProfile) return;
     const t = window.i18n ? window.i18n.t : (k => k);
+    const mods = getGameModules();
+    const icon = (currentGame && currentGame.preset_icon) || '⚽';
+    const isNonSport = currentGame && currentGame.preset_category && currentGame.preset_category !== 'sport';
 
     // 1. Veteran
     const games = currentUserProfile.games_played || 0;
@@ -285,72 +341,80 @@ function renderAchievements() {
         vetCard.classList.add('unlocked');
         vetIcon.innerText = '👑';
         vetTitle.innerText = t('ach_veteran_legend');
-        vetDesc.innerText = t('ach_veteran_desc_n', { count: games });
+        vetDesc.innerText = isNonSport ? t('leaderboard_events_only', { games }) : t('ach_veteran_desc_n', { count: games });
     } else if (games >= 10) {
         vetCard.classList.add('unlocked');
         vetIcon.innerText = '🏆';
         vetTitle.innerText = t('ach_veteran_exp');
-        vetDesc.innerText = t('ach_veteran_desc_n', { count: games });
+        vetDesc.innerText = isNonSport ? t('leaderboard_events_only', { games }) : t('ach_veteran_desc_n', { count: games });
     } else if (games >= 1) {
         vetCard.classList.add('unlocked');
         vetIcon.innerText = '⚔️';
         vetTitle.innerText = t('ach_veteran_default');
-        vetDesc.innerText = t('ach_veteran_desc_n', { count: games });
+        vetDesc.innerText = isNonSport ? t('leaderboard_events_only', { games }) : t('ach_veteran_desc_n', { count: games });
     } else {
         vetCard.classList.remove('unlocked');
         vetTitle.innerText = t('ach_veteran_title');
-        vetDesc.innerText = t('ach_veteran_desc_0');
+        vetDesc.innerText = isNonSport ? t('leaderboard_events_only', { games: 0 }) : t('ach_veteran_desc_0');
     }
 
-    // 2. Goleador / Striker
-    const goals = currentUserProfile.total_goals || 0;
+    // 2. Goleador / Striker (only when score_tracking_enabled is true)
     const golCard = document.getElementById('ach-goleador');
-    const golIcon = document.getElementById('ach-goleador-icon');
-    const golTitle = document.getElementById('ach-goleador-title');
-    const golDesc = document.getElementById('ach-goleador-desc');
-    
-    if (goals >= 50) {
-        golCard.classList.add('unlocked');
-        golIcon.innerText = '👑';
-        golTitle.innerText = t('ach_striker_golden');
-        golDesc.innerText = t('ach_striker_desc_n', { count: goals });
-    } else if (goals >= 10) {
-        golCard.classList.add('unlocked');
-        golIcon.innerText = '🏆';
-        golTitle.innerText = t('ach_striker_super');
-        golDesc.innerText = t('ach_striker_desc_n', { count: goals });
-    } else if (goals >= 1) {
-        golCard.classList.add('unlocked');
-        golIcon.innerText = '🥅';
-        golTitle.innerText = t('ach_striker_first');
-        golDesc.innerText = t('ach_striker_desc_n', { count: goals });
-    } else {
-        golCard.classList.remove('unlocked');
-        golTitle.innerText = t('ach_striker_title');
-        golDesc.innerText = t('ach_striker_desc_0');
+    if (golCard) {
+        golCard.style.display = mods.score_tracking_enabled ? 'flex' : 'none';
+    }
+    if (mods.score_tracking_enabled) {
+        const goals = currentUserProfile.total_goals || 0;
+        const golIcon = document.getElementById('ach-goleador-icon');
+        const golTitle = document.getElementById('ach-goleador-title');
+        const golDesc = document.getElementById('ach-goleador-desc');
+        if (goals >= 50) {
+            golCard.classList.add('unlocked');
+            golIcon.innerText = '👑';
+            golTitle.innerText = t('ach_striker_golden');
+            golDesc.innerText = t('ach_striker_desc_n', { count: goals });
+        } else if (goals >= 10) {
+            golCard.classList.add('unlocked');
+            golIcon.innerText = '🏆';
+            golTitle.innerText = t('ach_striker_super');
+            golDesc.innerText = t('ach_striker_desc_n', { count: goals });
+        } else if (goals >= 1) {
+            golCard.classList.add('unlocked');
+            golIcon.innerText = icon;
+            golTitle.innerText = t('ach_striker_first');
+            golDesc.innerText = t('ach_striker_desc_n', { count: goals });
+        } else {
+            golCard.classList.remove('unlocked');
+            golTitle.innerText = t('ach_striker_title');
+            golDesc.innerText = t('ach_striker_desc_0');
+        }
     }
 
-    // 3. MVP
-    const mvps = currentUserProfile.mvp_count || 0;
+    // 3. MVP (only when mvp_voting_enabled is true)
     const mvpCard = document.getElementById('ach-mvp');
-    const mvpIcon = document.getElementById('ach-mvp-icon');
-    const mvpTitle = document.getElementById('ach-mvp-title');
-    const mvpDesc = document.getElementById('ach-mvp-desc');
-    
-    if (mvps >= 5) {
-        mvpCard.classList.add('unlocked');
-        mvpIcon.innerText = '👑';
-        mvpTitle.innerText = t('ach_mvp_star');
-        mvpDesc.innerText = t('ach_mvp_desc_n', { count: mvps });
-    } else if (mvps >= 1) {
-        mvpCard.classList.add('unlocked');
-        mvpIcon.innerText = '🌟';
-        mvpTitle.innerText = t('ach_mvp_top');
-        mvpDesc.innerText = t('ach_mvp_desc_n', { count: mvps });
-    } else {
-        mvpCard.classList.remove('unlocked');
-        mvpTitle.innerText = t('ach_mvp_title');
-        mvpDesc.innerText = t('ach_mvp_desc_0');
+    if (mvpCard) {
+        mvpCard.style.display = mods.mvp_voting_enabled ? 'flex' : 'none';
+    }
+    if (mods.mvp_voting_enabled) {
+        const mvps = currentUserProfile.mvp_count || 0;
+        const mvpIcon = document.getElementById('ach-mvp-icon');
+        const mvpTitle = document.getElementById('ach-mvp-title');
+        const mvpDesc = document.getElementById('ach-mvp-desc');
+        if (mvps >= 5) {
+            mvpCard.classList.add('unlocked');
+            mvpIcon.innerText = '👑';
+            mvpTitle.innerText = t('ach_mvp_star');
+            mvpDesc.innerText = t('ach_mvp_desc_n', { count: mvps });
+        } else if (mvps >= 1) {
+            mvpCard.classList.add('unlocked');
+            mvpIcon.innerText = '🌟';
+            mvpTitle.innerText = t('ach_mvp_top');
+            mvpDesc.innerText = t('ach_mvp_desc_n', { count: mvps });
+        } else {
+            mvpCard.classList.remove('unlocked');
+            mvpTitle.innerText = t('ach_mvp_title');
+            mvpDesc.innerText = t('ach_mvp_desc_0');
+        }
     }
 
     // 4. Rating (MMR)
@@ -371,7 +435,7 @@ function renderAchievements() {
         ratIcon.innerText = '🦾';
         ratTitle.innerText = t('ach_rating_master');
     } else {
-        ratIcon.innerText = '⚽';
+        ratIcon.innerText = icon;
         ratTitle.innerText = t('ach_rating_private');
     }
     ratDesc.innerText = t('ach_rating_desc', { rating });
@@ -379,6 +443,8 @@ function renderAchievements() {
 
 function renderRosters() {
     const t = window.i18n ? window.i18n.t : (k => k);
+    const mods = getGameModules();
+    const showRoles = Boolean(mods.roles_enabled);
     let activePlayers = [];
     
     if (currentGame.team_a) activePlayers = activePlayers.concat(currentGame.team_a);
@@ -414,10 +480,10 @@ function renderRosters() {
                         <span class="player-rank">${idx + 1}</span>
                         <div>
                             <span style="font-weight:600; font-size:15px;">${p.name} ${isMe ? youTag : ''}</span>
-                            <div style="margin-top:2px; display:flex; gap:6px; align-items:center;">
-                                <span class="player-pos-badge">${p.position}</span>
+                            ${(showRoles || p.is_paid) ? `<div style="margin-top:2px; display:flex; gap:6px; align-items:center;">
+                                ${showRoles ? `<span class="player-pos-badge">${p.position}</span>` : ''}
                                 ${p.is_paid ? paidTag : ''}
-                            </div>
+                            </div>` : ''}
                         </div>
                     </div>
                     <span class="player-rating">${p.rating}</span>
@@ -445,7 +511,7 @@ function renderRosters() {
                         <span class="player-rank" style="color:#ff9800">${idx + 1}</span>
                         <div>
                             <span style="font-weight:600; font-size:15px;">${p.name} ${isMe ? youTag : ''}</span>
-                            <div style="margin-top:2px;"><span class="player-pos-badge">${p.position}</span></div>
+                            ${showRoles ? `<div style="margin-top:2px;"><span class="player-pos-badge">${p.position}</span></div>` : ''}
                         </div>
                     </div>
                     <span class="player-rating" style="color:#ff9800">${p.rating}</span>
@@ -462,13 +528,15 @@ function setupActionButtons() {
     const actionBtn = document.getElementById('action-btn');
     const leaveBtn = document.getElementById('leave-btn');
     const t = window.i18n ? window.i18n.t : (k => k);
+    const isFootball = !currentGame.sport_type || currentGame.sport_type === 'football';
+    const icon = currentGame.preset_icon || '⚽';
 
     // Check if game is open/active
     const isFinished = currentGame.status === 'finished';
     if (isFinished) {
         actionBtn.disabled = true;
         actionBtn.style.opacity = 0.5;
-        actionBtn.innerHTML = `<span>${t('btn_match_finished')}</span>`;
+        actionBtn.innerHTML = `<span>${isFootball ? t('btn_match_finished') : t('btn_event_finished')}</span>`;
         leaveBtn.style.display = 'none';
         return;
     }
@@ -499,7 +567,7 @@ function setupActionButtons() {
             : `<span>${t('btn_in_active')}</span>`;
         
         leaveBtn.style.display = 'flex';
-        leaveBtn.innerHTML = `<span>${t('btn_leave_game')}</span>`;
+        leaveBtn.innerHTML = `<span>${isFootball ? t('btn_leave_game') : t('btn_leave_generic')}</span>`;
         leaveBtn.onclick = handleLeave;
     } else {
         // Determine whether user will join active or reserve
@@ -515,8 +583,8 @@ function setupActionButtons() {
         actionBtn.style.background = willBeReserve ? '#ff9800' : 'var(--accent-color)';
         actionBtn.style.boxShadow = willBeReserve ? '0 8px 20px rgba(255,152,0,0.3)' : '0 8px 20px rgba(56,189,248,0.3)';
         actionBtn.innerHTML = willBeReserve
-            ? `<span>${t('btn_join_reserve')}</span>`
-            : `<span>${t('btn_join_game')}</span>`;
+            ? `<span>${isFootball ? t('btn_join_reserve') : `⏳ ${t('btn_join_reserve_generic')}`}</span>`
+            : `<span>${isFootball ? t('btn_join_game') : `${icon} ${t('btn_join_generic')}`}</span>`;
         actionBtn.onclick = handleJoin;
         
         leaveBtn.style.display = 'none';

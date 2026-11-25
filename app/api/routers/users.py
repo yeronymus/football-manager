@@ -9,9 +9,15 @@ from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_user_from_header
-from app.core.domain.tenant_policy import resolve_billing_mode, resolve_tenant_policy
+from app.core.domain.sport_presets import get_sport_preset
+from app.core.domain.tenant_policy import (
+    resolve_billing_mode,
+    resolve_effective_modules,
+    resolve_tenant_policy,
+)
 from app.core.i18n import normalize_locale_code
 from app.core.repositories.user_repository import UserRepository
+from app.core.services.cache import cache_service
 from app.db.database import get_session
 from app.db.models import (
     Chat,
@@ -37,6 +43,14 @@ async def get_chat_admins(
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session),
 ):
+    cache_key = f"chat_admins_tg:{chat_id}"
+    try:
+        cached = await cache_service.get(cache_key)
+        if isinstance(cached, list):
+            return cached
+    except Exception:
+        pass
+
     try:
         from app.bot.instance import bot
 
@@ -61,6 +75,10 @@ async def get_chat_admins(
                         "username": username,
                     }
                 )
+        try:
+            await cache_service.set(cache_key, result, ttl=120)
+        except Exception:
+            pass
         return result
     except Exception as e:
         logger.error(f"Failed to fetch admins: {e}")
@@ -111,32 +129,51 @@ async def get_chats(
     result = await session.execute(stmt)
     chats = result.scalars().all()
 
-    return [
-        {
-            "id": c.chat_id,
-            "chat_id": c.chat_id,
-            "title": c.title,
-            "type": getattr(c, "chat_type", "supergroup"),
-            "is_active": c.is_active,
-            "language": normalize_locale_code(c.language, default="en"),
-            "currency": getattr(c, "currency", None) or "CZK",
-            "timezone": getattr(c, "timezone", None) or "Europe/Prague",
-            "sport_type": getattr(c, "sport_type", None) or "football",
-            "billing_mode": resolve_billing_mode(getattr(c, "billing_mode", None)).value,
-            "policy": resolve_tenant_policy(c).model_dump(),
-            "payment_info": c.payment_info,
-            "default_location": c.default_location,
-            "default_price": c.default_price,
-            "default_team_count": c.default_team_count,
-            "default_max_players": c.default_max_players,
-            "default_main_players_count": c.default_main_players_count,
-            "default_duration": c.default_duration,
-            "default_gk_hours": c.default_gk_hours,
-            "default_registration_hours": c.default_registration_hours,
-            "default_signup_limit": c.default_signup_limit,
-        }
-        for c in chats
-    ]
+    out = []
+    for c in chats:
+        norm_lang = normalize_locale_code(c.language, default="en")
+        sport_code = (
+            c.sport_type
+            if isinstance(getattr(c, "sport_type", None), str)
+            else "football"
+        )
+        preset = get_sport_preset(sport_code)
+        modules = resolve_effective_modules(c)
+        terminology = preset.localized_terminology(norm_lang)
+        out.append(
+            {
+                "id": c.chat_id,
+                "chat_id": c.chat_id,
+                "title": c.title,
+                "type": getattr(c, "chat_type", "supergroup"),
+                "is_active": c.is_active,
+                "language": norm_lang,
+                "currency": getattr(c, "currency", None) or "CZK",
+                "timezone": getattr(c, "timezone", None) or "Europe/Prague",
+                "sport_type": preset.code,
+                "preset_category": preset.category,
+                "preset_icon": preset.icon,
+                "preset_name": preset.localized_name(norm_lang),
+                "modules": modules,
+                "terminology": terminology,
+                "roles": preset.roles,
+                "has_goalkeeper": preset.has_goalkeeper,
+                "card_system_enabled": preset.card_system_enabled,
+                "billing_mode": resolve_billing_mode(getattr(c, "billing_mode", None)).value,
+                "policy": resolve_tenant_policy(c).model_dump(),
+                "payment_info": c.payment_info,
+                "default_location": c.default_location,
+                "default_price": c.default_price,
+                "default_team_count": c.default_team_count,
+                "default_max_players": c.default_max_players,
+                "default_main_players_count": c.default_main_players_count,
+                "default_duration": c.default_duration,
+                "default_gk_hours": c.default_gk_hours,
+                "default_registration_hours": c.default_registration_hours,
+                "default_signup_limit": c.default_signup_limit,
+            }
+        )
+    return out
 
 
 @router.get("/users/search")

@@ -52,6 +52,58 @@ async function loadGroups() {
     }
 }
 
+function resolveGroupPresetModules(group) {
+    const sportType = (group && group.sport_type) || 'football';
+    if (group && group.modules) return group.modules;
+    const isNonScorePreset = ['trip', 'book_club', 'board_games', 'generic'].includes(sportType);
+    const modOverrides = (group && group.policy && group.policy.enabled_modules) || {};
+    return {
+        roles_enabled: modOverrides.roles_enabled !== undefined ? Boolean(modOverrides.roles_enabled) : !['book_club', 'board_games', 'padel'].includes(sportType),
+        team_draft_enabled: modOverrides.team_draft_enabled !== undefined ? Boolean(modOverrides.team_draft_enabled) : (sportType !== 'book_club'),
+        score_tracking_enabled: modOverrides.score_tracking_enabled !== undefined ? Boolean(modOverrides.score_tracking_enabled) : !isNonScorePreset,
+        mvp_voting_enabled: modOverrides.mvp_voting_enabled !== undefined ? Boolean(modOverrides.mvp_voting_enabled) : !['trip', 'book_club', 'padel'].includes(sportType),
+    };
+}
+
+function applyGroupPresetUI(group) {
+    if (!group) return;
+    const mods = resolveGroupPresetModules(group);
+    const modRolesEl = document.getElementById('mod-roles');
+    if (modRolesEl) modRolesEl.checked = Boolean(mods.roles_enabled);
+    const modDraftEl = document.getElementById('mod-draft');
+    if (modDraftEl) modDraftEl.checked = Boolean(mods.team_draft_enabled);
+    const modScoreEl = document.getElementById('mod-score');
+    if (modScoreEl) modScoreEl.checked = Boolean(mods.score_tracking_enabled);
+    const modVotingEl = document.getElementById('mod-voting');
+    if (modVotingEl) modVotingEl.checked = Boolean(mods.mvp_voting_enabled);
+
+    const gamesTabBtn = document.getElementById('tab-group-games');
+    const icon = group.preset_icon || '⚽';
+    if (gamesTabBtn) {
+        const span = gamesTabBtn.querySelector('span');
+        const evNoun = group.terminology && group.terminology.event_noun;
+        gamesTabBtn.childNodes.forEach(n => {
+            if (n.nodeType === Node.TEXT_NODE && n.textContent.trim()) {
+                n.textContent = `${icon} `;
+            }
+        });
+        if (span && evNoun && group.sport_type && group.sport_type !== 'football') {
+            span.textContent = evNoun;
+        }
+    }
+
+    const enterScoreBtn = document.getElementById('btn-enter-score');
+    if (enterScoreBtn) enterScoreBtn.style.display = mods.score_tracking_enabled ? '' : 'none';
+    const settleBtn = document.getElementById('btn-settle-event');
+    if (settleBtn) settleBtn.style.display = mods.score_tracking_enabled ? 'none' : '';
+    const draftBtn = document.getElementById('btn-manage-draft');
+    if (draftBtn) draftBtn.style.display = mods.team_draft_enabled ? '' : 'none';
+    const voteBtn = document.getElementById('btn-trigger-voting');
+    if (voteBtn) voteBtn.style.display = mods.mvp_voting_enabled ? '' : 'none';
+    const mvpTab = document.getElementById('tab-mvp');
+    if (mvpTab) mvpTab.style.display = mods.mvp_voting_enabled ? '' : 'none';
+}
+
 async function loadGroupGames(group) {
     currentGroupId = group.chat_id;
     switchView('view-group');
@@ -101,17 +153,7 @@ async function loadGroupGames(group) {
     const msEl = document.getElementById('setting-multisport-discount');
     if (msEl) msEl.value = (group.policy && group.policy.multisport_discount_amount !== undefined) ? group.policy.multisport_discount_amount : 150;
 
-    const nonScorePresets = ['trip', 'book_club', 'board_games', 'generic'];
-    const isNonScorePreset = nonScorePresets.includes(sportType);
-    const modOverrides = (group.policy && group.policy.enabled_modules) || {};
-    const modRolesEl = document.getElementById('mod-roles');
-    if (modRolesEl) modRolesEl.checked = modOverrides.roles_enabled !== undefined ? Boolean(modOverrides.roles_enabled) : !['book_club', 'board_games', 'padel'].includes(sportType);
-    const modDraftEl = document.getElementById('mod-draft');
-    if (modDraftEl) modDraftEl.checked = modOverrides.team_draft_enabled !== undefined ? Boolean(modOverrides.team_draft_enabled) : (sportType !== 'book_club');
-    const modScoreEl = document.getElementById('mod-score');
-    if (modScoreEl) modScoreEl.checked = modOverrides.score_tracking_enabled !== undefined ? Boolean(modOverrides.score_tracking_enabled) : !isNonScorePreset;
-    const modVotingEl = document.getElementById('mod-voting');
-    if (modVotingEl) modVotingEl.checked = modOverrides.mvp_voting_enabled !== undefined ? Boolean(modOverrides.mvp_voting_enabled) : !['trip', 'book_club', 'padel'].includes(sportType);
+    applyGroupPresetUI(group);
 
     applyBillingModeSettingsUI(billingMode, currency);
     
@@ -192,6 +234,9 @@ async function loadGameDetails(gameId) {
         currentGameData = game;
 
         const activeGroupObj = groupsCache.find(g => String(g.chat_id) === String(currentGroupId));
+        if (activeGroupObj) {
+            applyGroupPresetUI(activeGroupObj);
+        }
         const isFreeCorporate = (activeGroupObj && activeGroupObj.billing_mode === 'free_corporate') || (game.price === 0 && !game.payment_info && activeGroupObj?.billing_mode === 'free_corporate');
 
         const paidCount = game.players.filter(p => p.is_paid).length;

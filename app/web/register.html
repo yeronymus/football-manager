@@ -77,9 +77,9 @@
                 <input type="text" id="full-name" placeholder="E.g. David Beckham">
             </div>
 
-            <div class="input-group">
-                <label class="input-label">Основная позиция</label>
-                <div class="position-grid">
+            <div class="input-group" id="primary-pos-group">
+                <label class="input-label">Основная позиция / Роль</label>
+                <div class="position-grid" id="primary-pos-grid">
                     <button class="pos-btn" onclick="setPos('GK')">GK</button>
                     <button class="pos-btn" onclick="setPos('CB')">CB</button>
                     <button class="pos-btn" onclick="setPos('LB')">LB</button>
@@ -93,7 +93,7 @@
                 </div>
             </div>
 
-            <div class="input-group">
+            <div class="input-group" id="alt-pos-group">
                 <label class="input-label">Дополнительные позиции (до двух)</label>
                 <div class="position-grid" id="alt-pos-grid">
                     <button class="pos-btn alt-pos-btn" onclick="toggleAltPos('GK', this)">GK</button>

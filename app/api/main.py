@@ -119,6 +119,20 @@ app = FastAPI(
 Instrumentator().instrument(app).expose(app, include_in_schema=False)
 
 
+_STATIC_ASSET_EXTS = (
+    ".js",
+    ".css",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".svg",
+    ".woff",
+    ".woff2",
+    ".ico",
+)
+
+
 @app.middleware("http")
 async def add_no_cache_and_rate_limit(request: Request, call_next):
     if request.url.path.startswith("/api/"):
@@ -134,9 +148,14 @@ async def add_no_cache_and_rate_limit(request: Request, call_next):
 
     response = await call_next(request)
     if request.url.path.startswith("/web"):
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
+        path_lower = request.url.path.lower()
+        if path_lower.endswith(_STATIC_ASSET_EXTS):
+            # Static JS/CSS/images use ?v=... cache-busting query params and can be cached aggressively
+            response.headers["Cache-Control"] = "public, max-age=604800"
+        else:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
     return response
 
 

@@ -66,9 +66,12 @@ async def notify_game_live_subscribers(game_id: int, publish_redis: bool = True)
     new_ver = await _wake_local_subscribers(game_id)
     if publish_redis and getattr(cache_service, "redis", None) is not None:
         try:
-            await cache_service.redis.publish(
-                f"live:game:{game_id}",
-                json.dumps({"type": "update", "game_id": game_id, "version": new_ver}),
+            await asyncio.wait_for(
+                cache_service.redis.publish(
+                    f"live:game:{game_id}",
+                    json.dumps({"type": "update", "game_id": game_id, "version": new_ver}),
+                ),
+                timeout=0.8,
             )
         except Exception:
             pass

@@ -4,7 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import t
-from app.core.domain.tenant_policy import BillingMode, resolve_billing_mode
+from app.core.domain.sport_presets import SportPreset, get_sport_preset
+from app.core.domain.tenant_policy import BillingMode, resolve_billing_mode, resolve_effective_modules
 from app.core.i18n import normalize_locale_code
 from app.db.models import Chat, Game, GameStatus, Signup, SignupStatus, Team, User
 
@@ -62,7 +63,14 @@ def _format_date(game_date_time, lang: str = "en") -> str:
 from app.core.services.game_numbering import get_group_game_number  # noqa: F401
 
 
-def _format_header_section(game, date_str: str, game_number: int = None, lang: str = "en") -> str:
+def _format_header_section(
+    game,
+    date_str: str,
+    game_number: int = None,
+    lang: str = "en",
+    preset: SportPreset | None = None,
+    modules: dict | None = None,
+) -> str:
     game_type_val = (
         game.game_type.value if hasattr(game.game_type, "value") else str(game.game_type or "")
     ).lower()
@@ -74,9 +82,23 @@ def _format_header_section(game, date_str: str, game_number: int = None, lang: s
     team_count = getattr(game, "team_count", 2) or 2
     per_side = mpc // team_count
     team_format = "x".join([str(per_side)] * team_count) if team_count == 2 else f"{per_side}x{per_side}"
+    duration_str = f" 🕒 {t('duration_hours', locale=lang, duration=duration_val)}" if duration_val else ""
+
+    if preset and preset.code != "football":
+        terms = preset.localized_terminology(lang)
+        eff_mods = modules or preset.resolve_modules()
+        text = f"{preset.icon} <b>{html.escape(terms['event_noun'])} {num_str}</b>\n"
+        if not eff_mods.get("team_draft_enabled", True) or team_count <= 1:
+            text += f"👥 <b>{game.max_players}</b>\n"
+        elif preset.category == "sport":
+            text += f"{t('format_label', locale=lang, format=team_format, needed=game.max_players)}\n"
+        else:
+            text += f"⚖️ <b>{html.escape(terms['grouping_noun'])}: {team_count}</b> • 👥 {game.max_players}\n"
+        text += f"📅 <b>{date_str}{duration_str}</b>\n"
+        text += f"📍 <b>{html.escape(game.location)}</b>\n"
+        return text
 
     type_label = t("game_type_draft" if is_draft else "game_type_regular", locale=lang)
-    duration_str = f" 🕒 {t('duration_hours', locale=lang, duration=duration_val)}" if duration_val else ""
     text = f"{type_label} <b>{num_str}</b>\n"
     text += f"{t('format_label', locale=lang, format=team_format, needed=game.max_players)}\n"
     text += f"📅 <b>{date_str}{duration_str}</b>\n"
@@ -84,12 +106,36 @@ def _format_header_section(game, date_str: str, game_number: int = None, lang: s
     return text
 
 
-def _format_single_team(game, signups, team_enum, team_name, needed_gk, lang: str = "en") -> str:
+def _format_single_team(
+    game,
+    signups,
+    team_enum,
+    team_name,
+    needed_gk,
+    lang: str = "en",
+    preset: SportPreset | None = None,
+    modules: dict | None = None,
+) -> str:
     text = ""
     t_players = [
         (s, u) for (s, u) in signups if s.status == SignupStatus.ACTIVE and s.team == team_enum
     ]
     text += f"{team_name} ({len(t_players)}):\n"
+
+    roles_enabled = True if modules is None else bool(modules.get("roles_enabled", True))
+    use_football_buckets = (
+        roles_enabled and (preset is None or preset.code in ("football", "futsal"))
+    )
+
+    if not use_football_buckets:
+        for idx, (signup, user) in enumerate(t_players, 1):
+            role_suffix = f" <i>{format_positions(user, signup)}</i>" if roles_enabled else ""
+            text += (
+                f'{idx}. <a href="tg://user?id={user.user_id}">'
+                f"{html.escape(user.full_name)}</a>{role_suffix}\n"
+            )
+        text += "\n"
+        return text
 
     groups = {"GK": [], "DEF": [], "MID": [], "FWD": [], "SUB": []}
     for s, u in t_players:
@@ -145,20 +191,32 @@ def _format_single_team(game, signups, team_enum, team_name, needed_gk, lang: st
                 sub_printed = True
             team_counter += 1
 
-    if not has_gk and needed_gk:
+    allow_gk_warning = preset is None or preset.has_goalkeeper
+    if allow_gk_warning and not has_gk and needed_gk:
         text += gk_field_marker
     text += "\n"
     return text
 
 
-def _format_teams_section(game, signups, lang: str = "en") -> str:
+def _format_teams_section(
+    game,
+    signups,
+    lang: str = "en",
+    preset: SportPreset | None = None,
+    modules: dict | None = None,
+) -> str:
     text = ""
     team_map = {0: Team.A, 1: Team.B, 2: Team.C}
-    team_names = [
-        t("team_a_name", locale=lang),
-        t("team_b_name", locale=lang),
-        t("team_c_name", locale=lang),
-    ]
+    if preset and preset.category != "sport":
+        terms = preset.localized_terminology(lang)
+        grp_lbl = html.escape(terms["grouping_noun"])
+        team_names = [f"🟠 <b>{grp_lbl} A</b>", f"🟢 <b>{grp_lbl} B</b>", f"🔵 <b>{grp_lbl} C</b>"]
+    else:
+        team_names = [
+            t("team_a_name", locale=lang),
+            t("team_b_name", locale=lang),
+            t("team_c_name", locale=lang),
+        ]
 
     team_gk_flags = [
         game.has_active_gk_a,
@@ -166,51 +224,70 @@ def _format_teams_section(game, signups, lang: str = "en") -> str:
         getattr(game, "has_active_gk_c", True),
     ]
     count = game.team_count if game.team_count else 2
+    roles_enabled = True if modules is None else bool(modules.get("roles_enabled", True))
 
     for i in range(count):
         team_enum = team_map.get(i)
         if not team_enum:
             continue
-        t_name = team_names[i] if i < len(team_names) else f"Team {i + 1}"
+        t_name = team_names[i] if i < len(team_names) else f"Group {i + 1}"
         needed_gk = team_gk_flags[i] if i < len(team_gk_flags) else True
-        text += _format_single_team(game, signups, team_enum, t_name, needed_gk, lang=lang)
+        text += _format_single_team(
+            game, signups, team_enum, t_name, needed_gk, lang=lang, preset=preset, modules=modules
+        )
 
     unassigned = [s for s in signups if s[0].status == SignupStatus.ACTIVE and s[0].team is None]
     if unassigned:
         text += f"{t('unassigned_header', locale=lang, count=len(unassigned))}\n"
         for i, (signup, user) in enumerate(unassigned, 1):
+            role_suffix = f" <i>{format_positions(user, signup)}</i>" if roles_enabled else ""
             text += (
                 f'{i}. <a href="tg://user?id={user.user_id}">'
-                f"{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
+                f"{html.escape(user.full_name)}</a>{role_suffix}\n"
             )
     return text
 
 
-def _format_players_section(game, active_players, lang: str = "en") -> str:
+def _format_players_section(
+    game,
+    active_players,
+    lang: str = "en",
+    preset: SportPreset | None = None,
+    modules: dict | None = None,
+) -> str:
     limit = game.max_players
-    header = f"{t('players_header', locale=lang, count=len(active_players), limit=limit)}\n"
+    roles_enabled = True if modules is None else bool(modules.get("roles_enabled", True))
+    if preset and preset.code != "football":
+        terms = preset.localized_terminology(lang)
+        header = f"{preset.icon} <b>{html.escape(terms['participant_noun'])} ({len(active_players)}/{limit}):</b>\n"
+    else:
+        header = f"{t('players_header', locale=lang, count=len(active_players), limit=limit)}\n"
     text = header
 
     if active_players:
         for i, (signup, user) in enumerate(active_players, 1):
+            role_suffix = f" <i>{format_positions(user, signup)}</i>" if roles_enabled else ""
             text += (
                 f'{i}. <a href="tg://user?id={user.user_id}">'
-                f"{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
+                f"{html.escape(user.full_name)}</a>{role_suffix}\n"
             )
     else:
         text += f"\n{t('empty_roster', locale=lang)}\n"
     return text
 
 
-def _format_reserve_section(reserve_players, lang: str = "en") -> str:
+def _format_reserve_section(
+    reserve_players, lang: str = "en", show_roles: bool = True
+) -> str:
     text = ""
     if reserve_players:
         header = f"\n{t('reserve_header', locale=lang, count=len(reserve_players))}\n"
         text += header
         for i, (signup, user) in enumerate(reserve_players, 1):
+            role_suffix = f" <i>{format_positions(user, signup)}</i>" if show_roles else ""
             text += (
                 f'{i}. <a href="tg://user?id={user.user_id}">'
-                f"{html.escape(user.full_name)}</a> <i>{format_positions(user, signup)}</i>\n"
+                f"{html.escape(user.full_name)}</a>{role_suffix}\n"
             )
     return text
 
@@ -299,6 +376,10 @@ async def format_game_message(
     else:
         lang = normalize_locale_code(lang, default="en")
 
+    preset = get_sport_preset(getattr(chat, "sport_type", None) if chat else "football")
+    modules = resolve_effective_modules(chat)
+    roles_enabled = bool(modules.get("roles_enabled", True))
+
     if signups is None:
         result = await session.execute(
             select(Signup, User)
@@ -313,11 +394,17 @@ async def format_game_message(
 
     game_number = await get_group_game_number(session, game)
     date_str = _format_date(game.date_time, lang=lang)
-    text = _format_header_section(game, date_str, game_number=game_number, lang=lang)
+    text = _format_header_section(
+        game, date_str, game_number=game_number, lang=lang, preset=preset, modules=modules
+    )
 
     if is_short:
         text += "——————————————————\n"
-        players_lbl = t("players_short_label", locale=lang)
+        if preset.code != "football":
+            terms = preset.localized_terminology(lang)
+            players_lbl = html.escape(terms["participant_noun"])
+        else:
+            players_lbl = t("players_short_label", locale=lang)
         text += f"👥 <b>{players_lbl}:</b> {len(active_players)}/{game.max_players}\n"
         if reserve_players:
             res_lbl = t("reserve_short_label", locale=lang)
@@ -331,13 +418,19 @@ async def format_game_message(
 
     text += "——————————————————\n"
 
-    show_teams = game.status in [GameStatus.ACTIVE, GameStatus.FINISHED]
+    show_teams = game.status in [GameStatus.ACTIVE, GameStatus.FINISHED] and modules.get(
+        "team_draft_enabled", True
+    )
     if show_teams:
-        text += _format_teams_section(game, signups, lang=lang)
+        text += _format_teams_section(
+            game, signups, lang=lang, preset=preset, modules=modules
+        )
     else:
-        text += _format_players_section(game, active_players, lang=lang)
+        text += _format_players_section(
+            game, active_players, lang=lang, preset=preset, modules=modules
+        )
 
-    text += _format_reserve_section(reserve_players, lang=lang)
+    text += _format_reserve_section(reserve_players, lang=lang, show_roles=roles_enabled)
     text += _format_price_section(game, lang=lang, chat=chat)
 
     return text

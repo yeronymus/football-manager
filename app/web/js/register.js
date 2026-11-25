@@ -8,6 +8,40 @@ const urlParams = new URLSearchParams(window.location.search);
 const chatId = urlParams.get('chat_id');
 const gameId = urlParams.get('game_id');
 
+async function initRegistrationPreset() {
+    if (!chatId || !tg || !tg.initData) return;
+    try {
+        const res = await fetch('/api/chats', {
+            headers: { 'Authorization': `tma ${tg.initData}` }
+        });
+        if (!res.ok) return;
+        const chats = await res.json();
+        const chat = Array.isArray(chats)
+            ? chats.find(c => String(c.id) === String(chatId) || String(c.chat_id) === String(chatId))
+            : null;
+        if (!chat || (chat.sport_type === 'football' && (!chat.modules || chat.modules.roles_enabled))) {
+            return;
+        }
+        const mods = chat.modules || {};
+        const primaryWrap = document.getElementById('primary-pos-group');
+        const altWrap = document.getElementById('alt-pos-group');
+        const primaryGrid = document.getElementById('primary-pos-grid');
+        if (!mods.roles_enabled) {
+            selectedPos = 'PARTICIPANT';
+            if (primaryWrap) primaryWrap.style.display = 'none';
+            if (altWrap) altWrap.style.display = 'none';
+        } else if (Array.isArray(chat.roles) && chat.roles.length > 0 && primaryGrid) {
+            primaryGrid.innerHTML = chat.roles.map(r => `<button class="pos-btn" onclick="setPos('${r}')">${r}</button>`).join('');
+            if (chat.preset_category !== 'sport' && altWrap) {
+                altWrap.style.display = 'none';
+            }
+        }
+    } catch (e) {
+        console.warn('Preset load skipped on register:', e);
+    }
+}
+initRegistrationPreset();
+
 function setPos(pos) {
     selectedPos = pos;
     // Highlight primary buttons

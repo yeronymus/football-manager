@@ -522,6 +522,10 @@
         let selectedPlayer = null;
         let selectedElement = null;
         let activeTeams = ['a', 'b']; // default
+        let activeModules = { roles_enabled: true, team_draft_enabled: true };
+        let useFootballBuckets = true;
+        let activeSportCode = 'football';
+        let activeGroupNoun = 'Team';
 
         // --- Init ---
         if (!gameId) {
@@ -577,12 +581,13 @@
 
             // Use original_position for color/badge if available
             const dispPos = escapeHtml(p.original_position || p.position);
+            const showRoleBadge = Boolean(activeModules && activeModules.roles_enabled);
 
             div.innerHTML = `
                 <div class="player-info" style="display: flex; align-items: center; gap: 4px; width: 100%;">
                     <button class="remove-player-btn" onclick="kickPlayer(${p.signup_id}, event)" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 2px 6px; font-weight: bold; font-size: 14px; line-height: 1; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.15)'" onmouseout="this.style.background='none'" title="Remove player">×</button>
-                    <div class="player-pos pos-${dispPos}">${dispPos}</div>
-                    <div class="player-name" style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(p.name)}${alts}</div>
+                    ${showRoleBadge ? `<div class="player-pos pos-${dispPos}">${dispPos}</div>` : ''}
+                    <div class="player-name" style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(p.name)}${showRoleBadge ? alts : ''}</div>
                 </div>
                 <div class="player-rating" style="margin-left: auto;">${p.rating || '-'}</div>
             `;
@@ -652,9 +657,14 @@
                 if (!response.ok) throw new Error("Load failed");
                 const game = await response.json();
 
-                document.getElementById('gameTitle').innerText = game.location;
+                document.getElementById('gameTitle').innerText = (game.preset_icon ? `${game.preset_icon} ` : '') + game.location;
                 document.getElementById('gameSelector').style.display = 'none';
                 allPlayers = {};
+
+                activeModules = game.modules || { roles_enabled: true, team_draft_enabled: true };
+                activeSportCode = game.sport_type || 'football';
+                activeGroupNoun = (game.terminology && game.terminology.grouping_noun) || 'Group';
+                useFootballBuckets = Boolean(activeModules.roles_enabled && ['football', 'futsal'].includes(activeSportCode));
 
                 // Determine Teams
                 // We use game.team_c to decide if we need C
@@ -672,29 +682,37 @@
                 activeTeams.forEach(key => {
                     const col = document.createElement('div');
                     col.className = `column col-${key}`;
-                    const teamName = key === 'a' ? 'Orange' : (key === 'b' ? 'Green' : 'Blue');
+                    const defaultTeamName = key === 'a' ? 'Orange' : (key === 'b' ? 'Green' : 'Blue');
+                    const teamName = useFootballBuckets ? defaultTeamName : `${activeGroupNoun} ${key.toUpperCase()}`;
 
                     const emojis = { a: '🟠', b: '🟢', c: '🔵' };
-                    col.innerHTML = `
-                        <div class="column-header" onclick="moveSelectedToTeam('${key}')">${emojis[key] || ''} ${teamName} <span id="rating-${key}"></span></div>
-                        <div class="tactic-board">
+                    const boardHtml = useFootballBuckets
+                        ? `
                              ${renderPosGroup(key, 'GK')}
                              ${renderPosGroup(key, 'DEF', 'Защита')}
                              ${renderPosGroup(key, 'MID', 'Полузащита')}
                              ${renderPosGroup(key, 'FWD', 'Нападение')}
                              ${renderPosGroup(key, 'SUB', 'Замена')}
+                          `
+                        : `${renderPosGroup(key, 'MID', activeGroupNoun)}`;
+                    col.innerHTML = `
+                        <div class="column-header" onclick="moveSelectedToTeam('${key}')">${emojis[key] || ''} ${teamName} <span id="rating-${key}"></span></div>
+                        <div class="tactic-board">
+                             ${boardHtml}
                         </div>
                     `;
                     grid.appendChild(col);
                 });
 
-                // Render GK Toggles
+                // Render GK Toggles only for presets with goalkeepers
                 const toggleContainer = document.getElementById('gkToggles');
                 toggleContainer.innerHTML = '';
+                const hasGkPreset = game.has_goalkeeper !== false && useFootballBuckets;
+                toggleContainer.style.display = hasGkPreset ? 'flex' : 'none';
                 activeTeams.forEach(key => {
                     const label = document.createElement('label');
                     label.className = 'gk-toggle';
-                    const checked = game[`has_active_gk_${key}`] !== false;
+                    const checked = hasGkPreset && game[`has_active_gk_${key}`] !== false;
                     label.innerHTML = `<input type="checkbox" id="chk-gk-${key}" onchange="toggleGK('${key}')" ${checked ? 'checked' : ''}> GK ${key.toUpperCase()}`;
                     toggleContainer.appendChild(label);
                 });
@@ -722,6 +740,11 @@
 
                     list.forEach(p => {
                         allPlayers[p.id] = p;
+
+                        if (!useFootballBuckets) {
+                            addPlayerToSlot(p, `${key}-MID`);
+                            return;
+                        }
 
                         let pos = p.position;
                         // Promotion logic: if team lacks GK and player has GK alt, put them in GK slot
@@ -765,7 +788,10 @@
                 // 2. Team Slots
                 activeTeams.forEach(key => {
                     ['GK', 'DEF', 'MID', 'FWD', 'SUB'].forEach(pos => {
-                        const el = document.getElementById(`${key}-${pos}`).querySelector('.player-list');
+                        const slotWrap = document.getElementById(`${key}-${pos}`);
+                        if (!slotWrap) return;
+                        const el = slotWrap.querySelector('.player-list');
+                        if (!el) return;
                         new Sortable(el, {
                             group: 'players',
                             animation: 150,

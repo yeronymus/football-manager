@@ -1,11 +1,11 @@
 import logging
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Chat, ChatMember, User
+from app.db.models import Chat, ChatAdmin, ChatMember, Position, User
 
 logger = logging.getLogger(__name__)
 
@@ -91,3 +91,101 @@ async def sync_registered_user_to_chat_members(
             if not existing_prof:
                 session.add(PlayerProfile(user_id=user_id, chat_id=cm.chat_id, rating=100))
     await session.commit()
+
+
+async def sync_chat_admin_membership(
+    session: AsyncSession,
+    chat_id: int,
+    user_id: int,
+    full_name: Optional[str] = None,
+    username: Optional[str] = None,
+    is_admin: bool = True,
+    commit: bool = True,
+) -> None:
+    """
+    Synchronizes a user's ChatAdmin privilege row for self-service multi-tenant onboarding.
+    When promoted to group admin/creator, ensures both User and ChatAdmin exist.
+    When demoted or removed, revokes their ChatAdmin access for that tenant.
+    """
+    if user_id <= 0:
+        return
+
+    chat = await session.get(Chat, chat_id)
+    if not chat:
+        return
+
+    if is_admin:
+        user = await session.get(User, user_id)
+        if not user:
+            user = User(
+                user_id=user_id,
+                full_name=(full_name or username or f"Admin {user_id}")[:128],
+                username=username,
+                player_position=Position.PARTICIPANT,
+                alt_positions=[],
+                rating=100,
+            )
+            session.add(user)
+            await session.flush()
+
+        existing = await session.scalar(
+            select(ChatAdmin).where(
+                ChatAdmin.chat_id == chat_id,
+                ChatAdmin.user_id == user_id,
+            )
+        )
+        if not existing:
+            session.add(
+                ChatAdmin(
+                    chat_id=chat_id,
+                    user_id=user_id,
+                    can_edit_settings=True,
+                    can_manage_games=True,
+                )
+            )
+    else:
+        await session.execute(
+            delete(ChatAdmin).where(
+                ChatAdmin.chat_id == chat_id,
+                ChatAdmin.user_id == user_id,
+            )
+        )
+
+    if commit:
+        await session.commit()
+
+
+async def sync_group_admins_from_telegram(
+    bot,
+    session: AsyncSession,
+    chat_id: int,
+) -> int:
+    """
+    Fetches live administrators of a Telegram group and registers them in `chat_admins`
+    so newly onboarded tenants can open the Admin Portal immediately without manual CLI setup.
+    """
+    try:
+        admins = await bot.get_chat_administrators(chat_id)
+    except Exception as e:
+        logger.warning("Could not fetch chat administrators for %s: %s", chat_id, e)
+        return 0
+
+    synced = 0
+    for member in admins:
+        tg_user = getattr(member, "user", None)
+        if not tg_user or getattr(tg_user, "is_bot", False):
+            continue
+        await sync_chat_admin_membership(
+            session=session,
+            chat_id=chat_id,
+            user_id=tg_user.id,
+            full_name=getattr(tg_user, "full_name", None),
+            username=getattr(tg_user, "username", None),
+            is_admin=True,
+            commit=False,
+        )
+        synced += 1
+
+    if synced:
+        await session.commit()
+    return synced

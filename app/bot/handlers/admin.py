@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import t
 from app.config import settings
+from app.core.services.member_tracking import sync_group_admins_from_telegram
 from app.db.models import Chat
 
 router = Router()
@@ -26,6 +27,9 @@ async def on_chat_member_update(event: ChatMemberUpdated, session: AsyncSession)
         chat = Chat(chat_id=event.chat.id, title=event.chat.title or "Unknown Chat")
         session.add(chat)
         await session.commit()
+
+    if event.chat.type in ("group", "supergroup") and getattr(event, "bot", None):
+        await sync_group_admins_from_telegram(event.bot, session, event.chat.id)
 
 
 @router.message(Command("register_chat"))

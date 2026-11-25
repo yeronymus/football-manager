@@ -345,3 +345,96 @@ async def test_enterprise_hardening_fixes(db_session: AsyncSession, monkeypatch)
     monkeypatch.setattr(settings, "bot_token", "999999:ROTATED_BOT_TOKEN")
     assert decrypt_secret_envelope(cipher) == '{"name": "GDPR Protected"}'
 
+
+@pytest.mark.asyncio
+async def test_preset_defootballization_and_saas_optimizations(db_session: AsyncSession):
+    from datetime import datetime, timezone
+    from fastapi import Response
+    from sqlalchemy import select
+    from app.api.routers.games import get_game_details
+    from app.bot.utils import format_game_message
+    from app.core.services.cache import cache_service
+    from app.core.services.member_tracking import sync_chat_admin_membership
+    from app.db.models import ChatAdmin, Game, GameStatus, PlayerProfile, Signup, SignupStatus, Team
+
+    # 1. Self-service ChatAdmin sync (onboarding + revocation)
+    trip_chat = Chat(
+        chat_id=-1009911,
+        title="Prague Travelers",
+        sport_type="trip",
+        language=Language.en,
+    )
+    db_session.add(trip_chat)
+    await db_session.commit()
+
+    await sync_chat_admin_membership(
+        session=db_session,
+        chat_id=-1009911,
+        user_id=8801,
+        full_name="Trip Lead",
+        username="triplead",
+        is_admin=True,
+    )
+    admin_row = (
+        await db_session.execute(
+            select(ChatAdmin).where(ChatAdmin.chat_id == -1009911, ChatAdmin.user_id == 8801)
+        )
+    ).scalar_one_or_none()
+    assert admin_row is not None
+
+    # 2. Bot formatting for non-football preset (trip) suppresses football GK/DEF warnings
+    traveler = User(
+        user_id=8802,
+        full_name="Driver One",
+        username="driver1",
+        player_position=Position.DRIVER,
+    )
+    db_session.add(traveler)
+    db_session.add(PlayerProfile(user_id=8802, chat_id=-1009911, rating=145))
+    trip_event = Game(
+        chat_id=-1009911,
+        created_by=8801,
+        date_time=datetime(2026, 12, 10, 8, 0, tzinfo=timezone.utc),
+        location="Prague -> Dresden",
+        max_players=12,
+        price=350,
+        team_count=2,
+        status=GameStatus.ACTIVE,
+    )
+    db_session.add(trip_event)
+    await db_session.flush()
+    signup = Signup(
+        game_id=trip_event.id,
+        user_id=8802,
+        status=SignupStatus.ACTIVE,
+        team=Team.A,
+        position=Position.DRIVER,
+    )
+    db_session.add(signup)
+    await db_session.commit()
+
+    msg = await format_game_message(
+        trip_event, db_session, is_short=False, signups=[(signup, traveler)], lang="en"
+    )
+    assert "🚌" in msg
+    assert "Trip" in msg
+    assert "Cars / Groups" in msg
+    assert "Goalkeeper" not in msg
+    assert "Defenders" not in msg
+
+    # 3. GET /game/{id} returns tenant-specific PlayerProfile.rating (145) + preset metadata
+    details = await get_game_details(
+        game_id=trip_event.id,
+        response=Response(),
+        user_id=8802,
+        session=db_session,
+    )
+    assert details["sport_type"] == "trip"
+    assert details["preset_icon"] == "🚌"
+    assert details["modules"]["score_tracking_enabled"] is False
+    assert details["team_a"][0]["rating"] == 145
+
+    # 4. Redis cache_service.redis property is exposed for multi-worker SSE Pub/Sub
+    assert cache_service.redis is not None
+
+

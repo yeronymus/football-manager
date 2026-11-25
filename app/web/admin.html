@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SuperAdmin Dashboard</title>
     <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Telegram WebApp -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -232,7 +234,7 @@
                             </div>
                             <div class="form-group">
                                 <label data-i18n="lbl_sport_type">Event / Community Preset</label>
-                                <select id="setting-sport-type" onchange="updateGroupSetting('sport_type', this.value, this)">
+                                <select id="setting-sport-type" onchange="onSportPresetSettingChange(this)">
                                     <option value="football" selected>⚽ Football</option>
                                     <option value="futsal">🥅 Futsal (5v5)</option>
                                     <option value="volleyball">🏐 Volleyball (6v6)</option>
@@ -634,8 +636,8 @@
 </script>
 
 <script src="js/admin/admin-core.js?v=1.0.0"></script>
-<script src="js/admin/admin-games.js?v=1.0.0"></script>
-<script src="js/admin/admin-settings.js?v=1.0.0"></script>
+<script src="js/admin/admin-games.js?v=1.1.0"></script>
+<script src="js/admin/admin-settings.js?v=1.1.0"></script>
 <script src="js/admin/admin-community.js?v=1.0.2"></script>
 <script src="js/admin/admin-sponsors.js?v=1.0.1"></script>
 <script src="js/admin/admin-inventory.js?v=1.0.0"></script>

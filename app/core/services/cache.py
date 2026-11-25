@@ -26,8 +26,17 @@ class RedisCacheService:
                 self.redis_url,
                 encoding="utf-8",
                 decode_responses=True,
+                socket_connect_timeout=1.5,
             )
         return self._client
+
+    @property
+    def redis(self) -> Optional[aioredis.Redis]:
+        """Exposes the underlying async Redis client (used by SSE Pub/Sub broadcasting)."""
+        try:
+            return self._get_client()
+        except Exception:
+            return None
 
     async def ping(self) -> bool:
         client = self._get_client()

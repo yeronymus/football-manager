@@ -90,7 +90,7 @@
     <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0; opacity: 0.1;">
 
     <!-- 2. Match Parameters -->
-    <div class="form-group">
+    <div class="form-group" id="game-type-group">
         <label for="game_type" data-i18n="lbl_game_type">Match Type</label>
         <select id="game_type">
             <option value="regular" data-i18n="opt_regular">General Match</option>
@@ -98,7 +98,7 @@
         </select>
     </div>
 
-    <div class="form-group">
+    <div class="form-group" id="team-count-group">
         <label for="team_count" data-i18n="lbl_team_count">Team Count</label>
         <select id="team_count">
             <option value="2" selected data-i18n="opt_2teams">2 Teams</option>
@@ -134,7 +134,7 @@
         <small data-i18n="help_max_players" style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Total players who show up (squads + bench). Beyond this — reserve.</small>
     </div>
     
-    <div class="form-group">
+    <div class="form-group" id="main-players-group">
         <label for="main_players_count" data-i18n="lbl_main_players">Players on pitch (X vs X)</label>
         <input type="number" id="main_players_count" value="22" min="2" max="999" inputmode="numeric">
         <small data-i18n="help_main_players" style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Simultaneously on field (e.g. 22 for 11v11, 16 for 8v8).</small>
@@ -157,7 +157,7 @@
         <small data-i18n="help_reg_hours" style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 = open continuously until kickoff</small>
     </div>
 
-    <div class="form-group">
+    <div class="form-group" id="gk-hours-group">
         <label for="gk_hours" data-i18n="lbl_gk_hours">Goalkeeper Priority (hours)</label>
         <input type="number" id="gk_hours" value="0" min="0" max="168" inputmode="numeric">
         <small data-i18n="help_gk_hours" style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 = disabled (everyone signs up equally)</small>
@@ -298,6 +298,29 @@
                     if (priceGroup) priceGroup.style.display = isFree ? 'none' : 'block';
                     if (payGroup) payGroup.style.display = isFree ? 'none' : 'block';
                     if (freeBanner) freeBanner.style.display = isFree ? 'block' : 'none';
+
+                    // Preset-aware field visibility (hide football-only toggles on Trips / Book Clubs)
+                    const mods = chat.modules || {};
+                    const hasGk = chat.has_goalkeeper !== undefined ? Boolean(chat.has_goalkeeper) : (chat.sport_type === 'football' || chat.sport_type === 'futsal' || !chat.sport_type);
+                    const draftEnabled = mods.team_draft_enabled !== undefined ? Boolean(mods.team_draft_enabled) : true;
+                    const gkGroup = document.getElementById('gk-hours-group');
+                    const teamCountGroup = document.getElementById('team-count-group');
+                    const gameTypeGroup = document.getElementById('game-type-group');
+                    const mainPlayersGroup = document.getElementById('main-players-group');
+                    if (gkGroup) gkGroup.style.display = hasGk ? 'block' : 'none';
+                    if (!hasGk) document.getElementById('gk_hours').value = 0;
+                    if (teamCountGroup) teamCountGroup.style.display = draftEnabled ? 'block' : 'none';
+                    if (gameTypeGroup) gameTypeGroup.style.display = draftEnabled ? 'block' : 'none';
+                    if (mainPlayersGroup) mainPlayersGroup.style.display = draftEnabled ? 'block' : 'none';
+                    if (!draftEnabled) {
+                        document.getElementById('team_count').value = 1;
+                        document.getElementById('game_type').value = 'regular';
+                    }
+
+                    const pageTitleEl = document.getElementById('page-title');
+                    if (pageTitleEl && chat.terminology && chat.terminology.event_noun && chat.sport_type && chat.sport_type !== 'football') {
+                        pageTitleEl.innerText = `${chat.preset_icon || '📅'} ${chat.terminology.event_noun}`;
+                    }
 
                     const priceLbl = document.getElementById('lbl-price');
                     if (priceLbl) {

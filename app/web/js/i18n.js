@@ -105,6 +105,19 @@
             team_unknown: "Unknown",
             leaderboard_title: "Group Leaderboard",
             leaderboard_games_goals: "{games} games • {goals} goals",
+            leaderboard_events_only: "{games} events",
+            leaderboard_your_rank: "Your rank: #{rank} • {rating} MMR",
+            profile_events: "Events",
+            profile_role_title: "Role",
+            profile_role_desc: "Choose your role in this group",
+            history_attended: "Attended ✅",
+            event_capacity_label: "Capacity",
+            event_fee_label: "Fee",
+            btn_join_generic: "Sign Up",
+            btn_join_reserve_generic: "Join Waitlist",
+            btn_leave_generic: "❌ Cancel Registration",
+            btn_event_finished: "Completed",
+            event_finished_notice: "This event has been completed.",
             btn_close_popup: "Close",
             btn_try_again: "Try Again",
             lbl_ad: "Sponsored",
@@ -215,6 +228,19 @@
             team_unknown: "Неизвестно",
             leaderboard_title: "Лидерборд группы",
             leaderboard_games_goals: "{games} игр • {goals} голов",
+            leaderboard_events_only: "{games} событий",
+            leaderboard_your_rank: "Ваше место: #{rank} • {rating} MMR",
+            profile_events: "Событий",
+            profile_role_title: "Роль",
+            profile_role_desc: "Выберите вашу роль в группе",
+            history_attended: "Участвовал ✅",
+            event_capacity_label: "Мест",
+            event_fee_label: "Взнос",
+            btn_join_generic: "Записаться",
+            btn_join_reserve_generic: "В лист ожидания",
+            btn_leave_generic: "❌ Отменить запись",
+            btn_event_finished: "Завершено",
+            event_finished_notice: "Это событие завершено.",
             btn_close_popup: "Закрыть",
             btn_try_again: "Попробовать снова",
             lbl_ad: "Реклама",
@@ -325,6 +351,19 @@
             team_unknown: "Neznámý",
             leaderboard_title: "Žebříček skupiny",
             leaderboard_games_goals: "{games} zápasů • {goals} gólů",
+            leaderboard_events_only: "{games} událostí",
+            leaderboard_your_rank: "Vaše pořadí: #{rank} • {rating} MMR",
+            profile_events: "Událostí",
+            profile_role_title: "Role",
+            profile_role_desc: "Vyberte svou roli v této skupině",
+            history_attended: "Zúčastnil se ✅",
+            event_capacity_label: "Kapacita",
+            event_fee_label: "Příspěvek",
+            btn_join_generic: "Přihlásit se",
+            btn_join_reserve_generic: "Přidat na waitlist",
+            btn_leave_generic: "❌ Odhlásit se",
+            btn_event_finished: "Ukončeno",
+            event_finished_notice: "Tato událost již skončila.",
             btn_close_popup: "Zavřít",
             btn_try_again: "Zkusit znovu",
             lbl_ad: "Sponzorováno",
@@ -379,6 +418,21 @@
         const norm = normalizeLang(lang);
         if (loadedRemoteLocales.has(norm)) return;
         loadedRemoteLocales.add(norm);
+        const cacheKey = `i18n_catalog_v1_${norm}`;
+        try {
+            const cachedRaw = sessionStorage.getItem(cacheKey);
+            if (cachedRaw) {
+                const cachedMsgs = JSON.parse(cachedRaw);
+                if (cachedMsgs && typeof cachedMsgs === 'object') {
+                    if (!DICTIONARY[norm]) DICTIONARY[norm] = {};
+                    Object.keys(cachedMsgs).forEach(k => {
+                        if (DICTIONARY[norm][k] === undefined) DICTIONARY[norm][k] = cachedMsgs[k];
+                    });
+                    if (currentLang === norm) applyDOM();
+                    return;
+                }
+            }
+        } catch (e) {}
         try {
             const res = await fetch(`/api/v1/locales/${encodeURIComponent(norm)}`);
             if (!res.ok) return;
@@ -393,6 +447,7 @@
                         DICTIONARY[resolvedCode][k] = payload.messages[k];
                     }
                 });
+                try { sessionStorage.setItem(cacheKey, JSON.stringify(payload.messages)); } catch (e) {}
                 if (!availableLocales.includes(resolvedCode)) {
                     availableLocales.push(resolvedCode);
                 }
@@ -406,11 +461,26 @@
     }
 
     async function discoverServerLocales() {
+        const listKey = 'i18n_locales_list_v1';
+        try {
+            const cachedList = sessionStorage.getItem(listKey);
+            if (cachedList) {
+                const items = JSON.parse(cachedList);
+                if (Array.isArray(items)) {
+                    items.forEach(item => {
+                        const code = normalizeLang(item.code);
+                        if (code && !availableLocales.includes(code)) availableLocales.push(code);
+                    });
+                    return;
+                }
+            }
+        } catch (e) {}
         try {
             const res = await fetch('/api/v1/locales');
             if (!res.ok) return;
             const payload = await res.json();
             if (payload && Array.isArray(payload.locales)) {
+                try { sessionStorage.setItem(listKey, JSON.stringify(payload.locales)); } catch (e) {}
                 payload.locales.forEach(item => {
                     const code = normalizeLang(item.code);
                     if (code && !availableLocales.includes(code)) {
@@ -483,12 +553,10 @@
 
     // Auto-detect on load (defaulting universally to English per ADR-01)
     currentLang = detectLanguage();
-    if (!DICTIONARY[currentLang]) {
+    setTimeout(() => {
         syncRemoteCatalog(currentLang);
-    } else {
-        syncRemoteCatalog(currentLang);
-    }
-    discoverServerLocales();
+        discoverServerLocales();
+    }, 0);
 
     global.i18n = {
         t,

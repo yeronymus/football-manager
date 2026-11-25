@@ -11,8 +11,61 @@ function escapeHtml(str) {
 }
 
 let currentChatId = null;
+let currentUserId = null;
+let pendingLeaderboardHighlightUserId = null;
+let chatsCache = [];
+const tabDataCache = new Map();
+const TAB_CACHE_TTL_MS = 20000;
 let historyMode = 'mine'; // 'mine' or 'all'
 let currentTab = 'profile';
+
+function getActiveChatMeta() {
+    const found = chatsCache.find(c => String(c.id) === String(currentChatId) || String(c.chat_id) === String(currentChatId));
+    return found || null;
+}
+
+function getActiveModules() {
+    const meta = getActiveChatMeta();
+    return (meta && meta.modules) || {
+        roles_enabled: true,
+        team_draft_enabled: true,
+        score_tracking_enabled: true,
+        mvp_voting_enabled: true,
+        inventory_enabled: true,
+        billing_enabled: true,
+        late_tracking_enabled: true
+    };
+}
+
+function getActiveRoles() {
+    const meta = getActiveChatMeta();
+    if (meta && Array.isArray(meta.roles) && meta.roles.length > 0) {
+        return meta.roles;
+    }
+    return ['GK', 'LB', 'CB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'CF'];
+}
+
+function getCachedData(key) {
+    const entry = tabDataCache.get(key);
+    if (!entry) return null;
+    if ((Date.now() - entry.ts) > TAB_CACHE_TTL_MS) {
+        tabDataCache.delete(key);
+        return null;
+    }
+    return entry.data;
+}
+
+function setCachedData(key, data) {
+    tabDataCache.set(key, { ts: Date.now(), data });
+}
+
+function invalidateUserCache() {
+    for (const k of Array.from(tabDataCache.keys())) {
+        if (k.startsWith(`profile:${currentChatId}`) || k.startsWith(`leaderboard:${currentChatId}`)) {
+            tabDataCache.delete(k);
+        }
+    }
+}
 
 function resolveInitialTab() {
     try {
@@ -46,7 +99,20 @@ function resolveInitialTab() {
     return 'profile';
 }
 
-window.loadCurrentTab = () => switchTab(currentTab);
+window.loadCurrentTab = () => switchTab(currentTab, { forceRefresh: true });
+window.jumpToMyLeaderboardRank = async function() {
+    const tgUid = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
+    pendingLeaderboardHighlightUserId = currentUserId || tgUid || null;
+    await switchTab('leaderboard');
+};
+window.scrollToLeaderboardRank = function(uid) {
+    const row = document.getElementById(`leaderboard-row-${uid}`);
+    if (!row) return;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.classList.remove('rank-pulse');
+    void row.offsetWidth;
+    row.classList.add('rank-pulse');
+};
 const tg = window.Telegram ? window.Telegram.WebApp : null;
 if (!tg) {
     console.error("Telegram WebApp object not found!");
@@ -92,32 +158,49 @@ async function init() {
     }
 
     try {
-        let chats = [];
-        try {
-            chats = await fetchAPI('/chats');
-        } catch (e) {
-            console.warn("Failed to load chats:", e);
-        }
-        
+        currentTab = resolveInitialTab();
         if (urlChatId) {
             currentChatId = urlChatId;
-        } else if (chats && chats.length > 0) {
-            currentChatId = chats[0].id;
+            const [chatsRes] = await Promise.all([
+                fetchAPI('/chats').catch(e => {
+                    console.warn("Failed to load chats:", e);
+                    return [];
+                }),
+                switchTab(currentTab)
+            ]);
+            chatsCache = Array.isArray(chatsRes) ? chatsRes : [];
+            if (chatsCache.length > 0) {
+                const currentChat = chatsCache.find(c => String(c.id) === String(currentChatId)) || chatsCache[0];
+                const groupDisplay = document.getElementById('group-name-display');
+                if (groupDisplay) groupDisplay.innerText = currentChat.title;
+                const header = document.getElementById('group-header');
+                if (header) header.style.display = 'flex';
+                // Re-apply preset-aware modules if group preset differs from football defaults
+                if (currentChat && currentChat.sport_type && currentChat.sport_type !== 'football') {
+                    await switchTab(currentTab);
+                }
+            }
         } else {
-            currentChatId = '0';
+            let chats = [];
+            try {
+                chats = await fetchAPI('/chats');
+                chatsCache = Array.isArray(chats) ? chats : [];
+            } catch (e) {
+                console.warn("Failed to load chats:", e);
+            }
+
+            if (chatsCache.length > 0) {
+                currentChatId = chatsCache[0].id;
+                const groupDisplay = document.getElementById('group-name-display');
+                if (groupDisplay) groupDisplay.innerText = chatsCache[0].title;
+                const header = document.getElementById('group-header');
+                if (header) header.style.display = 'flex';
+            } else {
+                currentChatId = '0';
+            }
+            await switchTab(currentTab);
         }
 
-        if (chats && chats.length > 0) {
-            const currentChat = chats.find(c => c.id == currentChatId) || chats[0];
-            const groupDisplay = document.getElementById('group-name-display');
-            if (groupDisplay) groupDisplay.innerText = currentChat.title;
-            const header = document.getElementById('group-header');
-            if (header) header.style.display = 'flex';
-        }
-        
-        currentTab = resolveInitialTab();
-        await switchTab(currentTab);
-        
         if (tg) {
             tg.expand();
             tg.ready();
@@ -158,14 +241,17 @@ async function init() {
     }
 }
 
-window.switchTab = async function(tab) {
+window.switchTab = async function(tab, opts = {}) {
+    const forceRefresh = Boolean(opts && opts.forceRefresh);
     currentTab = tab;
-    loader.style.display = 'flex';
+    const cacheKey = tab === 'history' ? `history:${currentChatId}:${historyMode}` : `${tab}:${currentChatId}`;
+    const hasWarmCache = !forceRefresh && Boolean(getCachedData(cacheKey));
+    if (!hasWarmCache && loader) loader.style.display = 'flex';
     
     try {
-        if (tab === 'profile') await renderProfile();
-        else if (tab === 'leaderboard') await renderLeaderboard();
-        else if (tab === 'history') await renderHistory();
+        if (tab === 'profile') await renderProfile(forceRefresh);
+        else if (tab === 'leaderboard') await renderLeaderboard(forceRefresh);
+        else if (tab === 'history') await renderHistory(null, forceRefresh);
 
         Object.values(pages).forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
@@ -177,16 +263,32 @@ window.switchTab = async function(tab) {
     } catch (e) {
         console.error(e);
     } finally {
-        loader.style.display = 'none';
+        if (loader) loader.style.display = 'none';
     }
 }
 
-async function renderProfile() {
-    const data = await fetchAPI(`/users/me/profile?chat_id=${currentChatId}`);
+async function renderProfile(forceRefresh = false) {
+    const cacheKey = `profile:${currentChatId}`;
+    let data = !forceRefresh ? getCachedData(cacheKey) : null;
+    if (!data) {
+        data = await fetchAPI(`/users/me/profile?chat_id=${currentChatId}`);
+        setCachedData(cacheKey, data);
+    }
+    currentUserId = data.user_id || currentUserId;
     
     // Determine language: data.language, or tg user language_code, or localStorage, or query param
-    const urlLang = (new URLSearchParams(window.location.search)).get('lang');
     if (data.language && window.i18n && !localStorage.getItem('webapp_lang')) { window.i18n.setLanguage(data.language.toLowerCase()); }
+
+    const chatMeta = getActiveChatMeta();
+    const mods = getActiveModules();
+    const isSport = !chatMeta || !chatMeta.preset_category || chatMeta.preset_category === 'sport';
+    const roleLabel = isSport ? t('profile_primary_role') : t('profile_role_title');
+    const lblGames = isSport ? t('profile_matches') : t('profile_events');
+    const lblGoals = t('profile_goals');
+    const lblPrimaryPos = isSport ? t('profile_primary_pos') : t('profile_role_title');
+    const lblAltPos = t('profile_alt_pos');
+    const lblEdit = t('profile_edit');
+    const lblNotSet = t('profile_not_set');
 
 
 
@@ -227,16 +329,9 @@ async function renderProfile() {
         `;
     }
 
-    const lblPrimary = t('profile_primary_role');
-    const lblGames = t('profile_matches');
-    const lblGoals = t('profile_goals');
-    const lblPrimaryPos = t('profile_primary_pos');
-    const lblAltPos = t('profile_alt_pos');
-    const lblEdit = t('profile_edit');
-    const lblNotSet = t('profile_not_set');
-
     const safeUserName = String(userName).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const jsUserName = String(userName).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const presetIcon = (chatMeta && chatMeta.preset_icon) || '';
 
     const html = `
         <div class="card flex-row" style="margin-top: 16px; padding: 24px;">
@@ -246,50 +341,55 @@ async function renderProfile() {
                     <h3 style="font-size: 20px; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${safeUserName}</h3>
                     <button onclick="editProfileName('${jsUserName}')" title="${lblEdit}" style="background:rgba(255,255,255,0.08); border:1px solid var(--border-color); color:var(--text-color); border-radius:8px; padding:3px 8px; font-size:12px; cursor:pointer; flex-shrink:0;">✏️</button>
                 </div>
+                ${mods.roles_enabled ? `
                 <div class="subtitle" style="margin-top:4px;">
-                    ${lblPrimary}: <b style="color:var(--text-color)">${data.position}</b>
-                </div>
+                    ${roleLabel}: <b style="color:var(--text-color)">${escapeHtml(data.position)}</b>
+                </div>` : (chatMeta && chatMeta.preset_name ? `<div class="subtitle" style="margin-top:4px;">${presetIcon} ${escapeHtml(chatMeta.preset_name)}</div>` : '')}
                 ${cardBadgeHtml}
             </div>
         </div>
         
         <div class="flex-row" style="padding: 0 16px; gap: 12px;">
-            <div class="card stat-badge" style="margin: 0;">
+            <div class="card stat-badge clickable-mmr" style="margin: 0; cursor:pointer;" onclick="jumpToMyLeaderboardRank()">
                 <span class="stat-value">${data.rating}</span>
-                <span class="subtitle" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">MMR</span>
+                <span class="subtitle" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">MMR ↗</span>
             </div>
             <div class="card stat-badge" style="margin: 0; cursor:pointer;" onclick="switchTab('history')">
                 <span class="stat-value">${data.games_played}</span>
                 <span class="subtitle" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">${lblGames}</span>
             </div>
+            ${mods.mvp_voting_enabled ? `
             <div class="card stat-badge" style="margin: 0;">
                 <span class="stat-value">${data.mvp_count}</span>
                 <span class="subtitle" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">MVP</span>
-            </div>
+            </div>` : ''}
         </div>
         
+        ${(mods.roles_enabled || mods.score_tracking_enabled) ? `
         <div class="card" style="margin-top: 16px;">
-            <div style="margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+            ${mods.roles_enabled ? `
+            <div style="margin-bottom:${isSport || mods.score_tracking_enabled ? '16px' : '0'}; ${isSport || mods.score_tracking_enabled ? 'border-bottom:1px solid var(--border-color); padding-bottom:12px;' : ''}">
                 <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px; margin-bottom:8px; color:var(--accent-color)">${lblPrimaryPos}</h4>
                 <div class="flex-between">
-                    <span style="font-weight:600; font-size:17px;">${data.position}</span>
+                    <span style="font-weight:600; font-size:17px;">${escapeHtml(data.position)}</span>
                     <button onclick="editPrimaryPosition()" style="background:var(--accent-color); color:white; border:none; padding:6px 16px; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">${lblEdit}</button>
                 </div>
             </div>
-            
-            <div style="margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+            ${isSport ? `
+            <div style="margin-bottom:${mods.score_tracking_enabled ? '16px' : '0'}; ${mods.score_tracking_enabled ? 'border-bottom:1px solid var(--border-color); padding-bottom:12px;' : ''}">
                 <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px; margin-bottom:8px; color:var(--accent-color)">${lblAltPos}</h4>
                 <div class="flex-between">
-                    <span style="font-weight:600; font-size:15px;">${data.alt_positions && data.alt_positions.length ? data.alt_positions.join(', ') : lblNotSet}</span>
+                    <span style="font-weight:600; font-size:15px;">${data.alt_positions && data.alt_positions.length ? data.alt_positions.map(escapeHtml).join(', ') : lblNotSet}</span>
                     <button onclick="editAltPositions()" style="background:rgba(255,255,255,0.05); color:var(--text-color); border:1px solid var(--border-color); padding:6px 16px; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">${lblEdit}</button>
                 </div>
-            </div>
+            </div>` : ''}` : ''}
 
+            ${mods.score_tracking_enabled ? `
             <div class="flex-between">
                 <h4 class="subtitle" style="text-transform:uppercase; font-weight:700; font-size:11px;">${lblGoals}</h4>
-                <span style="font-weight:700; font-size:18px; color:var(--accent-color)">${data.total_goals || 0} ⚽</span>
-            </div>
-        </div>
+                <span style="font-weight:700; font-size:18px; color:var(--accent-color)">${data.total_goals || 0} ${presetIcon || '⚽'}</span>
+            </div>` : ''}
+        </div>` : ''}
     `;
     if(pages.profile) pages.profile.innerHTML = html;
 }
@@ -334,7 +434,8 @@ window.saveProfileName = async function() {
             method: 'POST',
             body: JSON.stringify({ name: newName })
         });
-        await renderProfile();
+        invalidateUserCache();
+        await renderProfile(true);
     } catch (e) {
         alert(e.message);
     } finally {
@@ -343,12 +444,16 @@ window.saveProfileName = async function() {
 };
 
 window.editPrimaryPosition = function() {
-    const positions = ['GK', 'LB', 'CB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'CF'];
+    const positions = getActiveRoles();
+    const chatMeta = getActiveChatMeta();
+    const isSport = !chatMeta || !chatMeta.preset_category || chatMeta.preset_category === 'sport';
+    const title = isSport ? t('pos_primary_title') : t('profile_role_title');
+    const desc = isSport ? t('pos_primary_desc') : t('profile_role_desc');
     const html = `
         <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
             <div class="card" style="width:90%; max-width:400px; padding:24px; max-height:85vh; overflow-y:auto; border:1px solid rgba(255,255,255,0.1)">
-                <h3 style="margin-bottom:8px; text-align:center;">${t('pos_primary_title')}</h3>
-                <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">${t('pos_primary_desc')}</p>
+                <h3 style="margin-bottom:8px; text-align:center;">${title}</h3>
+                <p class="subtitle" style="text-align:center; margin-bottom:24px; font-size:13px;">${desc}</p>
                 <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
                     ${positions.map(p => `<button onclick="savePrimary('${p}')" class="pos-btn">${p}</button>`).join('')}
                 </div>
@@ -360,12 +465,16 @@ window.editPrimaryPosition = function() {
 }
 
 window.editAltPositions = async function() {
-    loader.style.display = 'flex';
-    const data = await fetchAPI(`/users/me/profile?chat_id=${currentChatId}`);
-    loader.style.display = 'none';
+    let data = getCachedData(`profile:${currentChatId}`);
+    if (!data) {
+        loader.style.display = 'flex';
+        data = await fetchAPI(`/users/me/profile?chat_id=${currentChatId}`);
+        setCachedData(`profile:${currentChatId}`, data);
+        loader.style.display = 'none';
+    }
     
     const currentAlts = data.alt_positions || [];
-    const positions = ['GK', 'LB', 'CB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'CF'];
+    const positions = getActiveRoles();
     
     const html = `
         <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
@@ -401,7 +510,8 @@ window.savePrimary = async function(pos) {
             method: 'POST',
             body: JSON.stringify({ position: pos })
         });
-        await renderProfile();
+        invalidateUserCache();
+        await renderProfile(true);
     } catch(e) { tg.showAlert(e.message); }
     finally { loader.style.display = 'none'; }
 }
@@ -418,7 +528,7 @@ window.saveAlts = async function() {
     closeModal();
     loader.style.display = 'flex';
     try {
-        const profile = await fetchAPI(`/users/me/profile?chat_id=${currentChatId}`);
+        const profile = getCachedData(`profile:${currentChatId}`) || await fetchAPI(`/users/me/profile?chat_id=${currentChatId}`);
         await fetchAPI('/users/me/profile', {
             method: 'POST',
             body: JSON.stringify({ 
@@ -426,7 +536,8 @@ window.saveAlts = async function() {
                 alt_positions: alts 
             })
         });
-        await renderProfile();
+        invalidateUserCache();
+        await renderProfile(true);
     } catch(e) { tg.showAlert(e.message); }
     finally { loader.style.display = 'none'; }
 }
@@ -449,12 +560,16 @@ const escapeHTML = str => str ? String(str).replace(/[&<>'"]/g,
 ) : '';
 
 window.showGroupSelector = async function() {
-    loader.style.display = 'flex';
     try {
-        const chats = await fetchAPI('/chats');
+        let chats = chatsCache;
+        if (!chats || chats.length === 0) {
+            loader.style.display = 'flex';
+            chats = await fetchAPI('/chats');
+            chatsCache = Array.isArray(chats) ? chats : [];
+        }
         const listHtml = chats.map(c => `
             <button onclick="selectGroup('${c.id}', '${escapeHTML(c.title)}')" class="group-btn" style="width:100%; margin-bottom:10px; padding:14px 16px; border-radius:12px; justify-content:space-between; background:${c.id == currentChatId ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)'}; color:${c.id == currentChatId ? 'white' : 'var(--text-color)'}; font-weight:600; cursor:pointer;">
-                <span>${escapeHTML(c.title)}</span>
+                <span>${escapeHTML(c.preset_icon ? `${c.preset_icon} ${c.title}` : c.title)}</span>
                 ${c.id == currentChatId ? '✓' : ''}
             </button>
         `).join('');
@@ -485,33 +600,70 @@ window.selectGroup = async function(chatId, title) {
     await switchTab(currentTab);
 };
 
-async function renderLeaderboard() {
-    const data = await fetchAPI(`/chats/${currentChatId}/leaderboard`);
-    
-    const listHtml = data.map((p, idx) => `
-        <div class="card flex-between" style="padding: 12px 20px;">
+async function renderLeaderboard(forceRefresh = false) {
+    const cacheKey = `leaderboard:${currentChatId}`;
+    let data = !forceRefresh ? getCachedData(cacheKey) : null;
+    if (!data) {
+        data = await fetchAPI(`/chats/${currentChatId}/leaderboard`);
+        setCachedData(cacheKey, data);
+    }
+
+    const mods = getActiveModules();
+    const tgUid = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
+    const meId = currentUserId || tgUid;
+    const myIdx = meId ? data.findIndex(p => String(p.user_id) === String(meId)) : -1;
+
+    const myRankBanner = myIdx >= 0 ? `
+        <div class="card flex-between" onclick="scrollToLeaderboardRank(${Number(data[myIdx].user_id)})" style="cursor:pointer; margin-top:8px; background:rgba(56,189,248,0.12); border-color:rgba(56,189,248,0.45); padding:12px 18px;">
+            <span style="font-weight:700; font-size:14px;">🏅 ${t('leaderboard_your_rank', { rank: myIdx + 1, rating: data[myIdx].rating })}</span>
+            <span style="font-size:12px; color:var(--accent-color); font-weight:700;">↓</span>
+        </div>
+    ` : '';
+
+    const listHtml = data.map((p, idx) => {
+        const isMe = meId && String(p.user_id) === String(meId);
+        const subText = mods.score_tracking_enabled
+            ? t('leaderboard_games_goals', { games: p.games, goals: p.goals })
+            : t('leaderboard_events_only', { games: p.games });
+        return `
+        <div id="leaderboard-row-${Number(p.user_id)}" class="card flex-between ${isMe ? 'leaderboard-me' : ''}" style="padding: 12px 20px;">
             <div class="flex-row">
-                <div style="font-weight:bold; color:var(--hint-color); width:20px; font-size:14px;">${idx+1}</div>
+                <div style="font-weight:bold; color:${isMe ? 'var(--accent-color)' : 'var(--hint-color)'}; width:26px; font-size:14px;">#${idx+1}</div>
                 <div>
-                    <div style="font-weight:bold; font-size:16px;">${p.name}</div>
-                    <div class="subtitle" style="font-size:12px;">${t('leaderboard_games_goals', { games: p.games, goals: p.goals })}</div>
+                    <div style="font-weight:bold; font-size:16px;">${escapeHTML(p.name)} ${isMe ? `<span style="color:var(--accent-color); font-size:12px;">${t('player_you')}</span>` : ''}</div>
+                    <div class="subtitle" style="font-size:12px;">${subText}</div>
                 </div>
             </div>
             <div style="font-weight:bold; color:var(--accent-color); font-size:18px;">${p.rating}</div>
-        </div>
-    `).join('');
-    
-    if(pages.leaderboard) pages.leaderboard.innerHTML = `<h2>${t('leaderboard_title')}</h2>` + listHtml;
+        </div>`;
+    }).join('');
+
+    if (pages.leaderboard) {
+        pages.leaderboard.innerHTML = `<h2>${t('leaderboard_title')}</h2>` + myRankBanner + listHtml;
+    }
+
+    const highlightTarget = pendingLeaderboardHighlightUserId;
+    if (highlightTarget) {
+        pendingLeaderboardHighlightUserId = null;
+        requestAnimationFrame(() => window.scrollToLeaderboardRank(highlightTarget));
+    }
 }
 
-window.renderHistory = async function(mode = null) {
+window.renderHistory = async function(mode = null, forceRefresh = false) {
     if (mode) historyMode = mode;
-    
-    const endpoint = historyMode === 'all' 
-        ? `/history/${currentChatId}` 
-        : `/users/me/history?chat_id=${currentChatId}`;
-        
-    const data = await fetchAPI(endpoint);
+    const cacheKey = `history:${currentChatId}:${historyMode}`;
+    let data = !forceRefresh ? getCachedData(cacheKey) : null;
+    if (!data) {
+        const endpoint = historyMode === 'all' 
+            ? `/history/${currentChatId}` 
+            : `/users/me/history?chat_id=${currentChatId}`;
+        data = await fetchAPI(endpoint);
+        setCachedData(cacheKey, data);
+    }
+    const chatMeta = getActiveChatMeta();
+    const mods = getActiveModules();
+    const eventNoun = (chatMeta && chatMeta.terminology && chatMeta.terminology.event_noun) || null;
+    const presetIcon = (chatMeta && chatMeta.preset_icon) || '⚽';
     
     if (data.length === 0) {
         if(pages.history) pages.history.innerHTML = `
@@ -540,7 +692,10 @@ window.renderHistory = async function(mode = null) {
         
         let statusText = t('history_draw');
         let statusColor = 'var(--hint-color)';
-        if (g.winner_team) {
+        if (!mods.score_tracking_enabled) {
+            statusText = t('history_attended');
+            statusColor = '#4caf50';
+        } else if (g.winner_team) {
             if (g.my_team && g.my_team === g.winner_team) {
                 statusText = t('history_win');
                 statusColor = '#4caf50';
@@ -553,27 +708,30 @@ window.renderHistory = async function(mode = null) {
             }
         }
 
-        // Using g.game_id for consistent numbering
-        
         let scoreHtml = '';
-        if (g.team_count === 3) {
+        if (!mods.score_tracking_enabled) {
+            scoreHtml = `<span style="font-size:16px; color:var(--text-color);">${presetIcon} ${escapeHTML(g.location)}</span>`;
+        } else if (g.team_count === 3) {
             scoreHtml = `
-                <span style="color:#4caf50">${g.score_a}</span> : 
-                <span style="color:#ff9800">${g.score_b}</span> : 
-                <span style="color:#3b82f6">${g.score_c}</span>
+                <span style="color:#4caf50">${g.score_a ?? 0}</span> : 
+                <span style="color:#ff9800">${g.score_b ?? 0}</span> : 
+                <span style="color:#3b82f6">${g.score_c ?? 0}</span>
             `;
         } else {
             scoreHtml = `
-                <span style="color:#4caf50">${g.score_a}</span> : 
-                <span style="color:#ff9800">${g.score_b}</span>
+                <span style="color:#4caf50">${g.score_a ?? 0}</span> : 
+                <span style="color:#ff9800">${g.score_b ?? 0}</span>
             `;
         }
+        const prefixLabel = eventNoun
+            ? `${eventNoun.toUpperCase()} #${g.game_number || g.game_id}`
+            : t('history_game_prefix', { num: g.game_number || g.game_id });
 
         return `
         <div class="card" onclick="showGameDetails(${g.game_id})" style="cursor:pointer; border-left: 4px solid ${historyMode === 'mine' ? resColor : 'transparent'};">
             <div class="flex-between" style="margin-bottom: 8px;">
                 <div style="display:flex; flex-direction:column">
-                    <span style="font-size: 10px; font-weight: 800; color:var(--accent-color); margin-bottom: 2px;">${t('history_game_prefix', { num: g.game_number || g.game_id })}</span>
+                    <span style="font-size: 10px; font-weight: 800; color:var(--accent-color); margin-bottom: 2px;">${prefixLabel}</span>
                     <span style="font-size: 20px; font-weight: 800; letter-spacing: 1px;">
                         ${scoreHtml}
                     </span>
@@ -612,61 +770,81 @@ window.showGameDetails = async function(gameId) {
     loader.style.display = 'flex';
     try {
         const game = await fetchAPI(`/game/${gameId}`);
-        
-        let scoreHtml = '';
-        if (game.team_count === 3) {
-            scoreHtml = `<span style="color:#4caf50">${game.score_a}</span> : <span style="color:#ff9800">${game.score_b}</span> : <span style="color:#3b82f6">${game.score_c}</span>`;
+        const mods = game.modules || { score_tracking_enabled: true, team_draft_enabled: true, mvp_voting_enabled: true };
+        const isSport = !game.preset_category || game.preset_category === 'sport';
+        const icon = game.preset_icon || '⚽';
+        const grpLabel = (game.terminology && game.terminology.grouping_noun) || 'Group';
+
+        let headerTopHtml = '';
+        if (mods.score_tracking_enabled) {
+            let scoreHtml = '';
+            if (game.team_count === 3) {
+                scoreHtml = `<span style="color:#4caf50">${game.score_a ?? 0}</span> : <span style="color:#ff9800">${game.score_b ?? 0}</span> : <span style="color:#3b82f6">${game.score_c ?? 0}</span>`;
+            } else {
+                scoreHtml = `<span style="color:#4caf50">${game.score_a ?? 0}</span> : <span style="color:#ff9800">${game.score_b ?? 0}</span>`;
+            }
+            headerTopHtml = `<h1 style="font-size:48px; margin:10px 0; font-weight:900; letter-spacing:-1px;">${scoreHtml}</h1>`;
         } else {
-            scoreHtml = `<span style="color:#4caf50">${game.score_a}</span> : <span style="color:#ff9800">${game.score_b}</span>`;
+            const evNoun = (game.terminology && game.terminology.event_noun) || 'Event';
+            headerTopHtml = `<h2 style="font-size:26px; margin:10px 0; font-weight:800;">${icon} ${escapeHTML(evNoun)} #${game.game_number || game.id}</h2>`;
+        }
+
+        const labelA = isSport ? `${t('team_green')} (A)` : `${grpLabel} A`;
+        const labelB = isSport ? `${t('team_orange')} (B)` : `${grpLabel} B`;
+        const labelC = isSport ? `${t('team_blue')} (C)` : `${grpLabel} C`;
+
+        const renderParticipantStats = (p) => {
+            if (!mods.score_tracking_enabled && !mods.mvp_voting_enabled) return '';
+            return `<span style="display:flex; align-items:center; gap:4px">
+                ${mods.score_tracking_enabled && p.goals > 0 ? `<span style="font-size:12px">${icon}${p.goals}</span>` : ''} 
+                ${mods.mvp_voting_enabled && p.is_mvp ? '<span style="font-size:12px">🌟</span>' : ''}
+            </span>`;
+        };
+
+        const renderSinglePool = (list) => (list || []).map(p => `
+            <div style="font-size:15px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center">
+                <span style="font-weight:500">${escapeHtml(p.name)}</span>
+                ${renderParticipantStats(p)}
+            </div>
+        `).join('');
+
+        let rosterBodyHtml = '';
+        if (!mods.team_draft_enabled || (!game.team_a?.length && !game.team_b?.length && (game.unassigned?.length || 0) > 0)) {
+            const allParticipants = [...(game.team_a || []), ...(game.team_b || []), ...(game.team_c || []), ...(game.unassigned || [])];
+            rosterBodyHtml = `
+                <div style="background: rgba(56, 189, 248, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(56, 189, 248, 0.15);">
+                    <h4 style="color:var(--accent-color); margin-bottom:12px; border-bottom:1px solid rgba(56,189,248,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">${t('sec_main_roster')} (${allParticipants.length})</h4>
+                    ${renderSinglePool(allParticipants)}
+                </div>
+            `;
+        } else {
+            rosterBodyHtml = `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
+                <div style="background: rgba(76, 175, 80, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(76, 175, 80, 0.1);">
+                    <h4 style="color:#4caf50; margin-bottom:12px; border-bottom:1px solid rgba(76,175,80,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">${labelA}</h4>
+                    ${renderSinglePool(game.team_a)}
+                </div>
+                <div style="background: rgba(255, 152, 0, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(255, 152, 0, 0.1);">
+                    <h4 style="color:#ff9800; margin-bottom:12px; border-bottom:1px solid rgba(255,152,0,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">${labelB}</h4>
+                    ${renderSinglePool(game.team_b)}
+                </div>
+            </div>
+            ${game.team_c && game.team_c.length ? `
+            <div style="margin-top:24px; background: rgba(59, 130, 246, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(59, 130, 246, 0.1);">
+                <h4 style="color:#3b82f6; margin-bottom:12px; border-bottom:1px solid rgba(59,130,246,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">${labelC}</h4>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    ${renderSinglePool(game.team_c)}
+                </div>
+            </div>` : ''}`;
         }
 
         let html = `
             <div style="text-align:center; margin-bottom:30px;">
-                <h1 style="font-size:48px; margin:10px 0; font-weight:900; letter-spacing:-1px;">${scoreHtml}</h1>
+                ${headerTopHtml}
                 <div class="subtitle" style="font-size:16px; margin-bottom:4px;">📍 ${escapeHtml(game.location)}</div>
                 <div class="subtitle" style="font-size:14px;">📅 ${new Date(game.date).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: game.timezone || 'Europe/Prague'})}</div>
             </div>
-            
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
-                <div style="background: rgba(76, 175, 80, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(76, 175, 80, 0.1);">
-                    <h4 style="color:#4caf50; margin-bottom:12px; border-bottom:1px solid rgba(76,175,80,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">${t('team_green')} (A)</h4>
-                    ${game.team_a.map(p => `
-                        <div style="font-size:15px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center">
-                            <span style="font-weight:500">${escapeHtml(p.name)}</span>
-                            <span style="display:flex; align-items:center; gap:4px">
-                                ${p.goals > 0 ? `<span style="font-size:12px">⚽${p.goals}</span>` : ''} 
-                                ${p.is_mvp ? '<span style="font-size:12px">🌟</span>' : ''}
-                            </span>
-                        </div>
-                    `).join('')}
-                </div>
-                <div style="background: rgba(255, 152, 0, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(255, 152, 0, 0.1);">
-                    <h4 style="color:#ff9800; margin-bottom:12px; border-bottom:1px solid rgba(255,152,0,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">${t('team_orange')} (B)</h4>
-                    ${game.team_b.map(p => `
-                        <div style="font-size:15px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center">
-                            <span style="font-weight:500">${escapeHtml(p.name)}</span>
-                            <span style="display:flex; align-items:center; gap:4px">
-                                ${p.goals > 0 ? `<span style="font-size:12px">⚽${p.goals}</span>` : ''} 
-                                ${p.is_mvp ? '<span style="font-size:12px">🌟</span>' : ''}
-                            </span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-            
-            ${game.team_c && game.team_c.length ? `
-            <div style="margin-top:24px; background: rgba(59, 130, 246, 0.05); padding: 16px; border-radius: 16px; border: 1px solid rgba(59, 130, 246, 0.1);">
-                <h4 style="color:#3b82f6; margin-bottom:12px; border-bottom:1px solid rgba(59,130,246,0.2); padding-bottom:8px; font-weight:800; font-size:14px; text-transform:uppercase;">${t('team_blue')} (C)</h4>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                    ${game.team_c.map(p => `
-                        <div style="font-size:14px; display:flex; justify-content:space-between">
-                            <span>${escapeHtml(p.name)}</span>
-                            <span>${p.goals > 0 ? `⚽${p.goals}` : ''} ${p.is_mvp ? '🌟' : ''}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>` : ''}
-            
+            ${rosterBodyHtml}
             <button onclick="closePopup()" class="group-btn" style="margin-top:40px; height:56px; font-size:18px; justify-content:center; background:var(--accent-color); color:white;">${t('btn_close_popup')}</button>
         `;
         

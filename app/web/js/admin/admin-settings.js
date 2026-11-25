@@ -20,6 +20,15 @@ function onCurrencySettingChange(selectEl) {
     updateGroupSetting('currency', curr, selectEl);
 }
 
+async function onSportPresetSettingChange(selectEl) {
+    const sportCode = selectEl.value;
+    await updateGroupSetting('sport_type', sportCode, selectEl);
+    const updatedGroup = groupsCache.find(g => String(g.chat_id) === String(currentGroupId));
+    if (updatedGroup && typeof applyGroupPresetUI === 'function') {
+        applyGroupPresetUI(updatedGroup);
+    }
+}
+
 async function updatePolicySetting(policyKey, policyValue, inputEl) {
     if (!currentGroupId) return;
     const cached = groupsCache.find(g => String(g.chat_id) === String(currentGroupId));
@@ -84,6 +93,13 @@ async function updateEventModuleToggle(moduleKey, isChecked) {
         policy.enabled_modules = enabledModules;
         await apiCall(`/groups/${currentGroupId}`, 'PATCH', { policy });
         group.policy = policy;
+        const gIdx = groupsCache.findIndex(g => String(g.chat_id) === String(currentGroupId));
+        if (gIdx > -1) {
+            groupsCache[gIdx].modules = { ...(groupsCache[gIdx].modules || {}), [moduleKey]: Boolean(isChecked) };
+            if (typeof applyGroupPresetUI === 'function') {
+                applyGroupPresetUI(groupsCache[gIdx]);
+            }
+        }
         showAdminToast('🧩 Модуль обновлён!');
     } catch (err) {
         showAdminToast('Failed to update module: ' + err.message);

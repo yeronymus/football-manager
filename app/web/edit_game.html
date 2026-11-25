@@ -84,7 +84,7 @@
             <small data-i18n="help_max_players" style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Total players who show up (squads + bench). Beyond this — reserve.</small>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="edit-main-players-group">
             <label for="main_players_count" data-i18n="lbl_main_players">Players on pitch (X vs X)</label>
             <input type="number" id="main_players_count" min="2" max="999" inputmode="numeric">
             <small data-i18n="help_main_players" style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">Simultaneously on field (e.g. 22 for 11v11, 16 for 8v8).</small>
@@ -115,7 +115,7 @@
             <label for="payment_info" data-i18n="lbl_payment_info">Payment Account</label>
             <input type="text" id="payment_info">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="edit-gk-hours-group">
             <label for="gk_hours" data-i18n="lbl_gk_hours">Goalkeeper Priority (hours)</label>
             <input type="number" id="gk_hours" min="0" max="168" inputmode="numeric">
             <small data-i18n="help_gk_hours" style="color: var(--tg-theme-hint-color); display: block; margin-top: 4px;">0 = disabled (everyone signs up equally)</small>
@@ -196,6 +196,19 @@
                     registrationHoursInput.value = game.registration_hours || 0;
                     mainPlayersInput.value = game.main_players_count || 22;
                     signupLimitInput.value = game.signup_limit || 999;
+
+                    // Hide football-specific fields for non-football presets
+                    const mods = game.modules || {};
+                    const hasGk = game.has_goalkeeper !== undefined ? Boolean(game.has_goalkeeper) : (game.sport_type === 'football' || game.sport_type === 'futsal' || !game.sport_type);
+                    const draftEnabled = mods.team_draft_enabled !== undefined ? Boolean(mods.team_draft_enabled) : true;
+                    const gkGroup = document.getElementById('edit-gk-hours-group');
+                    const mainGroup = document.getElementById('edit-main-players-group');
+                    if (gkGroup) gkGroup.style.display = hasGk ? 'block' : 'none';
+                    if (mainGroup) mainGroup.style.display = draftEnabled ? 'block' : 'none';
+                    if (game.sport_type && game.sport_type !== 'football' && game.terminology && game.terminology.event_noun) {
+                        const pt = document.getElementById('page-title');
+                        if (pt) pt.innerText = `${game.preset_icon || '✏️'} ${game.terminology.event_noun}`;
+                    }
 
                     // Convert UTC date to tenant local string for flatpickr
                     const tenantTz = game.timezone || 'Europe/Prague';
