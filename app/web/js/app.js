@@ -295,19 +295,22 @@ async function renderProfile() {
 }
 
 window.editProfileName = function(currentName) {
+    closeModal();
     const lang = (window.i18n && window.i18n.getLang ? window.i18n.getLang() : localStorage.getItem('webapp_lang')) || 'en';
     const title = lang === 'ru' ? 'Изменить имя' : (lang === 'cs' ? 'Změnit jméno' : 'Edit Display Name');
     const saveLbl = lang === 'ru' ? 'Сохранить' : (lang === 'cs' ? 'Uložit' : 'Save');
     const safeVal = String(currentName || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
     const modalHtml = `
-        <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
-            <div class="card" style="width:90%; max-width:340px; padding:24px;">
-                <h3 style="margin-bottom:14px; text-align:center;">${title}</h3>
-                <input type="text" id="profile-name-input" value="${safeVal}" maxlength="64" style="width:100%; box-sizing:border-box; padding:11px 12px; border-radius:10px; border:1px solid var(--border-color); background:rgba(255,255,255,0.06); color:var(--text-color); font-size:15px; margin-bottom:16px;">
-                <div class="flex-row" style="gap:10px;">
-                    <button onclick="closeModal()" style="flex:1; padding:12px; border-radius:10px; background:rgba(255,255,255,0.05); color:white; border:none; font-weight:600; cursor:pointer;">${t('btn_cancel')}</button>
-                    <button onclick="saveProfileName()" style="flex:1; padding:12px; border-radius:10px; background:var(--accent-color); color:white; border:none; font-weight:600; cursor:pointer;">${saveLbl}</button>
+        <div id="modal-container">
+            <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
+                <div class="card" style="width:90%; max-width:340px; padding:24px;">
+                    <h3 style="margin-bottom:14px; text-align:center;">${title}</h3>
+                    <input type="text" id="profile-name-input" value="${safeVal}" maxlength="64" style="width:100%; box-sizing:border-box; padding:11px 12px; border-radius:10px; border:1px solid var(--border-color); background:rgba(255,255,255,0.06); color:var(--text-color); font-size:15px; margin-bottom:16px;">
+                    <div class="flex-row" style="gap:10px;">
+                        <button onclick="closeModal()" style="flex:1; padding:12px; border-radius:10px; background:rgba(255,255,255,0.05); color:white; border:none; font-weight:600; cursor:pointer;">${t('btn_cancel')}</button>
+                        <button onclick="saveProfileName()" style="flex:1; padding:12px; border-radius:10px; background:var(--accent-color); color:white; border:none; font-weight:600; cursor:pointer;">${saveLbl}</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -324,15 +327,18 @@ window.saveProfileName = async function() {
         alert('Name must be at least 2 characters');
         return;
     }
+    closeModal();
+    if (loader) loader.style.display = 'flex';
     try {
         await fetchAPI('/users/me/profile', {
             method: 'POST',
             body: JSON.stringify({ name: newName })
         });
-        closeModal();
-        renderProfile();
+        await renderProfile();
     } catch (e) {
         alert(e.message);
+    } finally {
+        if (loader) loader.style.display = 'none';
     }
 };
 
@@ -427,7 +433,9 @@ window.saveAlts = async function() {
 
 window.closeModal = function() {
     const modal = document.getElementById('modal-container');
-    if(modal) modal.remove();
+    if (modal) modal.remove();
+    const overlay = document.getElementById('modal-overlay');
+    if (overlay) overlay.remove();
 }
 
 const escapeHTML = str => str ? String(str).replace(/[&<>'"]/g, 
