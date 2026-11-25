@@ -235,11 +235,17 @@ async function renderProfile() {
     const lblEdit = t('profile_edit');
     const lblNotSet = t('profile_not_set');
 
+    const safeUserName = String(userName).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const jsUserName = String(userName).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
     const html = `
         <div class="card flex-row" style="margin-top: 16px; padding: 24px;">
             <div class="avatar">${userName.charAt(0)}</div>
-            <div style="flex:1">
-                <h3 style="font-size: 20px;">${userName}</h3>
+            <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <h3 style="font-size: 20px; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${safeUserName}</h3>
+                    <button onclick="editProfileName('${jsUserName}')" title="${lblEdit}" style="background:rgba(255,255,255,0.08); border:1px solid var(--border-color); color:var(--text-color); border-radius:8px; padding:3px 8px; font-size:12px; cursor:pointer; flex-shrink:0;">✏️</button>
+                </div>
                 <div class="subtitle" style="margin-top:4px;">
                     ${lblPrimary}: <b style="color:var(--text-color)">${data.position}</b>
                 </div>
@@ -287,6 +293,48 @@ async function renderProfile() {
     `;
     if(pages.profile) pages.profile.innerHTML = html;
 }
+
+window.editProfileName = function(currentName) {
+    const lang = (window.i18n && window.i18n.getLang ? window.i18n.getLang() : localStorage.getItem('webapp_lang')) || 'en';
+    const title = lang === 'ru' ? 'Изменить имя' : (lang === 'cs' ? 'Změnit jméno' : 'Edit Display Name');
+    const saveLbl = lang === 'ru' ? 'Сохранить' : (lang === 'cs' ? 'Uložit' : 'Save');
+    const safeVal = String(currentName || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+    const modalHtml = `
+        <div id="modal-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); z-index:3000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;">
+            <div class="card" style="width:90%; max-width:340px; padding:24px;">
+                <h3 style="margin-bottom:14px; text-align:center;">${title}</h3>
+                <input type="text" id="profile-name-input" value="${safeVal}" maxlength="64" style="width:100%; box-sizing:border-box; padding:11px 12px; border-radius:10px; border:1px solid var(--border-color); background:rgba(255,255,255,0.06); color:var(--text-color); font-size:15px; margin-bottom:16px;">
+                <div class="flex-row" style="gap:10px;">
+                    <button onclick="closeModal()" style="flex:1; padding:12px; border-radius:10px; background:rgba(255,255,255,0.05); color:white; border:none; font-weight:600; cursor:pointer;">${t('btn_cancel')}</button>
+                    <button onclick="saveProfileName()" style="flex:1; padding:12px; border-radius:10px; background:var(--accent-color); color:white; border:none; font-weight:600; cursor:pointer;">${saveLbl}</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const inp = document.getElementById('profile-name-input');
+    if (inp) inp.focus();
+};
+
+window.saveProfileName = async function() {
+    const inp = document.getElementById('profile-name-input');
+    const newName = inp ? inp.value.trim() : '';
+    if (newName.length < 2) {
+        alert('Name must be at least 2 characters');
+        return;
+    }
+    try {
+        await fetchAPI('/users/me/profile', {
+            method: 'POST',
+            body: JSON.stringify({ name: newName })
+        });
+        closeModal();
+        renderProfile();
+    } catch (e) {
+        alert(e.message);
+    }
+};
 
 window.editPrimaryPosition = function() {
     const positions = ['GK', 'LB', 'CB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'CF'];

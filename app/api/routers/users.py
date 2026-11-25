@@ -334,25 +334,43 @@ async def update_my_profile(
     user_id: int = Depends(get_user_from_header),
     session: AsyncSession = Depends(get_session),
 ):
-    """Updates user's primary position."""
+    """Updates user's display name and/or positions (and syncs ChatMember full_name)."""
     new_pos = data.get("position")
-    alt_positions = data.get("alt_positions", [])
+    raw_name = data.get("name")
+    alt_positions = data.get("alt_positions")
 
-    if not new_pos:
+    if not new_pos and raw_name is None:
         raise HTTPException(status_code=400, detail="Position required")
 
     user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    try:
-        user.player_position = Position(new_pos)
-        user.alt_positions = alt_positions
-        await session.commit()
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid position")
+    if raw_name is not None:
+        clean_name = str(raw_name).strip()
+        if len(clean_name) < 2 or len(clean_name) > 64:
+            raise HTTPException(status_code=400, detail="Name must be between 2 and 64 characters")
+        user.full_name = clean_name
+        from sqlalchemy import update
+        from app.db.models import ChatMember
 
-    return {"status": "ok"}
+        await session.execute(
+            update(ChatMember)
+            .where(ChatMember.user_id == user_id)
+            .values(full_name=clean_name)
+        )
+
+    if new_pos:
+        try:
+            user.player_position = Position(new_pos)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid position")
+
+    if alt_positions is not None:
+        user.alt_positions = alt_positions
+
+    await session.commit()
+    return {"status": "ok", "name": user.full_name}
 
 
 @router.post("/users/register")
