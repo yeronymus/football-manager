@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 import hashlib
 import hmac
@@ -60,12 +61,21 @@ async def _asgi_request(
         "server": ("testserver", 80),
     }
     sent_events = []
+    request_sent = False
+    response_done = asyncio.Event()
 
     async def receive():
-        return {"type": "http.request", "body": b"", "more_body": False}
+        nonlocal request_sent
+        if not request_sent:
+            request_sent = True
+            return {"type": "http.request", "body": b"", "more_body": False}
+        await response_done.wait()
+        return {"type": "http.disconnect"}
 
     async def send(message):
         sent_events.append(message)
+        if message["type"] == "http.response.body" and not message.get("more_body", False):
+            response_done.set()
 
     await asgi_app(scope, receive, send)
     status_code = next(
