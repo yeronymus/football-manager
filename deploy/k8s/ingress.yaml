@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sports-manager-ingress
+  namespace: sports-platform
+  labels:
+    app.kubernetes.io/name: sports-manager-api
+    app.kubernetes.io/part-of: sports-manager
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - sports.example.com
+      secretName: sports-manager-tls
+  rules:
+    - host: sports.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sports-manager-api
+                port:
+                  name: http

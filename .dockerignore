@@ -1,0 +1,42 @@
+# Version control & CI caches
+.git/
+.github/
+.gitlab-ci.yml
+.cache/
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Secrets & local env files
+.env
+.env.*
+!.env.example
+*.env
+
+# Local data, backups & artifacts
+backups/
+server_backup/
+postgres_data/
+redis_data/
+*.db
+*.sqlite3
+*.dump
+*.sql
+*.sql.gz
+*.log
+*.tar.gz
+
+# Tests, docs & scratch
+tests/
+docs/
+scratch/
+.vscode/
+.idea/
+.agent/
+.agents/

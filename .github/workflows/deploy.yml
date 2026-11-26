@@ -69,6 +69,19 @@ jobs:
       - name: Architecture & Layer Health Check
         run: uv run python scripts/health_check.py
 
+      - name: Verify Database Schema & Alembic Graph
+        run: |
+          uv run python -c "
+          import asyncio
+          from app.db.database import Base, engine
+          async def main():
+              async with engine.begin() as conn:
+                  await conn.run_sync(Base.metadata.create_all)
+          asyncio.run(main())
+          "
+          uv run alembic stamp head
+          uv run alembic upgrade head
+
       - name: Check Configuration Security (Trivy scan)
         uses: aquasecurity/trivy-action@master
         with:

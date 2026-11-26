@@ -74,6 +74,7 @@ integration_tests:
       asyncio.run(main())
       "
     - uv run alembic stamp head
+    - uv run alembic upgrade head
     - uv run python scripts/health_check.py
     - PYTHONPATH=. uv run pytest tests/ -v --tb=short
   only:

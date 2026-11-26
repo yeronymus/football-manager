@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sports-manager-api
+  namespace: sports-platform
+  labels:
+    app.kubernetes.io/name: sports-manager-api
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: sports-manager
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: sports-manager-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

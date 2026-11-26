@@ -15,8 +15,8 @@ COPY --from=ghcr.io/astral-sh/uv:0.5.14 /uv /uvx /bin/
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
 
-# Build the virtual environment using uv
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-cache
+# Build the virtual environment using uv (exclude dev dependencies from runtime image)
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --no-dev --no-cache
 
 # Stage 2: Final lightweight runtime
 FROM python:3.12-slim AS runner
@@ -36,8 +36,8 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# Create non-root user with home directory
-RUN groupadd -r appuser && useradd -m -r -g appuser appuser
+# Create non-root user with fixed UID/GID matching Kubernetes securityContext (10001)
+RUN groupadd -r -g 10001 appuser && useradd -m -r -u 10001 -g appuser appuser
 
 # Copy project files and set ownership to appuser
 COPY --chown=appuser:appuser . .
@@ -46,8 +46,8 @@ RUN chown -R appuser:appuser /app /home/appuser
 # Final user switch to non-privileged user
 USER appuser
 
-# Start the application using python from venv directly
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.api.main:app --host 0.0.0.0 --port 8000"]
+# Start the application (run migrations only when RUN_MIGRATIONS is true)
+CMD ["sh", "-c", "if [ \"${RUN_MIGRATIONS:-true}\" = \"true\" ] || [ \"${RUN_MIGRATIONS:-true}\" = \"True\" ]; then alembic upgrade head; fi && exec uvicorn app.api.main:app --host 0.0.0.0 --port 8000"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD python scripts/container_probe.py || exit 1
