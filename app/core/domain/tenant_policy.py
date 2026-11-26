@@ -80,6 +80,13 @@ class TenantPolicy(BaseModel):
     multisport_discount_amount: int = Field(default=150, ge=0, le=5000)
     data_retention_months: int = Field(default=24, ge=1, le=120)
 
+    @field_validator("rating_system", mode="before")
+    @classmethod
+    def normalize_rating_system(cls, v: Any) -> Any:
+        if isinstance(v, RatingSystem):
+            return v.value
+        return v
+
 
 def resolve_billing_mode(raw: Any) -> BillingMode:
     if isinstance(raw, BillingMode):

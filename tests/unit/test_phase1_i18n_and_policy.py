@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import json
 from pathlib import Path
 import re
+import shutil
 from unittest.mock import MagicMock
 
 from fastapi import FastAPI
@@ -134,9 +135,17 @@ def test_locale_catalog_key_and_placeholder_parity_and_opsec():
     token_re = re.compile(r"(?:\d{1,3}(?:\.\d{1,3}){3})|[a-z0-9_]{4,}")
     skip_suffixes = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".woff", ".woff2", ".lock"}
 
-    tracked_files = subprocess.check_output(
-        ["git", "ls-files"], cwd=REPO_ROOT, text=True
-    ).splitlines()
+    if shutil.which("git"):
+        tracked_files = subprocess.check_output(
+            ["git", "ls-files"], cwd=REPO_ROOT, text=True
+        ).splitlines()
+    else:
+        skip_dirs = {".git", ".venv", ".pytest_cache", "__pycache__", ".cache", "node_modules"}
+        tracked_files = [
+            str(p.relative_to(REPO_ROOT))
+            for p in REPO_ROOT.rglob("*")
+            if p.is_file() and not any(part in skip_dirs for part in p.relative_to(REPO_ROOT).parts)
+        ]
     for rel_path in tracked_files:
         path = REPO_ROOT / rel_path
         if not path.is_file() or path.suffix.lower() in skip_suffixes:
