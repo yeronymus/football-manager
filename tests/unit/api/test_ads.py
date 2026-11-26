@@ -27,6 +27,7 @@ async def test_get_random_ad_no_ads(_mock_sponsor):
 @patch("random.choices")
 async def test_get_random_ad_success(mock_choices):
     session = AsyncMock()
+    session.add = MagicMock()
     ad1 = AdBanner(
         id=1,
         text="Test Ad 1",
@@ -62,6 +63,7 @@ async def test_get_random_ad_success(mock_choices):
 @pytest.mark.asyncio
 async def test_record_ad_click_increments_metrics():
     session = AsyncMock()
+    session.add = MagicMock()
     banner = AdBanner(
         id=10,
         text="21 Coffee MVP Partner",

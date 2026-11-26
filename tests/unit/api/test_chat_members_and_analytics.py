@@ -97,6 +97,9 @@ async def test_update_group_player_note_saves_and_clears(monkeypatch):
     )
     session = AsyncMock()
     session.scalar.return_value = member
+    mock_exec = MagicMock()
+    mock_exec.scalar_one_or_none.return_value = MagicMock()
+    session.execute.return_value = mock_exec
 
     res = await leaderboards.update_group_player_note(
         chat_id=-100,
@@ -185,6 +188,9 @@ async def test_kick_group_player_and_warn_unregistered(monkeypatch):
     )
     session = AsyncMock()
     session.scalar.return_value = member
+    mock_exec = MagicMock()
+    mock_exec.scalar_one_or_none.return_value = MagicMock()
+    session.execute.return_value = mock_exec
 
     kick_res = await leaderboards.kick_group_player(
         chat_id=-100,

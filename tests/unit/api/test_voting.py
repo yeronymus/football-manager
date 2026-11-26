@@ -10,6 +10,7 @@ from app.api.schemas import VoteRequest
 @patch("app.api.routers.voting.get_user_from_init_data", return_value=123)
 async def test_get_vote_data_success(mock_get_user, mock_validate):
     session = AsyncMock()
+    session.add = MagicMock()
     
     # Mock query returns
     mock_signup_check = MagicMock()
@@ -43,6 +44,7 @@ async def test_get_vote_data_success(mock_get_user, mock_validate):
 @patch("app.api.routers.voting.get_user_from_init_data", return_value=123)
 async def test_submit_vote_success(mock_get_user, mock_validate):
     session = AsyncMock()
+    session.add = MagicMock()
     
     # Mock query returns
     mock_signup_check = MagicMock()
@@ -68,6 +70,7 @@ async def test_submit_vote_success(mock_get_user, mock_validate):
 @patch("app.api.routers.voting.get_user_from_init_data", return_value=123)
 async def test_submit_vote_self_vote_error(mock_get_user, mock_validate):
     session = AsyncMock()
+    session.add = MagicMock()
     
     # Mock query returns
     mock_signup_check = MagicMock()

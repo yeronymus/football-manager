@@ -139,6 +139,8 @@ async def test_calculate_mvp_with_runners_up_en(mock_bot, mock_session_maker):
     from app.db.models import GameStatus, SignupStatus
 
     session = AsyncMock()
+    session.add = MagicMock()
+    session.scalar = AsyncMock(return_value=None)
     game = Game(id=4, chat_id=-1004, status=GameStatus.FINISHED, voting_message_id=555)
     chat = Chat(chat_id=-1004, title="Perfect Wind Footballers", language=Language.en)
     session.get.side_effect = lambda model, obj_id: chat if model == Chat else (game if model == Game else None)
@@ -205,7 +207,7 @@ async def test_calculate_mvp_with_runners_up_en(mock_bot, mock_session_maker):
     await calculate_mvp(game_id=4)
 
     assert mock_bot.send_message.called
-    call_text = mock_bot.send_message.call_args.kwargs["text"]
+    call_text = mock_bot.send_message.call_args_list[0].kwargs["text"]
     
     # Assert English header
     assert "MVP Voting Results" in call_text
@@ -224,6 +226,8 @@ async def test_calculate_mvp_with_runners_up_ru(mock_bot, mock_session_maker):
     from app.db.models import GameStatus, SignupStatus
 
     session = AsyncMock()
+    session.add = MagicMock()
+    session.scalar = AsyncMock(return_value=None)
     game = Game(id=5, chat_id=-1005, status=GameStatus.FINISHED, voting_message_id=666)
     chat = Chat(chat_id=-1005, title="Russian Group", language=Language.ru)
 
@@ -284,7 +288,7 @@ async def test_calculate_mvp_with_runners_up_ru(mock_bot, mock_session_maker):
     await calculate_mvp(game_id=5)
 
     assert mock_bot.send_message.called
-    call_text = mock_bot.send_message.call_args.kwargs["text"]
+    call_text = mock_bot.send_message.call_args_list[0].kwargs["text"]
 
     # Assert Russian header
     assert "Итоги голосования за MVP" in call_text

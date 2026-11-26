@@ -19,6 +19,12 @@ async def test_notify_player_payment_missing_user_id():
 async def test_notify_player_payment_success(mock_bot, mock_cache, mock_check_admin):
     import datetime
     session = AsyncMock()
+    session.add = MagicMock()
+    session.scalar = AsyncMock(return_value=1)
+    mock_exec = MagicMock()
+    mock_exec.scalars.return_value.first.return_value = None
+    mock_exec.scalar.return_value = 1
+    session.execute.return_value = mock_exec
     game = Game(id=1, chat_id=-1001, location="Arena", date_time=datetime.datetime.now(), price=150, payment_info="123456")
     user = User(user_id=777, full_name="Player One", language="en")
     
@@ -55,6 +61,12 @@ async def test_notify_player_payment_guest(mock_cache, mock_check_admin):
 async def test_notify_player_payment_blocked(mock_bot, mock_cache, mock_check_admin):
     import datetime
     session = AsyncMock()
+    session.add = MagicMock()
+    session.scalar = AsyncMock(return_value=1)
+    mock_exec = MagicMock()
+    mock_exec.scalars.return_value.first.return_value = None
+    mock_exec.scalar.return_value = 1
+    session.execute.return_value = mock_exec
     game = Game(id=1, chat_id=-1001, location="Arena", date_time=datetime.datetime.now(), price=150)
     user = User(user_id=888, full_name="Blocked User")
     
@@ -243,6 +255,7 @@ async def test_add_guest_invalid_position_fallback(mock_cache, mock_check_admin)
     from app.db.models import Game, Position
     mock_cache.evict = AsyncMock()
     session = AsyncMock()
+    session.add = MagicMock()
     game = Game(id=1, chat_id=-1001)
     session.get.return_value = game
 
